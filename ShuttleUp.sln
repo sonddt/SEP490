@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36121.58 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShuttleUp", "ShuttleUp\ShuttleUp.csproj", "{AA766878-84CE-4A47-94F9-14320A1A6C55}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShuttleUp.Backend", "ShuttleUp.Backend\ShuttleUp.Backend.csproj", "{AA766878-84CE-4A47-94F9-14320A1A6C55}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
