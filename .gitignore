@@ -361,3 +361,30 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# ===========================================================
+# THÊM VÀO CHO FRONTEND (REACT VITE)
+# ===========================================================
+
+# Thư mục thư viện cực nặng (Bắt buộc phải bỏ qua)
+node_modules/
+ShuttleUp.Frontend/node_modules/
+
+# Thư mục chứa code sau khi đóng gói (Build)
+dist/
+ShuttleUp.Frontend/dist/
+
+# Các file môi trường chứa mật khẩu/biến bí mật
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Log lỗi của npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Thư mục tạm của Vite
+.vite/
