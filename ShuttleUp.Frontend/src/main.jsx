@@ -1,9 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 
-// Bootstrap CSS + JS (includes Popper)
-import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap/dist/js/bootstrap.bundle.min.js';
+// Bootstrap is loaded from the template in index.html to preserve the CSS cascading order.
 
 // AOS globally (init is done per-page)
 import 'aos/dist/aos.css';

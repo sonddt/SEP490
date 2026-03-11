@@ -136,6 +136,11 @@ const Header = ({ transparent = false }) => {
                 <span><i className="feather-users"></i></span>
                 Login / Register
               </Link>
+              <div className="nav-link btn btn-white log-register">
+                <Link to="/login" onClick={closeMobileMenu}><span><i className="feather-users"></i></span>Login</Link>
+                {' / '}
+                <Link to="/register" onClick={closeMobileMenu}>Register</Link>
+              </div>
             </li>
             <li className="nav-item">
               <Link className="nav-link btn btn-secondary" to="/courts/add" onClick={closeMobileMenu}>
