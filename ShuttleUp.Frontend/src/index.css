@@ -1,68 +1,334 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+/* ── ShuttleUp Global Custom CSS ─────────────────────────────────────────── */
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* Fix 1: Header - reinforce template's built-in .header.fixed class */
+/* Template's style.css already defines .header.fixed; we just reinforce it */
+.header.fixed {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1050;
+  background: #097E52 !important;
+  box-shadow: 0 4px 20px rgba(9, 126, 82, 0.3);
+  animation: headerSlideDown 0.3s ease;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+@keyframes headerSlideDown {
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(0); }
 }
 
-body {
-  margin: 0;
+/* Match template: header height with comfortable top/bottom space */
+.header .header-nav {
+  align-items: center !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  justify-content: space-between;
+  height: 96px !important; /* taller to give logo + menu more space */
+  padding: 0 24px !important;
+  transition: height 0.3s ease;
+}
+
+.header.fixed .header-nav {
+  height: 80px !important; /* still roomy when fixed on scroll */
+}
+
+/* Header right buttons: Login/Register + List Your Court */
+.header .header-navbar-rht {
+  display: flex !important;
+  align-items: center !important;
+  gap: 15px; /* Adds space between the two buttons */
+}
+
+.header .header-navbar-rht .nav-item {
   display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  align-items: center;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* Base button sizing to ensure both are exactly equal */
+.header .header-navbar-rht .btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 48px !important;
+  padding: 0 24px !important;
+  border-radius: 999px !important;
+  font-weight: 600 !important;
+  margin: 0 !important;
+  font-size: 15px;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+/* Fix inner links inside the login button wrapper */
+.header .header-navbar-rht .log-register a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.header .header-navbar-rht .log-register span i {
+  margin-right: 6px;
+}
+
+.header .header-navbar-rht .btn-secondary {
+  background: #192335 !important;
+  border-color: #192335 !important;
+  color: #ffffff !important;
+}
+
+.header .header-navbar-rht .btn-secondary span i {
+  margin-right: 6px;
+}
+
+.header .header-navbar-rht .btn-secondary:hover {
+  background: #111827 !important;
+  border-color: #111827 !important;
+  color: #ffffff !important;
+}
+
+.header .header-navbar-rht .btn-white {
+  background: #ffffff !important;
+  color: #097e52 !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+.header .header-navbar-rht .btn-white:hover {
+  color: #065f3e !important;
+}
+
+/* Push page content down so it's not hidden under fixed header */
+.main-wrapper {
+  padding-top: 0;
+}
+
+/* Fix 2: Featured Venues Slider - match template's owl-carousel layout */
+
+/* Container: no padding, arrows overlay the edges */
+.featured-slider-group {
+  position: relative;
+  padding: 0;
+}
+
+/* Hide default Swiper nav arrows (we use custom owl-nav instead) */
+.featured-slider-group .swiper-button-prev,
+.featured-slider-group .swiper-button-next {
+  display: none !important;
+}
+
+/* Owl-nav wrapper: centered horizontally, at vertical center of slider */
+.featured-slider-group .owl-nav {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 10;
+  pointer-events: none; /* let clicks pass through to cards */
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  padding: 0;
+}
+
+/* Individual arrow buttons */
+.featured-slider-group .owl-nav button {
+  pointer-events: auto; /* re-enable clicks on buttons */
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #ffffff !important;
+  border: none;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+.featured-slider-group .owl-nav button:hover {
+  background: #097E52 !important;
+  color: #ffffff;
+}
+
+.featured-slider-group .owl-nav button i {
+  font-size: 20px;
+  color: #192335;
+  line-height: 1;
+}
+
+.featured-slider-group .owl-nav button:hover i {
+  color: #ffffff;
+}
+
+/* Position arrows half-outside the container like the template */
+.featured-slider-group .owl-nav .owl-prev {
+  margin-left: -22px;
+}
+
+.featured-slider-group .owl-nav .owl-next {
+  margin-right: -22px;
+}
+
+/* Ensure the Swiper itself takes full width */
+.featured-slider-group .swiper {
+  width: 100%;
+}
+
+/* Fix 3: Ensure AOS animations are not blocked by Bootstrap reset */
+[data-aos] {
+  pointer-events: none;
+}
+
+[data-aos].aos-animate {
+  pointer-events: auto;
+}
+
+/* Fix 4: Mobile menu overlay close button */
+.menu-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #333;
+}
+
+/* Scroll-to-top button */
+.progress-wrap {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 999;
+  width: 44px;
+  height: 44px;
+  background: #0ce0ff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  transition: opacity 0.3s;
+}
+
+.progress-wrap .progress-arrow {
+  position: absolute;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.progress-wrap svg path {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 4;
+}
+
+/* Search selects: keep template dropdown arrow (Bootstrap can hide it) */
+.search-box select.form-control,
+.search-box select.select.form-control,
+.search-box select.form-control.select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url('/assets/img/icons/down-arrow.svg');
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 12px;
+  padding-right: 38px !important;
+}
+
+/* How It Works: enforce equal height cards */
+.work-grid {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.work-grid .work-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.work-grid .work-content .btn {
+  margin-top: auto;
+}
+
+/* Header main navigation: use line-height to match template's exact centering pattern */
+.header .main-nav {
+  display: flex !important;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Fix active icon jumping into text on scroll */
+.header.fixed .main-nav > li.active > a:before,
+.header.fixed .main-menu-wrapper .main-nav > li.active > a:before {
+    top: 2px !important;
+}
+
+.header .main-nav > li {
+  display: block;
+  position: relative;
+}
+
+.header .main-nav > li > a {
+  position: relative;
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 0 14px;
+  display: inline-block;
+  line-height: 85px; /* same as header-nav height - this is how the template centers nav items */
+  white-space: nowrap;
+}
+
+.header.fixed .main-nav > li > a {
+  line-height: 65px; /* match the fixed header height */
+}
+
+.header .main-nav > li > a:hover,
+.header .main-nav > li > a:focus {
+  color: #a3f40c;
+  text-decoration: none;
+  outline: none;
+}
+
+/* Green shuttle icon that follows hovered item */
+.header .main-nav > li > a::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0; /* icon cao hơn hẳn so với chữ */
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  background: url('/assets/img/icons/cock-icon.svg') no-repeat center center;
+  background-size: contain;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.header .main-nav > li > a:hover::before,
+.header .main-nav > li > a:focus::before {
+  opacity: 1;
+  transform: translateY(-2px); /* vẫn giữ khoảng cách với chữ khi hover */
+}
+
+/* Khi header đang fixed, đẩy icon cao hơn nữa lúc hover để không dính chữ */
+.header.fixed .main-nav > li > a:hover::before,
+.header.fixed .main-nav > li > a:focus::before {
+  top: 0;
+  transform: translateY(-3px);
+}
+
+/* Fix 5: Authendication pages viewport overflow overlap */
+.vph-100 {
+  min-height: 100vh !important;
+  height: auto !important;
+  padding: 40px 0 !important;
+}
+.banner-bg.login, .banner-bg.register {
+    min-height: 100vh !important;
 }

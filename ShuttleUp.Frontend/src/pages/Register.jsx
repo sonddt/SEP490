@@ -1,0 +1,226 @@
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+
+export default function Register() {
+  const [activeTab, setActiveTab] = useState('user');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    username: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    agreedToTerms: false
+  });
+  
+  const navigate = useNavigate();
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleRegister = (e) => {
+    e.preventDefault();
+    if (formData.password !== formData.confirmPassword) {
+      alert("Mật khẩu xác nhận không khớp!");
+      return;
+    }
+    if (!formData.agreedToTerms) {
+      alert("Bạn cần đồng ý với Điều khoản sử dụng");
+      return;
+    }
+    // TODO: Implement actual register logic with API
+    console.log(`Đang đăng ký dưới quyền ${activeTab}`, formData);
+    navigate('/login');
+  };
+
+  return (
+    <div className="main-wrapper authendication-pages">
+      <div className="content">
+        <div className="container wrapper no-padding">
+          <div className="row no-margin vph-100">
+            {/* Left side banner */}
+            <div className="col-12 col-sm-12 col-md-12 col-lg-6 no-padding">
+              <div className="banner-bg register">
+                <div className="row no-margin h-100">
+                  <div className="col-sm-10 col-md-10 col-lg-10 mx-auto">
+                    <div className="h-100 d-flex justify-content-center align-items-center">
+                      <div className="text-bg register text-center">
+                        <button type="button" className="btn btn-limegreen text-capitalize">
+                          <i className="fa-solid fa-thumbs-up me-3"></i>Đăng Ký Ngay
+                        </button>
+                        <p>Tạo tài khoản ngay để trải nghiệm phần mềm quản lý sân cầu lông, giúp bạn giải quyết những khó khăn trong các hoạt động thể thao hằng ngày.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right side form */}
+            <div className="col-12 col-sm-12 col-md-12 col-lg-6 no-padding">
+              <div className="dull-pg">
+                <div className="row no-margin vph-100 d-flex align-items-center justify-content-center">
+                  <div className="col-sm-10 col-md-10 col-lg-10 mx-auto">
+                    <header className="text-center">
+                      <Link to="/">
+                        <img src="/assets/img/logo-black.svg" className="img-fluid" alt="Logo" />
+                      </Link>
+                    </header>
+                    <div className="shadow-card">
+                      <h2>Bắt đầu với ShuttleUp</h2>
+                      <p>Khởi động hành trình thể thao của bạn cùng ShuttleUp ngay bây giờ.</p>
+
+                      {/* Tabs */}
+                      <ul className="nav nav-tabs" id="myTab" role="tablist">
+                        <li className="nav-item" role="presentation">
+                          <button
+                            className={`nav-link d-flex align-items-center ${activeTab === 'user' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('user')}
+                            type="button"
+                          >
+                            <span className="d-flex justify-content-center align-items-center"></span>Tôi là Người chơi
+                          </button>
+                        </li>
+                        <li className="nav-item" role="presentation">
+                          <button
+                            className={`nav-link d-flex align-items-center ${activeTab === 'coach' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('coach')}
+                            type="button"
+                          >
+                            <span className="d-flex justify-content-center align-items-center"></span>Tôi là Quản lý sân
+                          </button>
+                        </li>
+                      </ul>
+
+                      {/* Form Content */}
+                      <div className="tab-content" id="myTabContent">
+                        <div className="tab-pane fade show active">
+                          <form onSubmit={handleRegister}>
+                            <div className="form-group">
+                              <div className="group-img">
+                                <i className="feather-user"></i>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  placeholder="Tên tài khoản"
+                                  name="username"
+                                  value={formData.username}
+                                  onChange={handleInputChange}
+                                  required
+                                />
+                              </div>
+                            </div>
+                            <div className="form-group">
+                              <div className="group-img">
+                                <i className="feather-mail"></i>
+                                <input
+                                  type="email"
+                                  className="form-control"
+                                  placeholder="Email"
+                                  name="email"
+                                  value={formData.email}
+                                  onChange={handleInputChange}
+                                  required
+                                />
+                              </div>
+                            </div>
+                            <div className="form-group">
+                              <div className="pass-group group-img">
+                                <i
+                                  className={`toggle-password ${showPassword ? 'feather-eye' : 'feather-eye-off'}`}
+                                  onClick={() => setShowPassword(!showPassword)}
+                                  style={{ cursor: 'pointer' }}
+                                ></i>
+                                <input
+                                  type={showPassword ? 'text' : 'password'}
+                                  className="form-control pass-input"
+                                  placeholder="Mật khẩu"
+                                  name="password"
+                                  value={formData.password}
+                                  onChange={handleInputChange}
+                                  required
+                                />
+                              </div>
+                            </div>
+                            <div className="form-group">
+                              <div className="pass-group group-img">
+                                <i
+                                  className={`toggle-password-confirm ${showConfirmPassword ? 'feather-eye' : 'feather-eye-off'}`}
+                                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                  style={{ cursor: 'pointer' }}
+                                ></i>
+                                <input
+                                  type={showConfirmPassword ? 'text' : 'password'}
+                                  className="form-control pass-confirm"
+                                  placeholder="Xác nhận mật khẩu"
+                                  name="confirmPassword"
+                                  value={formData.confirmPassword}
+                                  onChange={handleInputChange}
+                                  required
+                                />
+                              </div>
+                            </div>
+                            <div className="form-check d-flex justify-content-start align-items-center policy">
+                              <div className="d-inline-block">
+                                <input
+                                  className="form-check-input"
+                                  type="checkbox"
+                                  id="policy"
+                                  name="agreedToTerms"
+                                  checked={formData.agreedToTerms}
+                                  onChange={handleInputChange}
+                                />
+                              </div>
+                              <label className="form-check-label" htmlFor="policy">
+                                Bằng cách tiếp tục, bạn đồng ý rằng bạn đã đọc và chấp nhận <a href="#" onClick={e => e.preventDefault()}>Điều khoản sử dụng</a>
+                              </label>
+                            </div>
+                            <button className="btn btn-secondary register-btn d-inline-flex justify-content-center align-items-center w-100 btn-block" type="submit">
+                              Tạo Tài Khoản<i className="feather-arrow-right-circle ms-2"></i>
+                            </button>
+
+                            <div className="form-group">
+                              <div className="login-options text-center">
+                                <span className="text">Hoặc đăng ký bằng</span>
+                              </div>
+                            </div>
+                            <div className="form-group mb-0">
+                              <ul className="social-login d-flex justify-content-center align-items-center">
+                                <li className="text-center">
+                                  <button type="button" className="btn btn-social d-flex align-items-center justify-content-center">
+                                    <img src="/assets/img/icons/google.svg" className="img-fluid" alt="Google" />
+                                    <span>Google</span>
+                                  </button>
+                                </li>
+                                <li className="text-center">
+                                  <button type="button" className="btn btn-social d-flex align-items-center justify-content-center">
+                                    <img src="/assets/img/icons/facebook.svg" className="img-fluid" alt="Facebook" />
+                                    <span>Facebook</span>
+                                  </button>
+                                </li>
+                              </ul>
+                            </div>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bottom-text text-center">
+                      <p>Đã có tài khoản? <Link to="/login">Đăng nhập!</Link></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

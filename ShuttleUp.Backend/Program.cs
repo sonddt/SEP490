@@ -7,11 +7,19 @@ namespace ShuttleUp.Backend
     using ShuttleUp.DAL.Repositories;
     using ShuttleUp.DAL.Repositories.Interfaces;
 
+    using Microsoft.EntityFrameworkCore;
+    using ShuttleUp.Backend.Models;
+
     public class Program
     {
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            // Add services to the container.
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+            builder.Services.AddDbContext<ShuttleUpDbContext>(options =>
+                options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
             // Database
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -50,6 +58,39 @@ namespace ShuttleUp.Backend
             });
 
             var app = builder.Build();
+
+            // Test Database Connection
+            using (var scope = app.Services.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<ShuttleUpDbContext>();
+                try
+                {
+                    if (dbContext.Database.CanConnect())
+                    {
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine("====================================================");
+                        Console.WriteLine(" [SUCCESS] Connected to MySQL Database successfully!");
+                        Console.WriteLine("====================================================");
+                        Console.ResetColor();
+                    }
+                    else
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("====================================================");
+                        Console.WriteLine(" [ERROR] Could not connect to the MySQL Database.");
+                        Console.WriteLine("====================================================");
+                        Console.ResetColor();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("====================================================");
+                    Console.WriteLine($" [ERROR] Database connection failed. Details: {ex.Message}");
+                    Console.WriteLine("====================================================");
+                    Console.ResetColor();
+                }
+            }
 
             // Test Database Connection
             using (var scope = app.Services.CreateScope())

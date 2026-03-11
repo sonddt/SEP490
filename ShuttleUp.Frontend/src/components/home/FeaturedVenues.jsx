@@ -1,0 +1,165 @@
+import { Link } from 'react-router-dom';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Navigation, Autoplay } from 'swiper/modules';
+
+const featuredVenues = [
+  {
+    id: 1,
+    img: '/assets/img/venues/venues-01.jpg',
+    tag: 'Nổi bật',
+    tagClass: 'tag-blue',
+    price: '150k',
+    rating: '4.2',
+    reviews: '300 Đánh giá',
+    name: 'Sarah Sports Academy',
+    desc: 'Trải nghiệm sân thi đấu chuẩn quốc gia tại Sarah Sports Academy.',
+    location: 'Quận 1, TP HCM',
+    available: 'Hôm nay',
+    avatar: '/assets/img/profiles/avatar-01.jpg',
+    owner: 'Nguyễn Văn A',
+  },
+  {
+    id: 2,
+    img: '/assets/img/venues/venues-02.jpg',
+    tag: 'Đánh giá cao',
+    tagClass: 'tag-blue',
+    price: '120k',
+    rating: '5.0',
+    reviews: '150 Đánh giá',
+    name: 'Badminton Center',
+    desc: 'Khai mở tiềm năng của bạn tại cụm sân cầu lông quy mô nhất khu vực.',
+    location: 'Gò Vấp, TP HCM',
+    available: 'Ngày mai',
+    avatar: '/assets/img/profiles/avatar-02.jpg',
+    owner: 'Trần Thị B',
+  },
+  {
+    id: 3,
+    img: '/assets/img/venues/venues-03.jpg',
+    tag: '',
+    tagClass: '',
+    price: '100k',
+    rating: '4.7',
+    reviews: '120 Đánh giá',
+    name: 'Nhà thi đấu Phú Thọ',
+    desc: 'Không gian thông thoáng, thích hợp giải đấu quy mô nhỏ và phong trào.',
+    location: 'Quận 11, TP HCM',
+    available: 'Hôm nay',
+    avatar: '/assets/img/profiles/avatar-03.jpg',
+    owner: 'Lê Văn C',
+  },
+  {
+    id: 4,
+    img: '/assets/img/venues/venues-02.jpg',
+    tag: 'Nổi bật',
+    tagClass: 'tag-blue',
+    price: '180k',
+    rating: '4.5',
+    reviews: '300 Đánh giá',
+    name: 'ABC Sports Academy',
+    desc: 'Thỏa mãn đam mê rèn luyện thể thao với trang thiết bị cao cấp tại ABC.',
+    location: 'Cầu Giấy, Hà Nội',
+    available: 'Cuối tuần này',
+    avatar: '/assets/img/profiles/avatar-04.jpg',
+    owner: 'Phạm Thị D',
+  },
+];
+
+const featuredVenuesLoop = [...featuredVenues, ...featuredVenues.map(v => ({ ...v, id: v.id + 10 }))];
+
+export default function FeaturedVenues() {
+  return (
+    <section className="section featured-venues">
+      <div className="container">
+        <div className="section-heading aos" data-aos="fade-up">
+          <h2>Sân Cầu Lông <span>Nổi Bật</span></h2>
+          <p className="sub-title">Khám phá các cụm sân chất lượng cao được cộng đồng lựa chọn nhiều nhất.</p>
+        </div>
+        <div className="row">
+          <div className="featured-slider-group">
+            <Swiper
+              modules={[Navigation, Autoplay]}
+              navigation={{
+                prevEl: '.fv-prev',
+                nextEl: '.fv-next',
+              }}
+              autoplay={{ delay: 3500, disableOnInteraction: false }}
+              loop
+              loopAdditionalSlides={4}
+              spaceBetween={24}
+              slidesPerView={1}
+              breakpoints={{
+                500: { slidesPerView: 1 },
+                768: { slidesPerView: 2 },
+                1000: { slidesPerView: 3 },
+              }}
+              className="featured-venues-slider"
+            >
+              {featuredVenuesLoop.map((venue) => (
+                <SwiperSlide key={venue.id}>
+                  <div className="featured-venues-item aos" data-aos="fade-up">
+                    <div className="listing-item mb-0">
+                      <div className="listing-img">
+                        <Link to="/venue-details">
+                          <img src={venue.img} className="img-fluid" alt="Venue" />
+                        </Link>
+                        <div className="fav-item-venues">
+                          {venue.tag && <span className={`tag ${venue.tagClass}`}>{venue.tag}</span>}
+                          <h5 className="tag tag-primary">{venue.price}<span>/h</span></h5>
+                        </div>
+                      </div>
+                      <div className="listing-content">
+                        <div className="list-reviews">
+                          <div className="d-flex align-items-center">
+                            <span className="rating-bg">{venue.rating}</span><span>{venue.reviews}</span>
+                          </div>
+                          <a href="#" onClick={(e) => e.preventDefault()} className="fav-icon">
+                            <i className="feather-heart"></i>
+                          </a>
+                        </div>
+                        <h3 className="listing-title">
+                          <Link to="/venue-details">{venue.name}</Link>
+                        </h3>
+                        <div className="listing-details-group">
+                          <p>{venue.desc}</p>
+                          <ul>
+                            <li><span><i className="feather-map-pin"></i>{venue.location}</span></li>
+                            <li><span><i className="feather-calendar"></i>Lịch trống tới: <span className="primary-text">{venue.available}</span></span></li>
+                          </ul>
+                        </div>
+                        <div className="listing-button">
+                          <div className="listing-venue-owner">
+                            <Link className="navigation" to="/coach-detail">
+                              <img src={venue.avatar} alt="Owner" />{venue.owner}
+                            </Link>
+                          </div>
+                          <Link to="/venue-details" className="user-book-now">
+                            <span><i className="feather-calendar me-2"></i></span>Đặt Sân
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </SwiperSlide>
+              ))}
+            </Swiper>
+            {/* Owl-nav style external navigation arrows */}
+            <div className="owl-nav">
+              <button className="owl-prev fv-prev" type="button">
+                <i className="feather-chevron-left"></i>
+              </button>
+              <button className="owl-next fv-next" type="button">
+                <i className="feather-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="view-all text-center aos" data-aos="fade-up">
+          <Link to="/courts" className="btn btn-secondary d-inline-flex align-items-center">
+            Hiển Thị Tất Cả <span className="lh-1"><i className="feather-arrow-right-circle ms-2"></i></span>
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
