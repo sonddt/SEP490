@@ -2,6 +2,8 @@ import { Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import HomePage from './pages/HomePage';
+import CourtsListing from './pages/CourtsListing';
+import CoachCourts from './pages/CoachCourts';
 
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -38,8 +40,9 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/change-password" element={<ChangePassword />} />
 
-        {/* Venues / Courts */}
-        <Route path="/courts" element={<PlaceholderPage title="Courts Listing" />} />
+        {/* Venues / Courts - Danh sách sân (listing-grid + listing-list) */}
+        <Route path="/courts" element={<CourtsListing />} />
+        <Route path="/courts/list" element={<CourtsListing />} />
         <Route path="/courts/map" element={<PlaceholderPage title="Courts Map" />} />
         <Route path="/courts/add" element={<PlaceholderPage title="List Your Court" />} />
         <Route path="/venue-details" element={<PlaceholderPage title="Venue Details" />} />
@@ -55,7 +58,7 @@ function App() {
 
         {/* Coach dashboard */}
         <Route path="/coach/dashboard" element={<PlaceholderPage title="Coach Dashboard" />} />
-        <Route path="/coach/courts" element={<PlaceholderPage title="Manage Courts" />} />
+        <Route path="/coach/courts" element={<CoachCourts />} />
         <Route path="/coach/setting-password" element={<SettingPassword />} />
 
         {/* Static / Info pages */}
