@@ -69,6 +69,14 @@
   color: #ffffff;
 }
 
+/* When header becomes fixed on scroll, keep right buttons fully visible */
+.header.fixed .header-navbar-rht .header-login-btn,
+.header.fixed .header-navbar-rht .btn-secondary {
+  padding: 6px 18px;
+  margin-top: 6px;
+  margin-bottom: 6px;
+}
+
 /* Push page content down so it's not hidden under fixed header */
 .main-wrapper {
   padding-top: 0;
