@@ -264,7 +264,7 @@
 /* Fix active icon jumping into text on scroll */
 .header.fixed .main-nav > li.active > a:before,
 .header.fixed .main-menu-wrapper .main-nav > li.active > a:before {
-    top: 6px !important;
+    top: 2px !important;
 }
 
 .header .main-nav > li {
@@ -314,6 +314,13 @@
 .header .main-nav > li > a:focus::before {
   opacity: 1;
   transform: translateY(-2px); /* vẫn giữ khoảng cách với chữ khi hover */
+}
+
+/* Khi header đang fixed, đẩy icon cao hơn nữa lúc hover để không dính chữ */
+.header.fixed .main-nav > li > a:hover::before,
+.header.fixed .main-nav > li > a:focus::before {
+  top: 0;
+  transform: translateY(-3px);
 }
 
 /* Fix 5: Authendication pages viewport overflow overlap */
