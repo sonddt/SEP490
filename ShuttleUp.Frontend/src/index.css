@@ -18,26 +18,55 @@
   to   { transform: translateY(0); }
 }
 
-/* Keep header right buttons readable when fixed */
-.header.fixed .header-navbar-rht .btn-secondary {
-  background: #192335 !important;
-  border-color: #192335 !important;
-  color: #fff !important;
+/* Header right buttons: Login/Register + List Your Court */
+.header .header-navbar-rht {
+  align-items: center;
 }
 
-.header.fixed .header-navbar-rht .btn-secondary:hover {
-  background: #111827 !important;
-  border-color: #111827 !important;
+.header .header-navbar-rht a {
+  text-decoration: none;
 }
 
-.header.fixed .header-navbar-rht .log-register {
-  background: #fff !important;
-  border-color: #e5e7eb !important;
-  color: #111827 !important;
+.header .header-navbar-rht .header-login-btn {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  color: #097e52;
+  border-radius: 999px;
+  padding: 8px 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
 }
 
-.header.fixed .header-navbar-rht .log-register a {
-  color: #111827 !important;
+.header .header-navbar-rht .header-login-btn span i {
+  margin-right: 4px;
+}
+
+.header .header-navbar-rht .header-login-btn:hover {
+  color: #065f3e;
+}
+
+.header .header-navbar-rht .btn-secondary {
+  background: #192335;
+  border-color: #192335;
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 8px 20px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.header .header-navbar-rht .btn-secondary span i {
+  margin-right: 4px;
+}
+
+.header .header-navbar-rht .btn-secondary:hover {
+  background: #111827;
+  border-color: #111827;
+  color: #ffffff;
 }
 
 /* Push page content down so it's not hidden under fixed header */
