@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 const Header = ({ transparent = false }) => {
   const [scrolled, setScrolled] = useState(false);
@@ -74,9 +74,9 @@ const Header = ({ transparent = false }) => {
 
             <ul className="main-nav">
               <li>
-                <NavLink to="/" className={({ isActive }) => isActive ? 'active' : ''} onClick={closeMobileMenu}>
+                <Link to="/" onClick={closeMobileMenu}>
                   Home
-                </NavLink>
+                </Link>
               </li>
 
               <li className="has-submenu">

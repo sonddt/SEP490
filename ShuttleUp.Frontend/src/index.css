@@ -154,3 +154,42 @@
 .featured-slider-group .swiper {
   padding: 0 40px;
 }
+
+/* Header main navigation: match template style (no underline, white text, active in neon green) */
+.header .main-nav > li > a {
+  position: relative;
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 24px 14px;
+  display: inline-block;
+}
+
+.header .main-nav > li > a:hover,
+.header .main-nav > li > a:focus {
+  color: #a3f40c;
+  text-decoration: none;
+  outline: none;
+}
+
+/* Green shuttle icon that follows hovered item */
+.header .main-nav > li > a::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  background: url('/assets/img/icons/cock-icon.svg') no-repeat center center;
+  background-size: contain;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.header .main-nav > li > a:hover::before,
+.header .main-nav > li > a:focus::before {
+  opacity: 1;
+  transform: translateY(0);
+}
