@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
@@ -68,6 +69,9 @@ const featuredVenues = [
 const featuredVenuesLoop = [...featuredVenues, ...featuredVenues.map(v => ({ ...v, id: v.id + 10 }))];
 
 export default function FeaturedVenues() {
+  const prevRef = useRef(null);
+  const nextRef = useRef(null);
+
   return (
     <section className="section featured-venues">
       <div className="container">
@@ -79,16 +83,23 @@ export default function FeaturedVenues() {
           <div className="featured-slider-group">
             <Swiper
               modules={[Navigation, Autoplay]}
-              navigation
+              navigation={{
+                prevEl: prevRef.current,
+                nextEl: nextRef.current,
+              }}
+              onBeforeInit={(swiper) => {
+                swiper.params.navigation.prevEl = prevRef.current;
+                swiper.params.navigation.nextEl = nextRef.current;
+              }}
               autoplay={{ delay: 3500, disableOnInteraction: false }}
               loop
               loopAdditionalSlides={4}
               spaceBetween={24}
+              slidesPerView={1}
               breakpoints={{
-                576: { slidesPerView: 1 },
+                500: { slidesPerView: 1 },
                 768: { slidesPerView: 2 },
-                992: { slidesPerView: 3 },
-                1200: { slidesPerView: 4 },
+                1000: { slidesPerView: 3 },
               }}
               className="featured-venues-slider"
             >
@@ -98,7 +109,7 @@ export default function FeaturedVenues() {
                     <div className="listing-item mb-0">
                       <div className="listing-img">
                         <Link to="/venue-details">
-                          <img src={venue.img} alt="Venue" />
+                          <img src={venue.img} className="img-fluid" alt="Venue" />
                         </Link>
                         <div className="fav-item-venues">
                           {venue.tag && <span className={`tag ${venue.tagClass}`}>{venue.tag}</span>}
@@ -140,6 +151,15 @@ export default function FeaturedVenues() {
                 </SwiperSlide>
               ))}
             </Swiper>
+            {/* Owl-nav style external navigation arrows */}
+            <div className="owl-nav">
+              <button ref={prevRef} className="owl-prev" type="button">
+                <i className="feather-chevron-left"></i>
+              </button>
+              <button ref={nextRef} className="owl-next" type="button">
+                <i className="feather-chevron-right"></i>
+              </button>
+            </div>
           </div>
         </div>
         <div className="view-all text-center aos" data-aos="fade-up">

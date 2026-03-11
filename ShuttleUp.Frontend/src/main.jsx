@@ -6,6 +6,10 @@ import { BrowserRouter } from 'react-router-dom';
 // AOS globally (init is done per-page)
 import 'aos/dist/aos.css';
 
+// Swiper CSS (required for slider rendering)
+import 'swiper/css';
+import 'swiper/css/navigation';
+
 // Template CSS (copied to public/assets)
 // These are loaded via index.html <link> tags below OR we can import the main one:
 import './index.css';

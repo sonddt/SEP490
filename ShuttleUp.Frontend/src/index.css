@@ -99,29 +99,78 @@
   padding-top: 0;
 }
 
-/* Fix 2: Swiper navigation arrows color to match template */
-.swiper-button-prev,
-.swiper-button-next {
-  color: #0ce0ff !important;
-  width: 40px !important;
-  height: 40px !important;
-  background: rgba(255, 255, 255, 0.9);
+/* Fix 2: Featured Venues Slider - match template's owl-carousel layout */
+
+/* Container: no padding, arrows overlay the edges */
+.featured-slider-group {
+  position: relative;
+  padding: 0;
+}
+
+/* Hide default Swiper nav arrows (we use custom owl-nav instead) */
+.featured-slider-group .swiper-button-prev,
+.featured-slider-group .swiper-button-next {
+  display: none !important;
+}
+
+/* Owl-nav wrapper: centered horizontally, at vertical center of slider */
+.featured-slider-group .owl-nav {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 10;
+  pointer-events: none; /* let clicks pass through to cards */
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  padding: 0;
+}
+
+/* Individual arrow buttons */
+.featured-slider-group .owl-nav button {
+  pointer-events: auto; /* re-enable clicks on buttons */
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+  background: #ffffff !important;
+  border: none;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
 }
 
-.swiper-button-prev::after,
-.swiper-button-next::after {
-  font-size: 16px !important;
-  font-weight: 700;
+.featured-slider-group .owl-nav button:hover {
+  background: #097E52 !important;
+  color: #ffffff;
 }
 
-.swiper-button-prev {
-  left: 0 !important;
+.featured-slider-group .owl-nav button i {
+  font-size: 20px;
+  color: #192335;
+  line-height: 1;
 }
 
-.swiper-button-next {
-  right: 0 !important;
+.featured-slider-group .owl-nav button:hover i {
+  color: #ffffff;
+}
+
+/* Position arrows half-outside the container like the template */
+.featured-slider-group .owl-nav .owl-prev {
+  margin-left: -22px;
+}
+
+.featured-slider-group .owl-nav .owl-next {
+  margin-right: -22px;
+}
+
+/* Ensure the Swiper itself takes full width */
+.featured-slider-group .swiper {
+  width: 100%;
 }
 
 /* Fix 3: Ensure AOS animations are not blocked by Bootstrap reset */
@@ -202,11 +251,6 @@
 
 .work-grid .work-content .btn {
   margin-top: auto;
-}
-
-/* Swiper slides padding fix */
-.featured-slider-group .swiper {
-  padding: 0 40px;
 }
 
 /* Header main navigation: use line-height to match template's exact centering pattern */
