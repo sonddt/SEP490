@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 export default function Login() {
   const [activeTab, setActiveTab] = useState('user');
@@ -7,15 +7,20 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnUrl = location.state?.from || null;
 
   const handleLogin = (e) => {
     e.preventDefault();
-    // TODO: Implement actual login logic with API
+    // TODO: Gọi API login, lưu token vào localStorage rồi redirect
     console.log(`Đang đăng nhập dưới quyền ${activeTab} với`, email, password);
+    // Giả lập đăng nhập thành công (khi có API: setItem('token', response.token))
     if (activeTab === 'user') {
-      navigate('/user/dashboard');
+      localStorage.setItem('token', 'demo-token-user');
+      navigate(returnUrl || '/user/dashboard', { replace: true });
     } else {
-      navigate('/coach/dashboard');
+      localStorage.setItem('token', 'demo-token-coach');
+      navigate(returnUrl || '/coach/dashboard', { replace: true });
     }
   };
 

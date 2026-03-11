@@ -1,15 +1,26 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
+import PageLoader from './components/common/PageLoader';
 import HomePage from './pages/HomePage';
 import CourtsListing from './pages/CourtsListing';
 import CoachCourts from './pages/CoachCourts';
 
+// Auth
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ChangePassword from './pages/ChangePassword';
 import SettingPassword from './pages/SettingPassword';
+
+// Auth guard
+import ProtectedRoute from './components/auth/ProtectedRoute';
+
+// User Profile (chỉ hiện khi đã đăng nhập)
+import MyProfile from './pages/user/MyProfile';
+import UserProfileEdit from './pages/user/UserProfileEdit';
+import UserProfileChangePassword from './pages/user/UserProfileChangePassword';
+import UserProfileOtherSetting from './pages/user/UserProfileOtherSetting';
 
 // ── Placeholder pages (to be replaced one by one) ──────────────────────────
 const PlaceholderPage = ({ title }) => (
@@ -28,6 +39,7 @@ function App() {
 
   return (
     <>
+      <PageLoader />
       {!isAuthPage && <Header transparent={location.pathname === '/'} />}
 
       <Routes>
@@ -50,13 +62,18 @@ function App() {
         {/* Booking flow */}
         <Route path="/booking" element={<PlaceholderPage title="Book a Court" />} />
 
-        {/* User dashboard */}
-        <Route path="/user/dashboard" element={<PlaceholderPage title="User Dashboard" />} />
-        <Route path="/user/bookings" element={<PlaceholderPage title="My Bookings" />} />
-        <Route path="/user/profile" element={<PlaceholderPage title="My Profile" />} />
-        <Route path="/user/wallet" element={<PlaceholderPage title="My Wallet" />} />
+        {/* User (yêu cầu đăng nhập – UserDashboardMenu, UserProfileTabs chỉ hiện trong các trang này) */}
+        <Route path="/user/my-profile" element={<ProtectedRoute><MyProfile /></ProtectedRoute>} />
+        <Route path="/user/profile" element={<ProtectedRoute><UserProfileEdit /></ProtectedRoute>} />
+        <Route path="/user/profile/change-password" element={<ProtectedRoute><UserProfileChangePassword /></ProtectedRoute>} />
+        <Route path="/user/profile/other-settings" element={<ProtectedRoute><UserProfileOtherSetting /></ProtectedRoute>} />
+        <Route path="/user/dashboard" element={<ProtectedRoute><PlaceholderPage title="User Dashboard" /></ProtectedRoute>} />
+        <Route path="/user/bookings" element={<ProtectedRoute><PlaceholderPage title="My Bookings" /></ProtectedRoute>} />
+        <Route path="/user/chat" element={<ProtectedRoute><PlaceholderPage title="Chat" /></ProtectedRoute>} />
+        <Route path="/user/invoices" element={<ProtectedRoute><PlaceholderPage title="Invoices" /></ProtectedRoute>} />
+        <Route path="/user/wallet" element={<ProtectedRoute><PlaceholderPage title="My Wallet" /></ProtectedRoute>} />
 
-        {/* Coach dashboard */}
+        {/* Manager (Coach) */}
         <Route path="/coach/dashboard" element={<PlaceholderPage title="Coach Dashboard" />} />
         <Route path="/coach/courts" element={<CoachCourts />} />
         <Route path="/coach/setting-password" element={<SettingPassword />} />
