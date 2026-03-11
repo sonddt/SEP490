@@ -128,7 +128,7 @@ const Header = ({ transparent = false }) => {
           {/* ── Right side buttons ───────────────────────────────────────── */}
           <ul className="nav header-navbar-rht">
             <li className="nav-item">
-              <div className="nav-link btn btn-primary log-register">
+              <div className="nav-link btn btn-white log-register">
                 <Link to="/login" onClick={closeMobileMenu}><span><i className="feather-users"></i></span>Login</Link>
                 {' / '}
                 <Link to="/register" onClick={closeMobileMenu}>Register</Link>
