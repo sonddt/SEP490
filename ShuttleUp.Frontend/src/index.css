@@ -18,72 +18,80 @@
   to   { transform: translateY(0); }
 }
 
+/* Match template: fixed height header with line-height centering for nav items */
 .header .header-nav {
-  padding-top: 15px !important;
-  padding-bottom: 15px !important;
-  transition: padding 0.3s ease;
+  align-items: center !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  justify-content: space-between;
+  height: 85px !important;
+  padding: 0 15px !important;
+  transition: height 0.3s ease;
 }
 
 .header.fixed .header-nav {
-  padding-top: 10px !important;
-  padding-bottom: 10px !important;
+  height: 65px !important;
 }
 
 /* Header right buttons: Login/Register + List Your Court */
 .header .header-navbar-rht {
+  display: flex !important;
+  align-items: center !important;
+  gap: 15px; /* Adds space between the two buttons */
+}
+
+.header .header-navbar-rht .nav-item {
+  display: flex;
   align-items: center;
 }
 
-.header .header-navbar-rht a {
+/* Base button sizing to ensure both are exactly equal */
+.header .header-navbar-rht .btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 48px !important;
+  padding: 0 24px !important;
+  border-radius: 999px !important;
+  font-weight: 600 !important;
+  margin: 0 !important;
+  font-size: 15px;
+}
+
+/* Fix inner links inside the login button wrapper */
+.header .header-navbar-rht .log-register a {
   text-decoration: none;
+  color: inherit;
 }
 
-.header .header-navbar-rht .header-login-btn {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  color: #097e52;
-  border-radius: 999px;
-  padding: 8px 18px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-}
-
-.header .header-navbar-rht .header-login-btn span i {
-  margin-right: 4px;
-}
-
-.header .header-navbar-rht .header-login-btn:hover {
-  color: #065f3e;
+.header .header-navbar-rht .log-register span i {
+  margin-right: 6px;
 }
 
 .header .header-navbar-rht .btn-secondary {
-  background: #192335;
-  border-color: #192335;
-  color: #ffffff;
-  border-radius: 999px;
-  padding: 8px 20px;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  background: #192335 !important;
+  border-color: #192335 !important;
+  color: #ffffff !important;
 }
 
 .header .header-navbar-rht .btn-secondary span i {
-  margin-right: 4px;
+  margin-right: 6px;
 }
 
 .header .header-navbar-rht .btn-secondary:hover {
-  background: #111827;
-  border-color: #111827;
-  color: #ffffff;
+  background: #111827 !important;
+  border-color: #111827 !important;
+  color: #ffffff !important;
 }
 
-/* When header becomes fixed on scroll, keep right buttons fully visible */
-.header.fixed .header-navbar-rht .header-login-btn,
-.header.fixed .header-navbar-rht .btn-secondary {
-  padding: 6px 18px;
+.header .header-navbar-rht .btn-white {
+  background: #ffffff !important;
+  color: #097e52 !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+.header .header-navbar-rht .btn-white:hover {
+  color: #065f3e !important;
 }
 
 /* Push page content down so it's not hidden under fixed header */
@@ -201,14 +209,32 @@
   padding: 0 40px;
 }
 
-/* Header main navigation: match template style (no underline, white text, active in neon green) */
+/* Header main navigation: use line-height to match template's exact centering pattern */
+.header .main-nav {
+  display: flex !important;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.header .main-nav > li {
+  display: block;
+  position: relative;
+}
+
 .header .main-nav > li > a {
   position: relative;
   color: #ffffff;
   font-weight: 600;
   text-decoration: none;
-  padding: 24px 14px;
+  padding: 0 14px;
   display: inline-block;
+  line-height: 85px; /* same as header-nav height - this is how the template centers nav items */
+  white-space: nowrap;
+}
+
+.header.fixed .main-nav > li > a {
+  line-height: 65px; /* match the fixed header height */
 }
 
 .header .main-nav > li > a:hover,
