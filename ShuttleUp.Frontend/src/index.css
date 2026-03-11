@@ -1,37 +1,5 @@
 /* ── ShuttleUp Global Custom CSS ─────────────────────────────────────────── */
 
-/* ── Page Loader ─────────────────────────────────────────────────────────── */
-div#global-loader {
-  background: #ffffff;
-  position: fixed;
-  z-index: 999999;
-  width: 100%;
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  top: 0;
-  left: 0;
-}
-
-.loader-img {
-  position: absolute;
-  z-index: 9;
-  animation: spin 2s linear infinite;
-  -webkit-animation: spin 2s linear infinite;
-}
-
-@keyframes spin {
-  0%   { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-@-webkit-keyframes spin {
-  0%   { -webkit-transform: rotate(0deg); }
-  100% { -webkit-transform: rotate(360deg); }
-}
-/* ─────────────────────────────────────────────────────────────────────────── */
-
 /* Fix 1: Header - reinforce template's built-in .header.fixed class */
 /* Template's style.css already defines .header.fixed; we just reinforce it */
 .header.fixed {
@@ -50,19 +18,19 @@ div#global-loader {
   to   { transform: translateY(0); }
 }
 
-/* Match template: fixed height header with line-height centering for nav items */
+/* Match template: header height with comfortable top/bottom space */
 .header .header-nav {
   align-items: center !important;
   display: flex !important;
   flex-wrap: nowrap !important;
   justify-content: space-between;
-  height: 85px !important;
-  padding: 0 15px !important;
+  height: 96px !important; /* taller to give logo + menu more space */
+  padding: 0 24px !important;
   transition: height 0.3s ease;
 }
 
 .header.fixed .header-nav {
-  height: 65px !important;
+  height: 80px !important; /* still roomy when fixed on scroll */
 }
 
 /* Header right buttons: Login/Register + List Your Court */
@@ -331,21 +299,21 @@ div#global-loader {
   content: "";
   position: absolute;
   left: 50%;
-  top: 8px;
+  top: 0; /* icon cao hơn hẳn so với chữ */
   width: 14px;
   height: 14px;
   margin-left: -7px;
   background: url('/assets/img/icons/cock-icon.svg') no-repeat center center;
   background-size: contain;
   opacity: 0;
-  transform: translateY(-4px);
+  transform: translateY(-6px);
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .header .main-nav > li > a:hover::before,
 .header .main-nav > li > a:focus::before {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateY(-2px); /* vẫn giữ khoảng cách với chữ khi hover */
 }
 
 /* Fix 5: Authendication pages viewport overflow overlap */
