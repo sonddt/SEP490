@@ -18,6 +18,28 @@
   to   { transform: translateY(0); }
 }
 
+/* Keep header right buttons readable when fixed */
+.header.fixed .header-navbar-rht .btn-secondary {
+  background: #192335 !important;
+  border-color: #192335 !important;
+  color: #fff !important;
+}
+
+.header.fixed .header-navbar-rht .btn-secondary:hover {
+  background: #111827 !important;
+  border-color: #111827 !important;
+}
+
+.header.fixed .header-navbar-rht .log-register {
+  background: #fff !important;
+  border-color: #e5e7eb !important;
+  color: #111827 !important;
+}
+
+.header.fixed .header-navbar-rht .log-register a {
+  color: #111827 !important;
+}
+
 /* Push page content down so it's not hidden under fixed header */
 .main-wrapper {
   padding-top: 0;
@@ -84,10 +106,48 @@
   transition: opacity 0.3s;
 }
 
+.progress-wrap .progress-arrow {
+  position: absolute;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+}
+
 .progress-wrap svg path {
   fill: none;
   stroke: #fff;
   stroke-width: 4;
+}
+
+/* Search selects: keep template dropdown arrow (Bootstrap can hide it) */
+.search-box select.form-control,
+.search-box select.select.form-control,
+.search-box select.form-control.select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url('/assets/img/icons/down-arrow.svg');
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 12px;
+  padding-right: 38px !important;
+}
+
+/* How It Works: enforce equal height cards */
+.work-grid {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.work-grid .work-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.work-grid .work-content .btn {
+  margin-top: auto;
 }
 
 /* Swiper slides padding fix */

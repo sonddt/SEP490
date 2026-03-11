@@ -150,7 +150,7 @@ export default function HomePage() {
               <div className="col-lg-7 col-md-10 mx-auto">
                 <div className="section-search aos" data-aos="fade-up">
                   <h4>World Class Badminton Coaching &amp; Premium Courts</h4>
-                  <h1>Choose Your <span>Courts</span> and Start Your Game</h1>
+                  <h1>Choose Your <span>Coaches</span> And Start Your Training</h1>
                   <p className="sub-info">
                     Unleash Your Athletic Potential with Expert Coaching, State-of-the-Art Facilities, and Personalized Training Programs.
                   </p>
@@ -609,6 +609,9 @@ export default function HomePage() {
         style={{ cursor: 'pointer' }}
         title="Back to top"
       >
+        <span className="progress-arrow" aria-hidden="true">
+          <i className="fa-solid fa-arrow-up"></i>
+        </span>
         <svg className="progress-circle svg-content" width="100%" height="100%" viewBox="-1 -1 102 102">
           <path d="M50,1 a49,49 0 0,1 0,98 a49,49 0 0,1 0,-98"></path>
         </svg>
