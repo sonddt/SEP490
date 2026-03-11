@@ -12,7 +12,7 @@
   </g>
 
   <!-- ShuttleUp wordmark -->
-  <g transform="translate(46 14)">
+  <g transform="translate(46 12)">
     <text x="0" y="16"
           font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
           font-size="20"
@@ -21,9 +21,9 @@
           letter-spacing="0.04em">
       ShuttleUp
     </text>
-    <text x="2" y="30"
+    <text x="2" y="28"
           font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-          font-size="11"
+          font-size="10"
           font-weight="500"
           fill="#A3F40C"
           letter-spacing="0.12em">
