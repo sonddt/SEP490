@@ -5,6 +5,9 @@ import HomePage from './pages/HomePage';
 
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ChangePassword from './pages/ChangePassword';
+import SettingPassword from './pages/SettingPassword';
 
 // ── Placeholder pages (to be replaced one by one) ──────────────────────────
 const PlaceholderPage = ({ title }) => (
@@ -28,7 +31,8 @@ function App() {
         {/* Auth */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<PlaceholderPage title="Forgot Password" />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/change-password" element={<ChangePassword />} />
 
         {/* Venues / Courts */}
         <Route path="/courts" element={<PlaceholderPage title="Courts Listing" />} />
@@ -48,6 +52,7 @@ function App() {
         {/* Coach dashboard */}
         <Route path="/coach/dashboard" element={<PlaceholderPage title="Coach Dashboard" />} />
         <Route path="/coach/courts" element={<PlaceholderPage title="Manage Courts" />} />
+        <Route path="/coach/setting-password" element={<SettingPassword />} />
 
         {/* Static / Info pages */}
         <Route path="/about" element={<PlaceholderPage title="About Us" />} />
