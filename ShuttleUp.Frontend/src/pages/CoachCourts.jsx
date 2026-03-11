@@ -18,7 +18,7 @@ export default function CoachCourts() {
   };
 
   return (
-    <div className="main-wrapper">
+    <div className="main-wrapper content-below-header">
       {/* Breadcrumb */}
       <section className="breadcrumb breadcrumb-list mb-0">
         <span className="primary-right-round"></span>
