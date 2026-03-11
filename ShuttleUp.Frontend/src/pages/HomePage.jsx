@@ -111,6 +111,7 @@ const featuredVenuesLoop = [...featuredVenues, ...featuredVenues.map(v => ({ ...
 
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState('venue');
+  const [yearlyPlans, setYearlyPlans] = useState(false);
 
   useEffect(() => {
     // Small delay ensures DOM is fully painted before AOS measures elements
@@ -597,6 +598,370 @@ export default function HomePage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Courts Near You ─────────────────────────────────────────────────── */}
+      <section className="section court-near">
+        <div className="container">
+          <div className="section-heading aos" data-aos="fade-up">
+            <h2>Find Courts <span>Near You</span></h2>
+            <p className="sub-title">Discover nearby badminton courts for convenient and accessible gameplay.</p>
+          </div>
+          <div className="row">
+            <div className="featured-slider-group aos" data-aos="fade-up">
+              <Swiper
+                modules={[Navigation, Autoplay]}
+                navigation
+                autoplay={{ delay: 3500, disableOnInteraction: false }}
+                loop
+                spaceBetween={24}
+                breakpoints={{
+                  576: { slidesPerView: 1 },
+                  768: { slidesPerView: 2 },
+                  992: { slidesPerView: 3 },
+                  1200: { slidesPerView: 4 },
+                }}
+                className="featured-venues-slider"
+              >
+                {[
+                  { id: 1, img: '/assets/img/venues/venues-04.jpg', name: 'Smart Shuttlers', address: '1 Crowthorne Road, 4th Street, NY', rating: '4.2', reviews: '300 Reviews', miles: '2.1 Miles Away' },
+                  { id: 2, img: '/assets/img/venues/venues-05.jpg', name: 'Parlers Badminton', address: 'Hope Street, Battersea, SW11 2DA', rating: '4.2', reviews: '200 Reviews', miles: '9.3 Miles Away' },
+                  { id: 3, img: '/assets/img/venues/venues-06.jpg', name: '6 Feathers', address: 'Lonsdale Road, Barnes, SW13 9QL', rating: '4.2', reviews: '400 Reviews', miles: '10.8 Miles Away' },
+                  { id: 4, img: '/assets/img/venues/venues-05.jpg', name: 'Parlers Badminton', address: '1 Crowthorne Road, 4th Street, NY', rating: '4.2', reviews: '300 Reviews', miles: '8.1 Miles Away' },
+                  { id: 5, img: '/assets/img/venues/venues-04.jpg', name: 'Smart Shuttlers', address: '1 Crowthorne Road, 4th Street, NY', rating: '4.2', reviews: '300 Reviews', miles: '2.1 Miles Away' },
+                  { id: 6, img: '/assets/img/venues/venues-06.jpg', name: '6 Feathers', address: 'Lonsdale Road, Barnes, SW13 9QL', rating: '4.2', reviews: '400 Reviews', miles: '10.8 Miles Away' },
+                ].map((c) => (
+                  <SwiperSlide key={c.id}>
+                    <div className="featured-venues-item court-near-item">
+                      <div className="listing-item mb-0">
+                        <div className="listing-img">
+                          <Link to="/venue-details">
+                            <img src={c.img} alt="Venue" />
+                          </Link>
+                          <div className="fav-item-venues">
+                            <div className="list-reviews coche-star">
+                              <a href="#" onClick={(e) => e.preventDefault()} className="fav-icon">
+                                <i className="feather-heart"></i>
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="listing-content">
+                          <h3 className="listing-title">
+                            <Link to="/venue-details">{c.name}</Link>
+                          </h3>
+                          <div className="listing-details-group">
+                            <ul>
+                              <li>
+                                <span><i className="feather-map-pin"></i>{c.address}</span>
+                              </li>
+                            </ul>
+                          </div>
+                          <div className="list-reviews near-review">
+                            <div className="d-flex align-items-center">
+                              <span className="rating-bg">{c.rating}</span><span>{c.reviews}</span>
+                            </div>
+                            <span className="mile-away"><i className="feather-zap"></i>{c.miles}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+            </div>
+          </div>
+          <div className="view-all text-center aos" data-aos="fade-up">
+            <Link to="/courts" className="btn btn-secondary d-inline-flex align-items-center">
+              View All Services <span className="lh-1"><i className="feather-arrow-right-circle ms-2"></i></span>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Testimonials ────────────────────────────────────────────────────── */}
+      <section className="section our-testimonials">
+        <div className="container">
+          <div className="section-heading aos" data-aos="fade-up">
+            <h2>Our <span>Testimonials</span></h2>
+            <p className="sub-title">Glowing testimonials from passionate badminton enthusiasts worldwide, showcasing our exceptional services.</p>
+          </div>
+          <div className="row">
+            <div className="featured-slider-group aos" data-aos="fade-up">
+              <Swiper
+                modules={[Navigation, Autoplay]}
+                navigation
+                autoplay={{ delay: 4000, disableOnInteraction: false }}
+                loop
+                spaceBetween={24}
+                breakpoints={{
+                  576: { slidesPerView: 1 },
+                  992: { slidesPerView: 2 },
+                  1200: { slidesPerView: 3 },
+                }}
+                className="featured-venues-slider"
+              >
+                {[
+                  { id: 1, name: 'Ariyan Rusov', avatar: '/assets/img/profiles/avatar-01.jpg', title: 'Personalized Attention', text: "DreamSports' coaching services enhanced my badminton skills. Personalized attention from knowledgeable coaches propelled my game to new heights.", tag: 'Badminton' },
+                  { id: 2, name: 'Darren Valdez', avatar: '/assets/img/profiles/avatar-04.jpg', title: 'Quality Matters !', text: "DreamSports' advanced badminton equipment has greatly improved my performance on the court. Their quality range of rackets and shoes made a significant impact.", tag: 'Badminton' },
+                  { id: 3, name: 'Elinor Dunn', avatar: '/assets/img/profiles/avatar-03.jpg', title: 'Excellent Professionalism !', text: "DreamSports' unmatched professionalism and service excellence left a positive experience. Highly recommended for court rentals and equipment purchases.", tag: 'Badminton' },
+                  { id: 4, name: 'Darren Valdez', avatar: '/assets/img/profiles/avatar-04.jpg', title: 'Quality Matters !', text: "DreamSports' advanced badminton equipment has greatly improved my performance on the court. Their quality range of rackets and shoes made a significant impact.", tag: 'Badminton' },
+                ].map((t) => (
+                  <SwiperSlide key={t.id}>
+                    <div className="testimonial-group">
+                      <div className="testimonial-review">
+                        <div className="rating-point">
+                          <i className="fas fa-star filled"></i>
+                          <i className="fas fa-star filled"></i>
+                          <i className="fas fa-star filled"></i>
+                          <i className="fas fa-star filled"></i>
+                          <i className="fas fa-star filled"></i>
+                          <span> 5.0</span>
+                        </div>
+                        <h5>{t.title}</h5>
+                        <p>{t.text}</p>
+                      </div>
+                      <div className="listing-venue-owner">
+                        <a className="navigation" href="#" onClick={(e) => e.preventDefault()}>
+                          <img src={t.avatar} alt="User" />
+                        </a>
+                        <div className="testimonial-content">
+                          <h5><a href="#" onClick={(e) => e.preventDefault()}>{t.name}</a></h5>
+                          <a href="#" onClick={(e) => e.preventDefault()} className="btn btn-primary">
+                            {t.tag}
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Featured Plans ──────────────────────────────────────────────────── */}
+      <section className="section featured-plan">
+        <div className="work-img">
+          <div className="work-img-right">
+            <img src="/assets/img/bg/work-bg.png" alt="Icon" />
+          </div>
+        </div>
+        <div className="container">
+          <div className="section-heading aos" data-aos="fade-up">
+            <h2>We Have Excellent <span>Plans For You</span></h2>
+            <p className="sub-title">Choose monthly or yearly plans for uninterrupted access to our premium badminton facilities. Join us and experience convenient excellence.</p>
+          </div>
+          <div className="interset-btn aos" data-aos="fade-up">
+            <div className="status-toggle d-inline-flex align-items-center">
+              Monthly
+              <input
+                type="checkbox"
+                id="status_1"
+                className="check"
+                checked={yearlyPlans}
+                onChange={(e) => setYearlyPlans(e.target.checked)}
+              />
+              <label htmlFor="status_1" className="checktoggle">checkbox</label>
+              Yearly
+            </div>
+          </div>
+          <div className="price-wrap aos" data-aos="fade-up">
+            <div className="row justify-content-center">
+              {[
+                {
+                  id: 'pro',
+                  icon: '/assets/img/icons/price-01.svg',
+                  title: 'Professoinal',
+                  priceMonthly: '60.00',
+                  priceYearly: '600.00',
+                  per: yearlyPlans ? 'Per Year' : 'Per Month',
+                  features: [
+                    { ok: true, text: 'Included : Quality Checked By Envato' },
+                    { ok: true, text: 'Included : Future Updates' },
+                    { ok: true, text: 'Technical Support' },
+                    { ok: false, text: 'Add Listing' },
+                    { ok: false, text: 'Approval of Listing' },
+                  ],
+                  recommended: false,
+                },
+                {
+                  id: 'expert',
+                  icon: '/assets/img/icons/price-02.svg',
+                  title: 'Expert',
+                  priceMonthly: '60.00',
+                  priceYearly: '600.00',
+                  per: yearlyPlans ? 'Per Year' : 'Per Month',
+                  features: [
+                    { ok: true, text: 'Included : Quality Checked By Envato' },
+                    { ok: true, text: 'Included : Future Updates' },
+                    { ok: true, text: '6 Months Technical Support' },
+                    { ok: false, text: 'Add Listing' },
+                    { ok: false, text: 'Approval of Listing' },
+                  ],
+                  recommended: true,
+                },
+                {
+                  id: 'ent',
+                  icon: '/assets/img/icons/price-03.svg',
+                  title: 'Enterprise',
+                  priceMonthly: '990.00',
+                  priceYearly: '9900.00',
+                  per: yearlyPlans ? 'Per Year' : 'Per Month',
+                  features: [
+                    { ok: true, text: 'Included : Quality Checked By Envato' },
+                    { ok: true, text: 'Included : Future Updates' },
+                    { ok: true, text: 'Technical Support' },
+                    { ok: true, text: 'Add Listing' },
+                    { ok: true, text: 'Approval of Listing' },
+                  ],
+                  recommended: false,
+                },
+              ].map((p) => (
+                <div key={p.id} className="col-lg-4 d-flex col-md-6">
+                  <div className="price-card flex-fill">
+                    <div className={`price-head${p.recommended ? ' expert-price' : ''}`}>
+                      <img src={p.icon} alt="Price" />
+                      <h3>{p.title}</h3>
+                      {p.recommended && <span>Recommended</span>}
+                    </div>
+                    <div className="price-body">
+                      <div className="per-month">
+                        <h2><sup>$</sup><span>{yearlyPlans ? p.priceYearly : p.priceMonthly}</span></h2>
+                        <span>{p.per}</span>
+                      </div>
+                      <div className="features-price-list">
+                        <h5>Features</h5>
+                        <p>Everything in our free Upto 10 users.</p>
+                        <ul>
+                          {p.features.map((f, idx) => (
+                            <li key={idx} className={f.ok ? 'active' : 'inactive'}>
+                              <i className={f.ok ? 'feather-check-circle' : 'feather-x-circle'}></i>{f.text}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className={`price-choose${p.recommended ? ' active-price' : ''}`}>
+                        <a href="#" onClick={(e) => e.preventDefault()} className="btn viewdetails-btn">Choose Plan</a>
+                      </div>
+                      <div className="price-footer">
+                        <p>Use, by you or one client, in a single end product which end users. charged for. The total price includes the item price and a buyer fee.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Latest News ─────────────────────────────────────────────────────── */}
+      <section className="section featured-venues latest-news">
+        <div className="container">
+          <div className="section-heading aos" data-aos="fade-up">
+            <h2>The Latest <span>News</span></h2>
+            <p className="sub-title">Get the latest buzz from the badminton world- stay informed and inspired by the thrilling updates and remarkable achievements in the sport.</p>
+          </div>
+          <div className="row">
+            <div className="featured-slider-group">
+              <Swiper
+                modules={[Navigation, Autoplay]}
+                navigation
+                autoplay={{ delay: 3500, disableOnInteraction: false }}
+                loop
+                spaceBetween={24}
+                breakpoints={{
+                  576: { slidesPerView: 1 },
+                  768: { slidesPerView: 2 },
+                  992: { slidesPerView: 3 },
+                  1200: { slidesPerView: 4 },
+                }}
+                className="featured-venues-slider"
+              >
+                {[
+                  { id: 1, tag: 'Badminton', img: '/assets/img/venues/venues-07.jpg', authorAvatar: '/assets/img/profiles/avatar-01.jpg', author: 'Orlando Waters', date: '15 May 2023', title: 'Badminton Gear Guide: Must-Have Equipment for Every Player', likes: 45, comments: 45, read: '10 Min To Read' },
+                  { id: 2, tag: 'Sports Activites', img: '/assets/img/venues/venues-08.jpg', authorAvatar: '/assets/img/profiles/avatar-03.jpg', author: 'Nichols', date: '16 Jun 2023', title: 'Badminton Techniques: Mastering the Smash, Drop Shot, and Clear', likes: 35, comments: 35, read: '12 Min To Read' },
+                  { id: 3, tag: 'Rules of Game', img: '/assets/img/venues/venues-09.jpg', authorAvatar: '/assets/img/profiles/avatar-06.jpg', author: 'Joanna Le', date: '11 May 2023', title: 'The Evolution of Badminton:From Backyard Fun to Olympic Sport', likes: 25, comments: 25, read: '14 Min To Read' },
+                  { id: 4, tag: 'Sports Activites', img: '/assets/img/venues/venues-08.jpg', authorAvatar: '/assets/img/profiles/avatar-01.jpg', author: 'Mart Sublin', date: '12 May 2023', title: 'Sports Make Us A Lot Stronger And Healthier Than We Think', likes: 35, comments: 35, read: '12 Min To Read' },
+                ].map((n) => (
+                  <SwiperSlide key={n.id}>
+                    <div className="featured-venues-item aos" data-aos="fade-up">
+                      <div className="listing-item mb-0">
+                        <div className="listing-img">
+                          <Link to="/blog">
+                            <img src={n.img} alt="News" />
+                          </Link>
+                          <div className="fav-item-venues news-sports">
+                            <span className="tag tag-blue">{n.tag}</span>
+                            <div className="list-reviews coche-star">
+                              <a href="#" onClick={(e) => e.preventDefault()} className="fav-icon">
+                                <i className="feather-heart"></i>
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="listing-content news-content">
+                          <div className="listing-venue-owner listing-dates">
+                            <a href="#" onClick={(e) => e.preventDefault()} className="navigation">
+                              <img src={n.authorAvatar} alt="User" />{n.author}
+                            </a>
+                            <span><i className="feather-calendar"></i>{n.date}</span>
+                          </div>
+                          <h3 className="listing-title">
+                            <Link to="/blog">{n.title}</Link>
+                          </h3>
+                          <div className="listing-button read-new">
+                            <ul className="nav">
+                              <li><a href="#" onClick={(e) => e.preventDefault()}><i className="feather-heart"></i>{n.likes}</a></li>
+                              <li><a href="#" onClick={(e) => e.preventDefault()}><i className="feather-message-square"></i>{n.comments}</a></li>
+                            </ul>
+                            <span><img src="/assets/img/icons/clock.svg" alt="Clock" />{n.read}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+            </div>
+          </div>
+          <div className="view-all text-center aos" data-aos="fade-up">
+            <Link to="/blog" className="btn btn-secondary d-inline-flex align-items-center">
+              View All News <span className="lh-1"><i className="feather-arrow-right-circle ms-2"></i></span>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Newsletter ──────────────────────────────────────────────────────── */}
+      <section className="section newsletter-sport">
+        <div className="container">
+          <div className="row">
+            <div className="col-sm-12">
+              <div className="subscribe-style aos" data-aos="fade-up">
+                <div className="banner-blk">
+                  <img src="/assets/img/subscribe-bg.jpg" className="img-fluid" alt="Subscribe" />
+                </div>
+                <div className="banner-info">
+                  <img src="/assets/img/icons/subscribe.svg" className="img-fluid" alt="Subscribe" />
+                  <h2>Subscribe to Newsletter</h2>
+                  <p>Just for you, exciting badminton news updates.</p>
+                  <form className="subscribe-blk bg-white" onSubmit={(e) => e.preventDefault()}>
+                    <div className="input-group align-items-center">
+                      <i className="feather-mail"></i>
+                      <input type="email" className="form-control" placeholder="Enter Email Address" aria-label="email" />
+                      <div className="subscribe-btn-grp">
+                        <input type="submit" className="btn btn-secondary" value="Subscribe" />
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </div>
             </div>
           </div>
         </div>
