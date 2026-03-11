@@ -1,5 +1,37 @@
 /* ── ShuttleUp Global Custom CSS ─────────────────────────────────────────── */
 
+/* ── Page Loader ─────────────────────────────────────────────────────────── */
+div#global-loader {
+  background: #ffffff;
+  position: fixed;
+  z-index: 999999;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  top: 0;
+  left: 0;
+}
+
+.loader-img {
+  position: absolute;
+  z-index: 9;
+  animation: spin 2s linear infinite;
+  -webkit-animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@-webkit-keyframes spin {
+  0%   { -webkit-transform: rotate(0deg); }
+  100% { -webkit-transform: rotate(360deg); }
+}
+/* ─────────────────────────────────────────────────────────────────────────── */
+
 /* Fix 1: Header - reinforce template's built-in .header.fixed class */
 /* Template's style.css already defines .header.fixed; we just reinforce it */
 .header.fixed {

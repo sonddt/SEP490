@@ -1,6 +1,7 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
+import PageLoader from './components/common/PageLoader';
 import HomePage from './pages/HomePage';
 
 import Login from './pages/Login';
@@ -26,6 +27,7 @@ function App() {
 
   return (
     <>
+      <PageLoader />
       {!isAuthPage && <Header transparent={location.pathname === '/'} />}
 
       <Routes>
