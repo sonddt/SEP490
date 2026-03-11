@@ -1,42 +1,99 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
+import { registerEmail, loginGoogle } from '../api/authApi';
+import { useAuth } from '../context/AuthContext';
 
 export default function Register() {
   const [activeTab, setActiveTab] = useState('user');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
   const [formData, setFormData] = useState({
-    username: '',
+    fullName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    agreedToTerms: false
+    agreedToTerms: false,
   });
-  
+
+  const { login } = useAuth();
   const navigate = useNavigate();
+
+  // tab → roles
+  const getRoles = () => (activeTab === 'user' ? ['PLAYER'] : ['MANAGER']);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : value,
     }));
   };
 
-  const handleRegister = (e) => {
+  // ── Đăng ký bằng email + mật khẩu ────────────────────────────────────────
+  const handleRegister = async (e) => {
     e.preventDefault();
+    setError('');
+
     if (formData.password !== formData.confirmPassword) {
-      alert("Mật khẩu xác nhận không khớp!");
+      setError('Mật khẩu xác nhận không khớp!');
       return;
     }
     if (!formData.agreedToTerms) {
-      alert("Bạn cần đồng ý với Điều khoản sử dụng");
+      setError('Bạn cần đồng ý với Điều khoản sử dụng.');
       return;
     }
-    // TODO: Implement actual register logic with API
-    console.log(`Đang đăng ký dưới quyền ${activeTab}`, formData);
-    navigate('/login');
+
+    setLoading(true);
+    try {
+      const data = await registerEmail({
+        email: formData.email,
+        password: formData.password,
+        fullName: formData.fullName,
+        roles: getRoles(),
+      });
+      login(data);
+      navigate('/login');
+    } catch (err) {
+      const res = err.response;
+      if (!res) {
+        setError('Không thể kết nối tới máy chủ. Kiểm tra backend đã chạy chưa.');
+      } else if (res.data?.message) {
+        setError(res.data.message);
+      } else if (res.data?.title) {
+        // ASP.NET validation error format
+        const firstErrors = Object.values(res.data.errors ?? {}).flat();
+        setError(firstErrors[0] ?? res.data.title);
+      } else {
+        setError(`Lỗi ${res.status}: Đăng ký thất bại.`);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Đăng ký / Đăng nhập bằng Google ──────────────────────────────────────
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError('');
+    setLoading(true);
+    try {
+      const data = await loginGoogle({
+        idToken: credentialResponse.credential,
+        roles: getRoles(),
+      });
+      login(data);
+      // Redirect dựa theo role nhận được từ BE
+      const roles = data.user?.roles ?? [];
+      if (roles.includes('MANAGER')) navigate('/coach/dashboard');
+      else navigate('/user/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Đăng ký Google thất bại.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -76,7 +133,7 @@ export default function Register() {
                       <h2>Bắt đầu với ShuttleUp</h2>
                       <p>Khởi động hành trình thể thao của bạn cùng ShuttleUp ngay bây giờ.</p>
 
-                      {/* Tabs */}
+                      {/* Tabs: role selection */}
                       <ul className="nav nav-tabs" id="myTab" role="tablist">
                         <li className="nav-item" role="presentation">
                           <button
@@ -98,7 +155,14 @@ export default function Register() {
                         </li>
                       </ul>
 
-                      {/* Form Content */}
+                      {/* Error message */}
+                      {error && (
+                        <div className="alert alert-danger mt-3 mb-0 py-2" role="alert">
+                          {error}
+                        </div>
+                      )}
+
+                      {/* Form */}
                       <div className="tab-content" id="myTabContent">
                         <div className="tab-pane fade show active">
                           <form onSubmit={handleRegister}>
@@ -108,9 +172,9 @@ export default function Register() {
                                 <input
                                   type="text"
                                   className="form-control"
-                                  placeholder="Tên tài khoản"
-                                  name="username"
-                                  value={formData.username}
+                                  placeholder="Họ và tên"
+                                  name="fullName"
+                                  value={formData.fullName}
                                   onChange={handleInputChange}
                                   required
                                 />
@@ -140,11 +204,12 @@ export default function Register() {
                                 <input
                                   type={showPassword ? 'text' : 'password'}
                                   className="form-control pass-input"
-                                  placeholder="Mật khẩu"
+                                  placeholder="Mật khẩu (ít nhất 6 ký tự)"
                                   name="password"
                                   value={formData.password}
                                   onChange={handleInputChange}
                                   required
+                                  minLength={6}
                                 />
                               </div>
                             </div>
@@ -178,33 +243,34 @@ export default function Register() {
                                 />
                               </div>
                               <label className="form-check-label" htmlFor="policy">
-                                Bằng cách tiếp tục, bạn đồng ý rằng bạn đã đọc và chấp nhận <a href="#" onClick={e => e.preventDefault()}>Điều khoản sử dụng</a>
+                                Bằng cách tiếp tục, bạn đồng ý rằng bạn đã đọc và chấp nhận{' '}
+                                <a href="#" onClick={(e) => e.preventDefault()}>Điều khoản sử dụng</a>
                               </label>
                             </div>
-                            <button className="btn btn-secondary register-btn d-inline-flex justify-content-center align-items-center w-100 btn-block" type="submit">
-                              Tạo Tài Khoản<i className="feather-arrow-right-circle ms-2"></i>
+                            <button
+                              className="btn btn-secondary register-btn d-inline-flex justify-content-center align-items-center w-100 btn-block"
+                              type="submit"
+                              disabled={loading}
+                            >
+                              {loading ? 'Đang xử lý...' : 'Tạo Tài Khoản'}
+                              {!loading && <i className="feather-arrow-right-circle ms-2"></i>}
                             </button>
 
-                            <div className="form-group">
-                              <div className="login-options text-center">
+                            {/* Google Sign-Up */}
+                            <div className="form-group mt-3">
+                              <div className="login-options text-center mb-2">
                                 <span className="text">Hoặc đăng ký bằng</span>
                               </div>
-                            </div>
-                            <div className="form-group mb-0">
-                              <ul className="social-login d-flex justify-content-center align-items-center">
-                                <li className="text-center">
-                                  <button type="button" className="btn btn-social d-flex align-items-center justify-content-center">
-                                    <img src="/assets/img/icons/google.svg" className="img-fluid" alt="Google" />
-                                    <span>Google</span>
-                                  </button>
-                                </li>
-                                <li className="text-center">
-                                  <button type="button" className="btn btn-social d-flex align-items-center justify-content-center">
-                                    <img src="/assets/img/icons/facebook.svg" className="img-fluid" alt="Facebook" />
-                                    <span>Facebook</span>
-                                  </button>
-                                </li>
-                              </ul>
+                              <div className="d-flex justify-content-center">
+                                <GoogleLogin
+                                  onSuccess={handleGoogleSuccess}
+                                  onError={() => setError('Đăng ký Google thất bại.')}
+                                  text="signup_with"
+                                  locale="vi"
+                                  shape="rectangular"
+                                  width="300"
+                                />
+                              </div>
                             </div>
                           </form>
                         </div>

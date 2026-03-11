@@ -1,4 +1,6 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
+import { AuthProvider } from './context/AuthContext';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import HomePage from './pages/HomePage';
@@ -8,6 +10,8 @@ import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ChangePassword from './pages/ChangePassword';
 import SettingPassword from './pages/SettingPassword';
+
+const GOOGLE_CLIENT_ID = '1093055812182-vekuqfsn7hhh18e6k7hfunlht5dt7t3r.apps.googleusercontent.com';
 
 // ── Placeholder pages (to be replaced one by one) ──────────────────────────
 const PlaceholderPage = ({ title }) => (
@@ -79,4 +83,14 @@ function App() {
   );
 }
 
-export default App;
+function AppWithProviders() {
+  return (
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </GoogleOAuthProvider>
+  );
+}
+
+export default AppWithProviders;

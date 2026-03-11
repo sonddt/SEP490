@@ -1,21 +1,60 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
+import { loginEmail, loginGoogle } from '../api/authApi';
+import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const [activeTab, setActiveTab] = useState('user');
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  // ── Đường dẫn sau khi login xong ──────────────────────────────────────────
+  const redirectAfterLogin = (roles) => {
+    if (roles?.includes('ADMIN')) return navigate('/admin/dashboard');
+    if (roles?.includes('MANAGER')) return navigate('/coach/dashboard');
+    return navigate('/user/dashboard');
+  };
+
+  // ── Đăng nhập bằng email + mật khẩu ──────────────────────────────────────
+  const handleLogin = async (e) => {
     e.preventDefault();
-    // TODO: Implement actual login logic with API
-    console.log(`Đang đăng nhập dưới quyền ${activeTab} với`, email, password);
-    if (activeTab === 'user') {
-      navigate('/user/dashboard');
-    } else {
-      navigate('/coach/dashboard');
+    setError('');
+    setLoading(true);
+    try {
+      const data = await loginEmail({ email, password });
+      login(data);
+      redirectAfterLogin(data.user?.roles);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Email hoặc mật khẩu không đúng.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Đăng nhập bằng Google ─────────────────────────────────────────────────
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError('');
+    setLoading(true);
+    try {
+      // credentialResponse.credential là id_token từ Google
+      const roleByTab = activeTab === 'user' ? ['PLAYER'] : ['MANAGER'];
+      const data = await loginGoogle({
+        idToken: credentialResponse.credential,
+        roles: roleByTab,
+      });
+      login(data);
+      redirectAfterLogin(data.user?.roles);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Đăng nhập Google thất bại.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -78,7 +117,14 @@ export default function Login() {
                         </li>
                       </ul>
 
-                      {/* Form Content */}
+                      {/* Error message */}
+                      {error && (
+                        <div className="alert alert-danger mt-3 mb-0 py-2" role="alert">
+                          {error}
+                        </div>
+                      )}
+
+                      {/* Form */}
                       <div className="tab-content" id="myTabContent">
                         <div className="tab-pane fade show active">
                           <form onSubmit={handleLogin}>
@@ -86,9 +132,9 @@ export default function Login() {
                               <div className="group-img">
                                 <i className="feather-user"></i>
                                 <input
-                                  type="text"
+                                  type="email"
                                   className="form-control"
-                                  placeholder="Email / Tên tài khoản"
+                                  placeholder="Email"
                                   value={email}
                                   onChange={(e) => setEmail(e.target.value)}
                                   required
@@ -121,30 +167,30 @@ export default function Login() {
                                 <Link to="/forgot-password" className="forgot-pass">Quên mật khẩu?</Link>
                               </span>
                             </div>
-                            <button className="btn btn-secondary register-btn d-inline-flex justify-content-center align-items-center w-100 btn-block" type="submit">
-                              Đăng Nhập<i className="feather-arrow-right-circle ms-2"></i>
+                            <button
+                              className="btn btn-secondary register-btn d-inline-flex justify-content-center align-items-center w-100 btn-block"
+                              type="submit"
+                              disabled={loading}
+                            >
+                              {loading ? 'Đang xử lý...' : 'Đăng Nhập'}
+                              {!loading && <i className="feather-arrow-right-circle ms-2"></i>}
                             </button>
 
-                            <div className="form-group">
-                              <div className="login-options text-center">
+                            {/* Google Sign-In */}
+                            <div className="form-group mt-3">
+                              <div className="login-options text-center mb-2">
                                 <span className="text">Hoặc tiếp tục với</span>
                               </div>
-                            </div>
-                            <div className="form-group mb-0">
-                              <ul className="social-login d-flex justify-content-center align-items-center">
-                                <li className="text-center">
-                                  <button type="button" className="btn btn-social d-flex align-items-center justify-content-center">
-                                    <img src="/assets/img/icons/google.svg" className="img-fluid" alt="Google" />
-                                    <span>Google</span>
-                                  </button>
-                                </li>
-                                <li className="text-center">
-                                  <button type="button" className="btn btn-social d-flex align-items-center justify-content-center">
-                                    <img src="/assets/img/icons/facebook.svg" className="img-fluid" alt="Facebook" />
-                                    <span>Facebook</span>
-                                  </button>
-                                </li>
-                              </ul>
+                              <div className="d-flex justify-content-center">
+                                <GoogleLogin
+                                  onSuccess={handleGoogleSuccess}
+                                  onError={() => setError('Đăng nhập Google thất bại.')}
+                                  text="signin_with"
+                                  locale="vi"
+                                  shape="rectangular"
+                                  width="300"
+                                />
+                              </div>
                             </div>
                           </form>
                         </div>

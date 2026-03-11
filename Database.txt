@@ -79,6 +79,12 @@ CREATE TABLE roles (
     name VARCHAR(50) UNIQUE NOT NULL
 );
 
+-- Seed default roles
+INSERT INTO roles (id, name) VALUES
+    ('00000000-0000-0000-0000-000000000001', 'ADMIN'),
+    ('00000000-0000-0000-0000-000000000002', 'PLAYER'),
+    ('00000000-0000-0000-0000-000000000003', 'MANAGER');
+
 CREATE TABLE user_roles (
     user_id CHAR(36),
     role_id CHAR(36),

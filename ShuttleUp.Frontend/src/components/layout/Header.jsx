@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const Header = ({ transparent = false }) => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
 
   // ── Scroll listener: add 'header-fixed' class when scrolled past 100px ──
   useEffect(() => {
@@ -25,6 +28,17 @@ const Header = ({ transparent = false }) => {
   }, [mobileMenuOpen]);
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
+
+  const handleLogout = () => {
+    logout();
+    closeMobileMenu();
+    navigate('/login');
+  };
+
+  // Dashboard path based on role
+  const dashboardPath = user?.roles?.includes('MANAGER')
+    ? '/coach/dashboard'
+    : '/user/dashboard';
 
   // Helper to check if path is active
   const isActive = (path) => {
@@ -136,18 +150,46 @@ const Header = ({ transparent = false }) => {
 
           {/* ── Right side buttons ───────────────────────────────────────── */}
           <ul className="nav header-navbar-rht">
-            <li className="nav-item">
-              <div className="nav-link btn btn-white log-register">
-                <Link to="/login" onClick={closeMobileMenu}><span><i className="feather-users"></i></span>Đăng nhập</Link>
-                {' / '}
-                <Link to="/register" onClick={closeMobileMenu}>Đăng ký</Link>
-              </div>
-            </li>
-            <li className="nav-item">
-              <Link className="nav-link btn btn-secondary" to="/courts/add" onClick={closeMobileMenu}>
-                <span><i className="feather-check-circle"></i></span>Đăng Ký Làm Chủ Sân
-              </Link>
-            </li>
+            {isAuthenticated ? (
+              <>
+                <li className="nav-item">
+                  <Link
+                    className="nav-link btn btn-white log-register"
+                    to={dashboardPath}
+                    onClick={closeMobileMenu}
+                  >
+                    <span><i className="feather-user"></i></span>
+                    {user?.fullName || user?.email}
+                  </Link>
+                </li>
+                <li className="nav-item">
+                  <button
+                    className="nav-link btn btn-secondary"
+                    onClick={handleLogout}
+                    style={{ border: 'none', cursor: 'pointer' }}
+                  >
+                    <span><i className="feather-log-out"></i></span>Đăng xuất
+                  </button>
+                </li>
+              </>
+            ) : (
+              <>
+                <li className="nav-item">
+                  <div className="nav-link btn btn-white log-register">
+                    <Link to="/login" onClick={closeMobileMenu}>
+                      <span><i className="feather-users"></i></span>Đăng nhập
+                    </Link>
+                    {' / '}
+                    <Link to="/register" onClick={closeMobileMenu}>Đăng ký</Link>
+                  </div>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link btn btn-secondary" to="/courts/add" onClick={closeMobileMenu}>
+                    <span><i className="feather-check-circle"></i></span>Đăng Ký Làm Chủ Sân
+                  </Link>
+                </li>
+              </>
+            )}
           </ul>
 
         </nav>
