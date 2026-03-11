@@ -1,8 +1,8 @@
 const stats = [
-  { value: '150+', label: 'Courts Available' },
-  { value: '80+', label: 'Expert Coaches' },
-  { value: '5000+', label: 'Happy Players' },
-  { value: '200+', label: 'Tournaments Hosted' },
+  { value: '150+', label: 'Sân Hệ Thống' },
+  { value: '80+', label: 'Quản Lý Sân' },
+  { value: '5000+', label: 'Người Chơi' },
+  { value: '200+', label: 'Giải Đấu' },
 ];
 
 export default function StatsCounter() {

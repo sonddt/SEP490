@@ -19,27 +19,27 @@ export default function HeroSection() {
           <div className="row align-items-center w-100">
             <div className="col-lg-7 col-md-10 mx-auto">
               <div className="section-search aos" data-aos="fade-up">
-                <h4>World Class Badminton Coaching &amp; Premium Courts</h4>
-                <h1>Choose Your <span>Coaches</span> And Start Your Training</h1>
+                <h4>Hệ Thống Sân Cầu Lông Cao Cấp &amp; Quản Lý Chuyên Nghiệp</h4>
+                <h1>Chọn <span>Sân Chơi</span> Và Bắt Đầu Đam Mê Của Bạn</h1>
                 <p className="sub-info">
-                  Unleash Your Athletic Potential with Expert Coaching, State-of-the-Art Facilities, and Personalized Training Programs.
+                  Khám phá tiềm năng thể thao của bạn với các sân tập hiện đại, quy trình đặt lịch nhanh chóng và dễ dàng.
                 </p>
                 <div className="search-box">
                   <form onSubmit={(e) => e.preventDefault()}>
                     <div className="search-input line">
                       <div className="form-group mb-0">
-                        <label>Search for</label>
+                        <label>Tìm kiếm</label>
                         <select className="select form-control">
-                          <option>Courts</option>
-                          <option>Coaches</option>
+                          <option>Sân cầu lông</option>
+                          <option>Quản lý sân</option>
                         </select>
                       </div>
                     </div>
                     <div className="search-input">
                       <div className="form-group mb-0">
-                        <label>Where</label>
+                        <label>Khu vực</label>
                         <select className="form-control select">
-                          <option value="">Choose Location</option>
+                          <option value="">Chọn địa điểm</option>
                           <option>Hồ Chí Minh</option>
                           <option>Hà Nội</option>
                           <option>Đà Nẵng</option>
@@ -49,7 +49,7 @@ export default function HeroSection() {
                     </div>
                     <div className="search-btn">
                       <Link to="/courts" className="btn">
-                        <i className="feather-search"></i><span className="search-text">Search</span>
+                        <i className="feather-search"></i><span className="search-text">Tìm kiếm</span>
                       </Link>
                     </div>
                   </form>

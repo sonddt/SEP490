@@ -6,62 +6,62 @@ const featuredVenues = [
   {
     id: 1,
     img: '/assets/img/venues/venues-01.jpg',
-    tag: 'Featured',
+    tag: 'Nổi bật',
     tagClass: 'tag-blue',
-    price: '$450',
+    price: '150k',
     rating: '4.2',
-    reviews: '300 Reviews',
+    reviews: '300 Đánh giá',
     name: 'Sarah Sports Academy',
-    desc: 'Elevate your athletic journey at Sarah Sports Academy, where excellence meets opportunity.',
-    location: 'Port Alsworth, AK',
-    available: '15 May 2023',
+    desc: 'Trải nghiệm sân thi đấu chuẩn quốc gia tại Sarah Sports Academy.',
+    location: 'Quận 1, TP HCM',
+    available: 'Hôm nay',
     avatar: '/assets/img/profiles/avatar-01.jpg',
-    owner: 'Mart Sublin',
+    owner: 'Nguyễn Văn A',
   },
   {
     id: 2,
     img: '/assets/img/venues/venues-02.jpg',
-    tag: 'Top Rated',
+    tag: 'Đánh giá cao',
     tagClass: 'tag-blue',
-    price: '$200',
+    price: '120k',
     rating: '5.0',
-    reviews: '150 Reviews',
-    name: 'Badminton Academy',
-    desc: 'Unleash your badminton potential at our premier Badminton Academy, where champions are made.',
-    location: 'Sacramento, CA',
-    available: '15 May 2023',
+    reviews: '150 Đánh giá',
+    name: 'Badminton Center',
+    desc: 'Khai mở tiềm năng của bạn tại cụm sân cầu lông quy mô nhất khu vực.',
+    location: 'Gò Vấp, TP HCM',
+    available: 'Ngày mai',
     avatar: '/assets/img/profiles/avatar-02.jpg',
-    owner: 'Rebecca',
+    owner: 'Trần Thị B',
   },
   {
     id: 3,
     img: '/assets/img/venues/venues-03.jpg',
     tag: '',
     tagClass: '',
-    price: '$350',
+    price: '100k',
     rating: '4.7',
-    reviews: '120 Reviews',
-    name: 'Manchester Academy',
-    desc: 'Manchester Academy: Where dreams meet excellence in sports education and training.',
-    location: 'Guysville, OH',
-    available: '16 May 2023',
+    reviews: '120 Đánh giá',
+    name: 'Nhà thi đấu Phú Thọ',
+    desc: 'Không gian thông thoáng, thích hợp giải đấu quy mô nhỏ và phong trào.',
+    location: 'Quận 11, TP HCM',
+    available: 'Hôm nay',
     avatar: '/assets/img/profiles/avatar-03.jpg',
-    owner: 'Andrew',
+    owner: 'Lê Văn C',
   },
   {
     id: 4,
     img: '/assets/img/venues/venues-02.jpg',
-    tag: 'Featured',
+    tag: 'Nổi bật',
     tagClass: 'tag-blue',
-    price: '$450',
+    price: '180k',
     rating: '4.5',
-    reviews: '300 Reviews',
+    reviews: '300 Đánh giá',
     name: 'ABC Sports Academy',
-    desc: 'Unleash your badminton potential at our premier ABC Sports Academy, where champions are made.',
-    location: 'Little Rock, AR',
-    available: '17 May 2023',
+    desc: 'Thỏa mãn đam mê rèn luyện thể thao với trang thiết bị cao cấp tại ABC.',
+    location: 'Cầu Giấy, Hà Nội',
+    available: 'Cuối tuần này',
     avatar: '/assets/img/profiles/avatar-04.jpg',
-    owner: 'Mart Sublin',
+    owner: 'Phạm Thị D',
   },
 ];
 
@@ -72,8 +72,8 @@ export default function FeaturedVenues() {
     <section className="section featured-venues">
       <div className="container">
         <div className="section-heading aos" data-aos="fade-up">
-          <h2>Featured <span>Venues</span></h2>
-          <p className="sub-title">Advanced sports venues offer the latest facilities for enhanced badminton performance.</p>
+          <h2>Sân Cầu Lông <span>Nổi Bật</span></h2>
+          <p className="sub-title">Khám phá các cụm sân chất lượng cao được cộng đồng lựa chọn nhiều nhất.</p>
         </div>
         <div className="row">
           <div className="featured-slider-group">
@@ -102,7 +102,7 @@ export default function FeaturedVenues() {
                         </Link>
                         <div className="fav-item-venues">
                           {venue.tag && <span className={`tag ${venue.tagClass}`}>{venue.tag}</span>}
-                          <h5 className="tag tag-primary">{venue.price}<span>/hr</span></h5>
+                          <h5 className="tag tag-primary">{venue.price}<span>/h</span></h5>
                         </div>
                       </div>
                       <div className="listing-content">
@@ -121,17 +121,17 @@ export default function FeaturedVenues() {
                           <p>{venue.desc}</p>
                           <ul>
                             <li><span><i className="feather-map-pin"></i>{venue.location}</span></li>
-                            <li><span><i className="feather-calendar"></i>Next Availability: <span className="primary-text">{venue.available}</span></span></li>
+                            <li><span><i className="feather-calendar"></i>Lịch trống tới: <span className="primary-text">{venue.available}</span></span></li>
                           </ul>
                         </div>
                         <div className="listing-button">
                           <div className="listing-venue-owner">
                             <Link className="navigation" to="/coach-detail">
-                              <img src={venue.avatar} alt="Venue" />{venue.owner}
+                              <img src={venue.avatar} alt="Owner" />{venue.owner}
                             </Link>
                           </div>
                           <Link to="/venue-details" className="user-book-now">
-                            <span><i className="feather-calendar me-2"></i></span>Book Now
+                            <span><i className="feather-calendar me-2"></i></span>Đặt Sân
                           </Link>
                         </div>
                       </div>
@@ -144,7 +144,7 @@ export default function FeaturedVenues() {
         </div>
         <div className="view-all text-center aos" data-aos="fade-up">
           <Link to="/courts" className="btn btn-secondary d-inline-flex align-items-center">
-            View All Featured<span className="lh-1"><i className="feather-arrow-right-circle ms-2"></i></span>
+            Hiển Thị Tất Cả <span className="lh-1"><i className="feather-arrow-right-circle ms-2"></i></span>
           </Link>
         </div>
       </div>

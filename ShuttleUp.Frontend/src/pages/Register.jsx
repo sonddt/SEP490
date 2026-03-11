@@ -1,22 +1,42 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-export default function Login() {
+export default function Register() {
   const [activeTab, setActiveTab] = useState('user');
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    username: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    agreedToTerms: false
+  });
+  
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleRegister = (e) => {
     e.preventDefault();
-    // TODO: Implement actual login logic with API
-    console.log(`Đang đăng nhập dưới quyền ${activeTab} với`, email, password);
-    if (activeTab === 'user') {
-      navigate('/user/dashboard');
-    } else {
-      navigate('/coach/dashboard');
+    if (formData.password !== formData.confirmPassword) {
+      alert("Mật khẩu xác nhận không khớp!");
+      return;
     }
+    if (!formData.agreedToTerms) {
+      alert("Bạn cần đồng ý với Điều khoản sử dụng");
+      return;
+    }
+    // TODO: Implement actual register logic with API
+    console.log(`Đang đăng ký dưới quyền ${activeTab}`, formData);
+    navigate('/login');
   };
 
   return (
@@ -25,16 +45,16 @@ export default function Login() {
         <div className="container wrapper no-padding">
           <div className="row no-margin vph-100">
             {/* Left side banner */}
-            <div className="col-12 col-sm-12 col-lg-6 no-padding">
-              <div className="banner-bg login">
+            <div className="col-12 col-sm-12 col-md-12 col-lg-6 no-padding">
+              <div className="banner-bg register">
                 <div className="row no-margin h-100">
                   <div className="col-sm-10 col-md-10 col-lg-10 mx-auto">
                     <div className="h-100 d-flex justify-content-center align-items-center">
                       <div className="text-bg register text-center">
                         <button type="button" className="btn btn-limegreen text-capitalize">
-                          <i className="fa-solid fa-thumbs-up me-3"></i>Đăng nhập cho Người chơi & Quản lý sân
+                          <i className="fa-solid fa-thumbs-up me-3"></i>Đăng Ký Ngay
                         </button>
-                        <p>Đăng nhập ngay để sử dụng giải pháp phần mềm quản lý sân cầu lông tiên tiến của chúng tôi, giúp bạn dễ dàng đặt lịch và tham gia các hoạt động thể thao.</p>
+                        <p>Tạo tài khoản ngay để trải nghiệm phần mềm quản lý sân cầu lông, giúp bạn giải quyết những khó khăn trong các hoạt động thể thao hằng ngày.</p>
                       </div>
                     </div>
                   </div>
@@ -43,7 +63,7 @@ export default function Login() {
             </div>
 
             {/* Right side form */}
-            <div className="col-12 col-sm-12 col-lg-6 no-padding">
+            <div className="col-12 col-sm-12 col-md-12 col-lg-6 no-padding">
               <div className="dull-pg">
                 <div className="row no-margin vph-100 d-flex align-items-center justify-content-center">
                   <div className="col-sm-10 col-md-10 col-lg-10 mx-auto">
@@ -53,8 +73,8 @@ export default function Login() {
                       </Link>
                     </header>
                     <div className="shadow-card">
-                      <h2>Chào mừng trở lại</h2>
-                      <p>Vui lòng đăng nhập vào tài khoản của bạn</p>
+                      <h2>Bắt đầu với ShuttleUp</h2>
+                      <p>Khởi động hành trình thể thao của bạn cùng ShuttleUp ngay bây giờ.</p>
 
                       {/* Tabs */}
                       <ul className="nav nav-tabs" id="myTab" role="tablist">
@@ -81,16 +101,31 @@ export default function Login() {
                       {/* Form Content */}
                       <div className="tab-content" id="myTabContent">
                         <div className="tab-pane fade show active">
-                          <form onSubmit={handleLogin}>
+                          <form onSubmit={handleRegister}>
                             <div className="form-group">
                               <div className="group-img">
                                 <i className="feather-user"></i>
                                 <input
                                   type="text"
                                   className="form-control"
-                                  placeholder="Email / Tên tài khoản"
-                                  value={email}
-                                  onChange={(e) => setEmail(e.target.value)}
+                                  placeholder="Tên tài khoản"
+                                  name="username"
+                                  value={formData.username}
+                                  onChange={handleInputChange}
+                                  required
+                                />
+                              </div>
+                            </div>
+                            <div className="form-group">
+                              <div className="group-img">
+                                <i className="feather-mail"></i>
+                                <input
+                                  type="email"
+                                  className="form-control"
+                                  placeholder="Email"
+                                  name="email"
+                                  value={formData.email}
+                                  onChange={handleInputChange}
                                   required
                                 />
                               </div>
@@ -106,28 +141,53 @@ export default function Login() {
                                   type={showPassword ? 'text' : 'password'}
                                   className="form-control pass-input"
                                   placeholder="Mật khẩu"
-                                  value={password}
-                                  onChange={(e) => setPassword(e.target.value)}
+                                  name="password"
+                                  value={formData.password}
+                                  onChange={handleInputChange}
                                   required
                                 />
                               </div>
                             </div>
-                            <div className="form-group d-sm-flex align-items-center justify-content-between">
-                              <div className="form-check form-switch d-flex align-items-center justify-content-start">
-                                <input className="form-check-input" type="checkbox" id="user-pass" />
-                                <label className="form-check-label" htmlFor="user-pass">Nhớ mật khẩu</label>
+                            <div className="form-group">
+                              <div className="pass-group group-img">
+                                <i
+                                  className={`toggle-password-confirm ${showConfirmPassword ? 'feather-eye' : 'feather-eye-off'}`}
+                                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                  style={{ cursor: 'pointer' }}
+                                ></i>
+                                <input
+                                  type={showConfirmPassword ? 'text' : 'password'}
+                                  className="form-control pass-confirm"
+                                  placeholder="Xác nhận mật khẩu"
+                                  name="confirmPassword"
+                                  value={formData.confirmPassword}
+                                  onChange={handleInputChange}
+                                  required
+                                />
                               </div>
-                              <span>
-                                <Link to="/forgot-password" className="forgot-pass">Quên mật khẩu?</Link>
-                              </span>
+                            </div>
+                            <div className="form-check d-flex justify-content-start align-items-center policy">
+                              <div className="d-inline-block">
+                                <input
+                                  className="form-check-input"
+                                  type="checkbox"
+                                  id="policy"
+                                  name="agreedToTerms"
+                                  checked={formData.agreedToTerms}
+                                  onChange={handleInputChange}
+                                />
+                              </div>
+                              <label className="form-check-label" htmlFor="policy">
+                                Bằng cách tiếp tục, bạn đồng ý rằng bạn đã đọc và chấp nhận <a href="#" onClick={e => e.preventDefault()}>Điều khoản sử dụng</a>
+                              </label>
                             </div>
                             <button className="btn btn-secondary register-btn d-inline-flex justify-content-center align-items-center w-100 btn-block" type="submit">
-                              Đăng Nhập<i className="feather-arrow-right-circle ms-2"></i>
+                              Tạo Tài Khoản<i className="feather-arrow-right-circle ms-2"></i>
                             </button>
 
                             <div className="form-group">
                               <div className="login-options text-center">
-                                <span className="text">Hoặc tiếp tục với</span>
+                                <span className="text">Hoặc đăng ký bằng</span>
                               </div>
                             </div>
                             <div className="form-group mb-0">
@@ -152,7 +212,7 @@ export default function Login() {
                     </div>
 
                     <div className="bottom-text text-center">
-                      <p>Chưa có tài khoản? <Link to="/register">Đăng ký ngay!</Link></p>
+                      <p>Đã có tài khoản? <Link to="/login">Đăng nhập!</Link></p>
                     </div>
                   </div>
                 </div>

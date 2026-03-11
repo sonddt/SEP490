@@ -3,12 +3,12 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
 
 const nearCourts = [
-  { id: 1, img: '/assets/img/venues/venues-04.jpg', name: 'Smart Shuttlers', address: '1 Crowthorne Road, 4th Street, NY', rating: '4.2', reviews: '300 Reviews', miles: '2.1 Miles Away' },
-  { id: 2, img: '/assets/img/venues/venues-05.jpg', name: 'Parlers Badminton', address: 'Hope Street, Battersea, SW11 2DA', rating: '4.2', reviews: '200 Reviews', miles: '9.3 Miles Away' },
-  { id: 3, img: '/assets/img/venues/venues-06.jpg', name: '6 Feathers', address: 'Lonsdale Road, Barnes, SW13 9QL', rating: '4.2', reviews: '400 Reviews', miles: '10.8 Miles Away' },
-  { id: 4, img: '/assets/img/venues/venues-05.jpg', name: 'Parlers Badminton', address: '1 Crowthorne Road, 4th Street, NY', rating: '4.2', reviews: '300 Reviews', miles: '8.1 Miles Away' },
-  { id: 5, img: '/assets/img/venues/venues-04.jpg', name: 'Smart Shuttlers', address: '1 Crowthorne Road, 4th Street, NY', rating: '4.2', reviews: '300 Reviews', miles: '2.1 Miles Away' },
-  { id: 6, img: '/assets/img/venues/venues-06.jpg', name: '6 Feathers', address: 'Lonsdale Road, Barnes, SW13 9QL', rating: '4.2', reviews: '400 Reviews', miles: '10.8 Miles Away' },
+  { id: 1, img: '/assets/img/venues/venues-04.jpg', name: 'Smart Shuttlers', address: 'Quận 1, TP HCM', rating: '4.2', reviews: '300 Đánh giá', miles: 'Cách 2.1 km' },
+  { id: 2, img: '/assets/img/venues/venues-05.jpg', name: 'Parlers Badminton', address: 'Quận 3, TP HCM', rating: '4.2', reviews: '200 Đánh giá', miles: 'Cách 3.4 km' },
+  { id: 3, img: '/assets/img/venues/venues-06.jpg', name: '6 Feathers', address: 'Quận Bình Thạnh, TP HCM', rating: '4.2', reviews: '400 Đánh giá', miles: 'Cách 5.8 km' },
+  { id: 4, img: '/assets/img/venues/venues-05.jpg', name: 'Parlers Badminton', address: 'Quận Phú Nhuận, TP HCM', rating: '4.2', reviews: '300 Đánh giá', miles: 'Cách 4.1 km' },
+  { id: 5, img: '/assets/img/venues/venues-04.jpg', name: 'Smart Shuttlers', address: 'Quận 10, TP HCM', rating: '4.2', reviews: '300 Đánh giá', miles: 'Cách 3.1 km' },
+  { id: 6, img: '/assets/img/venues/venues-06.jpg', name: '6 Feathers', address: 'Quận 5, TP HCM', rating: '4.2', reviews: '400 Đánh giá', miles: 'Cách 6.5 km' },
 ];
 
 export default function CourtsNearYou() {
@@ -16,8 +16,8 @@ export default function CourtsNearYou() {
     <section className="section court-near">
       <div className="container">
         <div className="section-heading aos" data-aos="fade-up">
-          <h2>Find Courts <span>Near You</span></h2>
-          <p className="sub-title">Discover nearby badminton courts for convenient and accessible gameplay.</p>
+          <h2>Tìm Sân <span>Gần Bạn</span></h2>
+          <p className="sub-title">Khám phá các sân cầu lông gần bạn cho những buổi tập thuận tiện và dễ dàng tiếp cận.</p>
         </div>
         <div className="row">
           <div className="featured-slider-group aos" data-aos="fade-up">
@@ -78,7 +78,7 @@ export default function CourtsNearYou() {
         </div>
         <div className="view-all text-center aos" data-aos="fade-up">
           <Link to="/courts" className="btn btn-secondary d-inline-flex align-items-center">
-            View All Services <span className="lh-1"><i className="feather-arrow-right-circle ms-2"></i></span>
+            Hiển Thị Tất Cả <span className="lh-1"><i className="feather-arrow-right-circle ms-2"></i></span>
           </Link>
         </div>
       </div>

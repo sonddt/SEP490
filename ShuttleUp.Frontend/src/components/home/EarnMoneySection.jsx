@@ -20,47 +20,47 @@ export default function EarnMoneySection() {
                   className={`btn ${activeTab === 'venue' ? 'btn-secondary become-venue' : 'btn-primary become-coche'} d-inline-flex align-items-center`}
                   onClick={() => setActiveTab('venue')}
                 >
-                  Become A Venue Member
+                  Trở Thành Chủ Sân
                 </button>
                 <button
                   className={`btn ${activeTab === 'coach' ? 'btn-secondary become-venue' : 'btn-primary become-coche'} d-inline-flex align-items-center`}
                   onClick={() => setActiveTab('coach')}
                 >
-                  Become A Coach
+                  Trở Thành Quản Lý
                 </button>
               </div>
               {activeTab === 'venue' && (
                 <div>
-                  <h2>Earn Money Renting Out Your Badminton Courts on ShuttleUp</h2>
-                  <p>Join our network of private facility owners, offering rentals to local players, coaches, and teams.</p>
+                  <h2>Tăng Doanh Thu Từ Việc Cho Thuê Sân Cầu Lông Trên ShuttleUp</h2>
+                  <p>Tham gia mạng lưới các chủ sân của chúng tôi để tối ưu hóa việc quản lý và tiếp cận nhiều người chơi hơn.</p>
                   <div className="earn-list">
                     <ul>
-                      <li><i className="fa-solid fa-circle-check"></i>Liability insurance covered</li>
-                      <li><i className="fa-solid fa-circle-check"></i>Build Trust with Players</li>
-                      <li><i className="fa-solid fa-circle-check"></i>Protected Environment for Activities</li>
+                      <li><i className="fa-solid fa-circle-check"></i>Hỗ trợ quảng bá miễn phí</li>
+                      <li><i className="fa-solid fa-circle-check"></i>Xây dựng niềm tin với người chơi</li>
+                      <li><i className="fa-solid fa-circle-check"></i>Hệ thống quản lý an toàn, minh bạch</li>
                     </ul>
                   </div>
                   <div className="convenient-btns">
                     <Link to="/register" className="btn btn-secondary d-inline-flex align-items-center">
-                      <span className="lh-1"><i className="feather-user-plus me-2"></i></span>Join With Us
+                      <span className="lh-1"><i className="feather-user-plus me-2"></i></span>Tham Gia Ngay
                     </Link>
                   </div>
                 </div>
               )}
               {activeTab === 'coach' && (
                 <div>
-                  <h2>Become a Coach and Grow Your Career on ShuttleUp</h2>
-                  <p>Join our coach network, reach more students, and grow your badminton coaching career.</p>
+                  <h2>Trở Thành Quản Lý Sân Và Phát Triển Sự Nghiệp Cùng ShuttleUp</h2>
+                  <p>Tham gia cùng đội ngũ quản lý của chúng tôi để vận hành các cụm sân chất lượng cao một cách chuyên nghiệp.</p>
                   <div className="earn-list">
                     <ul>
-                      <li><i className="fa-solid fa-circle-check"></i>Professional coach profile</li>
-                      <li><i className="fa-solid fa-circle-check"></i>Get bookings automatically</li>
-                      <li><i className="fa-solid fa-circle-check"></i>Earn more, work flexibly</li>
+                      <li><i className="fa-solid fa-circle-check"></i>Công cụ tự động hóa công việc</li>
+                      <li><i className="fa-solid fa-circle-check"></i>Nhận lịch đặt sân theo thời gian thực</li>
+                      <li><i className="fa-solid fa-circle-check"></i>Tăng thu nhập với thời gian linh hoạt</li>
                     </ul>
                   </div>
                   <div className="convenient-btns">
                     <Link to="/register" className="btn btn-secondary d-inline-flex align-items-center">
-                      <span className="lh-1"><i className="feather-user-plus me-2"></i></span>Join With Us
+                      <span className="lh-1"><i className="feather-user-plus me-2"></i></span>Tham Gia Ngay
                     </Link>
                   </div>
                 </div>

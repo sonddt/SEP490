@@ -2,22 +2,22 @@ import { Link } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
 
-const featuredCoachesBase = [
-  { id: 1, img: '/assets/img/profiles/user-01.jpg', tag: 'Rookie', price: '$250', lessons: 4, name: 'Kevin Anderson' },
-  { id: 2, img: '/assets/img/profiles/user-02.jpg', tag: 'Intermediate', price: '$150', lessons: 3, name: 'Harry Richardson' },
-  { id: 3, img: '/assets/img/profiles/user-03.jpg', tag: 'Professional', price: '$350', lessons: 2, name: 'Evon Raddick' },
-  { id: 4, img: '/assets/img/profiles/user-04.jpg', tag: 'Rookie', price: '$250', lessons: 4, name: 'Angela Roudrigez' },
+const featuredManagersBase = [
+  { id: 1, img: '/assets/img/profiles/user-01.jpg', tag: 'Nhiệt tình', price: '150k', courts: 4, name: 'Nguyễn Văn A' },
+  { id: 2, img: '/assets/img/profiles/user-02.jpg', tag: 'Chuyên nghiệp', price: '120k', courts: 8, name: 'Trần Thị B' },
+  { id: 3, img: '/assets/img/profiles/user-03.jpg', tag: 'Đánh giá cao', price: '180k', courts: 2, name: 'Lê Văn C' },
+  { id: 4, img: '/assets/img/profiles/user-04.jpg', tag: 'Nhiệt tình', price: '100k', courts: 6, name: 'Phạm Thị D' },
 ];
 
-const featuredCoaches = [...featuredCoachesBase, ...featuredCoachesBase.map(c => ({ ...c, id: c.id + 10 }))];
+const featuredManagers = [...featuredManagersBase, ...featuredManagersBase.map(c => ({ ...c, id: c.id + 10 }))];
 
 export default function FeaturedCoaches() {
   return (
     <section className="section featured-section">
       <div className="container">
         <div className="section-heading aos" data-aos="fade-up">
-          <h2>Featured <span>Coaches</span></h2>
-          <p className="sub-title">Uplift your badminton game with our featured coaches, personalized instruction, and expertise.</p>
+          <h2>Quản Lý Sân <span>Tiêu Biểu</span></h2>
+          <p className="sub-title">Trải nghiệm dịch vụ tuyệt vời cùng các quản lý sân tận tâm và chuyên nghiệp của chúng tôi.</p>
         </div>
         <div className="row">
           <div className="featured-slider-group aos" data-aos="fade-up">
@@ -36,16 +36,16 @@ export default function FeaturedCoaches() {
               }}
               className="featured-coache-slider"
             >
-              {featuredCoaches.map((coach) => (
-                <SwiperSlide key={coach.id}>
+              {featuredManagers.map((manager) => (
+                <SwiperSlide key={manager.id}>
                   <div className="featured-venues-item">
                     <div className="listing-item mb-0">
                       <div className="listing-img">
                         <Link to="/coach-detail">
-                          <img src={coach.img} alt="Coach" />
+                          <img src={manager.img} alt="Manager" />
                         </Link>
                         <div className="fav-item-venues">
-                          <span className="tag tag-blue">{coach.tag}</span>
+                          <span className="tag tag-blue">{manager.tag}</span>
                           <div className="list-reviews coche-star">
                             <a href="#" onClick={(e) => e.preventDefault()} className="fav-icon">
                               <i className="feather-heart"></i>
@@ -53,12 +53,12 @@ export default function FeaturedCoaches() {
                           </div>
                         </div>
                         <div className="hour-list">
-                          <h5 className="tag tag-primary">From {coach.price} <span>/hr</span></h5>
+                          <h5 className="tag tag-primary">Từ {manager.price} <span>/h</span></h5>
                         </div>
                       </div>
                       <div className="listing-content list-coche-content">
-                        <span>{coach.lessons} Lessons</span>
-                        <h3><Link to="/coach-detail">{coach.name}</Link></h3>
+                        <span>Quản lý {manager.courts} sân</span>
+                        <h3><Link to="/coach-detail">{manager.name}</Link></h3>
                         <Link to="/coach-details"><i className="feather-arrow-right"></i></Link>
                         <Link to="/coach-details" className="icon-hover"><i className="feather-calendar"></i></Link>
                       </div>
@@ -71,7 +71,7 @@ export default function FeaturedCoaches() {
         </div>
         <div className="view-all text-center aos" data-aos="fade-up">
           <Link to="/coaches" className="btn btn-secondary d-inline-flex align-items-center">
-            View All Coaches <span className="lh-1"><i className="feather-arrow-right-circle ms-2"></i></span>
+            Hiển Thị Tất Cả <span className="lh-1"><i className="feather-arrow-right-circle ms-2"></i></span>
           </Link>
         </div>
       </div>

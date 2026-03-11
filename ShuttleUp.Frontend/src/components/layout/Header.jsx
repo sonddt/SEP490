@@ -75,52 +75,52 @@ const Header = ({ transparent = false }) => {
             <ul className="main-nav">
               <li>
                 <Link to="/" onClick={closeMobileMenu}>
-                  Home
+                  Trang chủ
                 </Link>
               </li>
 
               <li className="has-submenu">
                 <a href="#" onClick={(e) => e.preventDefault()}>
-                  Venues <i className="fas fa-chevron-down"></i>
+                  Tìm Sân <i className="fas fa-chevron-down"></i>
                 </a>
                 <ul className="submenu">
-                  <li><Link to="/courts" onClick={closeMobileMenu}>Court Listing</Link></li>
-                  <li><Link to="/courts/map" onClick={closeMobileMenu}>Courts Map</Link></li>
-                  <li><Link to="/venue-details" onClick={closeMobileMenu}>Venue Details</Link></li>
+                  <li><Link to="/courts" onClick={closeMobileMenu}>Danh sách Sân</Link></li>
+                  <li><Link to="/courts/map" onClick={closeMobileMenu}>Bản đồ Sân</Link></li>
+                  <li><Link to="/venue-details" onClick={closeMobileMenu}>Chi tiết Sân</Link></li>
                 </ul>
               </li>
 
               <li className="has-submenu">
                 <a href="#" onClick={(e) => e.preventDefault()}>
-                  Booking <i className="fas fa-chevron-down"></i>
+                  Đặt Sân <i className="fas fa-chevron-down"></i>
                 </a>
                 <ul className="submenu">
-                  <li><Link to="/booking" onClick={closeMobileMenu}>Book a Court</Link></li>
-                  <li><Link to="/user/bookings" onClick={closeMobileMenu}>My Bookings</Link></li>
+                  <li><Link to="/booking" onClick={closeMobileMenu}>Đặt một Sân</Link></li>
+                  <li><Link to="/user/bookings" onClick={closeMobileMenu}>Lịch sử Đặt Sân</Link></li>
                 </ul>
               </li>
 
               <li className="has-submenu">
                 <a href="#" onClick={(e) => e.preventDefault()}>
-                  Dashboard <i className="fas fa-chevron-down"></i>
+                  Bảng Điều Khiển <i className="fas fa-chevron-down"></i>
                 </a>
                 <ul className="submenu">
-                  <li><Link to="/user/dashboard" onClick={closeMobileMenu}>User Dashboard</Link></li>
-                  <li><Link to="/coach/dashboard" onClick={closeMobileMenu}>Coach Dashboard</Link></li>
+                  <li><Link to="/user/dashboard" onClick={closeMobileMenu}>Dành cho Người chơi</Link></li>
+                  <li><Link to="/coach/dashboard" onClick={closeMobileMenu}>Dành cho Quản lý sân</Link></li>
                 </ul>
               </li>
 
               <li>
-                <Link to="/about" onClick={closeMobileMenu}>About Us</Link>
+                <Link to="/about" onClick={closeMobileMenu}>Về Chúng tôi</Link>
               </li>
               <li>
-                <Link to="/contact" onClick={closeMobileMenu}>Contact Us</Link>
+                <Link to="/contact" onClick={closeMobileMenu}>Liên hệ</Link>
               </li>
               <li className="login-link">
-                <Link to="/register" onClick={closeMobileMenu}>Sign Up</Link>
+                <Link to="/register" onClick={closeMobileMenu}>Đăng ký</Link>
               </li>
               <li className="login-link">
-                <Link to="/login" onClick={closeMobileMenu}>Sign In</Link>
+                <Link to="/login" onClick={closeMobileMenu}>Đăng nhập</Link>
               </li>
             </ul>
           </div>
@@ -129,14 +129,14 @@ const Header = ({ transparent = false }) => {
           <ul className="nav header-navbar-rht">
             <li className="nav-item">
               <div className="nav-link btn btn-white log-register">
-                <Link to="/login" onClick={closeMobileMenu}><span><i className="feather-users"></i></span>Login</Link>
+                <Link to="/login" onClick={closeMobileMenu}><span><i className="feather-users"></i></span>Đăng nhập</Link>
                 {' / '}
-                <Link to="/register" onClick={closeMobileMenu}>Register</Link>
+                <Link to="/register" onClick={closeMobileMenu}>Đăng ký</Link>
               </div>
             </li>
             <li className="nav-item">
               <Link className="nav-link btn btn-secondary" to="/courts/add" onClick={closeMobileMenu}>
-                <span><i className="feather-check-circle"></i></span>List Your Court
+                <span><i className="feather-check-circle"></i></span>Đăng Ký Làm Chủ Sân
               </Link>
             </li>
           </ul>

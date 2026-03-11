@@ -2,10 +2,10 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
 
 const testimonials = [
-  { id: 1, name: 'Ariyan Rusov', avatar: '/assets/img/profiles/avatar-01.jpg', title: 'Personalized Attention', text: "DreamSports' coaching services enhanced my badminton skills. Personalized attention from knowledgeable coaches propelled my game to new heights.", tag: 'Badminton' },
-  { id: 2, name: 'Darren Valdez', avatar: '/assets/img/profiles/avatar-04.jpg', title: 'Quality Matters !', text: "DreamSports' advanced badminton equipment has greatly improved my performance on the court. Their quality range of rackets and shoes made a significant impact.", tag: 'Badminton' },
-  { id: 3, name: 'Elinor Dunn', avatar: '/assets/img/profiles/avatar-03.jpg', title: 'Excellent Professionalism !', text: "DreamSports' unmatched professionalism and service excellence left a positive experience. Highly recommended for court rentals and equipment purchases.", tag: 'Badminton' },
-  { id: 4, name: 'Darren Valdez', avatar: '/assets/img/profiles/avatar-04.jpg', title: 'Quality Matters !', text: "DreamSports' advanced badminton equipment has greatly improved my performance on the court. Their quality range of rackets and shoes made a significant impact.", tag: 'Badminton' },
+  { id: 1, name: 'Mai Phương', avatar: '/assets/img/profiles/avatar-01.jpg', title: 'Sự Chăm Sóc Khách Hàng', text: "ShuttleUp thực sự giúp tôi tìm được các anh em đồng quản lý rất thân thiện. Cảm ơn đội ngũ vì sự chuyên nghiệp.", tag: 'Cầu lông' },
+  { id: 2, name: 'Minh Khang', avatar: '/assets/img/profiles/avatar-04.jpg', title: 'Chất Lượng Là Số 1', text: "Hệ thống đặt sân chạy rất mượt mà. Số lượng sân tại TP.HCM trên app thực sự uy tín, giúp nhóm tôi không bao giờ thiếu sân tập cuối tuần.", tag: 'Cầu lông' },
+  { id: 3, name: 'Hoàng Yến', avatar: '/assets/img/profiles/avatar-03.jpg', title: 'Giao Diện Xuất Sắc', text: "Mình rất thích giao diện tinh tế và cách ứng dụng cung cấp thông tin sân rõ ràng. Việc tạo cộng đồng những người đam mê cũng thú vị.", tag: 'Cầu lông' },
+  { id: 4, name: 'Minh Khang', avatar: '/assets/img/profiles/avatar-04.jpg', title: 'Chất Lượng Sân Tốt', text: "Sân rộng rãi và không gian thoáng. Gợi ý thêm các app có tính điểm rank để thi đấu giữa các thành viên vui hơn.", tag: 'Cầu lông' },
 ];
 
 export default function Testimonials() {
@@ -13,8 +13,8 @@ export default function Testimonials() {
     <section className="section our-testimonials">
       <div className="container">
         <div className="section-heading aos" data-aos="fade-up">
-          <h2>Our <span>Testimonials</span></h2>
-          <p className="sub-title">Glowing testimonials from passionate badminton enthusiasts worldwide, showcasing our exceptional services.</p>
+          <h2>Nhận Xét <span>Khách Hàng</span></h2>
+          <p className="sub-title">Những chia sẻ chân thực từ cộng đồng đam mê cầu lông sử dụng ShuttleUp mỗi ngày.</p>
         </div>
         <div className="row">
           <div className="featured-slider-group aos" data-aos="fade-up">

@@ -3,6 +3,9 @@ import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import HomePage from './pages/HomePage';
 
+import Login from './pages/Login';
+import Register from './pages/Register';
+
 // ── Placeholder pages (to be replaced one by one) ──────────────────────────
 const PlaceholderPage = ({ title }) => (
   <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -23,8 +26,8 @@ function App() {
         <Route path="/" element={<HomePage />} />
 
         {/* Auth */}
-        <Route path="/login" element={<PlaceholderPage title="Login" />} />
-        <Route path="/register" element={<PlaceholderPage title="Register" />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<PlaceholderPage title="Forgot Password" />} />
 
         {/* Venues / Courts */}
