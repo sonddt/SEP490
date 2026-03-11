@@ -20,7 +20,10 @@ export default function Testimonials() {
           <div className="featured-slider-group aos" data-aos="fade-up">
             <Swiper
               modules={[Navigation, Autoplay]}
-              navigation
+              navigation={{
+                prevEl: '.testi-prev',
+                nextEl: '.testi-next',
+              }}
               autoplay={{ delay: 4000, disableOnInteraction: false }}
               loop
               spaceBetween={24}
@@ -61,6 +64,15 @@ export default function Testimonials() {
                 </SwiperSlide>
               ))}
             </Swiper>
+            {/* Owl-nav style external navigation arrows */}
+            <div className="owl-nav">
+              <button className="owl-prev testi-prev" type="button">
+                <i className="feather-chevron-left"></i>
+              </button>
+              <button className="owl-next testi-next" type="button">
+                <i className="feather-chevron-right"></i>
+              </button>
+            </div>
           </div>
         </div>
       </div>

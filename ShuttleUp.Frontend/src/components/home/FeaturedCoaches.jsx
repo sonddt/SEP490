@@ -23,7 +23,10 @@ export default function FeaturedCoaches() {
           <div className="featured-slider-group aos" data-aos="fade-up">
             <Swiper
               modules={[Navigation, Autoplay]}
-              navigation
+              navigation={{
+                prevEl: '.fc-prev',
+                nextEl: '.fc-next',
+              }}
               autoplay={{ delay: 4000, disableOnInteraction: false }}
               loop
               loopAdditionalSlides={4}
@@ -67,6 +70,15 @@ export default function FeaturedCoaches() {
                 </SwiperSlide>
               ))}
             </Swiper>
+            {/* Owl-nav style external navigation arrows */}
+            <div className="owl-nav">
+              <button className="owl-prev fc-prev" type="button">
+                <i className="feather-chevron-left"></i>
+              </button>
+              <button className="owl-next fc-next" type="button">
+                <i className="feather-chevron-right"></i>
+              </button>
+            </div>
           </div>
         </div>
         <div className="view-all text-center aos" data-aos="fade-up">

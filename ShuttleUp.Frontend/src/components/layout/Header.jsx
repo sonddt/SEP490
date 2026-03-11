@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 const Header = ({ transparent = false }) => {
   const [scrolled, setScrolled] = useState(false);
@@ -25,6 +25,12 @@ const Header = ({ transparent = false }) => {
   }, [mobileMenuOpen]);
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
+
+  // Helper to check if path is active
+  const isActive = (path) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname.startsWith(path);
+  };
 
   const headerClass = [
     'header',
@@ -76,47 +82,47 @@ const Header = ({ transparent = false }) => {
             </div>
 
             <ul className="main-nav">
-              <li>
+              <li className={isActive('/') ? 'active' : ''}>
                 <Link to="/" onClick={closeMobileMenu}>
                   Trang chủ
                 </Link>
               </li>
 
-              <li className="has-submenu">
+              <li className={`has-submenu ${isActive('/courts') || isActive('/venue-details') ? 'active' : ''}`}>
                 <a href="#" onClick={(e) => e.preventDefault()}>
                   Tìm Sân <i className="fas fa-chevron-down"></i>
                 </a>
                 <ul className="submenu">
-                  <li><Link to="/courts" onClick={closeMobileMenu}>Danh sách Sân</Link></li>
-                  <li><Link to="/courts/map" onClick={closeMobileMenu}>Bản đồ Sân</Link></li>
-                  <li><Link to="/venue-details" onClick={closeMobileMenu}>Chi tiết Sân</Link></li>
+                  <li className={isActive('/courts') && !isActive('/courts/map') ? 'active' : ''}><Link to="/courts" onClick={closeMobileMenu}>Danh sách Sân</Link></li>
+                  <li className={isActive('/courts/map') ? 'active' : ''}><Link to="/courts/map" onClick={closeMobileMenu}>Bản đồ Sân</Link></li>
+                  <li className={isActive('/venue-details') ? 'active' : ''}><Link to="/venue-details" onClick={closeMobileMenu}>Chi tiết Sân</Link></li>
                 </ul>
               </li>
 
-              <li className="has-submenu">
+              <li className={`has-submenu ${isActive('/booking') || isActive('/user/bookings') ? 'active' : ''}`}>
                 <a href="#" onClick={(e) => e.preventDefault()}>
                   Đặt Sân <i className="fas fa-chevron-down"></i>
                 </a>
                 <ul className="submenu">
-                  <li><Link to="/booking" onClick={closeMobileMenu}>Đặt một Sân</Link></li>
-                  <li><Link to="/user/bookings" onClick={closeMobileMenu}>Lịch sử Đặt Sân</Link></li>
+                  <li className={isActive('/booking') ? 'active' : ''}><Link to="/booking" onClick={closeMobileMenu}>Đặt một Sân</Link></li>
+                  <li className={isActive('/user/bookings') ? 'active' : ''}><Link to="/user/bookings" onClick={closeMobileMenu}>Lịch sử Đặt Sân</Link></li>
                 </ul>
               </li>
 
-              <li className="has-submenu">
+              <li className={`has-submenu ${isActive('/user/dashboard') || isActive('/coach/dashboard') ? 'active' : ''}`}>
                 <a href="#" onClick={(e) => e.preventDefault()}>
                   Bảng Điều Khiển <i className="fas fa-chevron-down"></i>
                 </a>
                 <ul className="submenu">
-                  <li><Link to="/user/dashboard" onClick={closeMobileMenu}>Dành cho Người chơi</Link></li>
-                  <li><Link to="/coach/dashboard" onClick={closeMobileMenu}>Dành cho Quản lý sân</Link></li>
+                  <li className={isActive('/user/dashboard') ? 'active' : ''}><Link to="/user/dashboard" onClick={closeMobileMenu}>Dành cho Người chơi</Link></li>
+                  <li className={isActive('/coach/dashboard') ? 'active' : ''}><Link to="/coach/dashboard" onClick={closeMobileMenu}>Dành cho Quản lý sân</Link></li>
                 </ul>
               </li>
 
-              <li>
+              <li className={isActive('/about') ? 'active' : ''}>
                 <Link to="/about" onClick={closeMobileMenu}>Về Chúng tôi</Link>
               </li>
-              <li>
+              <li className={isActive('/contact') ? 'active' : ''}>
                 <Link to="/contact" onClick={closeMobileMenu}>Liên hệ</Link>
               </li>
               <li className="login-link">

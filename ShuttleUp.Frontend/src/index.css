@@ -261,6 +261,12 @@
   padding: 0;
 }
 
+/* Fix active icon jumping into text on scroll */
+.header.fixed .main-nav > li.active > a:before,
+.header.fixed .main-menu-wrapper .main-nav > li.active > a:before {
+    top: 6px !important;
+}
+
 .header .main-nav > li {
   display: block;
   position: relative;

@@ -1,4 +1,3 @@
-import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
@@ -69,9 +68,6 @@ const featuredVenues = [
 const featuredVenuesLoop = [...featuredVenues, ...featuredVenues.map(v => ({ ...v, id: v.id + 10 }))];
 
 export default function FeaturedVenues() {
-  const prevRef = useRef(null);
-  const nextRef = useRef(null);
-
   return (
     <section className="section featured-venues">
       <div className="container">
@@ -84,12 +80,8 @@ export default function FeaturedVenues() {
             <Swiper
               modules={[Navigation, Autoplay]}
               navigation={{
-                prevEl: prevRef.current,
-                nextEl: nextRef.current,
-              }}
-              onBeforeInit={(swiper) => {
-                swiper.params.navigation.prevEl = prevRef.current;
-                swiper.params.navigation.nextEl = nextRef.current;
+                prevEl: '.fv-prev',
+                nextEl: '.fv-next',
               }}
               autoplay={{ delay: 3500, disableOnInteraction: false }}
               loop
@@ -153,10 +145,10 @@ export default function FeaturedVenues() {
             </Swiper>
             {/* Owl-nav style external navigation arrows */}
             <div className="owl-nav">
-              <button ref={prevRef} className="owl-prev" type="button">
+              <button className="owl-prev fv-prev" type="button">
                 <i className="feather-chevron-left"></i>
               </button>
-              <button ref={nextRef} className="owl-next" type="button">
+              <button className="owl-next fv-next" type="button">
                 <i className="feather-chevron-right"></i>
               </button>
             </div>

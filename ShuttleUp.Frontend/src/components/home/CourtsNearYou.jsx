@@ -23,7 +23,10 @@ export default function CourtsNearYou() {
           <div className="featured-slider-group aos" data-aos="fade-up">
             <Swiper
               modules={[Navigation, Autoplay]}
-              navigation
+              navigation={{
+                prevEl: '.cny-prev',
+                nextEl: '.cny-next',
+              }}
               autoplay={{ delay: 3500, disableOnInteraction: false }}
               loop
               spaceBetween={24}
@@ -74,6 +77,15 @@ export default function CourtsNearYou() {
                 </SwiperSlide>
               ))}
             </Swiper>
+            {/* Owl-nav style external navigation arrows */}
+            <div className="owl-nav">
+              <button className="owl-prev cny-prev" type="button">
+                <i className="feather-chevron-left"></i>
+              </button>
+              <button className="owl-next cny-next" type="button">
+                <i className="feather-chevron-right"></i>
+              </button>
+            </div>
           </div>
         </div>
         <div className="view-all text-center aos" data-aos="fade-up">
