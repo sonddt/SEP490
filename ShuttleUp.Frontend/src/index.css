@@ -59,13 +59,19 @@
 }
 
 /* Fix inner links inside the login button wrapper */
-.header .header-navbar-rht .log-register a {
+.header .header-navbar-rht .header-login-btn {
+  background: #ffffff !important;
+  color: #097e52 !important;
+  border: 1px solid #e5e7eb !important;
   text-decoration: none;
-  color: inherit;
 }
 
-.header .header-navbar-rht .log-register span i {
+.header .header-navbar-rht .header-login-btn span i {
   margin-right: 6px;
+}
+
+.header .header-navbar-rht .header-login-btn:hover {
+  color: #065f3e !important;
 }
 
 .header .header-navbar-rht .btn-secondary {
