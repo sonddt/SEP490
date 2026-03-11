@@ -32,6 +32,9 @@ const Header = ({ transparent = false }) => {
     scrolled ? 'fixed' : '',
   ].filter(Boolean).join(' ');
 
+  const isWhiteBg = !transparent || scrolled;
+  const logoSrc = isWhiteBg ? "/assets/img/logo-black.svg" : "/assets/img/logo.svg";
+
   return (
     <header className={headerClass}>
       <div className="container-fluid">
@@ -52,7 +55,7 @@ const Header = ({ transparent = false }) => {
               </span>
             </button>
             <Link to="/" className="navbar-brand logo" onClick={closeMobileMenu}>
-              <img src="/assets/img/logo.svg" className="img-fluid" alt="ShuttleUp" />
+              <img src={logoSrc} className="img-fluid" alt="ShuttleUp" />
             </Link>
           </div>
 

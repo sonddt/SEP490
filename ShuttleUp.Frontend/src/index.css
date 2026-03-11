@@ -18,6 +18,17 @@
   to   { transform: translateY(0); }
 }
 
+.header .header-nav {
+  padding-top: 15px !important;
+  padding-bottom: 15px !important;
+  transition: padding 0.3s ease;
+}
+
+.header.fixed .header-nav {
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+
 /* Header right buttons: Login/Register + List Your Court */
 .header .header-navbar-rht {
   align-items: center;
@@ -73,8 +84,6 @@
 .header.fixed .header-navbar-rht .header-login-btn,
 .header.fixed .header-navbar-rht .btn-secondary {
   padding: 6px 18px;
-  margin-top: 6px;
-  margin-bottom: 6px;
 }
 
 /* Push page content down so it's not hidden under fixed header */
@@ -229,4 +238,14 @@
 .header .main-nav > li > a:focus::before {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* Fix 5: Authendication pages viewport overflow overlap */
+.vph-100 {
+  min-height: 100vh !important;
+  height: auto !important;
+  padding: 40px 0 !important;
+}
+.banner-bg.login, .banner-bg.register {
+    min-height: 100vh !important;
 }

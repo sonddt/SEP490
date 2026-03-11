@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import HomePage from './pages/HomePage';
@@ -20,9 +20,13 @@ const PlaceholderPage = ({ title }) => (
 );
 
 function App() {
+  const location = useLocation();
+  const authRoutes = ['/login', '/register', '/forgot-password', '/change-password'];
+  const isAuthPage = authRoutes.includes(location.pathname);
+
   return (
     <>
-      <Header transparent={true} />
+      {!isAuthPage && <Header transparent={location.pathname === '/'} />}
 
       <Routes>
         {/* Home */}
@@ -70,7 +74,7 @@ function App() {
         <Route path="*" element={<PlaceholderPage title="404 – Page Not Found" />} />
       </Routes>
 
-      <Footer />
+      {!isAuthPage && <Footer />}
     </>
   );
 }
