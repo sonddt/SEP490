@@ -1,6 +1,27 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { forgotPassword } from '../api/authApi';
 
 export default function ForgotPassword() {
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await forgotPassword(email);
+      setSuccess(true);
+    } catch (err) {
+      setError(err.response?.data?.message ?? 'Không thể kết nối đến máy chủ. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="main-wrapper authendication-pages">
       <div className="content blur-ellipses">
@@ -16,17 +37,38 @@ export default function ForgotPassword() {
                 <div className="shadow-card">
                   <h2>Quên Mật Khẩu</h2>
                   <p>Nhập Email Đã Đăng Ký Của Bạn</p>
-                  <form onSubmit={(e) => { e.preventDefault(); console.log('Forgot password request sent'); }}>
-                    <div className="form-group">
-                      <div className="group-img">
-                        <i className="feather-mail"></i>
-                        <input type="email" className="form-control" placeholder="Email" required />
-                      </div>
+
+                  {success ? (
+                    <div className="alert alert-success">
+                      Chúng tôi đã gửi link đặt lại mật khẩu đến <strong>{email}</strong>.
+                      Vui lòng kiểm tra hộp thư (kể cả thư mục Spam).
                     </div>
-                    <button type="submit" className="btn btn-secondary w-100 d-inline-flex justify-content-center align-items-center">
-                      Gửi Yêu Cầu<i className="feather-arrow-right-circle ms-2"></i>
-                    </button>
-                  </form>
+                  ) : (
+                    <form onSubmit={handleSubmit}>
+                      {error && <div className="alert alert-danger">{error}</div>}
+                      <div className="form-group">
+                        <div className="group-img">
+                          <i className="feather-mail"></i>
+                          <input
+                            type="email"
+                            className="form-control"
+                            placeholder="Email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="submit"
+                        className="btn btn-secondary w-100 d-inline-flex justify-content-center align-items-center"
+                        disabled={loading}
+                      >
+                        {loading ? 'Đang gửi...' : 'Gửi Yêu Cầu'}
+                        {!loading && <i className="feather-arrow-right-circle ms-2"></i>}
+                      </button>
+                    </form>
+                  )}
                 </div>
                 <div className="bottom-text text-center">
                   <p>Nhớ mật khẩu? <Link to="/login">Đăng nhập!</Link></p>

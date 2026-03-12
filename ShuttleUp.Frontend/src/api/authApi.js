@@ -34,3 +34,35 @@ export function loginGoogle(data) {
     roles: data.roles ?? ['PLAYER'],
   });
 }
+
+/**
+ * Yêu cầu gửi email đặt lại mật khẩu
+ * @param {string} email
+ */
+export function forgotPassword(email) {
+  return axiosClient.post('/auth/forgot-password', { email });
+}
+
+/**
+ * Đặt lại mật khẩu bằng token nhận từ link email
+ * @param {{ token, newPassword, confirmPassword }} data
+ */
+export function resetPassword(data) {
+  return axiosClient.post('/auth/reset-password', {
+    token: data.token,
+    newPassword: data.newPassword,
+    confirmPassword: data.confirmPassword,
+  });
+}
+
+/**
+ * Đổi mật khẩu khi đã đăng nhập (cần JWT trong header)
+ * @param {{ currentPassword, newPassword, confirmPassword }} data
+ */
+export function changePassword(data) {
+  return axiosClient.post('/auth/change-password', {
+    currentPassword: data.currentPassword,
+    newPassword: data.newPassword,
+    confirmPassword: data.confirmPassword,
+  });
+}
