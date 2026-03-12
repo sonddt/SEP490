@@ -130,6 +130,79 @@
   padding-top: 96px; /* match header height - breadcrumb & its background start below the header */
 }
 
+/* ── Responsive header: co giãn khi màn hình/zoom nhỏ lại ─────────────────── */
+
+/* Desktop ≥ 1200px: luôn 1 hàng, giống thiết kế gốc */
+@media (min-width: 1200px) {
+  .header .header-nav {
+    flex-wrap: nowrap !important;
+    height: 96px !important;
+    padding: 0 24px !important;
+  }
+
+  .header .header-navbar-rht {
+    flex-wrap: nowrap !important;
+  }
+}
+
+/* Laptop vừa (992px–1199px): thu nhỏ chút nhưng vẫn 1 hàng */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+  .header .header-nav {
+    flex-wrap: nowrap !important;
+    height: 88px !important;
+    padding: 0 16px !important;
+  }
+
+  .header .main-nav > li > a {
+    padding: 0 10px;
+    font-size: 14px;
+  }
+
+  .header.fixed .main-nav > li > a {
+    line-height: 60px;
+  }
+}
+
+/* Tablet & mobile < 992px: cho phép xuống hàng gọn gàng */
+@media (max-width: 991.98px) {
+  .header .header-nav {
+    flex-wrap: wrap !important;
+    height: auto !important;
+    padding: 8px 12px !important;
+    row-gap: 6px;
+  }
+
+  .header .navbar-header {
+    margin-bottom: 4px;
+  }
+
+  .header .main-nav > li > a {
+    line-height: 44px;
+    padding: 0 10px;
+    font-size: 14px;
+  }
+
+  .header.fixed .main-nav > li > a {
+    line-height: 40px;
+  }
+
+  .header .header-navbar-rht {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .header .header-navbar-rht .btn {
+    height: 40px !important;
+    padding: 0 16px !important;
+    font-size: 14px;
+  }
+
+  .main-wrapper.content-below-header {
+    padding-top: 80px;
+  }
+}
+
 /* Fix 2: Featured Venues Slider - match template's owl-carousel layout */
 
 /* Container: no padding, arrows overlay the edges */
