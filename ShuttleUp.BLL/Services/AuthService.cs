@@ -15,15 +15,18 @@ public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
     private readonly IRoleRepository _roleRepository;
+    private readonly IEmailService _emailService;
     private readonly IConfiguration _configuration;
 
     public AuthService(
         IUserRepository userRepository,
         IRoleRepository roleRepository,
+        IEmailService emailService,
         IConfiguration configuration)
     {
         _userRepository = userRepository;
         _roleRepository = roleRepository;
+        _emailService = emailService;
         _configuration = configuration;
     }
 
@@ -118,6 +121,48 @@ public class AuthService : IAuthService
         return BuildLoginResponse(newUser);
     }
 
+    // ── Forgot Password ───────────────────────────────────────────────────────
+    public async Task ForgotPasswordAsync(ForgotPasswordRequestDto request)
+    {
+        var user = await _userRepository.GetByEmailAsync(request.Email);
+        // Luôn trả 200 dù email không tồn tại (bảo mật, không lộ email)
+        if (user == null) return;
+
+        var token = GeneratePasswordResetToken(user);
+        var frontendUrl = _configuration["App:FrontendUrl"] ?? "http://localhost:5173";
+        var resetLink = $"{frontendUrl}/change-password?token={Uri.EscapeDataString(token)}";
+
+        await _emailService.SendPasswordResetEmailAsync(user.Email, user.FullName, resetLink);
+    }
+
+    // ── Reset Password (từ link email) ────────────────────────────────────────
+    public async Task ResetPasswordAsync(ResetPasswordRequestDto request)
+    {
+        var userId = ValidatePasswordResetToken(request.Token);
+
+        var user = await _userRepository.GetByIdAsync(userId)
+            ?? throw new InvalidOperationException("Tài khoản không tồn tại.");
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+        await _userRepository.UpdateAsync(user);
+    }
+
+    // ── Change Password (đã đăng nhập) ────────────────────────────────────────
+    public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequestDto request)
+    {
+        var user = await _userRepository.GetByIdAsync(userId)
+            ?? throw new InvalidOperationException("Tài khoản không tồn tại.");
+
+        if (string.IsNullOrEmpty(user.PasswordHash)
+            || !BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
+            throw new UnauthorizedAccessException("Mật khẩu hiện tại không đúng.");
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+        await _userRepository.UpdateAsync(user);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -184,5 +229,63 @@ public class AuthService : IAuthService
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    private string GeneratePasswordResetToken(User user)
+    {
+        var key = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var token = new JwtSecurityToken(
+            issuer: _configuration["Jwt:Issuer"],
+            audience: _configuration["Jwt:Audience"],
+            claims:
+            [
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new Claim("purpose", "password-reset"),
+            ],
+            expires: DateTime.UtcNow.AddMinutes(15),
+            signingCredentials: credentials);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    private Guid ValidatePasswordResetToken(string token)
+    {
+        var key = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+
+        var handler = new JwtSecurityTokenHandler();
+        try
+        {
+            handler.ValidateToken(token, new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = _configuration["Jwt:Issuer"],
+                ValidAudience = _configuration["Jwt:Audience"],
+                IssuerSigningKey = key,
+            }, out var validated);
+
+            var jwt = (JwtSecurityToken)validated;
+            var purpose = jwt.Claims.FirstOrDefault(c => c.Type == "purpose")?.Value;
+
+            if (purpose != "password-reset")
+                throw new UnauthorizedAccessException("Token không hợp lệ.");
+
+            var sub = jwt.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;
+            return Guid.Parse(sub);
+        }
+        catch (SecurityTokenExpiredException)
+        {
+            throw new UnauthorizedAccessException("Link đã hết hạn. Vui lòng yêu cầu lại.");
+        }
+        catch (Exception)
+        {
+            throw new UnauthorizedAccessException("Token không hợp lệ.");
+        }
     }
 }

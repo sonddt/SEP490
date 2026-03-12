@@ -1,9 +1,14 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import UserDashboardMenu from '../../components/user/UserDashboardMenu';
 import UserProfileTabs from '../../components/user/UserProfileTabs';
+import { changePassword } from '../../api/authApi';
+import { useAuth } from '../../context/AuthContext';
 
 export default function UserProfileChangePassword() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
   const [form, setForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -14,6 +19,7 @@ export default function UserProfileChangePassword() {
     newPw: false,
     confirm: false,
   });
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -30,20 +36,38 @@ export default function UserProfileChangePassword() {
     setSuccess('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
+
     if (form.newPassword !== form.confirmPassword) {
       setError('Mật khẩu xác nhận không khớp.');
       return;
     }
-    if (form.newPassword.length < 8) {
-      setError('Mật khẩu mới phải có ít nhất 8 ký tự.');
+    if (form.newPassword.length < 6) {
+      setError('Mật khẩu mới phải có ít nhất 6 ký tự.');
       return;
     }
-    // TODO: call API to change password
-    console.log('Changing password...');
-    setSuccess('Đổi mật khẩu thành công!');
-    handleReset();
+
+    setLoading(true);
+    try {
+      await changePassword(form);
+      setSuccess('Đổi mật khẩu thành công! Vui lòng đăng nhập lại.');
+      handleReset();
+      setTimeout(() => {
+        logout();
+        navigate('/login');
+      }, 2000);
+    } catch (err) {
+      setError(
+        err.response?.data?.message
+        ?? err.response?.data?.title
+        ?? 'Đổi mật khẩu thất bại. Vui lòng thử lại.'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -177,15 +201,17 @@ export default function UserProfileChangePassword() {
                     type="button"
                     className="btn btn-primary reset-profile"
                     onClick={handleReset}
+                    disabled={loading}
                   >
                     Đặt lại
                   </button>
                   <button
-                    type="submit"
+                    type="button"
                     className="btn btn-secondary save-profile"
                     onClick={handleSubmit}
+                    disabled={loading}
                   >
-                    Lưu thay đổi
+                    {loading ? 'Đang lưu...' : 'Lưu thay đổi'}
                   </button>
                 </div>
               </div>
