@@ -101,7 +101,7 @@ namespace ShuttleUp.Backend
 
             var app = builder.Build();
 
-            // ── Test Database Connection ──────────────────────────────────────────
+            // ── Test Database Connection + Seed Roles ─────────────────────────────
             using (var scope = app.Services.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<ShuttleUpDbContext>();
@@ -114,6 +114,22 @@ namespace ShuttleUp.Backend
                         Console.WriteLine(" [SUCCESS] Connected to MySQL Database successfully!");
                         Console.WriteLine("====================================================");
                         Console.ResetColor();
+
+                        // Seed default roles if not present
+                        var requiredRoles = new[] { "PLAYER", "MANAGER", "ADMIN" };
+                        foreach (var roleName in requiredRoles)
+                        {
+                            if (!dbContext.Roles.Any(r => r.Name == roleName))
+                            {
+                                dbContext.Roles.Add(new ShuttleUp.DAL.Models.Role
+                                {
+                                    Id = Guid.NewGuid(),
+                                    Name = roleName,
+                                });
+                                Console.WriteLine($" [SEED] Role '{roleName}' added.");
+                            }
+                        }
+                        dbContext.SaveChanges();
                     }
                     else
                     {
@@ -141,8 +157,13 @@ namespace ShuttleUp.Backend
                 app.UseSwaggerUI();
             }
 
-            app.UseHttpsRedirection();
             app.UseCors("AllowFrontend");
+
+            // Chỉ redirect HTTPS trong production — tránh CORS preflight bị block khi dev
+            if (!app.Environment.IsDevelopment())
+            {
+                app.UseHttpsRedirection();
+            }
 
             app.UseAuthentication();  
             app.UseAuthorization();

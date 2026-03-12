@@ -24,7 +24,7 @@ import UserProfileEdit from './pages/user/UserProfileEdit';
 import UserProfileChangePassword from './pages/user/UserProfileChangePassword';
 import UserProfileOtherSetting from './pages/user/UserProfileOtherSetting';
 
-const GOOGLE_CLIENT_ID = '1093055812182-vekuqfsn7hhh18e6k7hfunlht5dt7t3r.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = '993428936543-3tfatp8ak872p2j248tq3lbbqoi4r2ue.apps.googleusercontent.com';
 
 // ── Placeholder pages (to be replaced one by one) ──────────────────────────
 const PlaceholderPage = ({ title }) => (

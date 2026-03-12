@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ShuttleUp.BLL.DTOs.Auth;
 using ShuttleUp.BLL.Interfaces;
@@ -6,7 +5,7 @@ using ShuttleUp.BLL.Interfaces;
 namespace ShuttleUp.Backend.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/auth")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
@@ -16,53 +15,61 @@ public class AuthController : ControllerBase
         _authService = authService;
     }
 
-    /// <summary>
-    /// Đăng ký tài khoản bằng email + mật khẩu.
-    /// Roles hợp lệ: "PLAYER", "MANAGER" (có thể chọn cả 2).
-    /// Role ADMIN chỉ được gán bởi admin khác.
-    /// </summary>
+    // POST /api/auth/register
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
     {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
         try
         {
-            var response = await _authService.RegisterAsync(request);
-            return Ok(response);
+            var result = await _authService.RegisterAsync(request);
+            return Ok(result);
         }
         catch (InvalidOperationException ex)
         {
             return Conflict(new { message = ex.Message });
         }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
-    /// <summary>Đăng nhập bằng email + mật khẩu — trả về JWT token</summary>
+    // POST /api/auth/login
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
     {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
         try
         {
-            var response = await _authService.LoginAsync(request);
-            return Ok(response);
+            var result = await _authService.LoginAsync(request);
+            return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
         {
             return Unauthorized(new { message = ex.Message });
         }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
-    /// <summary>
-    /// Đăng nhập / đăng ký qua Google.
-    /// Gửi idToken nhận từ Google Sign-In (frontend).
-    /// - Nếu email chưa có trong hệ thống → tạo tài khoản mới, cần chỉ định Roles.
-    /// - Nếu email đã tồn tại → đăng nhập ngay, bỏ qua Roles.
-    /// </summary>
+    // POST /api/auth/google
     [HttpPost("google")]
     public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequestDto request)
     {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
         try
         {
-            var response = await _authService.GoogleLoginAsync(request);
-            return Ok(response);
+            var result = await _authService.GoogleLoginAsync(request);
+            return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -70,21 +77,11 @@ public class AuthController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return Conflict(new { message = ex.Message });
+            return BadRequest(new { message = ex.Message });
         }
-    }
-
-    /// <summary>Lấy thông tin người dùng hiện tại (yêu cầu đăng nhập)</summary>
-    [HttpGet("me")]
-    [Authorize]
-    public IActionResult Me()
-    {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                  ?? User.FindFirst("sub")?.Value;
-        var email = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
-                 ?? User.FindFirst("email")?.Value;
-        var roles = User.FindAll(System.Security.Claims.ClaimTypes.Role).Select(c => c.Value);
-
-        return Ok(new { userId, email, roles });
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
     }
 }
