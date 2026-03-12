@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { loginEmail, loginGoogle } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
@@ -14,6 +14,8 @@ export default function Login() {
 
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnUrl = location.state?.from || null;
 
   // ── Đường dẫn sau khi login xong ──────────────────────────────────────────
   const redirectAfterLogin = (roles) => {

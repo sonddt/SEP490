@@ -1,5 +1,29 @@
 /* ── ShuttleUp Global Custom CSS ─────────────────────────────────────────── */
 
+/* When header is NOT transparent and NOT scrolled (e.g. /courts): white bg + dark text so menu is visible */
+.header:not(.header-trans):not(.fixed) {
+  background: #ffffff !important;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
+}
+.header:not(.header-trans):not(.fixed) .main-nav > li > a {
+  color: #192335 !important;
+}
+.header:not(.header-trans):not(.fixed) .main-nav > li > a:hover,
+.header:not(.header-trans):not(.fixed) .main-nav > li > a:focus {
+  color: #097e52 !important;
+}
+.header:not(.header-trans):not(.fixed) .main-nav > li.active > a {
+  color: #097e52 !important;
+}
+/* Register button: darker green text on white header for contrast */
+.header:not(.header-trans):not(.fixed) .header-navbar-rht .header-login-btn {
+  color: #065f3e !important;
+  border-color: #d1d5db !important;
+}
+.header:not(.header-trans):not(.fixed) .header-navbar-rht .header-login-btn:hover {
+  color: #034d30 !important;
+}
+
 /* Fix 1: Header - reinforce template's built-in .header.fixed class */
 /* Template's style.css already defines .header.fixed; we just reinforce it */
 .header.fixed {
@@ -59,13 +83,19 @@
 }
 
 /* Fix inner links inside the login button wrapper */
-.header .header-navbar-rht .log-register a {
+.header .header-navbar-rht .header-login-btn {
+  background: #ffffff !important;
+  color: #097e52 !important;
+  border: 1px solid #e5e7eb !important;
   text-decoration: none;
-  color: inherit;
 }
 
-.header .header-navbar-rht .log-register span i {
+.header .header-navbar-rht .header-login-btn span i {
   margin-right: 6px;
+}
+
+.header .header-navbar-rht .header-login-btn:hover {
+  color: #065f3e !important;
 }
 
 .header .header-navbar-rht .btn-secondary {
@@ -94,9 +124,9 @@
   color: #065f3e !important;
 }
 
-/* Push page content down so it's not hidden under fixed header */
-.main-wrapper {
-  padding-top: 0;
+/* Push page content down so header doesn't sit on top of breadcrumb/bg image (courts, coach, etc.) */
+.main-wrapper.content-below-header {
+  padding-top: 96px; /* match header height - breadcrumb & its background start below the header */
 }
 
 /* Fix 2: Featured Venues Slider - match template's owl-carousel layout */
