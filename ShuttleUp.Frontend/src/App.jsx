@@ -7,6 +7,7 @@ import PageLoader from './components/common/PageLoader';
 import HomePage from './pages/HomePage';
 import CourtsListing from './pages/CourtsListing';
 import ManagerCourts from './pages/ManagerCourts';
+import VenueDetails from './pages/VenueDetails';
 
 // Auth
 import Login from './pages/Login';
@@ -61,7 +62,7 @@ function App() {
         <Route path="/courts/list" element={<CourtsListing />} />
         <Route path="/courts/map" element={<PlaceholderPage title="Courts Map" />} />
         <Route path="/courts/add" element={<PlaceholderPage title="List Your Court" />} />
-        <Route path="/venue-details" element={<PlaceholderPage title="Venue Details" />} />
+        <Route path="/venue-details" element={<VenueDetails />} />
 
         {/* Booking flow */}
         <Route path="/booking" element={<PlaceholderPage title="Book a Court" />} />
