@@ -21,10 +21,15 @@ const Header = ({ transparent = false }) => {
   useEffect(() => {
     if (mobileMenuOpen) {
       document.body.style.overflow = 'hidden';
+      document.body.classList.add('menu-opened');
     } else {
       document.body.style.overflow = '';
+      document.body.classList.remove('menu-opened');
     }
-    return () => { document.body.style.overflow = ''; };
+    return () => {
+      document.body.style.overflow = '';
+      document.body.classList.remove('menu-opened');
+    };
   }, [mobileMenuOpen]);
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
@@ -201,7 +206,7 @@ const Header = ({ transparent = false }) => {
           className="sidebar-overlay"
           onClick={closeMobileMenu}
           style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 999,
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000,
           }}
         />
       )}

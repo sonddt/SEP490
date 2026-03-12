@@ -56,16 +56,18 @@
   height: 80px !important;
 }
 
-/* Header right buttons: Login/Register (giao diện cũ) */
+/* Header right buttons: Login/Register – căn giữa dọc, cân đối như ảnh 4 */
 .header .header-navbar-rht {
   display: flex !important;
   align-items: center !important;
   gap: 15px;
+  flex-shrink: 0;
 }
 
 .header .header-navbar-rht .nav-item {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
 }
 
 /* Base button sizing to ensure both are exactly equal */
@@ -163,43 +165,33 @@
   }
 }
 
-/* Tablet & mobile < 992px: cho phép xuống hàng gọn gàng */
+/* Tablet & mobile < 992px: hamburger + sidebar trượt (dùng template .menu-opened trên body) */
 @media (max-width: 991.98px) {
   .header .header-nav {
-    flex-wrap: wrap !important;
-    height: auto !important;
-    padding: 8px 12px !important;
-    row-gap: 6px;
+    flex-wrap: nowrap !important;
+    height: 70px !important;
+    padding: 0 12px !important;
   }
 
   .header .navbar-header {
-    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
   }
 
-  .header .main-nav > li > a {
-    line-height: 44px;
-    padding: 0 10px;
-    font-size: 14px;
+  /* Template đã có .main-menu-wrapper position fixed + transform translateX(-260px);
+     khi body.menu-opened thì .menu-opened .main-menu-wrapper { transform: 0 }.
+     Chỉ override màu sidebar cho đúng brand. */
+  .header .main-menu-wrapper {
+    background-color: #066b45 !important;
   }
 
-  .header.fixed .main-nav > li > a {
-    line-height: 40px;
-  }
-
+  /* Ẩn nút user/đăng xuất trên mobile – chỉ hiện trong sidebar */
   .header .header-navbar-rht {
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 8px;
-  }
-
-  .header .header-navbar-rht .btn {
-    height: 40px !important;
-    padding: 0 16px !important;
-    font-size: 14px;
+    display: none !important;
   }
 
   .main-wrapper.content-below-header {
-    padding-top: 80px;
+    padding-top: 70px;
   }
 }
 
