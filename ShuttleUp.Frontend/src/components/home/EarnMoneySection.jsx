@@ -23,8 +23,8 @@ export default function EarnMoneySection() {
                   Trở Thành Chủ Sân
                 </button>
                 <button
-                  className={`btn ${activeTab === 'coach' ? 'btn-secondary become-venue' : 'btn-primary become-coche'} d-inline-flex align-items-center`}
-                  onClick={() => setActiveTab('coach')}
+                  className={`btn ${activeTab === 'manager' ? 'btn-secondary become-venue' : 'btn-primary become-coche'} d-inline-flex align-items-center`}
+                  onClick={() => setActiveTab('manager')}
                 >
                   Trở Thành Quản Lý
                 </button>
@@ -47,7 +47,7 @@ export default function EarnMoneySection() {
                   </div>
                 </div>
               )}
-              {activeTab === 'coach' && (
+              {activeTab === 'manager' && (
                 <div>
                   <h2>Trở Thành Quản Lý Sân Và Phát Triển Sự Nghiệp Cùng ShuttleUp</h2>
                   <p>Tham gia cùng đội ngũ quản lý của chúng tôi để vận hành các cụm sân chất lượng cao một cách chuyên nghiệp.</p>

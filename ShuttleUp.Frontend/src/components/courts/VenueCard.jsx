@@ -63,7 +63,7 @@ export default function VenueCard({ venue, viewMode = 'grid' }) {
             </div>
             <div className="listing-button">
               <div className="listing-venue-owner">
-                <Link to="/coach-detail" className="navigation">
+                <Link to="/manager-detail" className="navigation">
                   <img src={venue.avatar} alt="User" />
                   {venue.owner}
                 </Link>

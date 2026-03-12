@@ -44,7 +44,7 @@ export default function FeaturedCoaches() {
                   <div className="featured-venues-item">
                     <div className="listing-item mb-0">
                       <div className="listing-img">
-                        <Link to="/coach-detail">
+                        <Link to="/manager-detail">
                           <img src={manager.img} alt="Manager" />
                         </Link>
                         <div className="fav-item-venues">
@@ -61,9 +61,9 @@ export default function FeaturedCoaches() {
                       </div>
                       <div className="listing-content list-coche-content">
                         <span>Quản lý {manager.courts} sân</span>
-                        <h3><Link to="/coach-detail">{manager.name}</Link></h3>
-                        <Link to="/coach-details"><i className="feather-arrow-right"></i></Link>
-                        <Link to="/coach-details" className="icon-hover"><i className="feather-calendar"></i></Link>
+                        <h3><Link to="/manager-detail">{manager.name}</Link></h3>
+                        <Link to="/manager-detail"><i className="feather-arrow-right"></i></Link>
+                        <Link to="/manager-detail" className="icon-hover"><i className="feather-calendar"></i></Link>
                       </div>
                     </div>
                   </div>
@@ -82,7 +82,7 @@ export default function FeaturedCoaches() {
           </div>
         </div>
         <div className="view-all text-center aos" data-aos="fade-up">
-          <Link to="/coaches" className="btn btn-secondary d-inline-flex align-items-center">
+          <Link to="/managers" className="btn btn-secondary d-inline-flex align-items-center">
             Hiển Thị Tất Cả <span className="lh-1"><i className="feather-arrow-right-circle ms-2"></i></span>
           </Link>
         </div>

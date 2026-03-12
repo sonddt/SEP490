@@ -129,7 +129,7 @@ export default function FeaturedVenues() {
                         </div>
                         <div className="listing-button">
                           <div className="listing-venue-owner">
-                            <Link className="navigation" to="/coach-detail">
+                            <Link className="navigation" to="/manager-detail">
                               <img src={venue.avatar} alt="Owner" />{venue.owner}
                             </Link>
                           </div>

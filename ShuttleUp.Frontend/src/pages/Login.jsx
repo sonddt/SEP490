@@ -17,10 +17,11 @@ export default function Login() {
   const location = useLocation();
   const returnUrl = location.state?.from || null;
 
-  // ── Đường dẫn sau khi login xong ──────────────────────────────────────────
+  // ── Đường dẫn sau khi login xong (ưu tiên returnUrl từ ProtectedRoute) ─────
   const redirectAfterLogin = (roles) => {
+    if (returnUrl) return navigate(returnUrl);
     if (roles?.includes('ADMIN')) return navigate('/admin/dashboard');
-    if (roles?.includes('MANAGER')) return navigate('/coach/dashboard');
+    if (roles?.includes('MANAGER')) return navigate('/manager/dashboard');
     return navigate('/user/dashboard');
   };
 
@@ -46,7 +47,7 @@ export default function Login() {
     setLoading(true);
     try {
       // credentialResponse.credential là id_token từ Google
-      const roleByTab = activeTab === 'user' ? ['PLAYER'] : ['MANAGER'];
+      const roleByTab = activeTab === 'manager' ? ['MANAGER'] : ['PLAYER'];
       const data = await loginGoogle({
         idToken: credentialResponse.credential,
         roles: roleByTab,
@@ -110,8 +111,8 @@ export default function Login() {
                         </li>
                         <li className="nav-item" role="presentation">
                           <button
-                            className={`nav-link d-flex align-items-center ${activeTab === 'coach' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('coach')}
+                            className={`nav-link d-flex align-items-center ${activeTab === 'manager' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('manager')}
                             type="button"
                           >
                             <span className="d-flex justify-content-center align-items-center"></span>Tôi là Quản lý sân

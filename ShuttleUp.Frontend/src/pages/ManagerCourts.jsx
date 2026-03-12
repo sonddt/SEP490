@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { coachCourtsMock } from '../data/coachCourtsMock';
+import { managerCourtsMock } from '../data/managerCourtsMock';
 
 /**
- * Coach Courts - Danh sách sân (bảng) cho coach (all-court.html)
+ * Manager Courts - Danh sách sân (bảng) cho quản lý sân (all-court.html)
  */
-export default function CoachCourts() {
-  const [courts, setCourts] = useState(coachCourtsMock);
+export default function ManagerCourts() {
+  const [courts, setCourts] = useState(managerCourtsMock);
   const [filterTab, setFilterTab] = useState('all'); // all | active | inactive
   const [timeRange, setTimeRange] = useState('week');
   const [sortBy, setSortBy] = useState('relevance');
@@ -39,50 +39,50 @@ export default function CoachCourts() {
               <div className="dashboard-menu coaurt-menu-dash">
                 <ul>
                   <li>
-                    <Link to="/coach/dashboard">
+                    <Link to="/manager/dashboard">
                       <img src="/assets/img/icons/dashboard-icon.svg" alt="" />
                       <span>Dashboard</span>
                     </Link>
                   </li>
                   <li>
-                    <Link to="/coach/courts" className="active">
+                    <Link to="/manager/courts" className="active">
                       <img src="/assets/img/icons/court-icon.svg" alt="" />
                       <span>Courts</span>
                     </Link>
                   </li>
                   <li>
-                    <Link to="/coach/requests">
+                    <Link to="/manager/requests">
                       <img src="/assets/img/icons/request-icon.svg" alt="" />
                       <span>Requests</span>
                       <span className="court-notify">03</span>
                     </Link>
                   </li>
                   <li>
-                    <Link to="/coach/bookings">
+                    <Link to="/manager/bookings">
                       <img src="/assets/img/icons/booking-icon.svg" alt="" />
                       <span>Bookings</span>
                     </Link>
                   </li>
                   <li>
-                    <Link to="/coach/chat">
+                    <Link to="/manager/chat">
                       <img src="/assets/img/icons/chat-icon.svg" alt="" />
                       <span>Chat</span>
                     </Link>
                   </li>
                   <li>
-                    <Link to="/coach/earnings">
+                    <Link to="/manager/earnings">
                       <img src="/assets/img/icons/invoice-icon.svg" alt="" />
                       <span>Earnings</span>
                     </Link>
                   </li>
                   <li>
-                    <Link to="/coach/wallet">
+                    <Link to="/manager/wallet">
                       <img src="/assets/img/icons/wallet-icon.svg" alt="" />
                       <span>Wallet</span>
                     </Link>
                   </li>
                   <li>
-                    <Link to="/coach/profile">
+                    <Link to="/manager/profile">
                       <img src="/assets/img/icons/profile-icon.svg" alt="" />
                       <span>Profile Setting</span>
                     </Link>

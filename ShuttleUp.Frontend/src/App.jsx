@@ -6,7 +6,7 @@ import Footer from './components/layout/Footer';
 import PageLoader from './components/common/PageLoader';
 import HomePage from './pages/HomePage';
 import CourtsListing from './pages/CourtsListing';
-import CoachCourts from './pages/CoachCourts';
+import ManagerCourts from './pages/ManagerCourts';
 
 // Auth
 import Login from './pages/Login';
@@ -77,10 +77,10 @@ function App() {
         <Route path="/user/invoices" element={<ProtectedRoute><PlaceholderPage title="Invoices" /></ProtectedRoute>} />
         <Route path="/user/wallet" element={<ProtectedRoute><PlaceholderPage title="My Wallet" /></ProtectedRoute>} />
 
-        {/* Manager (Coach) */}
-        <Route path="/coach/dashboard" element={<PlaceholderPage title="Coach Dashboard" />} />
-        <Route path="/coach/courts" element={<CoachCourts />} />
-        <Route path="/coach/setting-password" element={<SettingPassword />} />
+        {/* Manager (Quản lý sân) */}
+        <Route path="/manager/dashboard" element={<PlaceholderPage title="Manager Dashboard" />} />
+        <Route path="/manager/courts" element={<ManagerCourts />} />
+        <Route path="/manager/setting-password" element={<SettingPassword />} />
 
         {/* Static / Info pages */}
         <Route path="/about" element={<PlaceholderPage title="About Us" />} />
@@ -89,8 +89,8 @@ function App() {
         <Route path="/services" element={<PlaceholderPage title="Services" />} />
         <Route path="/pricing" element={<PlaceholderPage title="Pricing" />} />
         <Route path="/faq" element={<PlaceholderPage title="FAQ" />} />
-        <Route path="/coaches" element={<PlaceholderPage title="Coaches" />} />
-        <Route path="/coach-detail" element={<PlaceholderPage title="Coach Detail" />} />
+        <Route path="/managers" element={<PlaceholderPage title="Quản lý sân" />} />
+        <Route path="/manager-detail" element={<PlaceholderPage title="Chi tiết Quản lý sân" />} />
         <Route path="/terms" element={<PlaceholderPage title="Terms & Conditions" />} />
         <Route path="/privacy-policy" element={<PlaceholderPage title="Privacy Policy" />} />
 

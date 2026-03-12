@@ -23,10 +23,10 @@ export default function SettingPassword() {
         {/* Profile Navigation (Mockup) */}
         <div className="coach-court-list profile-court-list">
           <ul className="nav">
-            <li><Link to="/coach/profile">Hồ sơ</Link></li>
-            <li><Link to="/coach/availability">Thời gian hoạt động</Link></li>
-            <li><Link className="active" to="/coach/setting-password">Đổi Mật Khẩu</Link></li>
-            <li><Link to="/coach/other-settings">Cài đặt khác</Link></li>
+            <li><Link to="/manager/profile">Hồ sơ</Link></li>
+            <li><Link to="/manager/availability">Thời gian hoạt động</Link></li>
+            <li><Link className="active" to="/manager/setting-password">Đổi Mật Khẩu</Link></li>
+            <li><Link to="/manager/other-settings">Cài đặt khác</Link></li>
           </ul>
         </div>
         

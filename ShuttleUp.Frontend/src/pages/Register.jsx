@@ -23,7 +23,7 @@ export default function Register() {
   const navigate = useNavigate();
 
   // tab → roles
-  const getRoles = () => (activeTab === 'user' ? ['PLAYER'] : ['MANAGER']);
+  const getRoles = () => (activeTab === 'manager' ? ['MANAGER'] : ['PLAYER']);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -56,7 +56,9 @@ export default function Register() {
         roles: getRoles(),
       });
       login(data);
-      navigate('/login');
+      const roles = data.user?.roles ?? [];
+      if (roles.includes('MANAGER')) navigate('/manager/dashboard');
+      else navigate('/user/dashboard');
     } catch (err) {
       const res = err.response;
       if (!res) {
@@ -87,7 +89,7 @@ export default function Register() {
       login(data);
       // Redirect dựa theo role nhận được từ BE
       const roles = data.user?.roles ?? [];
-      if (roles.includes('MANAGER')) navigate('/coach/dashboard');
+      if (roles.includes('MANAGER')) navigate('/manager/dashboard');
       else navigate('/user/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Đăng ký Google thất bại.');
@@ -146,8 +148,8 @@ export default function Register() {
                         </li>
                         <li className="nav-item" role="presentation">
                           <button
-                            className={`nav-link d-flex align-items-center ${activeTab === 'coach' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('coach')}
+                            className={`nav-link d-flex align-items-center ${activeTab === 'manager' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('manager')}
                             type="button"
                           >
                             <span className="d-flex justify-content-center align-items-center"></span>Tôi là Quản lý sân

@@ -60,7 +60,7 @@ DROP TABLE IF EXISTS users;
 CREATE TABLE users (
     id CHAR(36) PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,  -- Để trống '' cho tài khoản chỉ đăng nhập Google
     full_name VARCHAR(255) NOT NULL,
     phone_number VARCHAR(20),       -- Cập nhật theo Report (SĐT)
     gender VARCHAR(20),             -- Cập nhật theo Report (Giới tính)
@@ -381,6 +381,23 @@ CREATE TABLE report_files (
     FOREIGN KEY (report_id) REFERENCES violation_reports(id) ON DELETE CASCADE,
     FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
 );
+
+-- ======================================================================
+-- BƯỚC 2.5: DỮ LIỆU MẪU (Sample data để test đăng nhập / đăng ký)
+-- ======================================================================
+-- Mật khẩu cho 3 tài khoản mẫu bên dưới đều là: password
+-- (Hash BCrypt tương thích BCrypt.Net: $2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi)
+-- Test: Đăng nhập email "player@shuttleup.vn" / "manager@shuttleup.vn" / "admin@shuttleup.vn" với mật khẩu "password"
+
+INSERT INTO users (id, email, password_hash, full_name, phone_number, is_active, created_at, updated_at) VALUES
+('a0000001-0000-0000-0000-000000000001', 'player@shuttleup.vn', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Người chơi Mẫu', '0901234567', TRUE, NOW(), NOW()),
+('a0000002-0000-0000-0000-000000000002', 'manager@shuttleup.vn', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Quản lý Sân Mẫu', '0907654321', TRUE, NOW(), NOW()),
+('a0000003-0000-0000-0000-000000000003', 'admin@shuttleup.vn', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin Hệ thống', NULL, TRUE, NOW(), NOW());
+
+INSERT INTO user_roles (user_id, role_id) VALUES
+('a0000001-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002'),  -- PLAYER
+('a0000002-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000003'),  -- MANAGER
+('a0000003-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001');  -- ADMIN
 
 -- ======================================================================
 -- BƯỚC 3: BẬT LẠI KIỂM TRA KHÓA NGOẠI

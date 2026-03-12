@@ -37,7 +37,7 @@ const Header = ({ transparent = false }) => {
 
   // Dashboard path based on role
   const dashboardPath = user?.roles?.includes('MANAGER')
-    ? '/coach/dashboard'
+    ? '/manager/dashboard'
     : '/user/dashboard';
 
   // Helper to check if path is active
@@ -123,13 +123,13 @@ const Header = ({ transparent = false }) => {
                 </ul>
               </li>
 
-              <li className={`has-submenu ${isActive('/user/dashboard') || isActive('/coach/dashboard') ? 'active' : ''}`}>
+              <li className={`has-submenu ${isActive('/user/dashboard') || isActive('/manager/dashboard') ? 'active' : ''}`}>
                 <a href="#" onClick={(e) => e.preventDefault()}>
                   Bảng Điều Khiển <i className="fas fa-chevron-down"></i>
                 </a>
                 <ul className="submenu">
                   <li className={isActive('/user/dashboard') ? 'active' : ''}><Link to="/user/dashboard" onClick={closeMobileMenu}>Dành cho Người chơi</Link></li>
-                  <li className={isActive('/coach/dashboard') ? 'active' : ''}><Link to="/coach/dashboard" onClick={closeMobileMenu}>Dành cho Quản lý sân</Link></li>
+                  <li className={isActive('/manager/dashboard') ? 'active' : ''}><Link to="/manager/dashboard" onClick={closeMobileMenu}>Dành cho Quản lý sân</Link></li>
                 </ul>
               </li>
 

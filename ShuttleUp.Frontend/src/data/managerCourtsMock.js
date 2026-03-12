@@ -1,7 +1,7 @@
 /**
- * Mock data for coach courts table (from all-court.html)
+ * Mock data for manager courts table (from all-court.html)
  */
-export const coachCourtsMock = [
+export const managerCourtsMock = [
   {
     id: 1,
     name: 'Leap Sports Academy',
