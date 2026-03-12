@@ -15,17 +15,16 @@
 .header:not(.header-trans):not(.fixed) .main-nav > li.active > a {
   color: #097e52 !important;
 }
-/* Khi header nền trắng: nút Đăng ký/Đăng nhập tối màu hơn cho tương phản */
-.header:not(.header-trans):not(.fixed) .header-navbar-rht .btn-register {
+/* Register button: darker green text on white header for contrast (giao diện cũ) */
+.header:not(.header-trans):not(.fixed) .header-navbar-rht .header-login-btn {
   color: #065f3e !important;
   border-color: #d1d5db !important;
 }
-.header:not(.header-trans):not(.fixed) .header-navbar-rht .btn-register:hover {
+.header:not(.header-trans):not(.fixed) .header-navbar-rht .header-login-btn:hover {
   color: #034d30 !important;
 }
 
 /* Fix 1: Header - reinforce template's built-in .header.fixed class */
-/* Template's style.css already defines .header.fixed; we just reinforce it */
 .header.fixed {
   position: fixed !important;
   top: 0;
@@ -48,87 +47,65 @@
   display: flex !important;
   flex-wrap: nowrap !important;
   justify-content: space-between;
-  height: 96px !important; /* taller to give logo + menu more space */
+  height: 96px !important;
   padding: 0 24px !important;
   transition: height 0.3s ease;
 }
 
 .header.fixed .header-nav {
-  height: 80px !important; /* still roomy when fixed on scroll */
+  height: 80px !important;
 }
 
-/* Header right: chỉ 2 nút – Đăng ký (trái), Đăng nhập (phải) – không đè, không wrap */
+/* Header right buttons: Login/Register (giao diện cũ) */
 .header .header-navbar-rht {
   display: flex !important;
   align-items: center !important;
-  flex-wrap: nowrap !important;
-  gap: 12px !important;
-  flex-shrink: 0;
+  gap: 15px;
 }
 
 .header .header-navbar-rht .nav-item {
-  display: flex !important;
-  align-items: center !important;
-  flex-shrink: 0 !important;
+  display: flex;
+  align-items: center;
 }
 
-/* Base: tất cả nút bên phải header cùng kích thước */
+/* Base button sizing to ensure both are exactly equal */
 .header .header-navbar-rht .btn {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  height: 44px !important;
-  padding: 0 20px !important;
+  height: 48px !important;
+  padding: 0 24px !important;
   border-radius: 999px !important;
   font-weight: 600 !important;
   margin: 0 !important;
-  font-size: 14px !important;
-  text-decoration: none !important;
-  white-space: nowrap !important;
-  border: 1px solid transparent !important;
-}
-.header .header-navbar-rht .btn span i {
-  margin-right: 6px !important;
+  font-size: 15px;
 }
 
-/* Nút Đăng ký (bên trái): nền trắng, chữ xanh */
-.header .header-navbar-rht .btn-register {
-  background: #ffffff !important;
-  color: #097e52 !important;
-  border-color: #e5e7eb !important;
-}
-.header .header-navbar-rht .btn-register:hover {
-  color: #065f3e !important;
-  border-color: #d1d5db !important;
-}
-
-/* Nút Đăng nhập (bên phải): nền tối, chữ trắng */
-.header .header-navbar-rht .btn-login {
-  background: #192335 !important;
-  border-color: #192335 !important;
-  color: #fff !important;
-}
-.header .header-navbar-rht .btn-login:hover {
-  background: #243049 !important;
-  border-color: #243049 !important;
-  color: #fff !important;
-}
-
-/* Khi đã đăng nhập: nút user + Đăng xuất */
-.header .header-navbar-rht .btn-white {
+/* Nút Đăng ký (trái) – style cũ */
+.header .header-navbar-rht .header-login-btn {
   background: #ffffff !important;
   color: #097e52 !important;
   border: 1px solid #e5e7eb !important;
+  text-decoration: none;
 }
+
+.header .header-navbar-rht .header-login-btn span i {
+  margin-right: 6px;
+}
+
+.header .header-navbar-rht .header-login-btn:hover {
+  color: #065f3e !important;
+}
+
+/* Nút Đăng nhập (phải) và Đăng xuất – nền tối */
 .header .header-navbar-rht .btn-secondary {
   background: #192335 !important;
   border-color: #192335 !important;
-  color: #fff !important;
+  color: #ffffff !important;
 }
-.header .header-navbar-rht .btn-secondary:hover {
-  background: #243049 !important;
-  border-color: #243049 !important;
-  color: #fff !important;
+
+.header .header-navbar-rht .btn-secondary span i {
+  margin-right: 6px;
 }
 
 .header .header-navbar-rht .btn-secondary:hover {
@@ -137,6 +114,7 @@
   color: #ffffff !important;
 }
 
+/* Khi đã đăng nhập: nút tên user */
 .header .header-navbar-rht .btn-white {
   background: #ffffff !important;
   color: #097e52 !important;

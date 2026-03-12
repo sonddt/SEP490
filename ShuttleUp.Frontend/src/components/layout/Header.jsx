@@ -175,12 +175,16 @@ const Header = ({ transparent = false }) => {
             ) : (
               <>
                 <li className="nav-item">
-                  <Link className="nav-link btn btn-register" to="/register" onClick={closeMobileMenu}>
+                  <Link
+                    className="nav-link btn header-login-btn"
+                    to="/register"
+                    onClick={closeMobileMenu}
+                  >
                     <span><i className="feather-user-plus"></i></span>Đăng ký
                   </Link>
                 </li>
                 <li className="nav-item">
-                  <Link className="nav-link btn btn-login" to="/login" onClick={closeMobileMenu}>
+                  <Link className="nav-link btn btn-secondary" to="/login" onClick={closeMobileMenu}>
                     <span><i className="feather-log-in"></i></span>Đăng nhập
                   </Link>
                 </li>
