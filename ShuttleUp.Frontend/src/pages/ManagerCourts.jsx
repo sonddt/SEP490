@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { managerCourtsMock } from '../data/managerCourtsMock';
+import ManagerDashboardMenu from '../components/manager/ManagerDashboardMenu';
 
 /**
  * Manager Courts - Danh sách sân (bảng) cho quản lý sân (all-court.html)
@@ -23,76 +24,15 @@ export default function ManagerCourts() {
       <section className="breadcrumb breadcrumb-list mb-0">
         <span className="primary-right-round"></span>
         <div className="container">
-          <h1 className="text-white">Courts</h1>
+          <h1 className="text-white">Sân của tôi</h1>
           <ul>
-            <li><Link to="/">Home</Link></li>
-            <li>Courts</li>
+            <li><Link to="/">Trang chủ</Link></li>
+            <li>Sân của tôi</li>
           </ul>
         </div>
       </section>
 
-      {/* Dashboard Menu (from all-court.html) */}
-      <div className="dashboard-section coach-dash-section">
-        <div className="container">
-          <div className="row">
-            <div className="col-lg-12">
-              <div className="dashboard-menu coaurt-menu-dash">
-                <ul>
-                  <li>
-                    <Link to="/manager/dashboard">
-                      <img src="/assets/img/icons/dashboard-icon.svg" alt="" />
-                      <span>Dashboard</span>
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/manager/courts" className="active">
-                      <img src="/assets/img/icons/court-icon.svg" alt="" />
-                      <span>Courts</span>
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/manager/requests">
-                      <img src="/assets/img/icons/request-icon.svg" alt="" />
-                      <span>Requests</span>
-                      <span className="court-notify">03</span>
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/manager/bookings">
-                      <img src="/assets/img/icons/booking-icon.svg" alt="" />
-                      <span>Bookings</span>
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/manager/chat">
-                      <img src="/assets/img/icons/chat-icon.svg" alt="" />
-                      <span>Chat</span>
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/manager/earnings">
-                      <img src="/assets/img/icons/invoice-icon.svg" alt="" />
-                      <span>Earnings</span>
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/manager/wallet">
-                      <img src="/assets/img/icons/wallet-icon.svg" alt="" />
-                      <span>Wallet</span>
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/manager/profile">
-                      <img src="/assets/img/icons/profile-icon.svg" alt="" />
-                      <span>Profile Setting</span>
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ManagerDashboardMenu />
 
       {/* Page Content */}
       <div className="content court-bg">
@@ -112,7 +52,7 @@ export default function ManagerCourts() {
                               className={filterTab === 'all' ? 'active' : ''}
                               onClick={(e) => { e.preventDefault(); setFilterTab('all'); }}
                             >
-                              All Courts
+                              Tất cả sân
                             </a>
                           </li>
                           <li>
@@ -121,7 +61,7 @@ export default function ManagerCourts() {
                               className={filterTab === 'active' ? 'active' : ''}
                               onClick={(e) => { e.preventDefault(); setFilterTab('active'); }}
                             >
-                              Active Courts
+                              Đang hoạt động
                             </a>
                           </li>
                           <li>
@@ -130,7 +70,7 @@ export default function ManagerCourts() {
                               className={filterTab === 'inactive' ? 'active' : ''}
                               onClick={(e) => { e.preventDefault(); setFilterTab('inactive'); }}
                             >
-                              Inactive Courts
+                              Tạm ngưng
                             </a>
                           </li>
                         </ul>
@@ -145,21 +85,21 @@ export default function ManagerCourts() {
                               value={timeRange}
                               onChange={(e) => setTimeRange(e.target.value)}
                             >
-                              <option value="week">This Week</option>
-                              <option value="day">One Day</option>
+                              <option value="week">Tuần này</option>
+                              <option value="day">Hôm nay</option>
                             </select>
                           </div>
                         </div>
                         <div className="sortbyset">
-                          <span className="sortbytitle">Sort By</span>
+                          <span className="sortbytitle">Sắp xếp</span>
                           <div className="sorting-select">
                             <select
                               className="form-control select"
                               value={sortBy}
                               onChange={(e) => setSortBy(e.target.value)}
                             >
-                              <option value="relevance">Relevance</option>
-                              <option value="price">Price</option>
+                              <option value="relevance">Mặc định</option>
+                              <option value="price">Theo giá</option>
                             </select>
                           </div>
                         </div>
@@ -181,8 +121,8 @@ export default function ManagerCourts() {
                       <div className="row align-items-center">
                         <div className="col-md-6">
                           <div className="court-table-head">
-                            <h4>Courts</h4>
-                            <p>Explore top-quality courts for your sporting activities</p>
+                            <h4>Danh sách sân</h4>
+                            <p>Quản lý các sân cầu lông của bạn</p>
                           </div>
                         </div>
                       </div>
@@ -191,14 +131,14 @@ export default function ManagerCourts() {
                       <table className="table table-borderless datatable">
                         <thead className="thead-light">
                           <tr>
-                            <th>Court Name</th>
-                            <th>Location</th>
-                            <th>Amount</th>
-                            <th>Max Guest</th>
-                            <th>Additional Guests</th>
-                            <th>Added On</th>
-                            <th>Details</th>
-                            <th>Status</th>
+                            <th>Tên sân</th>
+                            <th>Địa điểm</th>
+                            <th>Giá/giờ</th>
+                            <th>Số người tối đa</th>
+                            <th>Khách thêm</th>
+                            <th>Ngày đăng</th>
+                            <th>Chi tiết</th>
+                            <th>Trạng thái</th>
                             <th></th>
                           </tr>
                         </thead>
@@ -223,13 +163,13 @@ export default function ManagerCourts() {
                                   </h2>
                                 </td>
                                 <td>{court.location}</td>
-                                <td><span className="pay-dark">${court.amount}</span></td>
+                                <td><span className="pay-dark">{Number(court.amount).toLocaleString('vi-VN')} ₫</span></td>
                                 <td>{court.maxGuest}</td>
                                 <td>{court.additionalGuests}</td>
                                 <td>{court.addedOn}</td>
                                 <td className="text-pink view-detail-pink">
                                   <Link to={`/venue-details?id=${court.id}`}>
-                                    <i className="feather-eye"></i> View Details
+                                    <i className="feather-eye"></i> Xem chi tiết
                                   </Link>
                                 </td>
                                 <td className="table-inset-btn">
@@ -261,12 +201,12 @@ export default function ManagerCourts() {
                                     <ul className="dropdown-menu dropdown-menu-end">
                                       <li>
                                         <button type="button" className="dropdown-item">
-                                          <i className="feather-edit"></i> Edit
+                                          <i className="feather-edit"></i> Chỉnh sửa
                                         </button>
                                       </li>
                                       <li>
-                                        <button type="button" className="dropdown-item">
-                                          <i className="feather-trash"></i> Delete
+                                        <button type="button" className="dropdown-item text-danger">
+                                          <i className="feather-trash"></i> Xoá
                                         </button>
                                       </li>
                                     </ul>
