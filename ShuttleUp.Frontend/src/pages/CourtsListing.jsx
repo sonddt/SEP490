@@ -26,8 +26,8 @@ export default function CourtsListing() {
   const hasMore = displayCount < venues.length;
 
   const breadcrumbTitle = isListView
-    ? 'Venue List Without Sidebar'
-    : 'Venue Grid Without Sidebar';
+    ? 'Danh sách sân (dạng danh sách)'
+    : 'Danh sách sân (dạng lưới)';
 
   return (
     <div className="main-wrapper content-below-header">
@@ -37,7 +37,7 @@ export default function CourtsListing() {
         <div className="container">
           <h1 className="text-white">{breadcrumbTitle}</h1>
           <ul>
-            <li><Link to="/">Home</Link></li>
+            <li><Link to="/">Trang chủ</Link></li>
             <li>{breadcrumbTitle}</li>
           </ul>
         </div>
@@ -54,19 +54,19 @@ export default function CourtsListing() {
                   <div className="row d-flex align-items-center">
                     <div className="col-xl-4 col-lg-3 col-sm-12 col-12">
                       <div className="count-search">
-                        <p><span>{venues.length}</span> venues are listed</p>
+                        <p><span>{venues.length}</span> sân đang được hiển thị</p>
                       </div>
                     </div>
                     <div className="col-xl-8 col-lg-9 col-sm-12 col-12">
                       <div className="sortby-filter-group">
                         <div className="grid-listview">
                           <ul className="nav">
-                            <li><span>View as</span></li>
+                            <li><span>Hiển thị dưới dạng</span></li>
                             <li>
                               <Link
                                 to="/courts"
                                 className={!isListView ? 'active' : ''}
-                                aria-label="Grid view"
+                                aria-label="Dạng lưới"
                               >
                                 <img src="/assets/img/icons/sort-01.svg" alt="Grid" />
                               </Link>
@@ -75,28 +75,28 @@ export default function CourtsListing() {
                               <Link
                                 to="/courts/list"
                                 className={isListView ? 'active' : ''}
-                                aria-label="List view"
+                                aria-label="Dạng danh sách"
                               >
                                 <img src="/assets/img/icons/sort-02.svg" alt="List" />
                               </Link>
                             </li>
                             <li>
-                              <Link to="/courts/map" aria-label="Map view">
+                              <Link to="/courts/map" aria-label="Bản đồ">
                                 <img src="/assets/img/icons/sort-03.svg" alt="Map" />
                               </Link>
                             </li>
                           </ul>
                         </div>
                         <div className="sortbyset">
-                          <span className="sortbytitle">Sort By</span>
+                          <span className="sortbytitle">Sắp xếp theo</span>
                           <div className="sorting-select">
                             <select
                               className="form-control select"
                               value={sortBy}
                               onChange={(e) => setSortBy(e.target.value)}
                             >
-                              <option value="relevance">Relevance</option>
-                              <option value="price">Price</option>
+                              <option value="relevance">Phù hợp nhất</option>
+                              <option value="price">Giá</option>
                             </select>
                           </div>
                         </div>
@@ -125,7 +125,7 @@ export default function CourtsListing() {
                     className="btn btn-load"
                     onClick={() => setDisplayCount((c) => Math.min(c + 6, venues.length))}
                   >
-                    Load More <img src="/assets/img/icons/u_plus-square.svg" className="ms-2" alt="" />
+                    Xem thêm <img src="/assets/img/icons/u_plus-square.svg" className="ms-2" alt="" />
                   </button>
                 ) : (
                   <p className="text-muted mb-0">Đã hiển thị tất cả sân.</p>

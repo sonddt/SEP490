@@ -7,6 +7,7 @@ import PageLoader from './components/common/PageLoader';
 import HomePage from './pages/HomePage';
 import CourtsListing from './pages/CourtsListing';
 import ManagerCourts from './pages/ManagerCourts';
+import VenueDetails from './pages/VenueDetails';
 
 // Auth
 import Login from './pages/Login';
@@ -61,17 +62,21 @@ function App() {
         <Route path="/courts/list" element={<CourtsListing />} />
         <Route path="/courts/map" element={<PlaceholderPage title="Courts Map" />} />
         <Route path="/courts/add" element={<PlaceholderPage title="List Your Court" />} />
-        <Route path="/venue-details" element={<PlaceholderPage title="Venue Details" />} />
+        <Route path="/venue-details" element={<VenueDetails />} />
 
         {/* Booking flow */}
         <Route path="/booking" element={<PlaceholderPage title="Book a Court" />} />
 
         {/* User (yêu cầu đăng nhập – UserDashboardMenu, UserProfileTabs chỉ hiện trong các trang này) */}
+        {/* Dashboard chính của user → trang MyProfile */}
+        <Route path="/user/dashboard" element={<ProtectedRoute><MyProfile /></ProtectedRoute>} />
+        {/* Alias cũ /user/my-profile vẫn trỏ về cùng trang để không bị 404 */}
         <Route path="/user/my-profile" element={<ProtectedRoute><MyProfile /></ProtectedRoute>} />
+
+        {/* Khu vực cài đặt hồ sơ */}
         <Route path="/user/profile" element={<ProtectedRoute><UserProfileEdit /></ProtectedRoute>} />
         <Route path="/user/profile/change-password" element={<ProtectedRoute><UserProfileChangePassword /></ProtectedRoute>} />
         <Route path="/user/profile/other-settings" element={<ProtectedRoute><UserProfileOtherSetting /></ProtectedRoute>} />
-        <Route path="/user/dashboard" element={<ProtectedRoute><PlaceholderPage title="User Dashboard" /></ProtectedRoute>} />
         <Route path="/user/bookings" element={<ProtectedRoute><PlaceholderPage title="My Bookings" /></ProtectedRoute>} />
         <Route path="/user/chat" element={<ProtectedRoute><PlaceholderPage title="Chat" /></ProtectedRoute>} />
         <Route path="/user/invoices" element={<ProtectedRoute><PlaceholderPage title="Invoices" /></ProtectedRoute>} />
