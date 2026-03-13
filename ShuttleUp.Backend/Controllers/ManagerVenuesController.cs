@@ -1,8 +1,8 @@
 using System.IdentityModel.Tokens.Jwt;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using ShuttleUp.BLL.DTOs.Manager;
 using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.DAL.Models;
@@ -16,11 +16,16 @@ public class ManagerVenuesController : ControllerBase
 {
     private readonly IVenueService _venueService;
     private readonly ICourtService _courtService;
+    private readonly ShuttleUpDbContext _dbContext;
 
-    public ManagerVenuesController(IVenueService venueService, ICourtService courtService)
+    public ManagerVenuesController(
+        IVenueService venueService,
+        ICourtService courtService,
+        ShuttleUpDbContext dbContext)
     {
         _venueService = venueService;
         _courtService = courtService;
+        _dbContext = dbContext;
     }
 
     // =====================================================================
@@ -225,6 +230,7 @@ public class ManagerVenuesController : ControllerBase
         if (venue.OwnerUserId != managerId)
             return Forbid("Bạn không có quyền thêm court cho venue này.");
 
+        // Tạo court mới
         var court = new Court
         {
             VenueId = venueId,
@@ -233,7 +239,43 @@ public class ManagerVenuesController : ControllerBase
             IsActive = request.IsActive ?? true
         };
 
-        await _courtService.CreateAsync(court);
+        await _courtService.CreateAsync(court); // lưu vào bảng courts
+
+        // Nếu có cấu hình giá theo khung giờ thì thêm vào court_prices
+        if (request.PriceSlots is { Count: > 0 })
+        {
+            var priceEntities = new List<CourtPrice>();
+
+            foreach (var slot in request.PriceSlots)
+            {
+                if (!TimeOnly.TryParse(slot.StartTime, out var start) ||
+                    !TimeOnly.TryParse(slot.EndTime, out var end))
+                {
+                    return BadRequest(new { message = "StartTime/EndTime phải có định dạng HH:mm." });
+                }
+
+                if (start >= end)
+                {
+                    return BadRequest(new { message = "StartTime phải nhỏ hơn EndTime trong cùng một ngày." });
+                }
+
+                priceEntities.Add(new CourtPrice
+                {
+                    Id = Guid.NewGuid(),
+                    CourtId = court.Id,
+                    StartTime = start,
+                    EndTime = end,
+                    Price = slot.Price,
+                    IsWeekend = slot.IsWeekend
+                });
+            }
+
+            if (priceEntities.Count > 0)
+            {
+                _dbContext.CourtPrices.AddRange(priceEntities);
+                await _dbContext.SaveChangesAsync();
+            }
+        }
 
         return Ok(new
         {

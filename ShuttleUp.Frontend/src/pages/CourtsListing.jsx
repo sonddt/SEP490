@@ -1,6 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { venuesMock } from '../data/venuesMock';
 import VenueCard from '../components/courts/VenueCard';
 
 /**
@@ -11,19 +10,68 @@ export default function CourtsListing() {
   const location = useLocation();
   const isListView = location.pathname === '/courts/list';
 
-  const [sortBy, setSortBy] = useState('relevance');
+  const [sortBy, setSortBy] = useState('price_asc');
   const [displayCount, setDisplayCount] = useState(9);
+  const [venues, setVenues] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const venues = useMemo(() => {
-    const list = [...venuesMock];
-    if (sortBy === 'price') {
-      list.sort((a, b) => a.price - b.price);
+  useEffect(() => {
+    async function loadVenues() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const sortDir = sortBy === 'price_desc' ? 'desc' : 'asc';
+        const response = await fetch(
+          `/api/venues?sortBy=price&sortDir=${encodeURIComponent(sortDir)}`
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to load venues (${response.status})`);
+        }
+
+        const data = await response.json();
+        // Map backend data về format VenueCard đang dùng tối thiểu:
+        const mapped = data.map((v) => ({
+          id: v.id,
+          name: v.name,
+          location: v.address,
+          minPrice: v.minPrice ?? null,
+          maxPrice: v.maxPrice ?? null,
+          img: '/assets/img/venues/venues-01.jpg', // TODO: thay bằng ảnh thật khi có
+          rating: '4.5', // TODO: map từ review khi đã có
+          reviews: '',
+          desc: '',
+          avatar: '/assets/img/profiles/avatar-01.jpg',
+          owner: '',
+        }));
+
+        setVenues(mapped);
+      } catch (err) {
+        setError(err.message || 'Đã xảy ra lỗi khi tải danh sách sân.');
+      } finally {
+        setLoading(false);
+      }
     }
-    return list;
+
+    loadVenues();
   }, [sortBy]);
 
-  const visibleVenues = venues.slice(0, displayCount);
-  const hasMore = displayCount < venues.length;
+  const sortedVenues = useMemo(() => {
+    const list = [...venues];
+    const getPrice = (v) => v.minPrice ?? v.maxPrice ?? 0;
+
+    if (sortBy === 'price_asc') {
+      list.sort((a, b) => getPrice(a) - getPrice(b));
+    } else if (sortBy === 'price_desc') {
+      list.sort((a, b) => getPrice(b) - getPrice(a));
+    }
+    return list;
+  }, [venues, sortBy]);
+
+  const visibleVenues = sortedVenues.slice(0, displayCount);
+  const hasMore = displayCount < sortedVenues.length;
 
   const breadcrumbTitle = isListView
     ? 'Danh sách sân (dạng danh sách)'
@@ -54,7 +102,7 @@ export default function CourtsListing() {
                   <div className="row d-flex align-items-center">
                     <div className="col-xl-4 col-lg-3 col-sm-12 col-12">
                       <div className="count-search">
-                        <p><span>{venues.length}</span> sân đang được hiển thị</p>
+                        <p><span>{sortedVenues.length}</span> sân đang được hiển thị</p>
                       </div>
                     </div>
                     <div className="col-xl-8 col-lg-9 col-sm-12 col-12">
@@ -95,8 +143,8 @@ export default function CourtsListing() {
                               value={sortBy}
                               onChange={(e) => setSortBy(e.target.value)}
                             >
-                              <option value="relevance">Phù hợp nhất</option>
-                              <option value="price">Giá</option>
+                              <option value="price_asc">Giá tăng dần</option>
+                              <option value="price_desc">Giá giảm dần</option>
                             </select>
                           </div>
                         </div>
@@ -108,9 +156,27 @@ export default function CourtsListing() {
             </div>
           </div>
 
+          {/* Loading / Error */}
+          {loading && (
+            <div className="row">
+              <div className="col-12 text-center py-5">
+                <p>Đang tải danh sách sân...</p>
+              </div>
+            </div>
+          )}
+          {error && !loading && (
+            <div className="row">
+              <div className="col-12">
+                <div className="alert alert-danger" role="alert">
+                  {error}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Listing Content */}
           <div className="row justify-content-center">
-            {visibleVenues.map((venue) => (
+            {!loading && !error && visibleVenues.map((venue) => (
               <VenueCard
                 key={venue.id}
                 venue={venue}

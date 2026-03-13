@@ -10,6 +10,27 @@ export default function VenueCard({ venue, viewMode = 'grid' }) {
 
   const isList = viewMode === 'list';
 
+  const formatPriceK = (value) => {
+    if (value == null) return null;
+    const num = Number(value) || 0;
+    if (num >= 1000) {
+      return `${Math.round(num / 1000)}k`;
+    }
+    return `${num}`;
+  };
+
+  const minLabel = formatPriceK(venue.minPrice);
+  const maxLabel = formatPriceK(venue.maxPrice);
+
+  let priceLabel = 'Liên hệ';
+  if (minLabel && maxLabel) {
+    priceLabel = minLabel === maxLabel ? `${minLabel}` : `${minLabel} - ${maxLabel}`;
+  } else if (minLabel) {
+    priceLabel = minLabel;
+  } else if (maxLabel) {
+    priceLabel = maxLabel;
+  }
+
   return (
     <div className={isList ? 'col-lg-12 col-md-12' : 'col-lg-4 col-md-6'}>
       <div className={isList ? 'featured-venues-item venue-list-item' : 'wrapper'}>
@@ -23,7 +44,8 @@ export default function VenueCard({ venue, viewMode = 'grid' }) {
                 <span className={`tag ${venue.tagClass}`}>{venue.tag}</span>
               )}
               <h5 className="tag tag-primary">
-                {venue.price}<span>/giờ</span>
+                {priceLabel}
+                <span>/giờ</span>
               </h5>
             </div>
           </div>
