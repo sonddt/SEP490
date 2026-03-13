@@ -13,6 +13,7 @@ import ManagerAvailability from './pages/manager/ManagerAvailability';
 import ManagerEarnings from './pages/manager/ManagerEarnings';
 import ManagerWallet from './pages/manager/ManagerWallet';
 import VenueDetails from './pages/VenueDetails';
+import Contact from './pages/Contact';
 
 // Auth
 import Login from './pages/Login';
@@ -102,7 +103,7 @@ function App() {
 
         {/* Static / Info pages */}
         <Route path="/about" element={<PlaceholderPage title="About Us" />} />
-        <Route path="/contact" element={<PlaceholderPage title="Contact Us" />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="/blog" element={<PlaceholderPage title="Blog" />} />
         <Route path="/services" element={<PlaceholderPage title="Services" />} />
         <Route path="/pricing" element={<PlaceholderPage title="Pricing" />} />
