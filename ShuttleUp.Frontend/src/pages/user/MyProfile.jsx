@@ -69,9 +69,15 @@ export default function MyProfile() {
                     <div className="convenient-btns">
                       <Link
                         to="/user/profile"
-                        className="btn btn-secondary d-inline-flex align-items-center"
+                        className="btn btn-secondary d-inline-flex align-items-center me-2"
                       >
                         <span><i className="feather-edit"></i></span>Chỉnh sửa hồ sơ
+                      </Link>
+                      <Link
+                        to="/user/profile/change-password"
+                        className="btn btn-primary d-inline-flex align-items-center"
+                      >
+                        <span><i className="feather-lock"></i></span>Đổi mật khẩu
                       </Link>
                     </div>
                   </div>
