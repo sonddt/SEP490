@@ -14,6 +14,7 @@ import ManagerEarnings from './pages/manager/ManagerEarnings';
 import ManagerWallet from './pages/manager/ManagerWallet';
 import VenueDetails from './pages/VenueDetails';
 import Contact from './pages/Contact';
+import About from './pages/About';
 
 // Auth
 import Login from './pages/Login';
@@ -102,7 +103,7 @@ function App() {
         <Route path="/manager/setting-password" element={<ProtectedRoute><SettingPassword /></ProtectedRoute>} />
 
         {/* Static / Info pages */}
-        <Route path="/about" element={<PlaceholderPage title="About Us" />} />
+        <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/blog" element={<PlaceholderPage title="Blog" />} />
         <Route path="/services" element={<PlaceholderPage title="Services" />} />
