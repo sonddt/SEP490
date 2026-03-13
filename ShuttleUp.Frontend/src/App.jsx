@@ -7,7 +7,13 @@ import PageLoader from './components/common/PageLoader';
 import HomePage from './pages/HomePage';
 import CourtsListing from './pages/CourtsListing';
 import ManagerCourts from './pages/ManagerCourts';
+import ManagerDashboard from './pages/manager/ManagerDashboard';
+import ManagerAddVenue from './pages/manager/ManagerAddVenue';
+import ManagerAvailability from './pages/manager/ManagerAvailability';
+import ManagerEarnings from './pages/manager/ManagerEarnings';
+import ManagerWallet from './pages/manager/ManagerWallet';
 import VenueDetails from './pages/VenueDetails';
+import Contact from './pages/Contact';
 
 // Auth
 import Login from './pages/Login';
@@ -82,14 +88,22 @@ function App() {
         <Route path="/user/invoices" element={<ProtectedRoute><PlaceholderPage title="Invoices" /></ProtectedRoute>} />
         <Route path="/user/wallet" element={<ProtectedRoute><PlaceholderPage title="My Wallet" /></ProtectedRoute>} />
 
-        {/* Manager (Quản lý sân) */}
-        <Route path="/manager/dashboard" element={<PlaceholderPage title="Manager Dashboard" />} />
-        <Route path="/manager/courts" element={<ManagerCourts />} />
-        <Route path="/manager/setting-password" element={<SettingPassword />} />
+        {/* Manager (Quản lý sân) – yêu cầu đăng nhập */}
+        <Route path="/manager/dashboard"   element={<ProtectedRoute><ManagerDashboard /></ProtectedRoute>} />
+        <Route path="/manager/courts"      element={<ProtectedRoute><ManagerCourts /></ProtectedRoute>} />
+        <Route path="/manager/courts/add"  element={<ProtectedRoute><ManagerAddVenue /></ProtectedRoute>} />
+        <Route path="/manager/availability" element={<ProtectedRoute><ManagerAvailability /></ProtectedRoute>} />
+        <Route path="/manager/earnings"    element={<ProtectedRoute><ManagerEarnings /></ProtectedRoute>} />
+        <Route path="/manager/wallet"      element={<ProtectedRoute><ManagerWallet /></ProtectedRoute>} />
+        <Route path="/manager/requests"    element={<ProtectedRoute><PlaceholderPage title="Yêu cầu đặt sân" /></ProtectedRoute>} />
+        <Route path="/manager/bookings"    element={<ProtectedRoute><PlaceholderPage title="Lịch đặt sân" /></ProtectedRoute>} />
+        <Route path="/manager/chat"        element={<ProtectedRoute><PlaceholderPage title="Trò chuyện" /></ProtectedRoute>} />
+        <Route path="/manager/profile"     element={<ProtectedRoute><PlaceholderPage title="Hồ sơ Quản lý" /></ProtectedRoute>} />
+        <Route path="/manager/setting-password" element={<ProtectedRoute><SettingPassword /></ProtectedRoute>} />
 
         {/* Static / Info pages */}
         <Route path="/about" element={<PlaceholderPage title="About Us" />} />
-        <Route path="/contact" element={<PlaceholderPage title="Contact Us" />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="/blog" element={<PlaceholderPage title="Blog" />} />
         <Route path="/services" element={<PlaceholderPage title="Services" />} />
         <Route path="/pricing" element={<PlaceholderPage title="Pricing" />} />
