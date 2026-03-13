@@ -36,6 +36,11 @@
   animation: headerSlideDown 0.3s ease;
 }
 
+/* Prevent fixed header from covering page content (breadcrumb, banners, etc.) */
+.header.fixed + .main-content {
+  padding-top: 80px;
+}
+
 @keyframes headerSlideDown {
   from { transform: translateY(-100%); }
   to   { transform: translateY(0); }

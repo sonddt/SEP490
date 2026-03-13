@@ -1,8 +1,8 @@
 const Contact = () => {
   return (
-    <>
+    <div className="main-wrapper content-below-header">
       {/* Breadcrumb */}
-      <div className="breadcrumb breadcrumb-list mb-0">
+      <section className="breadcrumb breadcrumb-list mb-0">
         <span className="primary-right-round"></span>
         <div className="container">
           <h1 className="text-white">Liên hệ</h1>
@@ -11,7 +11,7 @@ const Contact = () => {
             <li>Liên hệ</li>
           </ul>
         </div>
-      </div>
+      </section>
 
       {/* Page Content */}
       <div className="content blog-details contact-group">
@@ -138,7 +138,7 @@ const Contact = () => {
           </div>
         </section>
       </div>
-    </>
+    </div>
   );
 };
 

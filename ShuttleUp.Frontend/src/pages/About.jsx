@@ -32,9 +32,9 @@ const NEWS = [
 
 const About = () => {
   return (
-    <>
+    <div className="main-wrapper content-below-header">
       {/* Breadcrumb */}
-      <div className="breadcrumb breadcrumb-list mb-0">
+      <section className="breadcrumb breadcrumb-list mb-0">
         <span className="primary-right-round"></span>
         <div className="container">
           <h1 className="text-white">Về chúng tôi</h1>
@@ -43,7 +43,7 @@ const About = () => {
             <li>Về chúng tôi</li>
           </ul>
         </div>
-      </div>
+      </section>
 
       {/* Page Content */}
       <div className="content">
@@ -282,7 +282,7 @@ const About = () => {
           </div>
         </section>
       </div>
-    </>
+    </div>
   );
 };
 

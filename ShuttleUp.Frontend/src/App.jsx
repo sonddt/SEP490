@@ -54,6 +54,7 @@ function App() {
       <PageLoader />
       {!isAuthPage && <Header transparent={location.pathname === '/'} />}
 
+      <div className="main-content">
       <Routes>
         {/* Home */}
         <Route path="/" element={<HomePage />} />
@@ -117,6 +118,7 @@ function App() {
         {/* 404 */}
         <Route path="*" element={<PlaceholderPage title="404 – Page Not Found" />} />
       </Routes>
+      </div>
 
       {!isAuthPage && <Footer />}
     </>
