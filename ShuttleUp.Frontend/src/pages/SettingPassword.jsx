@@ -125,7 +125,7 @@ export default function SettingPassword() {
               <div className="save-changes text-end">
                 <button
                   type="button"
-                  className="btn btn-primary reset-profile me-2"
+                    className="btn btn-secondary reset-profile me-2"
                   onClick={handleReset}
                   disabled={loading}
                 >
@@ -133,7 +133,7 @@ export default function SettingPassword() {
                 </button>
                 <button
                   type="button"
-                  className="btn btn-secondary save-profile"
+                    className="btn btn-primary save-profile"
                   onClick={handleSubmit}
                   disabled={loading}
                 >

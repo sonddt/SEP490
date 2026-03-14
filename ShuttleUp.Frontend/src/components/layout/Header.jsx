@@ -45,6 +45,11 @@ const Header = ({ transparent = false }) => {
     ? '/manager/dashboard'
     : '/user/dashboard';
 
+  // Profile path based on role
+  const profilePath = user?.roles?.includes('MANAGER')
+    ? '/manager/setting-password'
+    : '/user/my-profile';
+
   // Helper to check if path is active
   const isActive = (path) => {
     if (path === '/') return location.pathname === '/';
@@ -160,7 +165,7 @@ const Header = ({ transparent = false }) => {
                 <li className="nav-item">
                   <Link
                     className="nav-link btn btn-white log-register"
-                    to={dashboardPath}
+                    to={profilePath}
                     onClick={closeMobileMenu}
                   >
                     <span><i className="feather-user"></i></span>
