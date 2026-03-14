@@ -34,6 +34,8 @@ namespace ShuttleUp.Backend
             // ── BLL — Services ────────────────────────────────────────────────────
             builder.Services.AddScoped<IEmailService, EmailService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
+            builder.Services.AddScoped<IVenueReviewRepository, VenueReviewRepository>();
+            builder.Services.AddScoped<IVenueReviewService, VenueReviewService>();
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<IVenueService, VenueService>();
             builder.Services.AddScoped<IBookingService, BookingService>();
