@@ -36,6 +36,11 @@
   animation: headerSlideDown 0.3s ease;
 }
 
+/* Prevent fixed header from covering page content (breadcrumb, banners, etc.) */
+.header.fixed + .main-content {
+  padding-top: 80px;
+}
+
 @keyframes headerSlideDown {
   from { transform: translateY(-100%); }
   to   { transform: translateY(0); }
@@ -56,16 +61,18 @@
   height: 80px !important;
 }
 
-/* Header right buttons: Login/Register (giao diện cũ) */
+/* Header right buttons: Login/Register – căn giữa dọc, cân đối như ảnh 4 */
 .header .header-navbar-rht {
   display: flex !important;
   align-items: center !important;
   gap: 15px;
+  flex-shrink: 0;
 }
 
 .header .header-navbar-rht .nav-item {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
 }
 
 /* Base button sizing to ensure both are exactly equal */
@@ -128,6 +135,69 @@
 /* Push page content down so header doesn't sit on top of breadcrumb/bg image (courts, coach, etc.) */
 .main-wrapper.content-below-header {
   padding-top: 96px; /* match header height - breadcrumb & its background start below the header */
+}
+
+/* ── Responsive header: co giãn khi màn hình/zoom nhỏ lại ─────────────────── */
+
+/* Desktop ≥ 1200px: luôn 1 hàng, giống thiết kế gốc */
+@media (min-width: 1200px) {
+  .header .header-nav {
+    flex-wrap: nowrap !important;
+    height: 96px !important;
+    padding: 0 24px !important;
+  }
+
+  .header .header-navbar-rht {
+    flex-wrap: nowrap !important;
+  }
+}
+
+/* Laptop vừa (992px–1199px): thu nhỏ chút nhưng vẫn 1 hàng */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+  .header .header-nav {
+    flex-wrap: nowrap !important;
+    height: 88px !important;
+    padding: 0 16px !important;
+  }
+
+  .header .main-nav > li > a {
+    padding: 0 10px;
+    font-size: 14px;
+  }
+
+  .header.fixed .main-nav > li > a {
+    line-height: 60px;
+  }
+}
+
+/* Tablet & mobile < 992px: hamburger + sidebar trượt (dùng template .menu-opened trên body) */
+@media (max-width: 991.98px) {
+  .header .header-nav {
+    flex-wrap: nowrap !important;
+    height: 70px !important;
+    padding: 0 12px !important;
+  }
+
+  .header .navbar-header {
+    display: flex;
+    align-items: center;
+  }
+
+  /* Template đã có .main-menu-wrapper position fixed + transform translateX(-260px);
+     khi body.menu-opened thì .menu-opened .main-menu-wrapper { transform: 0 }.
+     Chỉ override màu sidebar cho đúng brand. */
+  .header .main-menu-wrapper {
+    background-color: #066b45 !important;
+  }
+
+  /* Ẩn nút user/đăng xuất trên mobile – chỉ hiện trong sidebar */
+  .header .header-navbar-rht {
+    display: none !important;
+  }
+
+  .main-wrapper.content-below-header {
+    padding-top: 70px;
+  }
 }
 
 /* Fix 2: Featured Venues Slider - match template's owl-carousel layout */

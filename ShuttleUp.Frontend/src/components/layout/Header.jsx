@@ -5,8 +5,10 @@ import { useAuth } from '../../context/AuthContext';
 const Header = ({ transparent = false }) => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [openSubmenu, setOpenSubmenu] = useState(null); // 'search' | 'booking' | 'dashboard' | null
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // ── Scroll listener: add 'header-fixed' class when scrolled past 100px ──
   useEffect(() => {
@@ -21,13 +23,28 @@ const Header = ({ transparent = false }) => {
   useEffect(() => {
     if (mobileMenuOpen) {
       document.body.style.overflow = 'hidden';
+      document.body.classList.add('menu-opened');
     } else {
       document.body.style.overflow = '';
+      document.body.classList.remove('menu-opened');
     }
-    return () => { document.body.style.overflow = ''; };
+    return () => {
+      document.body.style.overflow = '';
+      document.body.classList.remove('menu-opened');
+    };
   }, [mobileMenuOpen]);
 
-  const closeMobileMenu = () => setMobileMenuOpen(false);
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
+    setOpenSubmenu(null);
+  };
+
+  const toggleSubmenu = (name) => {
+    // Only toggle submenu on mobile / tablet viewports
+    if (window.innerWidth < 992) {
+      setOpenSubmenu((prev) => (prev === name ? null : name));
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -107,32 +124,50 @@ const Header = ({ transparent = false }) => {
                 </Link>
               </li>
 
-              <li className={`has-submenu ${isActive('/courts') || isActive('/venue-details') ? 'active' : ''}`}>
-                <a href="#" onClick={(e) => e.preventDefault()}>
+              <li className={`has-submenu ${isActive('/courts') || isActive('/venue-details') ? 'active' : ''} ${openSubmenu === 'search' ? 'active' : ''}`}>
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    toggleSubmenu('search');
+                  }}
+                >
                   Tìm Sân <i className="fas fa-chevron-down"></i>
                 </a>
-                <ul className="submenu">
+                <ul className={`submenu ${openSubmenu === 'search' ? 'd-block' : ''}`}>
                   <li className={isActive('/courts') && !isActive('/courts/map') ? 'active' : ''}><Link to="/courts" onClick={closeMobileMenu}>Danh sách Sân</Link></li>
                   <li className={isActive('/courts/map') ? 'active' : ''}><Link to="/courts/map" onClick={closeMobileMenu}>Bản đồ Sân</Link></li>
                   <li className={isActive('/venue-details') ? 'active' : ''}><Link to="/venue-details" onClick={closeMobileMenu}>Chi tiết Sân</Link></li>
                 </ul>
               </li>
 
-              <li className={`has-submenu ${isActive('/booking') || isActive('/user/bookings') ? 'active' : ''}`}>
-                <a href="#" onClick={(e) => e.preventDefault()}>
+              <li className={`has-submenu ${isActive('/booking') || isActive('/user/bookings') ? 'active' : ''} ${openSubmenu === 'booking' ? 'active' : ''}`}>
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    toggleSubmenu('booking');
+                  }}
+                >
                   Đặt Sân <i className="fas fa-chevron-down"></i>
                 </a>
-                <ul className="submenu">
+                <ul className={`submenu ${openSubmenu === 'booking' ? 'd-block' : ''}`}>
                   <li className={isActive('/booking') ? 'active' : ''}><Link to="/booking" onClick={closeMobileMenu}>Đặt một Sân</Link></li>
                   <li className={isActive('/user/bookings') ? 'active' : ''}><Link to="/user/bookings" onClick={closeMobileMenu}>Lịch sử Đặt Sân</Link></li>
                 </ul>
               </li>
 
-              <li className={`has-submenu ${isActive('/user/dashboard') || isActive('/manager/dashboard') ? 'active' : ''}`}>
-                <a href="#" onClick={(e) => e.preventDefault()}>
+              <li className={`has-submenu ${isActive('/user/dashboard') || isActive('/manager/dashboard') ? 'active' : ''} ${openSubmenu === 'dashboard' ? 'active' : ''}`}>
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    toggleSubmenu('dashboard');
+                  }}
+                >
                   Bảng Điều Khiển <i className="fas fa-chevron-down"></i>
                 </a>
-                <ul className="submenu">
+                <ul className={`submenu ${openSubmenu === 'dashboard' ? 'd-block' : ''}`}>
                   <li className={isActive('/user/dashboard') ? 'active' : ''}><Link to="/user/dashboard" onClick={closeMobileMenu}>Dành cho Người chơi</Link></li>
                   <li className={isActive('/manager/dashboard') ? 'active' : ''}><Link to="/manager/dashboard" onClick={closeMobileMenu}>Dành cho Quản lý sân</Link></li>
                 </ul>
@@ -211,7 +246,7 @@ const Header = ({ transparent = false }) => {
           className="sidebar-overlay"
           onClick={closeMobileMenu}
           style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 999,
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000,
           }}
         />
       )}
