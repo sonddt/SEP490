@@ -144,6 +144,11 @@ const Header = ({ transparent = false }) => {
               <li className={isActive('/contact') ? 'active' : ''}>
                 <Link to="/contact" onClick={closeMobileMenu}>Liên hệ</Link>
               </li>
+              {isAuthenticated && (
+                <li className={isActive('/chat') ? 'active' : ''}>
+                  <Link to="/chat" onClick={closeMobileMenu}>💬 Chat</Link>
+                </li>
+              )}
               <li className="login-link">
                 <Link to="/register" onClick={closeMobileMenu}>Đăng ký</Link>
               </li>

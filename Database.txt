@@ -258,8 +258,22 @@ CREATE TABLE matching_members (
 
 CREATE TABLE chat_rooms (
     id CHAR(36) PRIMARY KEY,
-    post_id CHAR(36) UNIQUE,
-    FOREIGN KEY (post_id) REFERENCES matching_posts(id) ON DELETE CASCADE
+    name VARCHAR(255),                  -- Tên group chat
+    created_by CHAR(36),                -- Người tạo room
+    post_id CHAR(36) UNIQUE,            -- Liên kết matching post (tuỳ chọn)
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (post_id) REFERENCES matching_posts(id) ON DELETE SET NULL
+);
+
+-- Thành viên của từng room
+CREATE TABLE chat_room_members (
+    room_id CHAR(36),
+    user_id CHAR(36),
+    joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (room_id, user_id),
+    FOREIGN KEY (room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE chat_messages (
@@ -270,6 +284,15 @@ CREATE TABLE chat_messages (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (chat_room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE,
     FOREIGN KEY (sender_user_id) REFERENCES users(id)
+);
+
+-- File đính kèm trong tin nhắn (ảnh, v.v.)
+CREATE TABLE chat_message_files (
+    chat_message_id CHAR(36),
+    file_id CHAR(36),
+    PRIMARY KEY (chat_message_id, file_id),
+    FOREIGN KEY (chat_message_id) REFERENCES chat_messages(id) ON DELETE CASCADE,
+    FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
 );
 
 -- --------------------------------------------------

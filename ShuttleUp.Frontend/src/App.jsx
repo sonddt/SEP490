@@ -8,6 +8,7 @@ import HomePage from './pages/HomePage';
 import CourtsListing from './pages/CourtsListing';
 import ManagerCourts from './pages/ManagerCourts';
 import VenueDetails from './pages/VenueDetails';
+import ChatPage from './pages/ChatPage';
 
 // Auth
 import Login from './pages/Login';
@@ -78,6 +79,7 @@ function App() {
         <Route path="/user/profile/change-password" element={<ProtectedRoute><UserProfileChangePassword /></ProtectedRoute>} />
         <Route path="/user/profile/other-settings" element={<ProtectedRoute><UserProfileOtherSetting /></ProtectedRoute>} />
         <Route path="/user/bookings" element={<ProtectedRoute><PlaceholderPage title="My Bookings" /></ProtectedRoute>} />
+        <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
         <Route path="/user/chat" element={<ProtectedRoute><PlaceholderPage title="Chat" /></ProtectedRoute>} />
         <Route path="/user/invoices" element={<ProtectedRoute><PlaceholderPage title="Invoices" /></ProtectedRoute>} />
         <Route path="/user/wallet" element={<ProtectedRoute><PlaceholderPage title="My Wallet" /></ProtectedRoute>} />

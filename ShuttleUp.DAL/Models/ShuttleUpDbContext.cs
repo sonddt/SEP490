@@ -24,6 +24,8 @@ public partial class ShuttleUpDbContext : DbContext
 
     public virtual DbSet<ChatRoom> ChatRooms { get; set; }
 
+    public virtual DbSet<ChatRoomMember> ChatRoomMembers { get; set; }
+
     public virtual DbSet<Court> Courts { get; set; }
 
     public virtual DbSet<CourtBlock> CourtBlocks { get; set; }
@@ -205,12 +207,47 @@ public partial class ShuttleUpDbContext : DbContext
             entity.HasIndex(e => e.PostId, "post_id").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Name).HasMaxLength(255).HasColumnName("name");
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.PostId).HasColumnName("post_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+
+            entity.HasOne(d => d.CreatedByUser).WithMany()
+                .HasForeignKey(d => d.CreatedBy)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("chat_rooms_ibfk_creator");
 
             entity.HasOne(d => d.Post).WithOne(p => p.ChatRoom)
                 .HasForeignKey<ChatRoom>(d => d.PostId)
-                .OnDelete(DeleteBehavior.Cascade)
+                .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("chat_rooms_ibfk_1");
+        });
+
+        modelBuilder.Entity<ChatRoomMember>(entity =>
+        {
+            entity.HasKey(e => new { e.RoomId, e.UserId }).HasName("PRIMARY");
+
+            entity.ToTable("chat_room_members");
+
+            entity.Property(e => e.RoomId).HasColumnName("room_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.JoinedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("datetime")
+                .HasColumnName("joined_at");
+
+            entity.HasOne(d => d.Room).WithMany(p => p.Members)
+                .HasForeignKey(d => d.RoomId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("chat_room_members_ibfk_1");
+
+            entity.HasOne(d => d.User).WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("chat_room_members_ibfk_2");
         });
 
         modelBuilder.Entity<Court>(entity =>

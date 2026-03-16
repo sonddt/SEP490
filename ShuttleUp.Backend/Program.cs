@@ -36,6 +36,12 @@ namespace ShuttleUp.Backend
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IVenueReviewRepository, VenueReviewRepository>();
             builder.Services.AddScoped<IVenueReviewService, VenueReviewService>();
+            builder.Services.AddScoped<IChatRepository, ChatRepository>();
+            builder.Services.AddScoped<IChatService, ChatService>();
+            builder.Services.AddSignalR(options =>
+            {
+                options.EnableDetailedErrors = true;  // Hiện lỗi chi tiết để debug
+            });
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<IVenueService, VenueService>();
             builder.Services.AddScoped<IBookingService, BookingService>();
@@ -58,6 +64,21 @@ namespace ShuttleUp.Backend
                         ValidAudience = builder.Configuration["Jwt:Audience"],
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
                     };
+
+                    // SignalR gửi token qua query string, không phải Authorization header
+                    options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+                    {
+                        OnMessageReceived = context =>
+                        {
+                            var accessToken = context.Request.Query["access_token"];
+                            var path = context.HttpContext.Request.Path;
+                            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                            {
+                                context.Token = accessToken;
+                            }
+                            return Task.CompletedTask;
+                        }
+                    };
                 });
 
             // ── CORS — React/Vite frontend ────────────────────────────────────────
@@ -66,7 +87,8 @@ namespace ShuttleUp.Backend
                 options.AddPolicy("AllowFrontend", policy =>
                     policy.WithOrigins("http://localhost:5173")
                           .AllowAnyHeader()
-                          .AllowAnyMethod());
+                          .AllowAnyMethod()
+                          .AllowCredentials());  // Bắt buộc cho SignalR WebSocket
             });
 
             // ── Controllers + Swagger ─────────────────────────────────────────────
@@ -172,6 +194,7 @@ namespace ShuttleUp.Backend
             app.UseAuthorization();
 
             app.MapControllers();
+            app.MapHub<ShuttleUp.Backend.Hubs.ChatHub>("/hubs/chat");
 
             app.Run();
         }
