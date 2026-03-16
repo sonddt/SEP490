@@ -1,11 +1,12 @@
 -- ======================================================================
--- BƯỚC 1: TẮT KIỂM TRA KHÓA NGOẠI VÀ XÓA TOÀN BỘ BẢNG (DROP & RECREATE)
+-- BƯỚC 1: RESET DATABASE
 -- ======================================================================
 CREATE DATABASE IF NOT EXISTS shuttle_up;
 USE shuttle_up;
+
 SET FOREIGN_KEY_CHECKS = 0;
 
--- 8. File Storage (Mapping)
+-- FILE MAPPINGS
 DROP TABLE IF EXISTS report_files;
 DROP TABLE IF EXISTS venue_files;
 DROP TABLE IF EXISTS venue_review_files;
@@ -13,58 +14,57 @@ DROP TABLE IF EXISTS chat_message_files;
 DROP TABLE IF EXISTS refund_request_files;
 DROP TABLE IF EXISTS files;
 
--- 7. Admin & Moderation
+-- ADMIN
 DROP TABLE IF EXISTS violation_reports;
 DROP TABLE IF EXISTS venue_approval_requests;
 
--- 6. Reviews & Favorites
+-- REVIEWS
 DROP TABLE IF EXISTS favorite_venues;
 DROP TABLE IF EXISTS venue_reviews;
 
--- 5. Matching & Chat
+-- CHAT
+DROP TABLE IF EXISTS chat_room_members;
 DROP TABLE IF EXISTS chat_messages;
 DROP TABLE IF EXISTS chat_rooms;
 DROP TABLE IF EXISTS matching_members;
 DROP TABLE IF EXISTS matching_join_requests;
 DROP TABLE IF EXISTS matching_posts;
 
--- 4. Payments & Refunds
+-- PAYMENT
 DROP TABLE IF EXISTS refund_transactions;
 DROP TABLE IF EXISTS refund_requests;
 DROP TABLE IF EXISTS payments;
 
--- 3. Booking
+-- BOOKING
 DROP TABLE IF EXISTS court_blocks;
 DROP TABLE IF EXISTS booking_items;
 DROP TABLE IF EXISTS bookings;
 
--- 2. Venue & Courts
+-- VENUE
 DROP TABLE IF EXISTS court_prices;
 DROP TABLE IF EXISTS venue_open_hours;
 DROP TABLE IF EXISTS courts;
 DROP TABLE IF EXISTS venues;
 
--- 1. Core Identity
+-- USERS
 DROP TABLE IF EXISTS user_roles;
 DROP TABLE IF EXISTS roles;
 DROP TABLE IF EXISTS users;
 
+SET FOREIGN_KEY_CHECKS = 1;
+
 -- ======================================================================
--- BƯỚC 2: TẠO LẠI CÁC BẢNG (CREATE TABLES)
--- LƯU Ý: Kiểu uuid được chuyển thành CHAR(36) để tối ưu cho MySQL
+-- USERS
 -- ======================================================================
 
--- --------------------------------------------------
--- 1. CORE IDENTITY
--- --------------------------------------------------
 CREATE TABLE users (
     id CHAR(36) PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,  -- Để trống '' cho tài khoản chỉ đăng nhập Google
+    password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(255) NOT NULL,
-    phone_number VARCHAR(20),       -- Cập nhật theo Report (SĐT)
-    gender VARCHAR(20),             -- Cập nhật theo Report (Giới tính)
-    date_of_birth DATE,             -- Cập nhật theo Report (Tuổi)
+    phone_number VARCHAR(20),
+    gender VARCHAR(20),
+    date_of_birth DATE,
     is_active BOOLEAN DEFAULT TRUE,
     blocked_at DATETIME,
     blocked_reason TEXT,
@@ -79,30 +79,30 @@ CREATE TABLE roles (
     name VARCHAR(50) UNIQUE NOT NULL
 );
 
--- Seed default roles
-INSERT INTO roles (id, name) VALUES
-    ('00000000-0000-0000-0000-000000000001', 'ADMIN'),
-    ('00000000-0000-0000-0000-000000000002', 'PLAYER'),
-    ('00000000-0000-0000-0000-000000000003', 'MANAGER');
+INSERT INTO roles VALUES
+('00000000-0000-0000-0000-000000000001','ADMIN'),
+('00000000-0000-0000-0000-000000000002','PLAYER'),
+('00000000-0000-0000-0000-000000000003','MANAGER');
 
 CREATE TABLE user_roles (
     user_id CHAR(36),
     role_id CHAR(36),
-    PRIMARY KEY (user_id, role_id),
+    PRIMARY KEY(user_id,role_id),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
 );
 
--- --------------------------------------------------
--- 2. VENUE & COURTS
--- --------------------------------------------------
+-- ======================================================================
+-- VENUES
+-- ======================================================================
+
 CREATE TABLE venues (
     id CHAR(36) PRIMARY KEY,
     owner_user_id CHAR(36),
     name VARCHAR(255) NOT NULL,
     address TEXT NOT NULL,
-    lat DECIMAL(10, 8),
-    lng DECIMAL(11, 8),
+    lat DECIMAL(10,8),
+    lng DECIMAL(11,8),
     approval_status VARCHAR(50) DEFAULT 'PENDING',
     is_active BOOLEAN DEFAULT FALSE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -112,7 +112,7 @@ CREATE TABLE venues (
 CREATE TABLE courts (
     id CHAR(36) PRIMARY KEY,
     venue_id CHAR(36),
-    name VARCHAR(100) NOT NULL,
+    name VARCHAR(100),
     sport_type VARCHAR(50),
     is_active BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE
@@ -121,34 +121,34 @@ CREATE TABLE courts (
 CREATE TABLE venue_open_hours (
     id CHAR(36) PRIMARY KEY,
     venue_id CHAR(36),
-    day_of_week INT, -- 0 (Sunday) to 6 (Saturday)
+    day_of_week INT,
     open_time TIME,
     close_time TIME,
     FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE
 );
 
--- Cập nhật: Bảng giá theo khung giờ (Giải quyết vấn đề giá thay đổi)
 CREATE TABLE court_prices (
     id CHAR(36) PRIMARY KEY,
     court_id CHAR(36),
     start_time TIME,
     end_time TIME,
-    price DECIMAL(15, 2),
+    price DECIMAL(15,2),
     is_weekend BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (court_id) REFERENCES courts(id) ON DELETE CASCADE
 );
 
--- --------------------------------------------------
--- 3. BOOKING
--- --------------------------------------------------
+-- ======================================================================
+-- BOOKING
+-- ======================================================================
+
 CREATE TABLE bookings (
     id CHAR(36) PRIMARY KEY,
     user_id CHAR(36),
     venue_id CHAR(36),
     status VARCHAR(50) DEFAULT 'PENDING',
-    total_amount DECIMAL(15, 2),
-    discount_amount DECIMAL(15, 2) DEFAULT 0,
-    final_amount DECIMAL(15, 2),
+    total_amount DECIMAL(15,2),
+    discount_amount DECIMAL(15,2) DEFAULT 0,
+    final_amount DECIMAL(15,2),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (venue_id) REFERENCES venues(id)
@@ -160,7 +160,7 @@ CREATE TABLE booking_items (
     court_id CHAR(36),
     start_time DATETIME,
     end_time DATETIME,
-    final_price DECIMAL(15, 2),
+    final_price DECIMAL(15,2),
     status VARCHAR(50),
     FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
     FOREIGN KEY (court_id) REFERENCES courts(id)
@@ -176,16 +176,17 @@ CREATE TABLE court_blocks (
     FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
--- --------------------------------------------------
--- 4. PAYMENTS & REFUNDS
--- --------------------------------------------------
+-- ======================================================================
+-- PAYMENTS
+-- ======================================================================
+
 CREATE TABLE payments (
     id CHAR(36) PRIMARY KEY,
     booking_id CHAR(36),
     method VARCHAR(50),
     status VARCHAR(50) DEFAULT 'PENDING',
-    amount DECIMAL(15, 2),
-    gateway_reference VARCHAR(255), -- Cập nhật: Lưu mã VNPAY/Momo
+    amount DECIMAL(15,2),
+    gateway_reference VARCHAR(255),
     confirmed_by CHAR(36),
     confirmed_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -210,7 +211,7 @@ CREATE TABLE refund_transactions (
     id CHAR(36) PRIMARY KEY,
     refund_request_id CHAR(36),
     payment_id CHAR(36),
-    amount DECIMAL(15, 2),
+    amount DECIMAL(15,2),
     method VARCHAR(50),
     status VARCHAR(50),
     gateway_reference VARCHAR(255),
@@ -222,17 +223,18 @@ CREATE TABLE refund_transactions (
     FOREIGN KEY (processed_by) REFERENCES users(id)
 );
 
--- --------------------------------------------------
--- 5. MATCHING & CHAT
--- --------------------------------------------------
+-- ======================================================================
+-- MATCHING
+-- ======================================================================
+
 CREATE TABLE matching_posts (
     id CHAR(36) PRIMARY KEY,
     creator_user_id CHAR(36),
-    booking_id CHAR(36), -- Cập nhật: Nối thẳng vào Booking để đảm bảo đã có sân
+    booking_id CHAR(36),
     required_players INT,
     skill_level VARCHAR(50),
     gender_pref VARCHAR(50),
-    notes TEXT,          -- Cập nhật: Ghi chú chung thay cho handedness
+    notes TEXT,
     status VARCHAR(50) DEFAULT 'OPEN',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (creator_user_id) REFERENCES users(id),
@@ -256,22 +258,25 @@ CREATE TABLE matching_members (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+-- ======================================================================
+-- CHAT
+-- ======================================================================
+
 CREATE TABLE chat_rooms (
     id CHAR(36) PRIMARY KEY,
-    name VARCHAR(255),                  -- Tên group chat
-    created_by CHAR(36),                -- Người tạo room
-    post_id CHAR(36) UNIQUE,            -- Liên kết matching post (tuỳ chọn)
+    name VARCHAR(255),
+    created_by CHAR(36),
+    post_id CHAR(36) UNIQUE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
     FOREIGN KEY (post_id) REFERENCES matching_posts(id) ON DELETE SET NULL
 );
 
--- Thành viên của từng room
 CREATE TABLE chat_room_members (
     room_id CHAR(36),
     user_id CHAR(36),
     joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (room_id, user_id),
+    PRIMARY KEY(room_id,user_id),
     FOREIGN KEY (room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -286,18 +291,10 @@ CREATE TABLE chat_messages (
     FOREIGN KEY (sender_user_id) REFERENCES users(id)
 );
 
--- File đính kèm trong tin nhắn (ảnh, v.v.)
-CREATE TABLE chat_message_files (
-    chat_message_id CHAR(36),
-    file_id CHAR(36),
-    PRIMARY KEY (chat_message_id, file_id),
-    FOREIGN KEY (chat_message_id) REFERENCES chat_messages(id) ON DELETE CASCADE,
-    FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
-);
+-- ======================================================================
+-- REVIEWS
+-- ======================================================================
 
--- --------------------------------------------------
--- 6. REVIEWS & FAVORITES
--- --------------------------------------------------
 CREATE TABLE venue_reviews (
     id CHAR(36) PRIMARY KEY,
     venue_id CHAR(36),
@@ -315,14 +312,15 @@ CREATE TABLE favorite_venues (
     user_id CHAR(36),
     venue_id CHAR(36),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (user_id, venue_id),
+    PRIMARY KEY(user_id,venue_id),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE
 );
 
--- --------------------------------------------------
--- 7. ADMIN & MODERATION
--- --------------------------------------------------
+-- ======================================================================
+-- ADMIN
+-- ======================================================================
+
 CREATE TABLE venue_approval_requests (
     id CHAR(36) PRIMARY KEY,
     venue_id CHAR(36),
@@ -348,9 +346,10 @@ CREATE TABLE violation_reports (
     FOREIGN KEY (admin_user_id) REFERENCES users(id)
 );
 
--- --------------------------------------------------
--- 8. FILE STORAGE & MAPPINGS
--- --------------------------------------------------
+-- ======================================================================
+-- FILE STORAGE
+-- ======================================================================
+
 CREATE TABLE files (
     id CHAR(36) PRIMARY KEY,
     file_url VARCHAR(255) NOT NULL,
@@ -362,13 +361,14 @@ CREATE TABLE files (
     FOREIGN KEY (uploaded_by_user_id) REFERENCES users(id)
 );
 
--- Thêm Foreign Key cho bảng users gọi tới bảng files (avatar)
-ALTER TABLE users ADD CONSTRAINT fk_user_avatar FOREIGN KEY (avatar_file_id) REFERENCES files(id) ON DELETE SET NULL;
+ALTER TABLE users
+ADD CONSTRAINT fk_user_avatar
+FOREIGN KEY (avatar_file_id) REFERENCES files(id) ON DELETE SET NULL;
 
 CREATE TABLE refund_request_files (
     refund_request_id CHAR(36),
     file_id CHAR(36),
-    PRIMARY KEY (refund_request_id, file_id),
+    PRIMARY KEY(refund_request_id,file_id),
     FOREIGN KEY (refund_request_id) REFERENCES refund_requests(id) ON DELETE CASCADE,
     FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
 );
@@ -376,7 +376,7 @@ CREATE TABLE refund_request_files (
 CREATE TABLE chat_message_files (
     chat_message_id CHAR(36),
     file_id CHAR(36),
-    PRIMARY KEY (chat_message_id, file_id),
+    PRIMARY KEY(chat_message_id,file_id),
     FOREIGN KEY (chat_message_id) REFERENCES chat_messages(id) ON DELETE CASCADE,
     FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
 );
@@ -384,7 +384,7 @@ CREATE TABLE chat_message_files (
 CREATE TABLE venue_review_files (
     review_id CHAR(36),
     file_id CHAR(36),
-    PRIMARY KEY (review_id, file_id),
+    PRIMARY KEY(review_id,file_id),
     FOREIGN KEY (review_id) REFERENCES venue_reviews(id) ON DELETE CASCADE,
     FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
 );
@@ -392,7 +392,7 @@ CREATE TABLE venue_review_files (
 CREATE TABLE venue_files (
     venue_id CHAR(36),
     file_id CHAR(36),
-    PRIMARY KEY (venue_id, file_id),
+    PRIMARY KEY(venue_id,file_id),
     FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE,
     FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
 );
@@ -400,29 +400,21 @@ CREATE TABLE venue_files (
 CREATE TABLE report_files (
     report_id CHAR(36),
     file_id CHAR(36),
-    PRIMARY KEY (report_id, file_id),
+    PRIMARY KEY(report_id,file_id),
     FOREIGN KEY (report_id) REFERENCES violation_reports(id) ON DELETE CASCADE,
     FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
 );
 
 -- ======================================================================
--- BƯỚC 2.5: DỮ LIỆU MẪU (Sample data để test đăng nhập / đăng ký)
+-- SAMPLE USERS
 -- ======================================================================
--- Mật khẩu cho 3 tài khoản mẫu bên dưới đều là: password
--- (Hash BCrypt tương thích BCrypt.Net: $2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi)
--- Test: Đăng nhập email "player@shuttleup.vn" / "manager@shuttleup.vn" / "admin@shuttleup.vn" với mật khẩu "password"
 
-INSERT INTO users (id, email, password_hash, full_name, phone_number, is_active, created_at, updated_at) VALUES
-('a0000001-0000-0000-0000-000000000001', 'player@shuttleup.vn', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Người chơi Mẫu', '0901234567', TRUE, NOW(), NOW()),
-('a0000002-0000-0000-0000-000000000002', 'manager@shuttleup.vn', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Quản lý Sân Mẫu', '0907654321', TRUE, NOW(), NOW()),
-('a0000003-0000-0000-0000-000000000003', 'admin@shuttleup.vn', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin Hệ thống', NULL, TRUE, NOW(), NOW());
+INSERT INTO users VALUES
+('a0000001-0000-0000-0000-000000000001','player@shuttleup.vn','$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','Người chơi Mẫu','0901234567',NULL,NULL,TRUE,NULL,NULL,NULL,NULL,NOW(),NOW()),
+('a0000002-0000-0000-0000-000000000002','manager@shuttleup.vn','$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','Quản lý Sân Mẫu','0907654321',NULL,NULL,TRUE,NULL,NULL,NULL,NULL,NOW(),NOW()),
+('a0000003-0000-0000-0000-000000000003','admin@shuttleup.vn','$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','Admin Hệ thống',NULL,NULL,NULL,TRUE,NULL,NULL,NULL,NULL,NOW(),NOW());
 
-INSERT INTO user_roles (user_id, role_id) VALUES
-('a0000001-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002'),  -- PLAYER
-('a0000002-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000003'),  -- MANAGER
-('a0000003-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001');  -- ADMIN
-
--- ======================================================================
--- BƯỚC 3: BẬT LẠI KIỂM TRA KHÓA NGOẠI
--- ======================================================================
-SET FOREIGN_KEY_CHECKS = 1;
+INSERT INTO user_roles VALUES
+('a0000001-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002'),
+('a0000002-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000003'),
+('a0000003-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000001');
