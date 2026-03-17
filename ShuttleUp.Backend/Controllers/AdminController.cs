@@ -51,8 +51,8 @@ public class AdminController : ControllerBase
         var todayEnd         = todayStart.AddDays(1);
         var todayBookings    = await _db.Bookings
             .CountAsync(b => b.CreatedAt >= todayStart && b.CreatedAt < todayEnd);
-        var pendingRequests  = await _db.Venues
-            .CountAsync(v => v.ApprovalStatus == "PENDING");
+        var pendingRequests  = await _db.ManagerProfiles
+            .CountAsync(m => m.Status == "PENDING");
 
         // 5 người dùng mới nhất
         var recentUsers = await _db.Users
@@ -70,20 +70,20 @@ public class AdminController : ControllerBase
             })
             .ToListAsync();
 
-        // 5 yêu cầu chờ duyệt mới nhất (venue PENDING)
-        var pendingVenues = await _db.Venues
-            .Where(v => v.ApprovalStatus == "PENDING")
-            .Include(v => v.OwnerUser)
-            .OrderByDescending(v => v.CreatedAt)
+        // 5 yêu cầu chờ duyệt mới nhất (ManagerProfile PENDING)
+        var pendingVenues = await _db.ManagerProfiles
+            .Where(m => m.Status == "PENDING")
+            .Include(m => m.User)
+            .OrderByDescending(m => m.User.CreatedAt)
             .Take(5)
-            .Select(v => new
+            .Select(m => new
             {
-                v.Id,
-                v.Name,
-                v.Address,
-                v.CreatedAt,
-                OwnerName  = v.OwnerUser != null ? v.OwnerUser.FullName : null,
-                OwnerEmail = v.OwnerUser != null ? v.OwnerUser.Email    : null
+                Id = m.UserId,
+                Name = string.IsNullOrEmpty(m.BusinessLicenseNo) ? "Cá nhân" : $"GPKD: {m.BusinessLicenseNo}",
+                Address = m.Address,
+                CreatedAt = m.User.CreatedAt,
+                OwnerName  = m.User.FullName,
+                OwnerEmail = m.User.Email
             })
             .ToListAsync();
 
@@ -454,7 +454,7 @@ public class AdminController : ControllerBase
                 venue = b.Venue?.Name ?? "N/A",
                 court = string.Join(", ", b.BookingItems.Select(bi => bi.Court?.Name)),
                 date = b.CreatedAt?.ToString("dd/MM/yyyy"),
-                time = b.BookingItems.FirstOrDefault() != null ? $"{b.BookingItems.First().StartTime:hh\\:mm}-{b.BookingItems.First().EndTime:hh\\:mm}" : "N/A",
+                time = b.BookingItems.FirstOrDefault() != null ? $"{b.BookingItems.First().StartTime:HH\\:mm}-{b.BookingItems.First().EndTime:HH\\:mm}" : "N/A",
                 amount = $"{b.TotalAmount:N0} ₫",
                 status = b.Status
             }).ToList();
