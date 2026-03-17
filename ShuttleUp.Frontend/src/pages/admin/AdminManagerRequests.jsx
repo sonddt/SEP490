@@ -1,41 +1,101 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import AdminDashboardMenu from '../../components/admin/AdminDashboardMenu';
 
-// ── Mock data ──────────────────────────────────────────────────────────────
-const mockRequests = [
-  { id: 1, name: 'Võ Thành Long',    email: 'long.vt@gmail.com',  venue: 'ShuttleUp Bình Thạnh', address: '12 Đinh Tiên Hoàng, Q.Bình Thạnh', phone: '0901234567', date: '16/03/2026', status: 'Pending' },
-  { id: 2, name: 'Ngô Sỹ Duy',      email: 'duy.ns@gmail.com',   venue: 'Cầu lông Gò Vấp',      address: '45 Quang Trung, Q.Gò Vấp',         phone: '0912345678', date: '15/03/2026', status: 'Pending' },
-  { id: 3, name: 'Bùi Xuân Mạnh',   email: 'manh.bx@gmail.com',  venue: 'ShuttleUp Tân Bình',   address: '88 Hoàng Văn Thụ, Q.Tân Bình',    phone: '0923456789', date: '14/03/2026', status: 'Pending' },
-  { id: 4, name: 'Trịnh Thu Hương',  email: 'huong.tt@gmail.com', venue: 'Cầu lông Quận 3',      address: '20 Võ Văn Tần, Q.3',               phone: '0934567890', date: '10/03/2026', status: 'Approved' },
-  { id: 5, name: 'Nguyễn Tài Đức',  email: 'duc.nt@gmail.com',   venue: 'Arena Badminton',       address: '5 Lê Văn Lương, Q.7',              phone: '0945678901', date: '08/03/2026', status: 'Rejected' },
-];
+// ── Hooks & API ────────────────────────────────────────────────────────────
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5079';
 
 const statusMap = {
-  Pending:  { label: 'Chờ duyệt',  cls: 'bg-warning text-dark' },
-  Approved: { label: 'Đã duyệt',   cls: 'bg-success' },
-  Rejected: { label: 'Đã từ chối', cls: 'bg-danger' },
+  PENDING:  { label: 'Chờ duyệt',  cls: 'bg-warning text-dark' },
+  APPROVED: { label: 'Đã duyệt',   cls: 'bg-success' },
+  REJECTED: { label: 'Đã từ chối', cls: 'bg-danger' },
 };
 
 export default function AdminManagerRequests() {
-  const [requests, setRequests]         = useState(mockRequests);
-  const [filterStatus, setFilterStatus] = useState('All');
-  const [selected, setSelected]         = useState(null);
+  const [requests, setRequests] = useState([]);
+  const [filterStatus, setFilterStatus] = useState('');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [selected, setSelected] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null); // { request, action }
+  const [actionNote, setActionNote] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
 
-  const filtered = filterStatus === 'All'
-    ? requests
-    : requests.filter((r) => r.status === filterStatus);
+  // Fetch Requests
+  const fetchRequests = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams({
+        page: page.toString(),
+        pageSize: '10'
+      });
+      if (filterStatus) params.append('status', filterStatus);
+      if (search) params.append('search', search);
 
-  const doAction = () => {
+      const res = await fetch(`${API_URL}/api/admin/manager-requests?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const data = await res.json();
+      setRequests(data.items || []);
+      setTotalPages(data.totalPages || 1);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, filterStatus, search]);
+
+  useEffect(() => {
+    fetchRequests();
+  }, [fetchRequests]);
+
+  // Handle Approve/Reject
+  const doAction = async () => {
     if (!confirmAction) return;
-    const { request, action } = confirmAction;
-    setRequests((prev) =>
-      prev.map((r) => r.id === request.id ? { ...r, status: action } : r)
-    );
-    setConfirmAction(null);
-    setSelected(null);
+    const { request, action } = confirmAction; // action = 'approve' | 'reject'
+    
+    // Yêu cầu nhập lý do nếu là reject
+    if (action === 'reject' && !actionNote.trim()) {
+      alert("Vui lòng nhập lý do từ chối.");
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/admin/manager-requests/${request.id}/${action}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ note: actionNote })
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Có lỗi xảy ra.');
+      
+      // Success: Close modals and refresh
+      setConfirmAction(null);
+      setSelected(null);
+      setActionNote('');
+      fetchRequests();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setActionLoading(false);
+    }
   };
+
+  const handlePrevPage = () => setPage(p => Math.max(1, p - 1));
+  const handleNextPage = () => setPage(p => Math.min(totalPages, p + 1));
 
   return (
     <div className="main-wrapper content-below-header">
@@ -59,20 +119,38 @@ export default function AdminManagerRequests() {
           <div className="card card-tableset">
             <div className="card-body">
               {/* ── Toolbar ─────────────────────────────────── */}
-              <div className="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
-                <h4 className="mb-0">Yêu cầu đăng ký Chủ sân ({filtered.length})</h4>
-                <select
-                  className="form-select"
-                  style={{ width: 180 }}
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                >
-                  <option value="All">Tất cả trạng thái</option>
-                  <option value="Pending">Chờ duyệt</option>
-                  <option value="Approved">Đã duyệt</option>
-                  <option value="Rejected">Đã từ chối</option>
-                </select>
+              <div className="row mb-3 align-items-center g-2">
+                <div className="col-md-4">
+                  <h4 className="mb-0">Yêu cầu đăng ký Chủ sân</h4>
+                </div>
+                <div className="col-md-8 text-md-end d-flex justify-content-md-end gap-2 flex-wrap">
+                  <input
+                    type="text"
+                    className="form-control d-inline-block w-auto"
+                    placeholder="Tìm tên sân, email..."
+                    value={search}
+                    onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                  />
+                  <select
+                    className="form-select d-inline-block w-auto"
+                    value={filterStatus}
+                    onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
+                  >
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="PENDING">Chờ duyệt</option>
+                    <option value="APPROVED">Đã duyệt</option>
+                    <option value="REJECTED">Đã từ chối</option>
+                  </select>
+                </div>
               </div>
+
+              {/* ── Error & Loading states ──────────────────── */}
+              {error && (
+                <div className="alert alert-danger d-flex justify-content-between align-items-center">
+                  <span><i className="feather-alert-triangle me-2"></i>Không thể tải dữ liệu: {error}</span>
+                  <button className="btn btn-sm btn-outline-danger" onClick={() => fetchRequests()}>Thử lại</button>
+                </div>
+              )}
 
               {/* ── Table ───────────────────────────────────── */}
               <div className="table-responsive">
@@ -89,51 +167,87 @@ export default function AdminManagerRequests() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.length === 0 && (
+                    {loading ? (
+                      [...Array(5)].map((_, i) => (
+                        <tr key={i}>
+                          <td colSpan="7">
+                            <div className="placeholder-glow">
+                              <span className="placeholder col-12" style={{ height: '30px' }}></span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : requests.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="text-center text-muted py-4">Không có yêu cầu nào.</td>
                       </tr>
+                    ) : (
+                      requests.map((r, idx) => {
+                        const rowNum = (page - 1) * 10 + idx + 1;
+                        const dateObj = new Date(r.requestedAt);
+                        const dateStr = dateObj.toLocaleDateString('vi-VN');
+                        const statusObj = statusMap[r.status] || { label: r.status, cls: 'bg-secondary' };
+
+                        return (
+                          <tr key={r.id}>
+                            <td className="text-muted">{rowNum}</td>
+                            <td><strong>{r.ownerName || 'N/A'}</strong></td>
+                            <td className="text-muted">{r.ownerEmail || 'N/A'}</td>
+                            <td>{r.venueName || 'N/A'}</td>
+                            <td>{dateStr}</td>
+                            <td>
+                              <span className={`badge ${statusObj.cls}`}>
+                                {statusObj.label}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="d-flex gap-1">
+                                <button className="btn btn-sm btn-outline-secondary" onClick={() => setSelected(r)}>
+                                  <i className="feather-eye"></i> Chi tiết
+                                </button>
+                                {r.status === 'PENDING' && (
+                                  <>
+                                    <button
+                                      className="btn btn-sm btn-outline-success"
+                                      onClick={() => { setConfirmAction({ request: r, action: 'approve' }); setActionNote('Sân đủ điều kiện duyệt.'); }}
+                                    >
+                                      <i className="feather-check"></i> Duyệt
+                                    </button>
+                                    <button
+                                      className="btn btn-sm btn-outline-danger"
+                                      onClick={() => { setConfirmAction({ request: r, action: 'reject' }); setActionNote(''); }}
+                                    >
+                                      <i className="feather-x"></i> Từ chối
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
-                    {filtered.map((r, idx) => (
-                      <tr key={r.id}>
-                        <td className="text-muted">{idx + 1}</td>
-                        <td><strong>{r.name}</strong></td>
-                        <td className="text-muted">{r.email}</td>
-                        <td>{r.venue}</td>
-                        <td>{r.date}</td>
-                        <td>
-                          <span className={`badge ${statusMap[r.status].cls}`}>
-                            {statusMap[r.status].label}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="d-flex gap-1">
-                            <button className="btn btn-sm btn-outline-secondary" onClick={() => setSelected(r)}>
-                              <i className="feather-eye"></i> Chi tiết
-                            </button>
-                            {r.status === 'Pending' && (
-                              <>
-                                <button
-                                  className="btn btn-sm btn-outline-success"
-                                  onClick={() => setConfirmAction({ request: r, action: 'Approved' })}
-                                >
-                                  <i className="feather-check"></i> Duyệt
-                                </button>
-                                <button
-                                  className="btn btn-sm btn-outline-danger"
-                                  onClick={() => setConfirmAction({ request: r, action: 'Rejected' })}
-                                >
-                                  <i className="feather-x"></i> Từ chối
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
                   </tbody>
                 </table>
               </div>
+
+               {/* Pagination */}
+               {!loading && requests.length > 0 && (
+                <div className="d-flex justify-content-between align-items-center mt-3">
+                  <span className="text-muted" style={{ fontSize: '0.9rem' }}>
+                    Trang {page} / {totalPages}
+                  </span>
+                  <div className="btn-group">
+                    <button className="btn btn-sm btn-outline-secondary" disabled={page === 1} onClick={handlePrevPage}>
+                      <i className="feather-chevron-left"></i> Trước
+                    </button>
+                    <button className="btn btn-sm btn-outline-secondary" disabled={page === totalPages} onClick={handleNextPage}>
+                      Sau <i className="feather-chevron-right"></i>
+                    </button>
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
         </div>
@@ -152,50 +266,62 @@ export default function AdminManagerRequests() {
                 <div className="row g-3">
                   <div className="col-6">
                     <label className="text-muted" style={{ fontSize: '0.82rem' }}>Người gửi</label>
-                    <div><strong>{selected.name}</strong></div>
+                    <div className="text-break"><strong>{selected.ownerName || 'N/A'}</strong></div>
                   </div>
                   <div className="col-6">
                     <label className="text-muted" style={{ fontSize: '0.82rem' }}>Email</label>
-                    <div>{selected.email}</div>
+                    <div className="text-break">{selected.ownerEmail || 'N/A'}</div>
                   </div>
                   <div className="col-6">
-                    <label className="text-muted" style={{ fontSize: '0.82rem' }}>Số điện thoại</label>
-                    <div>{selected.phone}</div>
+                    <label className="text-muted" style={{ fontSize: '0.82rem' }}>Ngày gửi (Tạo sân)</label>
+                    <div>{new Date(selected.requestedAt).toLocaleDateString('vi-VN')}</div>
                   </div>
                   <div className="col-6">
-                    <label className="text-muted" style={{ fontSize: '0.82rem' }}>Ngày gửi</label>
-                    <div>{selected.date}</div>
-                  </div>
-                  <div className="col-12">
-                    <label className="text-muted" style={{ fontSize: '0.82rem' }}>Tên sân đề xuất</label>
-                    <div><strong>{selected.venue}</strong></div>
-                  </div>
-                  <div className="col-12">
-                    <label className="text-muted" style={{ fontSize: '0.82rem' }}>Địa chỉ</label>
-                    <div>{selected.address}</div>
-                  </div>
-                  <div className="col-12">
-                    <label className="text-muted" style={{ fontSize: '0.82rem' }}>Trạng thái hiện tại</label>
+                    <label className="text-muted" style={{ fontSize: '0.82rem' }}>Trạng thái</label>
                     <div>
-                      <span className={`badge ${statusMap[selected.status].cls}`}>
-                        {statusMap[selected.status].label}
+                      <span className={`badge ${statusMap[selected.status]?.cls || 'bg-secondary'}`}>
+                        {statusMap[selected.status]?.label || selected.status}
                       </span>
                     </div>
                   </div>
+                  <div className="col-12">
+                    <label className="text-muted" style={{ fontSize: '0.82rem' }}>Tên sân đề xuất</label>
+                    <div><strong>{selected.venueName || 'N/A'}</strong></div>
+                  </div>
+
+                  {selected.status !== 'PENDING' && (
+                    <>
+                      <div className="col-12"><hr className="my-1" /></div>
+                      <div className="col-6">
+                        <label className="text-muted" style={{ fontSize: '0.82rem' }}>Ngày xử lý</label>
+                        <div>{new Date(selected.decisionAt).toLocaleString('vi-VN')}</div>
+                      </div>
+                      <div className="col-6">
+                        <label className="text-muted" style={{ fontSize: '0.82rem' }}>Admin xử lý</label>
+                        <div>{selected.adminName || 'N/A'}</div>
+                      </div>
+                      <div className="col-12">
+                        <label className="text-muted" style={{ fontSize: '0.82rem' }}>Ghi chú / Quyết định</label>
+                        <div className="bg-light p-2 rounded text-break" style={{ fontSize: '0.9rem' }}>
+                          {selected.decisionNote || 'Không có ghi chú.'}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="modal-footer">
-                {selected.status === 'Pending' && (
+                {selected.status === 'PENDING' && (
                   <>
                     <button
                       className="btn btn-success btn-sm"
-                      onClick={() => { setConfirmAction({ request: selected, action: 'Approved' }); setSelected(null); }}
+                      onClick={() => { setConfirmAction({ request: selected, action: 'approve' }); setActionNote('Sân đủ điều kiện duyệt.'); setSelected(null); }}
                     >
                       <i className="feather-check me-1"></i>Duyệt
                     </button>
                     <button
                       className="btn btn-danger btn-sm"
-                      onClick={() => { setConfirmAction({ request: selected, action: 'Rejected' }); setSelected(null); }}
+                      onClick={() => { setConfirmAction({ request: selected, action: 'reject' }); setActionNote(''); setSelected(null); }}
                     >
                       <i className="feather-x me-1"></i>Từ chối
                     </button>
@@ -215,22 +341,41 @@ export default function AdminManagerRequests() {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">
-                  {confirmAction.action === 'Approved' ? '✅ Xác nhận duyệt' : '❌ Xác nhận từ chối'}
+                  {confirmAction.action === 'approve' ? '✅ Xác nhận duyệt' : '❌ Xác nhận từ chối'}
                 </h5>
-                <button className="btn-close" onClick={() => setConfirmAction(null)}></button>
+                <button className="btn-close" disabled={actionLoading} onClick={() => setConfirmAction(null)}></button>
               </div>
               <div className="modal-body">
-                Bạn có chắc muốn{' '}
-                <strong>{confirmAction.action === 'Approved' ? 'duyệt' : 'từ chối'}</strong>{' '}
-                yêu cầu của <strong>{confirmAction.request.name}</strong>?
+                <p>
+                  Bạn đang thao tác với yêu cầu của <strong>{confirmAction.request.ownerName}</strong> 
+                  (Sân: {confirmAction.request.venueName}).
+                </p>
+                <div className="mb-0">
+                  <label className="form-label mb-1">
+                    Ghi chú / Lý do {confirmAction.action === 'reject' && <span className="text-danger">*</span>}
+                  </label>
+                  <textarea 
+                    className="form-control" 
+                    rows="3" 
+                    placeholder="Nhập lý do..."
+                    value={actionNote}
+                    onChange={(e) => setActionNote(e.target.value)}
+                    disabled={actionLoading}
+                  ></textarea>
+                </div>
               </div>
               <div className="modal-footer">
-                <button className="btn btn-outline-secondary btn-sm" onClick={() => setConfirmAction(null)}>Huỷ</button>
+                <button className="btn btn-outline-secondary btn-sm" disabled={actionLoading} onClick={() => setConfirmAction(null)}>Huỷ</button>
                 <button
-                  className={`btn btn-sm ${confirmAction.action === 'Approved' ? 'btn-success' : 'btn-danger'}`}
+                  className={`btn btn-sm ${confirmAction.action === 'approve' ? 'btn-success' : 'btn-danger'}`}
                   onClick={doAction}
+                  disabled={actionLoading}
                 >
-                  {confirmAction.action === 'Approved' ? 'Duyệt' : 'Từ chối'}
+                  {actionLoading ? (
+                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  ) : (
+                    confirmAction.action === 'approve' ? 'Duyệt' : 'Từ chối'
+                  )}
                 </button>
               </div>
             </div>
@@ -240,3 +385,4 @@ export default function AdminManagerRequests() {
     </div>
   );
 }
+

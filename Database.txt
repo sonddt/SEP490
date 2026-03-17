@@ -539,17 +539,17 @@ INSERT IGNORE INTO payments (id, booking_id, method, status, amount, gateway_ref
 
 INSERT IGNORE INTO venue_approval_requests (id, venue_id, status, admin_user_id, decision_at, decision_note) VALUES
 -- Approved
-('h0000001-0000-0000-0000-000000000001', 'c0000001-0000-0000-0000-000000000001', 'APPROVED',
+('f0000001-0000-0000-0000-000000000001', 'c0000001-0000-0000-0000-000000000001', 'APPROVED',
  'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 55 DAY, 'Đủ điều kiện, duyệt sân.'),
-('h0000002-0000-0000-0000-000000000002', 'c0000002-0000-0000-0000-000000000002', 'APPROVED',
+('f0000002-0000-0000-0000-000000000002', 'c0000002-0000-0000-0000-000000000002', 'APPROVED',
  'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 40 DAY, 'Đã xác minh giấy phép.'),
 -- Pending (chưa có admin xử lý)
-('h0000003-0000-0000-0000-000000000003', 'c0000004-0000-0000-0000-000000000004', 'PENDING',
+('f0000003-0000-0000-0000-000000000003', 'c0000004-0000-0000-0000-000000000004', 'PENDING',
  NULL, NULL, NULL),
-('h0000004-0000-0000-0000-000000000004', 'c0000005-0000-0000-0000-000000000005', 'PENDING',
+('f0000004-0000-0000-0000-000000000004', 'c0000005-0000-0000-0000-000000000005', 'PENDING',
  NULL, NULL, NULL),
 -- Rejected
-('h0000005-0000-0000-0000-000000000005', 'c0000006-0000-0000-0000-000000000006', 'REJECTED',
+('f0000005-0000-0000-0000-000000000005', 'c0000006-0000-0000-0000-000000000006', 'REJECTED',
  'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 15 DAY, 'Địa chỉ không hợp lệ, hồ sơ thiếu.');
 
 -- ======================================================================
@@ -561,4 +561,4 @@ SELECT 'Venues',              COUNT(*)          FROM venues     UNION ALL
 SELECT 'Courts',              COUNT(*)          FROM courts     UNION ALL
 SELECT 'Bookings',            COUNT(*)          FROM bookings   UNION ALL
 SELECT 'Payments',            COUNT(*)          FROM payments   UNION ALL
-SELECT 'ApprovalRequests',    COUNT(*)          FROM venue_approval_requests;
+SELECT 'ApprovalRequests',    COUNT(*)          FROM venue_approval_requests;

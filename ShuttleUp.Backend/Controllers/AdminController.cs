@@ -247,6 +247,156 @@ public class AdminController : ControllerBase
         return Ok(new { message = "Đã mở khoá tài khoản thành công.", userId });
     }
 
+    // =========================================================================
+    // MANAGER REQUESTS — Duyệt Chủ Sân
+    // GET  api/admin/manager-requests
+    // POST api/admin/manager-requests/{requestId}/approve
+    // POST api/admin/manager-requests/{requestId}/reject
+    // =========================================================================
+
+    /// <summary>
+    /// Danh sách yêu cầu duyệt sân (có search, filter status, phân trang).
+    /// </summary>
+    [HttpGet("manager-requests")]
+    public async Task<IActionResult> GetManagerRequests(
+        [FromQuery] string? search,
+        [FromQuery] string? status,      // PENDING | APPROVED | REJECTED
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        if (page <= 0) page = 1;
+        if (pageSize <= 0 || pageSize > 100) pageSize = 20;
+
+        var query = _db.VenueApprovalRequests
+            .Include(r => r.Venue)
+            .ThenInclude(v => v!.OwnerUser)
+            .Include(r => r.AdminUser)
+            .AsQueryable();
+
+        // Filter status
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            var statusUpper = status.Trim().ToUpper();
+            query = query.Where(r => r.Status == statusUpper);
+        }
+
+        // Search by venue name or owner email
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var kw = search.Trim();
+            query = query.Where(r => 
+                (r.Venue != null && r.Venue.Name.Contains(kw)) ||
+                (r.Venue != null && r.Venue.OwnerUser != null && r.Venue.OwnerUser.Email.Contains(kw))
+            );
+        }
+
+        var totalItems = await query.CountAsync();
+        var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+
+        // Fetch data first, then map to anonymous object to avoid EF Core translation issues with nulls
+        var rawItems = await query
+            .OrderBy(r => r.Status == "PENDING" ? 0 : 1)
+            .ThenByDescending(r => r.Venue != null ? r.Venue.CreatedAt : DateTime.MinValue)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var items = rawItems.Select(r => new
+        {
+            r.Id,
+            r.Status,
+            VenueId    = r.VenueId,
+            VenueName  = r.Venue?.Name,
+            OwnerName  = r.Venue?.OwnerUser?.FullName,
+            OwnerEmail = r.Venue?.OwnerUser?.Email,
+            RequestedAt= r.Venue?.CreatedAt,
+            r.DecisionAt,
+            r.DecisionNote,
+            AdminName  = r.AdminUser?.FullName
+        }).ToList();
+
+        return Ok(new { totalItems, totalPages, page, pageSize, items });
+    }
+
+    /// <summary>
+    /// Xin duyệt chủ sân. Body: { "note": "..." }
+    /// </summary>
+    [HttpPost("manager-requests/{requestId:guid}/approve")]
+    public async Task<IActionResult> ApproveRequest(
+        [FromRoute] Guid requestId,
+        [FromBody] ApprovalDecisionRequest body)
+    {
+        var adminId = GetCurrentUserId();
+        if (adminId == Guid.Empty) return Unauthorized();
+
+        var request = await _db.VenueApprovalRequests
+            .Include(r => r.Venue)
+            .FirstOrDefaultAsync(r => r.Id == requestId);
+
+        if (request == null)
+            return NotFound(new { message = "Không tìm thấy yêu cầu này." });
+
+        if (request.Status != "PENDING")
+            return BadRequest(new { message = $"Yêu cầu đã được xử lý ({request.Status})." });
+
+        if (request.VenueId == null)
+            return BadRequest(new { message = "Dữ liệu lỗi: Yêu cầu không gắn với sân nào." });
+
+        // Update Request
+        request.Status = "APPROVED";
+        request.AdminUserId = adminId;
+        request.DecisionAt = DateTime.UtcNow;
+        request.DecisionNote = body.Note;
+
+        // Update Venue via BLL
+        await _venueService.ApproveAsync(request.VenueId.Value, adminId, body.Note ?? "");
+        
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = "Đã duyệt sân thành công." });
+    }
+
+    /// <summary>
+    /// Từ chối chủ sân. Body: { "note": "..." }
+    /// </summary>
+    [HttpPost("manager-requests/{requestId:guid}/reject")]
+    public async Task<IActionResult> RejectRequest(
+        [FromRoute] Guid requestId,
+        [FromBody] ApprovalDecisionRequest body)
+    {
+        var adminId = GetCurrentUserId();
+        if (adminId == Guid.Empty) return Unauthorized();
+
+        var request = await _db.VenueApprovalRequests
+            .Include(r => r.Venue)
+            .FirstOrDefaultAsync(r => r.Id == requestId);
+
+        if (request == null)
+            return NotFound(new { message = "Không tìm thấy yêu cầu này." });
+
+        if (request.Status != "PENDING")
+            return BadRequest(new { message = $"Yêu cầu đã được xử lý ({request.Status})." });
+
+        if (request.VenueId == null)
+            return BadRequest(new { message = "Dữ liệu lỗi: Yêu cầu không gắn với sân nào." });
+
+        if (string.IsNullOrWhiteSpace(body.Note))
+            return BadRequest(new { message = "Vui lòng nhập lý do từ chối." });
+
+        // Update Request
+        request.Status = "REJECTED";
+        request.AdminUserId = adminId;
+        request.DecisionAt = DateTime.UtcNow;
+        request.DecisionNote = body.Note;
+
+        // Update Venue via BLL
+        await _venueService.RejectAsync(request.VenueId.Value, adminId, body.Note);
+        
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = "Đã từ chối sân thành công." });
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private Guid GetCurrentUserId()
@@ -260,3 +410,4 @@ public class AdminController : ControllerBase
 // ── Request DTOs (inline — đơn giản, không cần file riêng) ────────────────────
 
 public record BlockAccountRequest(string? Reason);
+public record ApprovalDecisionRequest(string? Note);
