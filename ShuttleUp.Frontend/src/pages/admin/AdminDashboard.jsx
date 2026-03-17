@@ -1,42 +1,53 @@
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import AdminDashboardMenu from '../../components/admin/AdminDashboardMenu';
 
-// ── Mock data ──────────────────────────────────────────────────────────────
-const stats = [
-  { label: 'Tổng người dùng',      value: '1,248',  icon: 'profile-icon.svg',  color: 'primary' },
-  { label: 'Tổng sân hoạt động',   value: '87',     icon: 'court-icon.svg',    color: 'success' },
-  { label: 'Đặt sân hôm nay',      value: '34',     icon: 'booking-icon.svg',  color: 'warning' },
-  { label: 'Yêu cầu chờ duyệt',   value: '5',      icon: 'request-icon.svg',  color: 'danger'  },
-];
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5108';
 
-const recentUsers = [
-  { id: 1, name: 'Nguyễn Văn An',    email: 'an.nv@gmail.com',    role: 'Player',  date: '17/03/2026', status: 'Active' },
-  { id: 2, name: 'Trần Phúc Hùng',  email: 'hung.tp@gmail.com',  role: 'Manager', date: '16/03/2026', status: 'Active' },
-  { id: 3, name: 'Lê Minh Đức',     email: 'duc.lm@gmail.com',   role: 'Player',  date: '15/03/2026', status: 'Banned' },
-  { id: 4, name: 'Phạm Thị Lan',    email: 'lan.pt@gmail.com',   role: 'Player',  date: '14/03/2026', status: 'Active' },
-  { id: 5, name: 'Đặng Quốc Huy',   email: 'huy.dq@gmail.com',   role: 'Manager', date: '13/03/2026', status: 'Active' },
-];
+function roleBadge(roles = []) {
+  if (roles.includes('ADMIN'))   return <span className="badge bg-dark">Admin</span>;
+  if (roles.includes('MANAGER')) return <span className="badge bg-success">Manager</span>;
+  return <span className="badge bg-primary">Player</span>;
+}
 
-const pendingRequests = [
-  { id: 1, name: 'Võ Thành Long',   email: 'long.vt@gmail.com',  venue: 'ShuttleUp Bình Thạnh', date: '16/03/2026' },
-  { id: 2, name: 'Ngô Sỹ Duy',     email: 'duy.ns@gmail.com',   venue: 'Cầu lông Gò Vấp',      date: '15/03/2026' },
-  { id: 3, name: 'Bùi Xuân Mạnh',  email: 'manh.bx@gmail.com',  venue: 'ShuttleUp Tân Bình',   date: '14/03/2026' },
-];
-
-const roleBadge = {
-  Player:  <span className="badge bg-primary">Player</span>,
-  Manager: <span className="badge bg-success">Manager</span>,
-  Admin:   <span className="badge bg-dark">Admin</span>,
-};
-const statusBadge = {
-  Active: <span className="badge bg-success">Hoạt động</span>,
-  Banned: <span className="badge bg-danger">Đã khoá</span>,
-};
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('vi-VN');
+}
 
 export default function AdminDashboard() {
+  const [data,    setData]    = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem('token');
+      const res   = await fetch(`${API}/api/admin/dashboard`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setData(await res.json());
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const stats = data ? [
+    { label: 'Tổng người dùng',    value: data.totalUsers,      icon: 'profile-icon.svg',  color: 'primary' },
+    { label: 'Tổng sân hoạt động', value: data.activeVenues,    icon: 'court-icon.svg',    color: 'success' },
+    { label: 'Đặt sân hôm nay',    value: data.todayBookings,   icon: 'booking-icon.svg',  color: 'warning' },
+    { label: 'Yêu cầu chờ duyệt', value: data.pendingRequests, icon: 'request-icon.svg',  color: 'danger'  },
+  ] : [];
+
   return (
     <div className="main-wrapper content-below-header">
-      {/* Breadcrumb */}
       <section className="breadcrumb breadcrumb-list mb-0">
         <span className="primary-right-round"></span>
         <div className="container">
@@ -53,29 +64,47 @@ export default function AdminDashboard() {
       <div className="content court-bg">
         <div className="container">
 
-          {/* ── Stats Cards ──────────────────────────────────── */}
+          {/* Error banner */}
+          {error && (
+            <div className="alert alert-danger d-flex align-items-center mb-3">
+              <i className="feather-alert-circle me-2"></i>
+              Không thể tải dữ liệu: {error}
+              <button className="btn btn-sm btn-outline-danger ms-auto" onClick={load}>Thử lại</button>
+            </div>
+          )}
+
+          {/* Stats Cards */}
           <div className="row mb-4">
-            {stats.map((s) => (
-              <div key={s.label} className="col-xl-3 col-sm-6 col-12 d-flex">
-                <div className="card w-100">
-                  <div className="card-body">
-                    <div className="d-flex justify-content-between align-items-start">
-                      <div>
-                        <p className="text-muted mb-1" style={{ fontSize: '0.85rem' }}>{s.label}</p>
-                        <h4 className={`mb-0 text-${s.color}`}>{s.value}</h4>
-                      </div>
-                      <div className={`rounded-circle bg-${s.color} bg-opacity-10 p-2`}>
-                        <img src={`/assets/img/icons/${s.icon}`} alt="" style={{ width: 28 }} />
+            {loading
+              ? [0,1,2,3].map(i => (
+                  <div key={i} className="col-xl-3 col-sm-6 col-12 d-flex">
+                    <div className="card w-100"><div className="card-body">
+                      <div className="placeholder-glow"><span className="placeholder col-6 mb-2"></span><br/><span className="placeholder col-4"></span></div>
+                    </div></div>
+                  </div>
+                ))
+              : stats.map((s) => (
+                  <div key={s.label} className="col-xl-3 col-sm-6 col-12 d-flex">
+                    <div className="card w-100">
+                      <div className="card-body">
+                        <div className="d-flex justify-content-between align-items-start">
+                          <div>
+                            <p className="text-muted mb-1" style={{ fontSize: '0.85rem' }}>{s.label}</p>
+                            <h4 className={`mb-0 text-${s.color}`}>{s.value?.toLocaleString()}</h4>
+                          </div>
+                          <div className={`rounded-circle bg-${s.color} bg-opacity-10 p-2`}>
+                            <img src={`/assets/img/icons/${s.icon}`} alt="" style={{ width: 28 }} />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                ))
+            }
           </div>
 
           <div className="row">
-            {/* ── New Users ───────────────────────────────────── */}
+            {/* Recent Users */}
             <div className="col-lg-8">
               <div className="card card-tableset mb-4">
                 <div className="card-body">
@@ -84,31 +113,34 @@ export default function AdminDashboard() {
                       <h4 className="mb-1">Người dùng mới đăng ký</h4>
                       <p className="text-muted mb-0" style={{ fontSize: '0.85rem' }}>5 tài khoản gần đây nhất</p>
                     </div>
-                    <Link to="/admin/accounts" className="btn btn-sm btn-outline-secondary">
-                      Xem tất cả
-                    </Link>
+                    <Link to="/admin/accounts" className="btn btn-sm btn-outline-secondary">Xem tất cả</Link>
                   </div>
                   <div className="table-responsive">
                     <table className="table table-borderless">
                       <thead className="thead-light">
                         <tr>
-                          <th>Họ tên</th>
-                          <th>Email</th>
-                          <th>Vai trò</th>
-                          <th>Ngày đăng ký</th>
-                          <th>Trạng thái</th>
+                          <th>Họ tên</th><th>Email</th><th>Vai trò</th><th>Ngày đăng ký</th><th>Trạng thái</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {recentUsers.map((u) => (
-                          <tr key={u.id}>
-                            <td><strong>{u.name}</strong></td>
-                            <td className="text-muted">{u.email}</td>
-                            <td>{roleBadge[u.role]}</td>
-                            <td>{u.date}</td>
-                            <td>{statusBadge[u.status]}</td>
-                          </tr>
-                        ))}
+                        {loading
+                          ? [0,1,2,3,4].map(i => (
+                              <tr key={i}><td colSpan={5}><span className="placeholder-glow"><span className="placeholder col-12"></span></span></td></tr>
+                            ))
+                          : (data?.recentUsers || []).map((u) => (
+                              <tr key={u.id}>
+                                <td><strong>{u.fullName}</strong></td>
+                                <td className="text-muted">{u.email}</td>
+                                <td>{roleBadge(u.roles)}</td>
+                                <td>{fmtDate(u.createdAt)}</td>
+                                <td>
+                                  {u.isActive
+                                    ? <span className="badge bg-success">Hoạt động</span>
+                                    : <span className="badge bg-danger">Đã khoá</span>}
+                                </td>
+                              </tr>
+                            ))
+                        }
                       </tbody>
                     </table>
                   </div>
@@ -116,7 +148,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* ── Pending Manager Requests ─────────────────────── */}
+            {/* Pending Venue Requests */}
             <div className="col-lg-4">
               <div className="card mb-4">
                 <div className="card-body">
@@ -124,21 +156,26 @@ export default function AdminDashboard() {
                     <h5 className="mb-0">Yêu cầu duyệt chủ sân</h5>
                     <Link to="/admin/manager-requests" className="btn btn-sm btn-outline-secondary">Xem tất cả</Link>
                   </div>
-                  {pendingRequests.map((r) => (
-                    <div key={r.id} className="d-flex align-items-start border-bottom pb-2 mb-2">
-                      <div className="rounded-circle bg-warning bg-opacity-10 p-2 me-2 flex-shrink-0">
-                        <img src="/assets/img/icons/request-icon.svg" alt="" style={{ width: 20 }} />
-                      </div>
-                      <div className="flex-grow-1" style={{ minWidth: 0 }}>
-                        <p className="mb-0 fw-semibold" style={{ fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</p>
-                        <p className="text-muted mb-0" style={{ fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.venue}</p>
-                        <p className="text-muted mb-0" style={{ fontSize: '0.75rem' }}>{r.date}</p>
-                      </div>
-                      <span className="badge bg-warning text-dark ms-1 flex-shrink-0">Chờ duyệt</span>
-                    </div>
-                  ))}
+                  {loading
+                    ? <div className="placeholder-glow"><span className="placeholder col-12 mb-2"></span><span className="placeholder col-8"></span></div>
+                    : (data?.pendingVenues || []).length === 0
+                      ? <p className="text-muted text-center py-2">Không có yêu cầu chờ duyệt.</p>
+                      : (data.pendingVenues).map((r) => (
+                          <div key={r.id} className="d-flex align-items-start border-bottom pb-2 mb-2">
+                            <div className="rounded-circle bg-warning bg-opacity-10 p-2 me-2 flex-shrink-0">
+                              <img src="/assets/img/icons/request-icon.svg" alt="" style={{ width: 20 }} />
+                            </div>
+                            <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                              <p className="mb-0 fw-semibold" style={{ fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.ownerName}</p>
+                              <p className="text-muted mb-0" style={{ fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</p>
+                              <p className="text-muted mb-0" style={{ fontSize: '0.75rem' }}>{fmtDate(r.createdAt)}</p>
+                            </div>
+                            <span className="badge bg-warning text-dark ms-1 flex-shrink-0">Chờ duyệt</span>
+                          </div>
+                        ))
+                  }
                   <Link to="/admin/manager-requests" className="btn btn-secondary btn-sm w-100 mt-2">
-                    Xem & Duyệt yêu cầu
+                    Xem &amp; Duyệt yêu cầu
                   </Link>
                 </div>
               </div>
