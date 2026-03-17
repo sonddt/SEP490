@@ -21,23 +21,31 @@ public class RegisterRequestDto : IValidatableObject
 
     public DateOnly? DateOfBirth { get; set; }
 
-    /// <summary>
-    /// Chọn 1 hoặc cả 2: ["PLAYER"] | ["MANAGER"] | ["PLAYER","MANAGER"]
-    /// Không được chọn ADMIN — chỉ admin khác mới có quyền gán role ADMIN.
-    /// </summary>
-    [Required]
-    [MinLength(1, ErrorMessage = "Phải chọn ít nhất 1 role.")]
-    public List<string> Roles { get; set; } = ["Player"];
+    public bool IsManagerRoleRequested { get; set; }
+
+    public string? IdCardNo { get; set; }
+
+    public string? TaxCode { get; set; }
+
+    public string? BusinessLicenseNo { get; set; }
+
+    public string? Address { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Player", "Manager" };
-        foreach (var role in Roles)
+        if (IsManagerRoleRequested)
         {
-            if (!allowed.Contains(role))
-                yield return new ValidationResult(
-                    $"Role '{role}' không hợp lệ. Chỉ được chọn Player hoặc Manager.",
-                    [nameof(Roles)]);
+            if (string.IsNullOrWhiteSpace(IdCardNo))
+                yield return new ValidationResult("CCCD/CMND là bắt buộc đối với Chủ sân.", [nameof(IdCardNo)]);
+            
+            if (string.IsNullOrWhiteSpace(TaxCode))
+                yield return new ValidationResult("Mã số thuế là bắt buộc đối với Chủ sân.", [nameof(TaxCode)]);
+            
+            if (string.IsNullOrWhiteSpace(BusinessLicenseNo))
+                yield return new ValidationResult("Giấy phép kinh doanh là bắt buộc đối với Chủ sân.", [nameof(BusinessLicenseNo)]);
+            
+            if (string.IsNullOrWhiteSpace(Address))
+                yield return new ValidationResult("Địa chỉ là bắt buộc đối với Chủ sân.", [nameof(Address)]);
         }
     }
 }

@@ -9,7 +9,11 @@ export function registerEmail(data) {
     email: data.email,
     password: data.password,
     fullName: data.fullName,
-    roles: data.roles,
+    isManagerRoleRequested: data.isManagerRoleRequested,
+    idCardNo: data.idCardNo,
+    taxCode: data.taxCode,
+    businessLicenseNo: data.businessLicenseNo,
+    address: data.address,
   });
 }
 

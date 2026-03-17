@@ -16,17 +16,20 @@ public class AuthService : IAuthService
     private readonly IUserRepository _userRepository;
     private readonly IRoleRepository _roleRepository;
     private readonly IEmailService _emailService;
+    private readonly IManagerProfileRepository _managerProfileRepository;
     private readonly IConfiguration _configuration;
 
     public AuthService(
         IUserRepository userRepository,
         IRoleRepository roleRepository,
         IEmailService emailService,
+        IManagerProfileRepository managerProfileRepository,
         IConfiguration configuration)
     {
         _userRepository = userRepository;
         _roleRepository = roleRepository;
         _emailService = emailService;
+        _managerProfileRepository = managerProfileRepository;
         _configuration = configuration;
     }
 
@@ -52,7 +55,8 @@ public class AuthService : IAuthService
         if (existing != null)
             throw new InvalidOperationException("Email đã được sử dụng.");
 
-        var roles = await ResolveRolesAsync(request.Roles);
+        // Mặc định, mọi tài khoản đăng ký mới đều có Role PLAYER
+        var roles = await ResolveRolesAsync(["Player"]);
 
         var user = new User
         {
@@ -69,6 +73,21 @@ public class AuthService : IAuthService
         };
 
         await _userRepository.AddAsync(user);
+
+        // Nếu họ chọn đăng ký làm Manager, tạo hồ sơ (ManagerProfile) để Admin duyệt
+        if (request.IsManagerRoleRequested)
+        {
+            var profile = new ManagerProfile
+            {
+                UserId = user.Id,
+                IdCardNo = request.IdCardNo,
+                TaxCode = request.TaxCode,
+                BusinessLicenseNo = request.BusinessLicenseNo,
+                Address = request.Address,
+                Status = "PENDING"
+            };
+            await _managerProfileRepository.AddAsync(profile);
+        }
 
         return BuildLoginResponse(user);
     }

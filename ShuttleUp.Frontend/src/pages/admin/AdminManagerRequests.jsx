@@ -158,9 +158,10 @@ export default function AdminManagerRequests() {
                   <thead className="thead-light">
                     <tr>
                       <th>#</th>
-                      <th>Người gửi</th>
+                      <th>Họ tên</th>
                       <th>Email</th>
-                      <th>Tên sân đề xuất</th>
+                      <th>CCCD/CMND</th>
+                      <th>Mã số thuế</th>
                       <th>Ngày gửi</th>
                       <th>Trạng thái</th>
                       <th>Hành động</th>
@@ -193,7 +194,8 @@ export default function AdminManagerRequests() {
                             <td className="text-muted">{rowNum}</td>
                             <td><strong>{r.ownerName || 'N/A'}</strong></td>
                             <td className="text-muted">{r.ownerEmail || 'N/A'}</td>
-                            <td>{r.venueName || 'N/A'}</td>
+                            <td>{r.idCardNo || 'N/A'}</td>
+                            <td>{r.taxCode || 'N/A'}</td>
                             <td>{dateStr}</td>
                             <td>
                               <span className={`badge ${statusObj.cls}`}>
@@ -209,7 +211,7 @@ export default function AdminManagerRequests() {
                                   <>
                                     <button
                                       className="btn btn-sm btn-outline-success"
-                                      onClick={() => { setConfirmAction({ request: r, action: 'approve' }); setActionNote('Sân đủ điều kiện duyệt.'); }}
+                                      onClick={() => { setConfirmAction({ request: r, action: 'approve' }); setActionNote('Hồ sơ đủ điều kiện duyệt.'); }}
                                     >
                                       <i className="feather-check"></i> Duyệt
                                     </button>
@@ -284,9 +286,21 @@ export default function AdminManagerRequests() {
                       </span>
                     </div>
                   </div>
+                  <div className="col-12 mt-3">
+                    <label className="text-muted" style={{ fontSize: '0.82rem' }}>CCCD / CMND</label>
+                    <div className="text-break"><strong>{selected.idCardNo || 'N/A'}</strong></div>
+                  </div>
+                  <div className="col-6">
+                    <label className="text-muted" style={{ fontSize: '0.82rem' }}>Mã số thuế</label>
+                    <div className="text-break"><strong>{selected.taxCode || 'N/A'}</strong></div>
+                  </div>
+                  <div className="col-6">
+                    <label className="text-muted" style={{ fontSize: '0.82rem' }}>Giấy phép KD</label>
+                    <div className="text-break"><strong>{selected.businessLicenseNo || 'N/A'}</strong></div>
+                  </div>
                   <div className="col-12">
-                    <label className="text-muted" style={{ fontSize: '0.82rem' }}>Tên sân đề xuất</label>
-                    <div><strong>{selected.venueName || 'N/A'}</strong></div>
+                    <label className="text-muted" style={{ fontSize: '0.82rem' }}>Địa chỉ DOANH NGHIỆP / CÁ NHÂN</label>
+                    <div className="text-break">{selected.address || 'N/A'}</div>
                   </div>
 
                   {selected.status !== 'PENDING' && (
@@ -315,7 +329,7 @@ export default function AdminManagerRequests() {
                   <>
                     <button
                       className="btn btn-success btn-sm"
-                      onClick={() => { setConfirmAction({ request: selected, action: 'approve' }); setActionNote('Sân đủ điều kiện duyệt.'); setSelected(null); }}
+                      onClick={() => { setConfirmAction({ request: selected, action: 'approve' }); setActionNote('Hồ sơ đủ điều kiện duyệt.'); setSelected(null); }}
                     >
                       <i className="feather-check me-1"></i>Duyệt
                     </button>
@@ -348,7 +362,8 @@ export default function AdminManagerRequests() {
               <div className="modal-body">
                 <p>
                   Bạn đang thao tác với yêu cầu của <strong>{confirmAction.request.ownerName}</strong> 
-                  (Sân: {confirmAction.request.venueName}).
+                  <br/>
+                  (Mã số thuế: {confirmAction.request.taxCode || 'N/A'} | CCCD: {confirmAction.request.idCardNo || 'N/A'}).
                 </p>
                 <div className="mb-0">
                   <label className="form-label mb-1">

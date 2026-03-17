@@ -17,6 +17,10 @@ export default function Register() {
     password: '',
     confirmPassword: '',
     agreedToTerms: false,
+    idCardNo: '',
+    taxCode: '',
+    businessLicenseNo: '',
+    address: '',
   });
 
   const { login } = useAuth();
@@ -53,12 +57,16 @@ export default function Register() {
         email: formData.email,
         password: formData.password,
         fullName: formData.fullName,
-        roles: getRoles(),
+        isManagerRoleRequested: activeTab === 'manager',
+        idCardNo: formData.idCardNo,
+        taxCode: formData.taxCode,
+        businessLicenseNo: formData.businessLicenseNo,
+        address: formData.address,
       });
       login(data);
-      const roles = data.user?.roles ?? [];
-      if (roles.includes('MANAGER')) navigate('/manager/dashboard');
-      else navigate('/user/dashboard');
+      // Mặc định luôn là PLAYER khi mới đăng ký, Manager cần chờ duyệt. 
+      // Do đó, dù đăng ký vai trò gì, hệ thống cũng điều hướng về user dashboard
+      navigate('/user/dashboard');
     } catch (err) {
       const res = err.response;
       if (!res) {
@@ -196,6 +204,67 @@ export default function Register() {
                                 />
                               </div>
                             </div>
+
+                            {activeTab === 'manager' && (
+                              <>
+                                <div className="form-group">
+                                  <div className="group-img">
+                                    <i className="feather-credit-card"></i>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      placeholder="CCCD / Chứng minh nhân dân"
+                                      name="idCardNo"
+                                      value={formData.idCardNo}
+                                      onChange={handleInputChange}
+                                      required
+                                    />
+                                  </div>
+                                </div>
+                                <div className="form-group">
+                                  <div className="group-img">
+                                    <i className="feather-file-text"></i>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      placeholder="Mã số thuế"
+                                      name="taxCode"
+                                      value={formData.taxCode}
+                                      onChange={handleInputChange}
+                                      required
+                                    />
+                                  </div>
+                                </div>
+                                <div className="form-group">
+                                  <div className="group-img">
+                                    <i className="feather-award"></i>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      placeholder="Giấy phép kinh doanh"
+                                      name="businessLicenseNo"
+                                      value={formData.businessLicenseNo}
+                                      onChange={handleInputChange}
+                                      required
+                                    />
+                                  </div>
+                                </div>
+                                <div className="form-group">
+                                  <div className="group-img">
+                                    <i className="feather-map-pin"></i>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      placeholder="Địa chỉ doanh nghiệp / Cá nhân"
+                                      name="address"
+                                      value={formData.address}
+                                      onChange={handleInputChange}
+                                      required
+                                    />
+                                  </div>
+                                </div>
+                              </>
+                            )}
                             <div className="form-group">
                               <div className="pass-group group-img">
                                 <i

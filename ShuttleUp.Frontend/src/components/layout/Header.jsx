@@ -203,6 +203,19 @@ const Header = ({ transparent = false }) => {
           <ul className="nav header-navbar-rht">
             {isAuthenticated ? (
               <>
+                {isManager && !isAdmin && (
+                  <li className="nav-item d-none d-sm-block">
+                    <Link
+                      className="nav-link btn btn-outline-primary me-2"
+                      to={location.pathname.startsWith('/manager') ? '/user/dashboard' : '/manager/dashboard'}
+                      onClick={closeMobileMenu}
+                      style={{ padding: '8px 16px', borderRadius: '25px', fontWeight: '500' }}
+                    >
+                      <i className={location.pathname.startsWith('/manager') ? 'feather-user me-2' : 'feather-briefcase me-2'}></i>
+                      {location.pathname.startsWith('/manager') ? 'Chế độ Người chơi' : 'Dashboard Chủ sân'}
+                    </Link>
+                  </li>
+                )}
                 <li className="nav-item">
                   <Link
                     className="nav-link btn btn-white log-register"

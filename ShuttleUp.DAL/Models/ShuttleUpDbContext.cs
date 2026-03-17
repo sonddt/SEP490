@@ -62,6 +62,8 @@ public partial class ShuttleUpDbContext : DbContext
 
     public virtual DbSet<ViolationReport> ViolationReports { get; set; }
 
+    public virtual DbSet<ManagerProfile> ManagerProfiles { get; set; }
+
     // OnConfiguring removed because connection is provided via Dependency Injection in Program.cs
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -956,6 +958,48 @@ public partial class ShuttleUpDbContext : DbContext
                         j.IndexerProperty<Guid>("ReportId").HasColumnName("report_id");
                         j.IndexerProperty<Guid>("FileId").HasColumnName("file_id");
                     });
+        });
+
+        modelBuilder.Entity<ManagerProfile>(entity =>
+        {
+            entity.HasKey(e => e.UserId).HasName("PRIMARY");
+
+            entity.ToTable("manager_profiles");
+
+            entity.HasIndex(e => e.AdminUserId, "admin_user_id");
+
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.AdminUserId).HasColumnName("admin_user_id");
+            entity.Property(e => e.IdCardNo)
+                .HasMaxLength(50)
+                .HasColumnName("id_card_no");
+            entity.Property(e => e.TaxCode)
+                .HasMaxLength(50)
+                .HasColumnName("tax_code");
+            entity.Property(e => e.BusinessLicenseNo)
+                .HasMaxLength(100)
+                .HasColumnName("business_license_no");
+            entity.Property(e => e.Address)
+                .HasColumnType("text")
+                .HasColumnName("address");
+            entity.Property(e => e.DecisionAt)
+                .HasColumnType("datetime")
+                .HasColumnName("decision_at");
+            entity.Property(e => e.DecisionNote)
+                .HasColumnType("text")
+                .HasColumnName("decision_note");
+            entity.Property(e => e.Status)
+                .HasMaxLength(50)
+                .HasDefaultValueSql("'PENDING'")
+                .HasColumnName("status");
+
+            entity.HasOne(d => d.AdminUser).WithMany(p => p.ApprovedManagerProfiles)
+                .HasForeignKey(d => d.AdminUserId)
+                .HasConstraintName("manager_profiles_ibfk_2");
+
+            entity.HasOne(d => d.User).WithOne(p => p.ManagerProfileManager)
+                .HasForeignKey<ManagerProfile>(d => d.UserId)
+                .HasConstraintName("manager_profiles_ibfk_1");
         });
 
         OnModelCreatingPartial(modelBuilder);

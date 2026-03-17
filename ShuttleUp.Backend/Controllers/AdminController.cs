@@ -255,7 +255,7 @@ public class AdminController : ControllerBase
     // =========================================================================
 
     /// <summary>
-    /// Danh sách yêu cầu duyệt sân (có search, filter status, phân trang).
+    /// Danh sách hồ sơ yêu cầu làm Chủ sân (có search, filter status, phân trang).
     /// </summary>
     [HttpGet("manager-requests")]
     public async Task<IActionResult> GetManagerRequests(
@@ -267,10 +267,9 @@ public class AdminController : ControllerBase
         if (page <= 0) page = 1;
         if (pageSize <= 0 || pageSize > 100) pageSize = 20;
 
-        var query = _db.VenueApprovalRequests
-            .Include(r => r.Venue)
-            .ThenInclude(v => v!.OwnerUser)
-            .Include(r => r.AdminUser)
+        var query = _db.ManagerProfiles
+            .Include(m => m.User)
+            .Include(m => m.AdminUser)
             .AsQueryable();
 
         // Filter status
@@ -280,36 +279,40 @@ public class AdminController : ControllerBase
             query = query.Where(r => r.Status == statusUpper);
         }
 
-        // Search by venue name or owner email
+        // Search by name, email, tax code, id card,...
         if (!string.IsNullOrWhiteSpace(search))
         {
             var kw = search.Trim();
             query = query.Where(r => 
-                (r.Venue != null && r.Venue.Name.Contains(kw)) ||
-                (r.Venue != null && r.Venue.OwnerUser != null && r.Venue.OwnerUser.Email.Contains(kw))
+                (r.User != null && r.User.FullName.Contains(kw)) ||
+                (r.User != null && r.User.Email.Contains(kw)) ||
+                (r.IdCardNo != null && r.IdCardNo.Contains(kw)) ||
+                (r.TaxCode != null && r.TaxCode.Contains(kw)) ||
+                (r.BusinessLicenseNo != null && r.BusinessLicenseNo.Contains(kw))
             );
         }
 
         var totalItems = await query.CountAsync();
         var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
 
-        // Fetch data first, then map to anonymous object to avoid EF Core translation issues with nulls
+        // Fetch data
         var rawItems = await query
             .OrderBy(r => r.Status == "PENDING" ? 0 : 1)
-            .ThenByDescending(r => r.Venue != null ? r.Venue.CreatedAt : DateTime.MinValue)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
         var items = rawItems.Select(r => new
         {
-            r.Id,
+            Id = r.UserId, // Sử dụng user_id làm ID của Request
             r.Status,
-            VenueId    = r.VenueId,
-            VenueName  = r.Venue?.Name,
-            OwnerName  = r.Venue?.OwnerUser?.FullName,
-            OwnerEmail = r.Venue?.OwnerUser?.Email,
-            RequestedAt= r.Venue?.CreatedAt,
+            r.IdCardNo,
+            r.TaxCode,
+            r.BusinessLicenseNo,
+            r.Address,
+            OwnerName  = r.User?.FullName,
+            OwnerEmail = r.User?.Email,
+            RequestedAt= r.User?.CreatedAt,
             r.DecisionAt,
             r.DecisionNote,
             AdminName  = r.AdminUser?.FullName
@@ -319,82 +322,77 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
-    /// Xin duyệt chủ sân. Body: { "note": "..." }
+    /// Duyệt chủ sân. Body: { "note": "..." }
     /// </summary>
-    [HttpPost("manager-requests/{requestId:guid}/approve")]
+    [HttpPost("manager-requests/{userId:guid}/approve")]
     public async Task<IActionResult> ApproveRequest(
-        [FromRoute] Guid requestId,
+        [FromRoute] Guid userId,
         [FromBody] ApprovalDecisionRequest body)
     {
         var adminId = GetCurrentUserId();
         if (adminId == Guid.Empty) return Unauthorized();
 
-        var request = await _db.VenueApprovalRequests
-            .Include(r => r.Venue)
-            .FirstOrDefaultAsync(r => r.Id == requestId);
+        var profile = await _db.ManagerProfiles
+            .Include(p => p.User)
+            .ThenInclude(u => u.Roles)
+            .FirstOrDefaultAsync(p => p.UserId == userId);
 
-        if (request == null)
-            return NotFound(new { message = "Không tìm thấy yêu cầu này." });
+        if (profile == null)
+            return NotFound(new { message = "Không tìm thấy hồ sơ yêu cầu này." });
 
-        if (request.Status != "PENDING")
-            return BadRequest(new { message = $"Yêu cầu đã được xử lý ({request.Status})." });
-
-        if (request.VenueId == null)
-            return BadRequest(new { message = "Dữ liệu lỗi: Yêu cầu không gắn với sân nào." });
+        if (profile.Status != "PENDING")
+            return BadRequest(new { message = $"Hồ sơ đã được xử lý ({profile.Status})." });
 
         // Update Request
-        request.Status = "APPROVED";
-        request.AdminUserId = adminId;
-        request.DecisionAt = DateTime.UtcNow;
-        request.DecisionNote = body.Note;
+        profile.Status = "APPROVED";
+        profile.AdminUserId = adminId;
+        profile.DecisionAt = DateTime.UtcNow;
+        profile.DecisionNote = body.Note;
 
-        // Update Venue via BLL
-        await _venueService.ApproveAsync(request.VenueId.Value, adminId, body.Note ?? "");
+        // Add MANAGER role
+        var managerRole = await _db.Roles.FirstOrDefaultAsync(r => r.Name == "MANAGER");
+        if (managerRole != null && !profile.User.Roles.Any(r => r.Name == "MANAGER"))
+        {
+            profile.User.Roles.Add(managerRole);
+        }
         
         await _db.SaveChangesAsync();
 
-        return Ok(new { message = "Đã duyệt sân thành công." });
+        return Ok(new { message = "Đã duyệt Cấp quyền Chủ sân thành công." });
     }
 
     /// <summary>
     /// Từ chối chủ sân. Body: { "note": "..." }
     /// </summary>
-    [HttpPost("manager-requests/{requestId:guid}/reject")]
+    [HttpPost("manager-requests/{userId:guid}/reject")]
     public async Task<IActionResult> RejectRequest(
-        [FromRoute] Guid requestId,
+        [FromRoute] Guid userId,
         [FromBody] ApprovalDecisionRequest body)
     {
         var adminId = GetCurrentUserId();
         if (adminId == Guid.Empty) return Unauthorized();
 
-        var request = await _db.VenueApprovalRequests
-            .Include(r => r.Venue)
-            .FirstOrDefaultAsync(r => r.Id == requestId);
+        var profile = await _db.ManagerProfiles
+            .FirstOrDefaultAsync(p => p.UserId == userId);
 
-        if (request == null)
-            return NotFound(new { message = "Không tìm thấy yêu cầu này." });
+        if (profile == null)
+            return NotFound(new { message = "Không tìm thấy hồ sơ yêu cầu này." });
 
-        if (request.Status != "PENDING")
-            return BadRequest(new { message = $"Yêu cầu đã được xử lý ({request.Status})." });
-
-        if (request.VenueId == null)
-            return BadRequest(new { message = "Dữ liệu lỗi: Yêu cầu không gắn với sân nào." });
+        if (profile.Status != "PENDING")
+            return BadRequest(new { message = $"Hồ sơ đã được xử lý ({profile.Status})." });
 
         if (string.IsNullOrWhiteSpace(body.Note))
             return BadRequest(new { message = "Vui lòng nhập lý do từ chối." });
 
         // Update Request
-        request.Status = "REJECTED";
-        request.AdminUserId = adminId;
-        request.DecisionAt = DateTime.UtcNow;
-        request.DecisionNote = body.Note;
-
-        // Update Venue via BLL
-        await _venueService.RejectAsync(request.VenueId.Value, adminId, body.Note);
+        profile.Status = "REJECTED";
+        profile.AdminUserId = adminId;
+        profile.DecisionAt = DateTime.UtcNow;
+        profile.DecisionNote = body.Note;
         
         await _db.SaveChangesAsync();
 
-        return Ok(new { message = "Đã từ chối sân thành công." });
+        return Ok(new { message = "Đã từ chối cấp quyền Chủ sân thành công." });
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

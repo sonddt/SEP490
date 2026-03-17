@@ -17,6 +17,7 @@ DROP TABLE IF EXISTS files;
 -- ADMIN
 DROP TABLE IF EXISTS violation_reports;
 DROP TABLE IF EXISTS venue_approval_requests;
+DROP TABLE IF EXISTS manager_profiles;
 
 -- REVIEWS
 DROP TABLE IF EXISTS favorite_venues;
@@ -90,6 +91,20 @@ CREATE TABLE user_roles (
     PRIMARY KEY(user_id,role_id),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
+);
+
+CREATE TABLE manager_profiles (
+    user_id CHAR(36) PRIMARY KEY,
+    id_card_no VARCHAR(50),
+    tax_code VARCHAR(50),
+    business_license_no VARCHAR(100),
+    address TEXT,
+    status VARCHAR(50) DEFAULT 'PENDING',
+    admin_user_id CHAR(36),
+    decision_at DATETIME,
+    decision_note TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (admin_user_id) REFERENCES users(id)
 );
 
 -- ======================================================================
@@ -553,6 +568,20 @@ INSERT IGNORE INTO venue_approval_requests (id, venue_id, status, admin_user_id,
  'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 15 DAY, 'Địa chỉ không hợp lệ, hồ sơ thiếu.');
 
 -- ======================================================================
+-- MANAGER PROFILES MẪU (DÙNG CHO DUYỆT CHỦ SÂN)
+-- ======================================================================
+
+INSERT IGNORE INTO manager_profiles (user_id, id_card_no, tax_code, business_license_no, address, status, admin_user_id, decision_at, decision_note) VALUES
+-- Approved (manager2, manager3) - đã được duyệt và cấp role MANAGER ở bảng roles
+('b0000005-0000-0000-0000-000000000005', '001099011222', '0312123123', 'DKKD-00123', 'Quận 1, TP.HCM', 'APPROVED', 'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 10 DAY, 'Hợp lệ'),
+('b0000006-0000-0000-0000-000000000006', '001099011333', '0312123444', 'DKKD-00444', 'Quận 3, TP.HCM', 'APPROVED', 'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 8 DAY, 'Đã xác minh'),
+-- Pending (player2, player3) - xin làm chủ sân nhưng đang chờ duyệt
+('b0000001-0000-0000-0000-000000000001', '001099011555', '0312123555', 'DKKD-00555', 'Quận 7, TP.HCM', 'PENDING', NULL, NULL, NULL),
+('b0000002-0000-0000-0000-000000000002', '001099011666', '0312123666', 'DKKD-00666', 'Tân Bình, TP.HCM', 'PENDING', NULL, NULL, NULL),
+-- Rejected (player4) - bị từ chối
+('b0000003-0000-0000-0000-000000000003', '001099011777', '0312123777', 'DKKD-00777', 'Thủ Đức, TP.HCM', 'REJECTED', 'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 2 DAY, 'Thiếu thông tin chứng minh nhân dân');
+
+-- ======================================================================
 -- Kiểm tra kết quả
 -- ======================================================================
 
@@ -561,4 +590,5 @@ SELECT 'Venues',              COUNT(*)          FROM venues     UNION ALL
 SELECT 'Courts',              COUNT(*)          FROM courts     UNION ALL
 SELECT 'Bookings',            COUNT(*)          FROM bookings   UNION ALL
 SELECT 'Payments',            COUNT(*)          FROM payments   UNION ALL
-SELECT 'ApprovalRequests',    COUNT(*)          FROM venue_approval_requests;
+SELECT 'ApprovalRequests',    COUNT(*)          FROM venue_approval_requests UNION ALL
+SELECT 'ManagerProfiles',     COUNT(*)          FROM manager_profiles;

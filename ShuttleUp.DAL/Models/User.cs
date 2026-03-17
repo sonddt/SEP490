@@ -69,5 +69,9 @@ public partial class User
 
     public virtual ICollection<ViolationReport> ViolationReportReporterUsers { get; set; } = new List<ViolationReport>();
 
+    public virtual ManagerProfile? ManagerProfileManager { get; set; }
+
+    public virtual ICollection<ManagerProfile> ApprovedManagerProfiles { get; set; } = new List<ManagerProfile>();
+
     public virtual ICollection<Role> Roles { get; set; } = new List<Role>();
 }
