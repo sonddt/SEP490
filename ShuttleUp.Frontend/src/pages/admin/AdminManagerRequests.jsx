@@ -98,7 +98,7 @@ export default function AdminManagerRequests() {
   const handleNextPage = () => setPage(p => Math.min(totalPages, p + 1));
 
   return (
-    <div className="main-wrapper content-below-header">
+    <div className="main-wrapper">
       {/* Breadcrumb */}
       <section className="breadcrumb breadcrumb-list mb-0">
         <span className="primary-right-round"></span>

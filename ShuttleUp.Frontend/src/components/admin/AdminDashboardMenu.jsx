@@ -24,8 +24,8 @@ export default function AdminDashboardMenu() {
       <div className="container">
         <div className="row">
           <div className="col-lg-12">
-            <div className="dashboard-menu coaurt-menu-dash">
-              <ul>
+            <div className="dashboard-menu coaurt-menu-dash d-flex align-items-center justify-content-between flex-wrap gap-3">
+              <ul className="mb-0">
                 {menuItems.map((item) => (
                   <li key={item.to}>
                     <NavLink
@@ -38,13 +38,16 @@ export default function AdminDashboardMenu() {
                     </NavLink>
                   </li>
                 ))}
-                <li>
-                  <a href="#" onClick={handleLogout}>
-                    <i className="feather-log-out" style={{ marginRight: '10px', fontSize: '18px', color: '#70767C' }}></i>
-                    <span>Đăng xuất</span>
-                  </a>
-                </li>
               </ul>
+              
+              <button 
+                onClick={handleLogout}
+                className="btn btn-danger d-flex align-items-center gap-2 px-4 py-2"
+                style={{ borderRadius: '8px', fontWeight: 500 }}
+              >
+                <i className="feather-log-out" style={{ fontSize: '18px' }}></i>
+                <span>Đăng xuất</span>
+              </button>
             </div>
           </div>
         </div>

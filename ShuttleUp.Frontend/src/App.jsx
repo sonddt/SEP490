@@ -61,6 +61,7 @@ function App() {
   return (
     <>
       <PageLoader />
+      {/* Show header everywhere except auth pages and admin pages */}
       {!isAuthPage && !isAdminPage && <Header transparent={location.pathname === '/'} />}
 
       <div className="main-content">

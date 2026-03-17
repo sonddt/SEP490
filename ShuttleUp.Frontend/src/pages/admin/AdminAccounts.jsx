@@ -96,7 +96,7 @@ export default function AdminAccounts() {
   };
 
   return (
-    <div className="main-wrapper content-below-header">
+    <div className="main-wrapper">
       <section className="breadcrumb breadcrumb-list mb-0">
         <span className="primary-right-round"></span>
         <div className="container">

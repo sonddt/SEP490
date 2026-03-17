@@ -38,7 +38,7 @@ export default function AdminRevenueStats() {
     { label: 'Số sân đang hoạt động', value: data?.summary?.activeVenues?.toString() || '0', color: 'info', icon: 'court-icon.svg' },
   ];
   return (
-    <div className="main-wrapper content-below-header">
+    <div className="main-wrapper">
       {/* Breadcrumb */}
       <section className="breadcrumb breadcrumb-list mb-0">
         <span className="primary-right-round"></span>
