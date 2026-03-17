@@ -33,6 +33,13 @@ import UserProfileEdit from './pages/user/UserProfileEdit';
 import UserProfileChangePassword from './pages/user/UserProfileChangePassword';
 import UserProfileOtherSetting from './pages/user/UserProfileOtherSetting';
 
+// Admin
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminAccounts from './pages/admin/AdminAccounts';
+import AdminManagerRequests from './pages/admin/AdminManagerRequests';
+import AdminBookingsStats from './pages/admin/AdminBookingsStats';
+import AdminRevenueStats from './pages/admin/AdminRevenueStats';
+
 const GOOGLE_CLIENT_ID = '993428936543-3tfatp8ak872p2j248tq3lbbqoi4r2ue.apps.googleusercontent.com';
 
 // ── Placeholder pages (to be replaced one by one) ──────────────────────────
@@ -49,11 +56,12 @@ function App() {
   const location = useLocation();
   const authRoutes = ['/login', '/register', '/forgot-password', '/change-password'];
   const isAuthPage = authRoutes.includes(location.pathname);
+  const isAdminPage = location.pathname.startsWith('/admin');
 
   return (
     <>
       <PageLoader />
-      {!isAuthPage && <Header transparent={location.pathname === '/'} />}
+      {!isAuthPage && !isAdminPage && <Header transparent={location.pathname === '/'} />}
 
       <div className="main-content">
       <Routes>
@@ -117,12 +125,19 @@ function App() {
         <Route path="/terms" element={<PlaceholderPage title="Terms & Conditions" />} />
         <Route path="/privacy-policy" element={<PlaceholderPage title="Privacy Policy" />} />
 
+        {/* Admin (yêu cầu role ADMIN) */}
+        <Route path="/admin/dashboard"        element={<ProtectedRoute requiredRole="ADMIN"><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/admin/accounts"         element={<ProtectedRoute requiredRole="ADMIN"><AdminAccounts /></ProtectedRoute>} />
+        <Route path="/admin/manager-requests" element={<ProtectedRoute requiredRole="ADMIN"><AdminManagerRequests /></ProtectedRoute>} />
+        <Route path="/admin/bookings-stats"   element={<ProtectedRoute requiredRole="ADMIN"><AdminBookingsStats /></ProtectedRoute>} />
+        <Route path="/admin/revenue-stats"    element={<ProtectedRoute requiredRole="ADMIN"><AdminRevenueStats /></ProtectedRoute>} />
+
         {/* 404 */}
         <Route path="*" element={<PlaceholderPage title="404 – Page Not Found" />} />
       </Routes>
       </div>
 
-      {!isAuthPage && <Footer />}
+      {!isAuthPage && !isAdminPage && <Footer />}
     </>
   );
 }

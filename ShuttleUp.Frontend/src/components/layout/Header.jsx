@@ -53,14 +53,20 @@ const Header = ({ transparent = false }) => {
   };
 
   // Dashboard path based on role
-  const dashboardPath = user?.roles?.includes('MANAGER')
-    ? '/manager/dashboard'
-    : '/user/dashboard';
+  const isAdmin   = user?.roles?.includes('ADMIN');
+  const isManager = user?.roles?.includes('MANAGER');
+  const dashboardPath = isAdmin
+    ? '/admin/dashboard'
+    : isManager
+      ? '/manager/dashboard'
+      : '/user/dashboard';
 
   // Profile path based on role
-  const profilePath = user?.roles?.includes('MANAGER')
-    ? '/manager/setting-password'
-    : '/user/my-profile';
+  const profilePath = isAdmin
+    ? '/admin/dashboard'
+    : isManager
+      ? '/manager/setting-password'
+      : '/user/my-profile';
 
   // Helper to check if path is active
   const isActive = (path) => {
@@ -205,6 +211,9 @@ const Header = ({ transparent = false }) => {
                   >
                     <span><i className="feather-user"></i></span>
                     {user?.fullName || user?.email}
+                    {isAdmin && (
+                      <span className="badge bg-danger ms-1" style={{ fontSize: '0.68rem', verticalAlign: 'middle' }}>ADMIN</span>
+                    )}
                   </Link>
                 </li>
                 <li className="nav-item">

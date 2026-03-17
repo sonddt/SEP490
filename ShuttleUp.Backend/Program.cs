@@ -85,7 +85,10 @@ namespace ShuttleUp.Backend
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowFrontend", policy =>
-                    policy.WithOrigins("http://localhost:5173")
+                    policy.WithOrigins(
+                            "http://localhost:5173",
+                            "http://localhost:5174" // Vite đôi khi tự đổi port khi 5173 đang bận
+                        )
                           .AllowAnyHeader()
                           .AllowAnyMethod()
                           .AllowCredentials());  // Bắt buộc cho SignalR WebSocket
