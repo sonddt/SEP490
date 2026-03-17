@@ -206,10 +206,10 @@ const Header = ({ transparent = false }) => {
                 {isManager && !isAdmin && (
                   <li className="nav-item d-none d-sm-block">
                     <Link
-                      className="nav-link btn btn-outline-primary me-2"
+                      className={`nav-link btn ${isWhiteBg ? 'btn-primary' : 'btn-limegreen'} me-2 text-white`}
                       to={location.pathname.startsWith('/manager') ? '/user/dashboard' : '/manager/dashboard'}
                       onClick={closeMobileMenu}
-                      style={{ padding: '8px 16px', borderRadius: '25px', fontWeight: '500' }}
+                      style={{ padding: '8px 20px', borderRadius: '25px', fontWeight: '600', transition: 'all 0.3s' }}
                     >
                       <i className={location.pathname.startsWith('/manager') ? 'feather-user me-2' : 'feather-briefcase me-2'}></i>
                       {location.pathname.startsWith('/manager') ? 'Chế độ Người chơi' : 'Dashboard Chủ sân'}
