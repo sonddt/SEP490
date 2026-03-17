@@ -1,24 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import AdminDashboardMenu from '../../components/admin/AdminDashboardMenu';
 
-// ── Mock data ──────────────────────────────────────────────────────────────
-const summary = [
-  { label: 'Tổng đặt sân',      value: '1,024', color: 'primary', icon: 'booking-icon.svg' },
-  { label: 'Đặt thành công',    value: '896',   color: 'success', icon: 'court-icon.svg'   },
-  { label: 'Đang chờ xác nhận', value: '68',    color: 'warning', icon: 'request-icon.svg' },
-  { label: 'Đã huỷ',            value: '60',    color: 'danger',  icon: 'invoice-icon.svg' },
-];
-
-const mockBookings = [
-  { id: 'BK001', player: 'Nguyễn Văn An',   venue: 'ShuttleUp Quận 7',    court: 'Sân 1', date: '17/03/2026', time: '08:00–09:00', amount: '80.000 ₫',  status: 'Confirmed' },
-  { id: 'BK002', player: 'Trần Thị B',      venue: 'ShuttleUp Bình Thạnh', court: 'Sân 2', date: '17/03/2026', time: '10:00–11:00', amount: '80.000 ₫',  status: 'Pending'   },
-  { id: 'BK003', player: 'Lê Văn C',        venue: 'Cầu lông Gò Vấp',     court: 'Sân 1', date: '16/03/2026', time: '14:00–16:00', amount: '160.000 ₫', status: 'Confirmed' },
-  { id: 'BK004', player: 'Phạm Thị D',      venue: 'ShuttleUp Tân Bình',  court: 'Sân 3', date: '16/03/2026', time: '16:00–18:00', amount: '200.000 ₫', status: 'Cancelled' },
-  { id: 'BK005', player: 'Đặng Quốc Huy',   venue: 'ShuttleUp Quận 7',    court: 'Sân 2', date: '15/03/2026', time: '07:00–08:00', amount: '80.000 ₫',  status: 'Confirmed' },
-  { id: 'BK006', player: 'Vũ Thị Mai',      venue: 'Arena Badminton',      court: 'Sân 4', date: '15/03/2026', time: '09:00–10:00', amount: '100.000 ₫', status: 'Confirmed' },
-  { id: 'BK007', player: 'Hoàng Bảo Khoa',  venue: 'Cầu lông Gò Vấp',     court: 'Sân 2', date: '14/03/2026', time: '18:00–20:00', amount: '200.000 ₫', status: 'Cancelled' },
-];
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5079';
 
 const statusMap = {
   Confirmed: { label: 'Xác nhận', cls: 'bg-success' },
@@ -29,12 +13,47 @@ const statusMap = {
 export default function AdminBookingsStats() {
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterDate,   setFilterDate]   = useState('');
+  
+  const [data, setData] = useState(null);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const filtered = mockBookings.filter((b) => {
-    const matchStatus = filterStatus === 'All' || b.status === filterStatus;
-    const matchDate   = !filterDate || b.date.includes(filterDate);
-    return matchStatus && matchDate;
-  });
+  const fetchStats = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams({
+        page: page.toString(),
+        pageSize: '10'
+      });
+      if (filterStatus && filterStatus !== 'All') params.append('status', filterStatus);
+      if (filterDate) params.append('date', filterDate);
+
+      const res = await fetch(`${API}/api/admin/stats/bookings?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const result = await res.json();
+      setData(result);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, filterStatus, filterDate]);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  const summary = [
+    { label: 'Tổng đặt sân',      value: data?.summary?.total?.toLocaleString() || '0', color: 'primary', icon: 'booking-icon.svg' },
+    { label: 'Đặt thành công',    value: data?.summary?.confirmed?.toLocaleString() || '0',   color: 'success', icon: 'court-icon.svg'   },
+    { label: 'Đang chờ xác nhận', value: data?.summary?.pending?.toLocaleString() || '0',    color: 'warning', icon: 'request-icon.svg' },
+    { label: 'Đã huỷ',            value: data?.summary?.cancelled?.toLocaleString() || '0',    color: 'danger',  icon: 'invoice-icon.svg' },
+  ];
 
   return (
     <div className="main-wrapper content-below-header">
@@ -55,6 +74,13 @@ export default function AdminBookingsStats() {
 
       <div className="content court-bg">
         <div className="container">
+
+          {error && (
+            <div className="alert alert-danger d-flex justify-content-between align-items-center">
+              <span><i className="feather-alert-triangle me-2"></i>Không thể tải dữ liệu: {error}</span>
+              <button className="btn btn-sm btn-outline-danger" onClick={fetchStats}>Thử lại</button>
+            </div>
+          )}
 
           {/* ── Summary Cards ─────────────────────────────── */}
           <div className="row mb-4">
@@ -81,13 +107,13 @@ export default function AdminBookingsStats() {
           <div className="card card-tableset">
             <div className="card-body">
               <div className="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
-                <h4 className="mb-0">Chi tiết Đặt sân ({filtered.length})</h4>
+                <h4 className="mb-0">Chi tiết Đặt sân {data && `(${data.totalItems})`}</h4>
                 <div className="d-flex gap-2">
                   <select
                     className="form-select"
                     style={{ width: 180 }}
                     value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
+                    onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
                   >
                     <option value="All">Tất cả trạng thái</option>
                     <option value="Confirmed">Xác nhận</option>
@@ -100,7 +126,7 @@ export default function AdminBookingsStats() {
                     style={{ width: 150 }}
                     placeholder="Lọc theo ngày (dd/mm)"
                     value={filterDate}
-                    onChange={(e) => setFilterDate(e.target.value)}
+                    onChange={(e) => { setFilterDate(e.target.value); setPage(1); }}
                   />
                 </div>
               </div>
@@ -119,12 +145,21 @@ export default function AdminBookingsStats() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.length === 0 && (
+                    {loading ? (
+                      [...Array(5)].map((_, i) => (
+                        <tr key={i}>
+                          <td colSpan="8">
+                            <div className="placeholder-glow">
+                              <span className="placeholder col-12" style={{ height: '30px' }}></span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : !data || !data.items || data.items.length === 0 ? (
                       <tr>
                         <td colSpan={8} className="text-center text-muted py-4">Không có dữ liệu.</td>
                       </tr>
-                    )}
-                    {filtered.map((b) => (
+                    ) : (data.items.map((b) => (
                       <tr key={b.id}>
                         <td><code>{b.id}</code></td>
                         <td><strong>{b.player}</strong></td>
@@ -134,15 +169,32 @@ export default function AdminBookingsStats() {
                         <td>{b.time}</td>
                         <td><strong>{b.amount}</strong></td>
                         <td>
-                          <span className={`badge ${statusMap[b.status].cls}`}>
-                            {statusMap[b.status].label}
+                          <span className={`badge ${statusMap[b.status]?.cls || 'bg-secondary'}`}>
+                            {statusMap[b.status]?.label || b.status}
                           </span>
                         </td>
                       </tr>
-                    ))}
+                    )))}
                   </tbody>
                 </table>
               </div>
+
+               {/* Pagination */}
+               {!loading && data && data.items && data.items.length > 0 && (
+                <div className="d-flex justify-content-between align-items-center mt-3">
+                  <span className="text-muted" style={{ fontSize: '0.9rem' }}>
+                    Trang {page} / {data.totalPages}
+                  </span>
+                  <div className="btn-group">
+                    <button className="btn btn-sm btn-outline-secondary" disabled={page === 1} onClick={() => setPage(p => Math.max(1, p - 1))}>
+                      <i className="feather-chevron-left"></i> Trước
+                    </button>
+                    <button className="btn btn-sm btn-outline-secondary" disabled={page === data.totalPages} onClick={() => setPage(p => Math.min(data.totalPages, p + 1))}>
+                      Sau <i className="feather-chevron-right"></i>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

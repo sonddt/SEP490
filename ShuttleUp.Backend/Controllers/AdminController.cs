@@ -395,6 +395,126 @@ public class AdminController : ControllerBase
         return Ok(new { message = "Đã từ chối cấp quyền Chủ sân thành công." });
     }
 
+    // =========================================================================
+    // STATISTICS — Thống kê
+    // GET api/admin/stats/bookings
+    // GET api/admin/stats/revenue
+    // =========================================================================
+
+    [HttpGet("stats/bookings")]
+    public async Task<IActionResult> GetBookingStats(
+        [FromQuery] string? status,
+        [FromQuery] string? date,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        var totalBookings = await _db.Bookings.CountAsync();
+        var confirmedBookings = await _db.Bookings.CountAsync(b => b.Status == "Confirmed");
+        var pendingBookings = await _db.Bookings.CountAsync(b => b.Status == "Pending");
+        var cancelledBookings = await _db.Bookings.CountAsync(b => b.Status == "Cancelled");
+
+        // List and Filter
+        var query = _db.Bookings
+            .Include(b => b.User)
+            .Include(b => b.Venue)
+            .Include(b => b.BookingItems)
+                .ThenInclude(bi => bi.Court)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status) && status != "All")
+        {
+            query = query.Where(b => b.Status == status);
+        }
+
+        if (!string.IsNullOrWhiteSpace(date))
+        {
+            // Simple string matching for dd/MM/yyyy date filter requested by frontend
+            // In a real app we'd parse this into a date range, but we'll filter post-query for simplicity
+        }
+
+        var rawList = await query
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync();
+
+        if (!string.IsNullOrWhiteSpace(date))
+        {
+            rawList = rawList.Where(b => b.CreatedAt.HasValue && b.CreatedAt.Value.ToString("dd/MM/yyyy").Contains(date)).ToList();
+        }
+
+        var totalItems = rawList.Count;
+        var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+
+        var pagedItems = rawList
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(b => new
+            {
+                id = $"BK{b.Id.ToString().Substring(0, 5).ToUpper()}",
+                player = b.User?.FullName ?? "N/A",
+                venue = b.Venue?.Name ?? "N/A",
+                court = string.Join(", ", b.BookingItems.Select(bi => bi.Court?.Name)),
+                date = b.CreatedAt?.ToString("dd/MM/yyyy"),
+                time = b.BookingItems.FirstOrDefault() != null ? $"{b.BookingItems.First().StartTime:hh\\:mm}-{b.BookingItems.First().EndTime:hh\\:mm}" : "N/A",
+                amount = $"{b.TotalAmount:N0} ₫",
+                status = b.Status
+            }).ToList();
+
+        return Ok(new
+        {
+            summary = new
+            {
+                total = totalBookings,
+                confirmed = confirmedBookings,
+                pending = pendingBookings,
+                cancelled = cancelledBookings
+            },
+            items = pagedItems,
+            totalItems,
+            totalPages
+        });
+    }
+
+    [HttpGet("stats/revenue")]
+    public async Task<IActionResult> GetRevenueStats()
+    {
+        var now = DateTime.UtcNow;
+        var startOfMonth = new DateTime(now.Year, now.Month, 1);
+        var startOfDay = now.Date;
+
+        var confirmedBookings = _db.Bookings.Where(b => b.Status == "Confirmed");
+
+        var totalRevenue = await confirmedBookings.SumAsync(b => b.TotalAmount ?? 0);
+        var monthRevenue = await confirmedBookings.Where(b => b.CreatedAt >= startOfMonth).SumAsync(b => b.TotalAmount ?? 0);
+        var todayRevenue = await confirmedBookings.Where(b => b.CreatedAt >= startOfDay).SumAsync(b => b.TotalAmount ?? 0);
+        var activeVenuesCount = await _db.Venues.CountAsync(v => v.IsActive == true);
+
+        // Group by Venue
+        var venuesStats = await _db.Venues
+            .Select(v => new
+            {
+                id = v.Id,
+                venue = v.Name,
+                owner = v.OwnerUser != null ? v.OwnerUser.FullName : "N/A",
+                totalBookings = v.Bookings.Count(b => b.Status == "Confirmed"),
+                revenue = v.Bookings.Where(b => b.Status == "Confirmed").Sum(b => b.TotalAmount ?? 0),
+                growth = "+0%" // Simplified for now
+            })
+            .OrderByDescending(v => v.revenue)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            summary = new
+            {
+                totalRevenue = $"{totalRevenue:N0} ₫",
+                monthRevenue = $"{monthRevenue:N0} ₫",
+                todayRevenue = $"{todayRevenue:N0} ₫",
+                activeVenues = activeVenuesCount
+            },
+            venuesData = venuesStats
+        });
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private Guid GetCurrentUserId()

@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const menuItems = [
   { to: '/admin/dashboard',         icon: 'dashboard-icon.svg',  label: 'Tổng quan' },
@@ -9,6 +10,15 @@ const menuItems = [
 ];
 
 export default function AdminDashboardMenu() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = (e) => {
+    e.preventDefault();
+    logout();
+    navigate('/login');
+  };
+
   return (
     <div className="dashboard-section coach-dash-section">
       <div className="container">
@@ -28,6 +38,12 @@ export default function AdminDashboardMenu() {
                     </NavLink>
                   </li>
                 ))}
+                <li>
+                  <a href="#" onClick={handleLogout}>
+                    <i className="feather-log-out" style={{ marginRight: '10px', fontSize: '18px', color: '#70767C' }}></i>
+                    <span>Đăng xuất</span>
+                  </a>
+                </li>
               </ul>
             </div>
           </div>
