@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import AdminDashboardMenu from '../../components/admin/AdminDashboardMenu';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5108';
+import axiosClient from '../../api/axiosClient';
 
 function roleBadge(roles = []) {
   if (roles.includes('ADMIN'))   return <span className="badge bg-dark">Admin</span>;
@@ -45,11 +45,7 @@ export default function AdminAccounts() {
       if (filterRole)   params.append('role',   filterRole);
       if (filterStatus) params.append('status', filterStatus);
 
-      const res = await fetch(`${API}/api/admin/accounts?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      const data = await axiosClient.get(`/admin/accounts?${params}`);
       setItems(data.items);
       setTotalItems(data.totalItems);
       setTotalPages(data.totalPages);
@@ -74,17 +70,9 @@ export default function AdminAccounts() {
     setActionLoading(true);
     setActionError(null);
     try {
-      const token = localStorage.getItem('token');
-      const body  = action === 'block' ? JSON.stringify({ reason: blockReason || 'Vi phạm điều khoản.' }) : null;
-      const res   = await fetch(`${API}/api/admin/accounts/${user.id}/${action}`, {
-        method:  'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body,
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || `HTTP ${res.status}`);
-      }
+      const body = action === 'block' ? { reason: blockReason || 'Vi phạm điều khoản.' } : {};
+      await axiosClient.post(`/admin/accounts/${user.id}/${action}`, body);
+
       setConfirmAction(null);
       setBlockReason('');
       load(page); // reload current page

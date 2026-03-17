@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import AdminDashboardMenu from '../../components/admin/AdminDashboardMenu';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5079';
+import axiosClient from '../../api/axiosClient';
 
 const statusMap = {
   Confirmed: { label: 'Xác nhận', cls: 'bg-success' },
@@ -23,7 +23,6 @@ export default function AdminBookingsStats() {
     try {
       setLoading(true);
       setError(null);
-      const token = localStorage.getItem('token');
       const params = new URLSearchParams({
         page: page.toString(),
         pageSize: '10'
@@ -31,11 +30,7 @@ export default function AdminBookingsStats() {
       if (filterStatus && filterStatus !== 'All') params.append('status', filterStatus);
       if (filterDate) params.append('date', filterDate);
 
-      const res = await fetch(`${API}/api/admin/stats/bookings?${params}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-      const result = await res.json();
+      const result = await axiosClient.get(`/admin/stats/bookings?${params}`);
       setData(result);
     } catch (err) {
       setError(err.message);

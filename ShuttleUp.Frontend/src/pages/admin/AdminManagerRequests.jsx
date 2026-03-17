@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import AdminDashboardMenu from '../../components/admin/AdminDashboardMenu';
 
 // ── Hooks & API ────────────────────────────────────────────────────────────
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5079';
+import axiosClient from '../../api/axiosClient';
 
 const statusMap = {
   PENDING:  { label: 'Chờ duyệt',  cls: 'bg-warning text-dark' },
@@ -30,7 +30,6 @@ export default function AdminManagerRequests() {
     try {
       setLoading(true);
       setError(null);
-      const token = localStorage.getItem('token');
       const params = new URLSearchParams({
         page: page.toString(),
         pageSize: '10'
@@ -38,11 +37,7 @@ export default function AdminManagerRequests() {
       if (filterStatus) params.append('status', filterStatus);
       if (search) params.append('search', search);
 
-      const res = await fetch(`${API_URL}/api/admin/manager-requests?${params}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-      const data = await res.json();
+      const data = await axiosClient.get(`/admin/manager-requests?${params}`);
       setRequests(data.items || []);
       setTotalPages(data.totalPages || 1);
     } catch (err) {
@@ -69,18 +64,7 @@ export default function AdminManagerRequests() {
 
     try {
       setActionLoading(true);
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/admin/manager-requests/${request.id}/${action}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ note: actionNote })
-      });
-      
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Có lỗi xảy ra.');
+      await axiosClient.post(`/admin/manager-requests/${request.id}/${action}`, { note: actionNote });
       
       // Success: Close modals and refresh
       setConfirmAction(null);

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import AdminDashboardMenu from '../../components/admin/AdminDashboardMenu';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5079';
+import axiosClient from '../../api/axiosClient';
 
 export default function AdminRevenueStats() {
   const [data, setData] = useState(null);
@@ -13,12 +13,7 @@ export default function AdminRevenueStats() {
     try {
       setLoading(true);
       setError(null);
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API}/api/admin/stats/revenue`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-      const result = await res.json();
+      const result = await axiosClient.get(`/admin/stats/revenue`);
       setData(result);
     } catch (err) {
       setError(err.message);

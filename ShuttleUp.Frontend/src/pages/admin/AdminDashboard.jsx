@@ -2,9 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import AdminDashboardMenu from '../../components/admin/AdminDashboardMenu';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5108';
-
-function roleBadge(roles = []) {
+import axiosClient from '../../api/axiosClient';function roleBadge(roles = []) {
   if (roles.includes('ADMIN'))   return <span className="badge bg-dark">Admin</span>;
   if (roles.includes('MANAGER')) return <span className="badge bg-success">Manager</span>;
   return <span className="badge bg-primary">Player</span>;
@@ -24,14 +22,10 @@ export default function AdminDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('token');
-      const res   = await fetch(`${API}/api/admin/dashboard`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setData(await res.json());
+      const data = await axiosClient.get('/admin/dashboard');
+      setData(data);
     } catch (e) {
-      setError(e.message);
+      setError(e.message || 'Lỗi tải dữ liệu');
     } finally {
       setLoading(false);
     }
