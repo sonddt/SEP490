@@ -1,5 +1,21 @@
 /* ── ShuttleUp Global Custom CSS ─────────────────────────────────────────── */
 
+/* Remove default browser underline from all links - template handles styling via classes */
+a,
+a:hover,
+a:focus,
+a:active {
+  text-decoration: none !important;
+}
+
+/* Also remove underline from Bootstrap btn-link buttons (Chia sẻ, Xem thêm hình, etc.) */
+.btn-link,
+.btn-link:hover,
+.btn-link:focus {
+  text-decoration: none !important;
+}
+
+
 /* When header is NOT transparent and NOT scrolled (e.g. /courts): white bg + dark text so menu is visible */
 .header:not(.header-trans):not(.fixed) {
   background: #ffffff !important;

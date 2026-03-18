@@ -133,18 +133,18 @@ export default function VenueDetails() {
             </SwiperSlide>
           ))}
         </Swiper>
-        <div className="owl-nav d-none d-md-block">
-          <button className="owl-prev vg-prev" type="button">
-            <i className="feather-chevron-left" />
+        <div className="owl-nav d-none d-md-block" style={{ position: 'absolute', top: '50%', width: '100%', transform: 'translateY(-50%)', zIndex: 10, pointerEvents: 'none' }}>
+          <button className="owl-prev vg-prev" type="button" style={{ position: 'absolute', pointerEvents: 'auto', left: '30px', backgroundColor: 'rgba(255, 255, 255, 0.7)', border: 'none', borderRadius: '50%', width: '46px', height: '46px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+            <i className="feather-chevron-left" style={{ margin: 0, fontSize: '18px', color: '#333' }} />
           </button>
-          <button className="owl-next vg-next" type="button">
-            <i className="feather-chevron-right" />
+          <button className="owl-next vg-next" type="button" style={{ position: 'absolute', pointerEvents: 'auto', right: '30px', backgroundColor: 'rgba(255, 255, 255, 0.7)', border: 'none', borderRadius: '50%', width: '46px', height: '46px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+            <i className="feather-chevron-right" style={{ margin: 0, fontSize: '18px', color: '#333' }} />
           </button>
         </div>
-        <div className="showphotos corner-radius-10">
-          <button type="button" className="btn btn-secondary d-inline-flex align-items-center">
-            <i className="fa-regular fa-images me-2" /> Xem thêm hình
-          </button>
+        <div className="showphotos corner-radius-10" style={{ position: 'absolute', bottom: '20px', right: '30px', zIndex: 10 }}>
+          <a href="#gallery" className="d-inline-flex align-items-center" style={{ backgroundColor: '#FBBF24', color: '#fff', padding: '10px 20px', borderRadius: '5px', textDecoration: 'none', fontWeight: '500', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
+            <i className="fa-regular fa-images me-2" style={{ color: '#fff' }} /> Xem thêm hình
+          </a>
         </div>
       </section>
 
