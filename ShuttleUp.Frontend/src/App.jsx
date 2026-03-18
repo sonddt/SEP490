@@ -20,6 +20,7 @@ import BookingTimeline from './pages/BookingTimeline';
 import BookingConfirm from './pages/BookingConfirm';
 import BookingPayment from './pages/BookingPayment';
 import BookingComplete from './pages/BookingComplete';
+import TermsOfService from './pages/TermsOfService';
 
 // Auth
 import Login from './pages/Login';
@@ -131,8 +132,8 @@ function App() {
           <Route path="/faq" element={<PlaceholderPage title="FAQ" />} />
           <Route path="/managers" element={<PlaceholderPage title="Quản lý sân" />} />
           <Route path="/manager-detail" element={<PlaceholderPage title="Chi tiết Quản lý sân" />} />
-          <Route path="/terms" element={<PlaceholderPage title="Terms & Conditions" />} />
-          <Route path="/privacy-policy" element={<PlaceholderPage title="Privacy Policy" />} />
+          <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/privacy-policy" element={<TermsOfService />} />
 
           {/* Admin (yêu cầu role ADMIN) */}
           <Route path="/admin/dashboard" element={<ProtectedRoute requiredRole="ADMIN"><AdminDashboard /></ProtectedRoute>} />

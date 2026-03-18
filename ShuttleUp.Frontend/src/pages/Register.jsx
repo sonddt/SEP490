@@ -14,6 +14,7 @@ export default function Register() {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
+    phoneNumber: '',
     password: '',
     confirmPassword: '',
     agreedToTerms: false,
@@ -55,6 +56,7 @@ export default function Register() {
     try {
       const data = await registerEmail({
         email: formData.email,
+        phoneNumber: formData.phoneNumber,
         password: formData.password,
         fullName: formData.fullName,
         isManagerRoleRequested: activeTab === 'manager',
@@ -204,6 +206,22 @@ export default function Register() {
                                 />
                               </div>
                             </div>
+                            <div className="form-group">
+                              <div className="group-img">
+                                <i className="feather-phone"></i>
+                                <input
+                                  type="tel"
+                                  className="form-control"
+                                  placeholder="Số điện thoại"
+                                  name="phoneNumber"
+                                  value={formData.phoneNumber}
+                                  onChange={handleInputChange}
+                                  required
+                                  pattern="[0-9]{9,11}"
+                                  title="Số điện thoại gồm 9-11 chữ số"
+                                />
+                              </div>
+                            </div>
 
                             {activeTab === 'manager' && (
                               <>
@@ -315,7 +333,7 @@ export default function Register() {
                               </div>
                               <label className="form-check-label" htmlFor="policy">
                                 Bằng cách tiếp tục, bạn đồng ý rằng bạn đã đọc và chấp nhận{' '}
-                                <a href="#" onClick={(e) => e.preventDefault()}>Điều khoản sử dụng</a>
+                                <Link to="/terms">Điều khoản sử dụng</Link>
                               </label>
                             </div>
                             <button

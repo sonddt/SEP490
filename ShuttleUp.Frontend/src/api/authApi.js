@@ -7,6 +7,7 @@ import axiosClient from './axiosClient';
 export function registerEmail(data) {
   return axiosClient.post('/auth/register', {
     email: data.email,
+    phoneNumber: data.phoneNumber,
     password: data.password,
     fullName: data.fullName,
     isManagerRoleRequested: data.isManagerRoleRequested,
@@ -22,10 +23,10 @@ export function registerEmail(data) {
  * @param {{ email, password }} data
  */
 export function loginEmail(data) {
-  return axiosClient.post('/auth/login', {
-    email: data.email,
-    password: data.password,
-  });
+  const payload = { password: data.password };
+  if (data.email) payload.email = data.email;
+  if (data.phoneNumber) payload.phoneNumber = data.phoneNumber;
+  return axiosClient.post('/auth/login', payload);
 }
 
 /**

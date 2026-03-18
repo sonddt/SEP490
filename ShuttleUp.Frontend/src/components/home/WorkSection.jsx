@@ -4,7 +4,7 @@ export default function WorkSection() {
   const steps = [
     { icon: '/assets/img/icons/work-icon1.svg', title: 'Đăng Ký Tài Khoản', link: '/register', desc: 'Nhanh chóng và dễ dàng: Bắt đầu trên nền tảng của chúng tôi bằng việc tạo một tài khoản cá nhân.', btn: 'Đăng Ký Ngay' },
     { icon: '/assets/img/icons/work-icon2.svg', title: 'Lựa Chọn Sân Bãi', link: '/courts', desc: 'Xem chi tiết và lựa chọn các sân cầu lông với cơ sở vật chất chất lượng cao.', btn: 'Đi Tới Danh Sách' },
-    { icon: '/assets/img/icons/work-icon3.svg', title: 'Quy Trình Đặt Sân', link: '/booking', desc: 'Dễ dàng đặt lịch, thanh toán, và tận hưởng trải nghiệm mượt mà trên nền tảng của chúng tôi.', btn: 'Đặt Sân Ngay' },
+    { icon: '/assets/img/icons/work-icon3.svg', title: 'Quy Trình Đặt Sân', link: '/login', desc: 'Dễ dàng đặt lịch, thanh toán, và tận hưởng trải nghiệm mượt mà trên nền tảng của chúng tôi.', btn: 'Đặt Sân Ngay' },
   ];
 
   return (

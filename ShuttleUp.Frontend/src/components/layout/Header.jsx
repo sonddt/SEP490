@@ -143,32 +143,11 @@ const Header = ({ transparent = false }) => {
                 <ul className={`submenu ${openSubmenu === 'search' ? 'd-block' : ''}`}>
                   <li className={isActive('/courts') && !isActive('/courts/map') ? 'active' : ''}><Link to="/courts" onClick={closeMobileMenu}>Danh sách Sân</Link></li>
                   <li className={isActive('/courts/map') ? 'active' : ''}><Link to="/courts/map" onClick={closeMobileMenu}>Bản đồ Sân</Link></li>
-                  <li className={isActive('/venue-details') ? 'active' : ''}><Link to="/venue-details" onClick={closeMobileMenu}>Chi tiết Sân</Link></li>
                 </ul>
               </li>
-
-              <li className={`has-submenu ${isActive('/booking') || isActive('/user/bookings') ? 'active' : ''} ${openSubmenu === 'booking' ? 'active' : ''}`}>
-                <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    toggleSubmenu('booking');
-                  }}
-                >
-                  Đặt Sân <i className="fas fa-chevron-down"></i>
-                </a>
-                <ul className={`submenu ${openSubmenu === 'booking' ? 'd-block' : ''}`}>
-                  <li className={isActive('/booking') ? 'active' : ''}><Link to="/booking" onClick={closeMobileMenu}>Đặt một Sân</Link></li>
-                  <li className={isActive('/user/bookings') ? 'active' : ''}><Link to="/user/bookings" onClick={closeMobileMenu}>Lịch sử Đặt Sân</Link></li>
-                </ul>
-              </li>
-
 
               <li className={isActive('/about') ? 'active' : ''}>
-                <Link to="/about" onClick={closeMobileMenu}>Về Chúng tôi</Link>
-              </li>
-              <li className={isActive('/contact') ? 'active' : ''}>
-                <Link to="/contact" onClick={closeMobileMenu}>Liên hệ</Link>
+                <Link to="/about" onClick={closeMobileMenu}>Nổi bật</Link>
               </li>
               {isAuthenticated && (
                 <li className={isActive('/chat') ? 'active' : ''}>

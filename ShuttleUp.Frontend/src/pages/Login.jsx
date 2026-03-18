@@ -5,10 +5,12 @@ import { loginEmail, loginGoogle } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
+  const saved = JSON.parse(localStorage.getItem('shuttleup_remember') || 'null');
   const [activeTab, setActiveTab] = useState('user');
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [emailOrPhone, setEmailOrPhone] = useState(saved?.emailOrPhone || '');
+  const [password, setPassword] = useState(saved?.password || '');
+  const [rememberMe, setRememberMe] = useState(!!saved);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -31,11 +33,22 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const data = await loginEmail({ email, password });
+      const isPhone = /^[0-9]{9,11}$/.test(emailOrPhone.trim());
+      const payload = isPhone
+        ? { phoneNumber: emailOrPhone.trim(), password }
+        : { email: emailOrPhone.trim(), password };
+      const data = await loginEmail(payload);
+
+      if (rememberMe) {
+        localStorage.setItem('shuttleup_remember', JSON.stringify({ emailOrPhone: emailOrPhone.trim(), password }));
+      } else {
+        localStorage.removeItem('shuttleup_remember');
+      }
+
       login(data);
       redirectAfterLogin(data.user?.roles);
     } catch (err) {
-      setError(err.response?.data?.message || 'Email hoặc mật khẩu không đúng.');
+      setError(err.response?.data?.message || 'Email/SĐT hoặc mật khẩu không đúng.');
     } finally {
       setLoading(false);
     }
@@ -135,11 +148,11 @@ export default function Login() {
                               <div className="group-img">
                                 <i className="feather-user"></i>
                                 <input
-                                  type="email"
+                                  type="text"
                                   className="form-control"
-                                  placeholder="Email"
-                                  value={email}
-                                  onChange={(e) => setEmail(e.target.value)}
+                                  placeholder="Email hoặc Số điện thoại"
+                                  value={emailOrPhone}
+                                  onChange={(e) => setEmailOrPhone(e.target.value)}
                                   required
                                 />
                               </div>
@@ -163,7 +176,16 @@ export default function Login() {
                             </div>
                             <div className="form-group d-sm-flex align-items-center justify-content-between">
                               <div className="form-check form-switch d-flex align-items-center justify-content-start">
-                                <input className="form-check-input" type="checkbox" id="user-pass" />
+                                <input
+                                  className="form-check-input"
+                                  type="checkbox"
+                                  id="user-pass"
+                                  checked={rememberMe}
+                                  onChange={(e) => {
+                                    setRememberMe(e.target.checked);
+                                    if (!e.target.checked) localStorage.removeItem('shuttleup_remember');
+                                  }}
+                                />
                                 <label className="form-check-label" htmlFor="user-pass">Nhớ mật khẩu</label>
                               </div>
                               <span>
