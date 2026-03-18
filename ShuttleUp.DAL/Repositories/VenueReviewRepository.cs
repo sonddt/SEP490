@@ -15,6 +15,6 @@ public class VenueReviewRepository : Repository<VenueReview>, IVenueReviewReposi
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync();
 
-    public async Task<bool> HasUserReviewedAsync(Guid venueId, Guid userId)
-        => await _dbSet.AnyAsync(r => r.VenueId == venueId && r.UserId == userId);
+    public async Task<bool> HasUserReviewedBookingAsync(Guid bookingId, Guid userId)
+        => await _dbSet.AnyAsync(r => r.BookingId == bookingId && r.UserId == userId);
 }
