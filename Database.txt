@@ -585,10 +585,54 @@ INSERT IGNORE INTO manager_profiles (user_id, id_card_no, tax_code, business_lic
 -- Kiểm tra kết quả
 -- ======================================================================
 
+-- ======================================================================
+-- SAMPLE FILES (Gallery images)
+-- ======================================================================
+
+INSERT IGNORE INTO files (id, file_url, file_name, mime_type, file_size, created_at) VALUES
+('h0000001-0000-0000-0000-000000000001', 'https://dream-theme.com/html/venus/assets/img/gallery/gallery-01.jpg', 'gallery-01.jpg', 'image/jpeg', 102400, NOW()),
+('h0000002-0000-0000-0000-000000000002', 'https://dream-theme.com/html/venus/assets/img/gallery/gallery-02.jpg', 'gallery-02.jpg', 'image/jpeg', 102400, NOW()),
+('h0000003-0000-0000-0000-000000000003', 'https://dream-theme.com/html/venus/assets/img/gallery/gallery-03.jpg', 'gallery-03.jpg', 'image/jpeg', 102400, NOW()),
+('h0000004-0000-0000-0000-000000000004', 'https://dream-theme.com/html/venus/assets/img/gallery/gallery-04.jpg', 'gallery-04.jpg', 'image/jpeg', 102400, NOW()),
+('h0000005-0000-0000-0000-000000000005', 'https://dream-theme.com/html/venus/assets/img/gallery/gallery-05.jpg', 'gallery-05.jpg', 'image/jpeg', 102400, NOW());
+
+-- Mapping files to venues
+INSERT IGNORE INTO venue_files (venue_id, file_id) VALUES
+('c0000001-0000-0000-0000-000000000001', 'h0000001-0000-0000-0000-000000000001'),
+('c0000001-0000-0000-0000-000000000001', 'h0000002-0000-0000-0000-000000000002'),
+('c0000001-0000-0000-0000-000000000001', 'h0000003-0000-0000-0000-000000000003'),
+('c0000001-0000-0000-0000-000000000001', 'h0000004-0000-0000-0000-000000000004'),
+('c0000002-0000-0000-0000-000000000002', 'h0000005-0000-0000-0000-000000000005');
+
+-- ======================================================================
+-- SAMPLE OPEN HOURS
+-- ======================================================================
+
+INSERT IGNORE INTO venue_open_hours (id, venue_id, day_of_week, open_time, close_time) VALUES
+(UUID(), 'c0000001-0000-0000-0000-000000000001', 1, '06:00:00', '22:00:00'), -- Thứ 2
+(UUID(), 'c0000001-0000-0000-0000-000000000001', 2, '06:00:00', '22:00:00'),
+(UUID(), 'c0000001-0000-0000-0000-000000000001', 3, '06:00:00', '22:00:00'),
+(UUID(), 'c0000001-0000-0000-0000-000000000001', 4, '06:00:00', '22:00:00'),
+(UUID(), 'c0000001-0000-0000-0000-000000000001', 5, '06:00:00', '22:00:00'),
+(UUID(), 'c0000001-0000-0000-0000-000000000001', 6, '06:00:00', '23:00:00'),
+(UUID(), 'c0000001-0000-0000-0000-000000000001', 0, '06:00:00', '23:00:00'); -- Chủ nhật
+
+-- ======================================================================
+-- SAMPLE REVIEWS
+-- ======================================================================
+
+INSERT IGNORE INTO venue_reviews (id, venue_id, user_id, stars, comment, created_at) VALUES
+(UUID(), 'c0000001-0000-0000-0000-000000000001', 'a0000001-0000-0000-0000-000000000001', 5, 'Sân rất đẹp, sạch sẽ, ánh sáng tốt!', NOW()),
+(UUID(), 'c0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 4, 'Nhân viên nhiệt tình, giá hợp lý.', NOW() - INTERVAL 1 DAY),
+(UUID(), 'c0000002-0000-0000-0000-000000000002', 'b0000002-0000-0000-0000-000000000002', 5, 'Sân hơi đông nhưng phục vụ chuyên nghiệp.', NOW() - INTERVAL 2 DAY);
+
+-- ======================================================================
+-- Kiểm tra kết quả
+-- ======================================================================
+
 SELECT 'Users'    AS entity, COUNT(*) AS total FROM users      UNION ALL
 SELECT 'Venues',              COUNT(*)          FROM venues     UNION ALL
 SELECT 'Courts',              COUNT(*)          FROM courts     UNION ALL
-SELECT 'Bookings',            COUNT(*)          FROM bookings   UNION ALL
-SELECT 'Payments',            COUNT(*)          FROM payments   UNION ALL
-SELECT 'ApprovalRequests',    COUNT(*)          FROM venue_approval_requests UNION ALL
-SELECT 'ManagerProfiles',     COUNT(*)          FROM manager_profiles;
+SELECT 'Files',               COUNT(*)          FROM files      UNION ALL
+SELECT 'VenueFiles',          COUNT(*)          FROM venue_files UNION ALL
+SELECT 'Reviews',             COUNT(*)          FROM venue_reviews;

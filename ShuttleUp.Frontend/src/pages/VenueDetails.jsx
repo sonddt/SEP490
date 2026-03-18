@@ -1,8 +1,7 @@
-import { Link, useNavigate, useParams, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
-import { useState } from 'react';
 import Lightbox from 'yet-another-react-lightbox';
 import Zoom from 'yet-another-react-lightbox/plugins/zoom';
 import Thumbnails from 'yet-another-react-lightbox/plugins/thumbnails';
@@ -97,10 +96,42 @@ const MOCK_SIMILAR_VENUES = [
 ];
 
 export default function VenueDetails() {
-  const { venueId } = useParams();
+  // Support both route patterns:
+  //   /venue-details/:venueId  (used by VenueCard links)
+  //   /courts/:id              (legacy / alternative route)
+  const { venueId, id } = useParams();
+  const resolvedId = venueId ?? id;
+  const navigate = useNavigate();
+
+  // ALL hooks MUST be declared before any conditional return (React Rules of Hooks)
   const [venue, setVenue] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [prevHovered, setPrevHovered] = useState(false);
+  const [nextHovered, setNextHovered] = useState(false);
+  const [moreHovered, setMoreHovered] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  // Build slides for lightbox
+  const slides = MOCK_GALLERY.map((src) => ({ src }));
+
+  const openLightbox = (idx) => {
+    setLightboxIndex(idx);
+    setLightboxOpen(true);
+  };
+
+  const handleBooking = () => {
+    navigate('/booking', {
+      state: {
+        venueId: venue.id,
+        venueName: venue.name,
+        venueAddress: venue.address,
+        pricePerSlot: venue.startingPrice,
+        currency: venue.currency,
+      },
+    });
+  };
 
   useEffect(() => {
     async function loadVenue() {
@@ -108,7 +139,7 @@ export default function VenueDetails() {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(`/api/venues/${venueId}`);
+        const response = await fetch(`/api/venues/${resolvedId}`);
         if (!response.ok) {
           throw new Error('Không tìm thấy thông tin sân.');
         }
@@ -138,11 +169,12 @@ export default function VenueDetails() {
       }
     }
 
-    if (venueId) {
+    if (resolvedId) {
       loadVenue();
     }
-  }, [venueId]);
+  }, [resolvedId]);
 
+  // Early returns AFTER all hooks
   if (loading) {
     return (
       <div className="main-wrapper content-below-header">
