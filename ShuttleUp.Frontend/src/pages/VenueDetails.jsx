@@ -1,7 +1,29 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
+import { useState } from 'react';
+import Lightbox from 'yet-another-react-lightbox';
+import Zoom from 'yet-another-react-lightbox/plugins/zoom';
+import Thumbnails from 'yet-another-react-lightbox/plugins/thumbnails';
+import 'yet-another-react-lightbox/styles.css';
+import 'yet-another-react-lightbox/plugins/thumbnails.css';
+
+// Temporary mock data for Iteration 1.
+// Later, this can be replaced by data from venue API using the venue ID in the route.
+const MOCK_VENUE = {
+  name: 'Badminton Academy',
+  isVerified: true,
+  address: '70 Bright St New York, USA',
+  phone: '+3 80992 31212',
+  email: 'info@badmintonacademy.com',
+  venueType: 'Sân trong nhà',
+  ownerName: 'Hendry Williams',
+  startingPrice: 150,
+  currency: '$',
+  rating: 5.0,
+  reviewCount: 15,
+};
 
 const MOCK_GALLERY = [
   '/assets/img/gallery/gallery1/gallery-01.png',
@@ -159,36 +181,84 @@ export default function VenueDetails() {
             nextEl: '.vg-next',
           }}
           loop
+          spaceBetween={4}
           slidesPerView={1}
           breakpoints={{
-            576: { slidesPerView: 2 },
-            992: { slidesPerView: 3 },
-            1200: { slidesPerView: 4 },
+            576: { slidesPerView: 2, spaceBetween: 4 },
+            992: { slidesPerView: 3, spaceBetween: 4 },
+            1200: { slidesPerView: 4, spaceBetween: 4 },
           }}
           className="main-gallery-slider owl-carousel owl-theme"
         >
           {MOCK_GALLERY.map((src, idx) => (
-            <SwiperSlide key={src}>
-              <div className="gallery-widget-item">
-                <img className="img-fluid" alt={`Ảnh sân ${idx + 1}`} src={src} />
+            <SwiperSlide key={`${src}-${idx}`}>
+              <div
+                className="gallery-widget-item"
+                onClick={() => openLightbox(idx)}
+                style={{ cursor: 'pointer' }}
+              >
+                <img
+                  className="img-fluid"
+                  alt={`Ảnh sân ${idx + 1}`}
+                  src={src}
+                  style={{ display: 'block', width: '100%' }}
+                />
               </div>
             </SwiperSlide>
           ))}
         </Swiper>
-        <div className="owl-nav d-none d-md-block">
-          <button className="owl-prev vg-prev" type="button">
-            <i className="feather-chevron-left" />
+        <div className="owl-nav d-none d-md-block" style={{ position: 'absolute', top: '50%', width: '100%', transform: 'translateY(-50%)', zIndex: 10, pointerEvents: 'none' }}>
+          <button
+            className="owl-prev vg-prev"
+            type="button"
+            onMouseEnter={() => setPrevHovered(true)}
+            onMouseLeave={() => setPrevHovered(false)}
+            style={{ position: 'absolute', pointerEvents: 'auto', left: '30px', backgroundColor: prevHovered ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.65)', border: 'none', borderRadius: '50%', width: '46px', height: '46px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: prevHovered ? '0 4px 12px rgba(0,0,0,0.2)' : '0 2px 4px rgba(0,0,0,0.1)', transition: 'background-color 0.2s ease, box-shadow 0.2s ease', cursor: 'pointer' }}
+          >
+            <i className="feather-chevron-left" style={{ margin: 0, fontSize: '18px', color: '#333' }} />
           </button>
-          <button className="owl-next vg-next" type="button">
-            <i className="feather-chevron-right" />
+          <button
+            className="owl-next vg-next"
+            type="button"
+            onMouseEnter={() => setNextHovered(true)}
+            onMouseLeave={() => setNextHovered(false)}
+            style={{ position: 'absolute', pointerEvents: 'auto', right: '30px', backgroundColor: nextHovered ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.65)', border: 'none', borderRadius: '50%', width: '46px', height: '46px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: nextHovered ? '0 4px 12px rgba(0,0,0,0.2)' : '0 2px 4px rgba(0,0,0,0.1)', transition: 'background-color 0.2s ease, box-shadow 0.2s ease', cursor: 'pointer' }}
+          >
+            <i className="feather-chevron-right" style={{ margin: 0, fontSize: '18px', color: '#333' }} />
           </button>
         </div>
-        <div className="showphotos corner-radius-10">
-          <button type="button" className="btn btn-secondary d-inline-flex align-items-center">
-            <i className="fa-regular fa-images me-2" /> Xem thêm hình
+        <div className="showphotos corner-radius-10" style={{ position: 'absolute', bottom: '16px', right: '16px', zIndex: 10 }}>
+          <button
+            type="button"
+            onClick={() => openLightbox(0)}
+            onMouseEnter={() => setMoreHovered(true)}
+            onMouseLeave={() => setMoreHovered(false)}
+            style={{ backgroundColor: moreHovered ? '#F59E0B' : '#FBBF24', color: '#192335', padding: '7px 14px', borderRadius: '6px', border: 'none', fontWeight: '600', fontSize: '13px', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'background-color 0.2s ease', whiteSpace: 'nowrap', cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
+          >
+            <i className="fa-regular fa-images me-2" style={{ color: '#192335', fontSize: '14px' }} /> Xem thêm hình
           </button>
         </div>
       </section>
+
+      {/* Lightbox with Zoom + Thumbnails on the right */}
+      <Lightbox
+        open={lightboxOpen}
+        close={() => setLightboxOpen(false)}
+        slides={slides}
+        index={lightboxIndex}
+        plugins={[Zoom, Thumbnails]}
+        zoom={{
+          maxZoomPixelRatio: 4,
+          zoomInMultiplier: 1.5,
+          doubleTapDelay: 300,
+          doubleClickDelay: 300,
+          scrollToZoom: true,
+        }}
+        thumbnails={{ position: 'end', width: 120, height: 80, gap: 10, border: 2, borderRadius: 6, padding: 0, showToggle: false }}
+        animation={{ fade: 300, swipe: 300 }}
+        on={{ backdropClick: () => setLightboxOpen(false) }}
+        styles={{ root: { '--yarl__color_backdrop': 'rgba(0, 0, 0, 0.75)' } }}
+      />
 
       {/* Venue header info */}
       <section className="venue-info white-bg d-block">
@@ -221,16 +291,30 @@ export default function VenueDetails() {
             <div className="col-lg-6 text-lg-end">
               <ul className="social-options float-lg-end d-sm-flex justify-content-start align-items-center">
                 <li>
-                  <button type="button" className="btn btn-link p-0">
+                  <a
+                    href="#"
+                    onClick={e => e.preventDefault()}
+                    className="d-inline-flex align-items-center gap-1"
+                    style={{ color: '#6B7385', textDecoration: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: '500', transition: 'color 0.2s' }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#097E52'}
+                    onMouseLeave={e => e.currentTarget.style.color = '#6B7385'}
+                  >
                     <i className="feather-share-2" />
                     Chia sẻ
-                  </button>
+                  </a>
                 </li>
                 <li>
-                  <button type="button" className="btn btn-link p-0">
+                  <a
+                    href="#"
+                    onClick={e => e.preventDefault()}
+                    className="d-inline-flex align-items-center gap-1"
+                    style={{ color: '#6B7385', textDecoration: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: '500', transition: 'color 0.2s' }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#097E52'}
+                    onMouseLeave={e => e.currentTarget.style.color = '#6B7385'}
+                  >
                     <i className="feather-star" />
                     Thêm vào yêu thích
-                  </button>
+                  </a>
                 </li>
                 <li className="venue-review-info d-flex justify-content-start align-items-center">
                   <span className="d-flex justify-content-center align-items-center">
@@ -514,13 +598,14 @@ export default function VenueDetails() {
                   </li>
                 </ul>
                 <div className="d-grid btn-block mt-3">
-                  <Link
-                    to="/booking"
+                  <button
+                    type="button"
+                    onClick={handleBooking}
                     className="btn btn-secondary d-inline-flex justify-content-center align-items-center"
                   >
                     <i className="feather-calendar" />
-                    <span className="ms-2">Đặt ngay</span>
-                  </Link>
+                    <span className="ms-2">ĐẶT LỊCH</span>
+                  </button>
                 </div>
               </div>
 
@@ -609,13 +694,13 @@ export default function VenueDetails() {
                   {MOCK_SIMILAR_VENUES.slice(0, 2).map((v) => (
                     <li key={v.id} className="d-flex justify-content-start align-items-center">
                       <div>
-                        <Link to="/venue-details">
+                        <Link to={`/courts/${v.id}`}>
                           <img className="img-fluid" alt={v.name} src={v.img} />
                         </Link>
                       </div>
                       <div className="owner-info ms-2">
                         <h5>
-                          <Link to="/venue-details">{v.name}</Link>
+                          <Link to={`/courts/${v.id}`}>{v.name}</Link>
                         </h5>
                         <p>
                           <i className="feather-map-pin" />
@@ -682,7 +767,7 @@ export default function VenueDetails() {
                     <div className="featured-venues-item">
                       <div className="listing-item mb-0">
                         <div className="listing-img">
-                          <Link to="/venue-details">
+                          <Link to={`/courts/${v.id}`}>
                             <img src={v.img} alt={v.name} className="img-fluid" />
                           </Link>
                           <div className="fav-item-venues">
@@ -704,7 +789,7 @@ export default function VenueDetails() {
                             </button>
                           </div>
                           <h3 className="listing-title">
-                            <Link to="/venue-details">{v.name}</Link>
+                            <Link to={`/courts/${v.id}`}>{v.name}</Link>
                           </h3>
                           <div className="listing-details-group">
                             <p>{v.desc}</p>
@@ -730,11 +815,11 @@ export default function VenueDetails() {
                                 {v.owner}
                               </span>
                             </div>
-                            <Link to="/booking" className="user-book-now">
+                            <Link to={`/courts/${v.id}`} className="user-book-now">
                               <span>
                                 <i className="feather-calendar me-2" />
                               </span>
-                              Đặt ngay
+                              Xem chi tiết
                             </Link>
                           </div>
                         </div>

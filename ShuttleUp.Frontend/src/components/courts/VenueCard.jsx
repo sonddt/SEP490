@@ -49,7 +49,7 @@ export default function VenueCard({ venue, viewMode = 'grid' }) {
               </h5>
             </div>
           </div>
-            <div className="listing-content">
+          <div className="listing-content">
             <div className="list-reviews">
               <div className="d-flex align-items-center">
                 <span className="rating-bg">{venue.rating}</span>
@@ -93,7 +93,7 @@ export default function VenueCard({ venue, viewMode = 'grid' }) {
               </div>
               <Link to={`/venue-details/${venue.id}`} className="user-book-now">
                 <span><i className="feather-calendar me-2"></i></span>
-                Đặt sân
+                Xem &amp; Đặt sân
               </Link>
             </div>
           </div>
