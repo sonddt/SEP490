@@ -20,6 +20,43 @@ public class VenuesController : ControllerBase
     }
 
     /// <summary>
+    /// Lấy chi tiết một venue (dùng cho trang VenueDetails).
+    /// Chỉ trả về nếu venue đã APPROVED và đang hoạt động.
+    /// </summary>
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetVenueById([FromRoute] Guid id)
+    {
+        var venue = await _dbContext.Venues
+            .Where(v => v.Id == id && v.ApprovalStatus == "APPROVED" && v.IsActive == true)
+            .Select(v => new
+            {
+                v.Id,
+                v.Name,
+                v.Address,
+                v.Lat,
+                v.Lng,
+                OwnerName = v.OwnerUser != null ? v.OwnerUser.FullName : null,
+                OwnerEmail = v.OwnerUser != null ? v.OwnerUser.Email : null,
+                OwnerPhone = v.OwnerUser != null ? v.OwnerUser.PhoneNumber : null,
+                // Giá min/max để hiển thị "12k - 30k /giờ"
+                MinPrice = v.Courts
+                    .SelectMany(c => c.CourtPrices)
+                    .Min(cp => (decimal?)cp.Price),
+                MaxPrice = v.Courts
+                    .SelectMany(c => c.CourtPrices)
+                    .Max(cp => (decimal?)cp.Price),
+                Rating = 5.0,
+                ReviewCount = 0
+            })
+            .FirstOrDefaultAsync();
+
+        if (venue == null)
+            return NotFound();
+
+        return Ok(venue);
+    }
+
+    /// <summary>
     /// Danh sách venues cho player.
     /// Chỉ bao gồm venues APPROVED + IsActive = true.
     /// Hỗ trợ sort theo giá min tăng dần / giảm dần.
