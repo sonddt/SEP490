@@ -2,6 +2,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
 import { useState } from 'react';
+import Lightbox from 'yet-another-react-lightbox';
+import 'yet-another-react-lightbox/styles.css';
 
 // Temporary mock data for Iteration 1.
 // Later, this can be replaced by data from venue API using the venue ID in the route.
@@ -111,6 +113,18 @@ export default function VenueDetails() {
   const [nextHovered, setNextHovered] = useState(false);
   const [moreHovered, setMoreHovered] = useState(false);
 
+  // Lightbox state
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  // Build unique slides for lightbox (MOCK_GALLERY may have duplicates)
+  const slides = MOCK_GALLERY.map((src) => ({ src }));
+
+  const openLightbox = (idx) => {
+    setLightboxIndex(idx);
+    setLightboxOpen(true);
+  };
+
   return (
     <div className="main-wrapper content-below-header venue-coach-details">
       {/* Top gallery – Swiper slider để giống template */}
@@ -132,9 +146,18 @@ export default function VenueDetails() {
           className="main-gallery-slider owl-carousel owl-theme"
         >
           {MOCK_GALLERY.map((src, idx) => (
-            <SwiperSlide key={src}>
-              <div className="gallery-widget-item">
-                <img className="img-fluid" alt={`Ảnh sân ${idx + 1}`} src={src} style={{ display: 'block', width: '100%' }} />
+            <SwiperSlide key={`${src}-${idx}`}>
+              <div
+                className="gallery-widget-item"
+                onClick={() => openLightbox(idx)}
+                style={{ cursor: 'pointer' }}
+              >
+                <img
+                  className="img-fluid"
+                  alt={`Ảnh sân ${idx + 1}`}
+                  src={src}
+                  style={{ display: 'block', width: '100%' }}
+                />
               </div>
             </SwiperSlide>
           ))}
@@ -160,17 +183,25 @@ export default function VenueDetails() {
           </button>
         </div>
         <div className="showphotos corner-radius-10" style={{ position: 'absolute', bottom: '16px', right: '16px', zIndex: 10 }}>
-          <a
-            href="#gallery"
-            className="d-inline-flex align-items-center"
+          <button
+            type="button"
+            onClick={() => openLightbox(0)}
             onMouseEnter={() => setMoreHovered(true)}
             onMouseLeave={() => setMoreHovered(false)}
-            style={{ backgroundColor: moreHovered ? '#F59E0B' : '#FBBF24', color: '#192335', padding: '7px 14px', borderRadius: '6px', textDecoration: 'none', fontWeight: '600', fontSize: '13px', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'background-color 0.2s ease', whiteSpace: 'nowrap' }}
+            style={{ backgroundColor: moreHovered ? '#F59E0B' : '#FBBF24', color: '#192335', padding: '7px 14px', borderRadius: '6px', border: 'none', fontWeight: '600', fontSize: '13px', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'background-color 0.2s ease', whiteSpace: 'nowrap', cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
           >
             <i className="fa-regular fa-images me-2" style={{ color: '#192335', fontSize: '14px' }} /> Xem thêm hình
-          </a>
+          </button>
         </div>
       </section>
+
+      {/* Lightbox */}
+      <Lightbox
+        open={lightboxOpen}
+        close={() => setLightboxOpen(false)}
+        slides={slides}
+        index={lightboxIndex}
+      />
 
       {/* Venue header info */}
       <section className="venue-info white-bg d-block">
