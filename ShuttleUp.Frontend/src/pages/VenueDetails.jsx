@@ -122,12 +122,12 @@ export default function VenueDetails() {
             nextEl: '.vg-next',
           }}
           loop
-          spaceBetween={0}
+          spaceBetween={4}
           slidesPerView={1}
           breakpoints={{
-            576: { slidesPerView: 2, spaceBetween: 0 },
-            992: { slidesPerView: 3, spaceBetween: 0 },
-            1200: { slidesPerView: 4, spaceBetween: 0 },
+            576: { slidesPerView: 2, spaceBetween: 4 },
+            992: { slidesPerView: 3, spaceBetween: 4 },
+            1200: { slidesPerView: 4, spaceBetween: 4 },
           }}
           className="main-gallery-slider owl-carousel owl-theme"
         >
@@ -159,15 +159,15 @@ export default function VenueDetails() {
             <i className="feather-chevron-right" style={{ margin: 0, fontSize: '18px', color: '#333' }} />
           </button>
         </div>
-        <div className="showphotos corner-radius-10" style={{ position: 'absolute', bottom: '20px', right: '30px', zIndex: 10 }}>
+        <div className="showphotos corner-radius-10" style={{ position: 'absolute', bottom: '16px', right: '16px', zIndex: 10 }}>
           <a
             href="#gallery"
             className="d-inline-flex align-items-center"
             onMouseEnter={() => setMoreHovered(true)}
             onMouseLeave={() => setMoreHovered(false)}
-            style={{ backgroundColor: moreHovered ? '#F59E0B' : '#FBBF24', color: '#fff', padding: '10px 20px', borderRadius: '5px', textDecoration: 'none', fontWeight: '500', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'background-color 0.2s ease' }}
+            style={{ backgroundColor: moreHovered ? '#F59E0B' : '#FBBF24', color: '#192335', padding: '7px 14px', borderRadius: '6px', textDecoration: 'none', fontWeight: '600', fontSize: '13px', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'background-color 0.2s ease', whiteSpace: 'nowrap' }}
           >
-            <i className="fa-regular fa-images me-2" style={{ color: '#fff' }} /> Xem thêm hình
+            <i className="fa-regular fa-images me-2" style={{ color: '#192335', fontSize: '14px' }} /> Xem thêm hình
           </a>
         </div>
       </section>
@@ -203,16 +203,30 @@ export default function VenueDetails() {
             <div className="col-lg-6 text-lg-end">
               <ul className="social-options float-lg-end d-sm-flex justify-content-start align-items-center">
                 <li>
-                  <button type="button" className="btn btn-link p-0">
+                  <a
+                    href="#"
+                    onClick={e => e.preventDefault()}
+                    className="d-inline-flex align-items-center gap-1"
+                    style={{ color: '#6B7385', textDecoration: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: '500', transition: 'color 0.2s' }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#097E52'}
+                    onMouseLeave={e => e.currentTarget.style.color = '#6B7385'}
+                  >
                     <i className="feather-share-2" />
                     Chia sẻ
-                  </button>
+                  </a>
                 </li>
                 <li>
-                  <button type="button" className="btn btn-link p-0">
+                  <a
+                    href="#"
+                    onClick={e => e.preventDefault()}
+                    className="d-inline-flex align-items-center gap-1"
+                    style={{ color: '#6B7385', textDecoration: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: '500', transition: 'color 0.2s' }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#097E52'}
+                    onMouseLeave={e => e.currentTarget.style.color = '#6B7385'}
+                  >
                     <i className="feather-star" />
                     Thêm vào yêu thích
-                  </button>
+                  </a>
                 </li>
                 <li className="venue-review-info d-flex justify-content-start align-items-center">
                   <span className="d-flex justify-content-center align-items-center">
