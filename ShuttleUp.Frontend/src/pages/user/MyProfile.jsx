@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import UserDashboardMenu from '../../components/user/UserDashboardMenu';
 
@@ -14,6 +15,14 @@ const MOCK_USER = {
 };
 
 export default function MyProfile() {
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
+
+  const handleDeactivate = () => {
+    // TODO: call API to deactivate account
+    console.log('Deactivating account...');
+    setShowDeactivateModal(false);
+  };
+
   return (
     <div className="main-wrapper">
 
@@ -67,6 +76,13 @@ export default function MyProfile() {
                       </div>
                     </div>
                     <div className="convenient-btns">
+                      <button
+                        type="button"
+                        className="btn btn-danger d-inline-flex align-items-center me-2"
+                        onClick={() => setShowDeactivateModal(true)}
+                      >
+                        <span><i className="feather-zap-off"></i></span>Vô hiệu hóa
+                      </button>
                       <Link
                         to="/user/profile"
                         className="btn btn-secondary d-inline-flex align-items-center me-2"
@@ -116,6 +132,48 @@ export default function MyProfile() {
           </div>
         </div>
       </div>
+
+      {/* Deactivate Confirmation Modal */}
+      {showDeactivateModal && (
+        <div
+          className="modal fade show"
+          style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}
+          tabIndex="-1"
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Xác nhận vô hiệu hóa tài khoản</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowDeactivateModal(false)}
+                />
+              </div>
+              <div className="modal-body">
+                <p>Bạn có chắc chắn muốn vô hiệu hóa tài khoản?<br />
+                  Hành động này sẽ đăng xuất bạn khỏi hệ thống và tạm dừng tài khoản.</p>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => setShowDeactivateModal(false)}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={handleDeactivate}
+                >
+                  Xác nhận vô hiệu hóa
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
