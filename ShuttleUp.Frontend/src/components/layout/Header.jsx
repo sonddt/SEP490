@@ -65,7 +65,7 @@ const Header = ({ transparent = false }) => {
   const profilePath = isAdmin
     ? '/admin/dashboard'
     : isManager
-      ? '/manager/setting-password'
+      ? '/user/my-profile'
       : '/user/my-profile';
 
   // Helper to check if path is active

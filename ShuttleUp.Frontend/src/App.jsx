@@ -124,7 +124,7 @@ function App() {
           <Route path="/manager/requests" element={<ProtectedRoute requiredRole="MANAGER"><PlaceholderPage title="Yêu cầu đặt sân" /></ProtectedRoute>} />
           <Route path="/manager/bookings" element={<ProtectedRoute requiredRole="MANAGER"><PlaceholderPage title="Lịch đặt sân" /></ProtectedRoute>} />
           <Route path="/manager/chat" element={<ProtectedRoute requiredRole="MANAGER"><PlaceholderPage title="Trò chuyện" /></ProtectedRoute>} />
-          <Route path="/manager/profile" element={<ProtectedRoute requiredRole="MANAGER"><PlaceholderPage title="Hồ sơ Quản lý" /></ProtectedRoute>} />
+          <Route path="/manager/profile" element={<ProtectedRoute requiredRole="MANAGER"><MyProfile /></ProtectedRoute>} />
           <Route path="/manager/setting-password" element={<ProtectedRoute><SettingPassword /></ProtectedRoute>} />
 
           {/* Static / Info pages */}
