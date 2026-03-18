@@ -8,10 +8,14 @@ namespace ShuttleUp.BLL.Services;
 public class VenueReviewService : IVenueReviewService
 {
     private readonly IVenueReviewRepository _reviewRepository;
+    private readonly IBookingRepository _bookingRepository;
 
-    public VenueReviewService(IVenueReviewRepository reviewRepository)
+    public VenueReviewService(
+        IVenueReviewRepository reviewRepository,
+        IBookingRepository bookingRepository)
     {
         _reviewRepository = reviewRepository;
+        _bookingRepository = bookingRepository;
     }
 
     public async Task<VenueRatingSummaryDto> GetVenueReviewsAsync(Guid venueId)
@@ -40,14 +44,38 @@ public class VenueReviewService : IVenueReviewService
     public async Task<ReviewResponseDto> CreateReviewAsync(
         Guid venueId, Guid userId, CreateReviewRequestDto request)
     {
-        if (await _reviewRepository.HasUserReviewedAsync(venueId, userId))
-            throw new InvalidOperationException("Bạn đã đánh giá sân này rồi.");
+        // 1. Kiểm tra booking hợp lệ
+        var booking = await _bookingRepository.GetByIdAsync(request.BookingId);
+        if (booking == null
+            || booking.UserId != userId
+            || booking.VenueId != venueId)
+        {
+            throw new InvalidOperationException("Bạn không có quyền đánh giá cho đặt sân này.");
+        }
+
+        // 2. Chỉ cho phép khi status = CONFIRMED
+        if (!string.Equals(booking.Status, "CONFIRMED", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Chỉ có thể đánh giá khi lịch đặt đã được xác nhận (CONFIRMED).");
+        }
+
+        // 3. Hạn 3 ngày kể từ khi booking được tạo
+        var createdAt = booking.CreatedAt ?? DateTime.UtcNow;
+        if (DateTime.UtcNow > createdAt.AddDays(3))
+        {
+            throw new InvalidOperationException("Bạn chỉ có thể đánh giá trong vòng 3 ngày sau khi đặt sân.");
+        }
+
+        // 4. Mỗi booking chỉ được review 1 lần
+        if (await _reviewRepository.HasUserReviewedBookingAsync(request.BookingId, userId))
+            throw new InvalidOperationException("Bạn đã đánh giá cho lần đặt sân này rồi.");
 
         var review = new VenueReview
         {
             Id        = Guid.NewGuid(),
             VenueId   = venueId,
             UserId    = userId,
+            BookingId = request.BookingId,
             Stars     = request.Stars,
             Comment   = request.Comment,
             CreatedAt = DateTime.UtcNow,
