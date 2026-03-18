@@ -1,28 +1,62 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { loginEmail, loginGoogle } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
+import { managerProfileApi } from '../api/managerProfileApi';
 
 export default function Login() {
   const [activeTab, setActiveTab] = useState('user');
+  const activeTabRef = useRef('user');
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const returnUrl = location.state?.from || null;
 
   // ── Đường dẫn sau khi login xong (ưu tiên returnUrl từ ProtectedRoute) ─────
   const redirectAfterLogin = (roles) => {
-    if (returnUrl) return navigate(returnUrl);
+    const tab = activeTabRef.current;
+
+    // Tránh bị kéo về sai dashboard bởi returnUrl cũ
+    // (đặc biệt khi user từng truy cập /manager/* hoặc /user/* trước khi login)
+    const safeReturnUrl = (() => {
+      if (!returnUrl) return null;
+      if (returnUrl.startsWith('/manager') || returnUrl.startsWith('/user')) return null;
+      return returnUrl;
+    })();
+
+    if (safeReturnUrl) return navigate(safeReturnUrl);
     if (roles?.includes('ADMIN')) return navigate('/admin/dashboard');
-    if (roles?.includes('MANAGER')) return navigate('/manager/dashboard');
+    if (roles?.includes('MANAGER') && tab === 'manager') return navigate('/manager/dashboard');
     return navigate('/user/dashboard');
+  };
+
+  const resolveManagerLoginGate = async (roles) => {
+    const tab = activeTabRef.current;
+    // Tab Manager nhưng user chưa có role MANAGER:
+    if (tab !== 'manager') return { allow: true };
+    if (roles?.includes('ADMIN')) return { allow: true }; // Admin vẫn cho vào
+    if (roles?.includes('MANAGER')) return { allow: true };
+
+    try {
+      const prof = await managerProfileApi.getMe();
+      const status = (prof.status ?? prof.Status ?? '').toUpperCase();
+      if (status === 'PENDING') {
+        return { allow: true, redirect: '/manager/profile-request', message: 'Hồ sơ quản lý của bạn đang chờ Admin duyệt.' };
+      }
+      if (status === 'REJECTED') {
+        return { allow: true, redirect: '/manager/profile-request', message: 'Hồ sơ quản lý của bạn đã bị từ chối. Vui lòng cập nhật lại hồ sơ.' };
+      }
+      return { allow: false, message: 'Tài khoản bạn chưa đăng ký làm quản lý.' };
+    } catch {
+      return { allow: false, message: 'Tài khoản bạn chưa đăng ký làm quản lý.' };
+    }
   };
 
   // ── Đăng nhập bằng email + mật khẩu ──────────────────────────────────────
@@ -31,9 +65,20 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
+      // đảm bảo không bị dính session cũ khi test chuyển tab
+      logout();
       const data = await loginEmail({ email, password });
+      const roles = data.user?.roles ?? [];
+      const gate = await resolveManagerLoginGate(roles);
+      if (!gate.allow) {
+        logout();
+        setError(gate.message);
+        return;
+      }
       login(data);
-      redirectAfterLogin(data.user?.roles);
+      if (gate.message) setError(gate.message);
+      if (gate.redirect) return navigate(gate.redirect);
+      redirectAfterLogin(roles);
     } catch (err) {
       setError(err.response?.data?.message || 'Email hoặc mật khẩu không đúng.');
     } finally {
@@ -46,14 +91,26 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
+      // đảm bảo không bị dính session cũ khi test chuyển tab
+      logout();
       // credentialResponse.credential là id_token từ Google
-      const roleByTab = activeTab === 'manager' ? ['MANAGER'] : ['PLAYER'];
+      const tab = activeTabRef.current;
+      const roleByTab = tab === 'manager' ? ['MANAGER'] : ['PLAYER'];
       const data = await loginGoogle({
         idToken: credentialResponse.credential,
         roles: roleByTab,
       });
+      const roles = data.user?.roles ?? [];
+      const gate = await resolveManagerLoginGate(roles);
+      if (!gate.allow) {
+        logout();
+        setError(gate.message);
+        return;
+      }
       login(data);
-      redirectAfterLogin(data.user?.roles);
+      if (gate.message) setError(gate.message);
+      if (gate.redirect) return navigate(gate.redirect);
+      redirectAfterLogin(roles);
     } catch (err) {
       setError(err.response?.data?.message || 'Đăng nhập Google thất bại.');
     } finally {
@@ -103,7 +160,10 @@ export default function Login() {
                         <li className="nav-item" role="presentation">
                           <button
                             className={`nav-link d-flex align-items-center ${activeTab === 'user' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('user')}
+                            onClick={() => {
+                              activeTabRef.current = 'user';
+                              setActiveTab('user');
+                            }}
                             type="button"
                           >
                             <span className="d-flex justify-content-center align-items-center"></span>Tôi là Người chơi
@@ -112,7 +172,10 @@ export default function Login() {
                         <li className="nav-item" role="presentation">
                           <button
                             className={`nav-link d-flex align-items-center ${activeTab === 'manager' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('manager')}
+                            onClick={() => {
+                              activeTabRef.current = 'manager';
+                              setActiveTab('manager');
+                            }}
                             type="button"
                           >
                             <span className="d-flex justify-content-center align-items-center"></span>Tôi là Quản lý sân

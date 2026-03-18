@@ -56,7 +56,7 @@ public class AuthService : IAuthService
             throw new InvalidOperationException("Email đã được sử dụng.");
 
         // Mặc định, mọi tài khoản đăng ký mới đều có Role PLAYER
-        var roles = await ResolveRolesAsync(["Player"]);
+        var roles = await ResolveRolesAsync(["PLAYER"]);
 
         var user = new User
         {
@@ -75,18 +75,23 @@ public class AuthService : IAuthService
         await _userRepository.AddAsync(user);
 
         // Nếu họ chọn đăng ký làm Manager, tạo hồ sơ (ManagerProfile) để Admin duyệt
+        // Lưu ý: KHÔNG gán role MANAGER tại thời điểm đăng ký
         if (request.IsManagerRoleRequested)
         {
-            var profile = new ManagerProfile
+            var existingProfile = await _managerProfileRepository.GetByUserIdAsync(user.Id);
+            if (existingProfile == null)
             {
-                UserId = user.Id,
-                IdCardNo = request.IdCardNo,
-                TaxCode = request.TaxCode,
-                BusinessLicenseNo = request.BusinessLicenseNo,
-                Address = request.Address,
-                Status = "PENDING"
-            };
-            await _managerProfileRepository.AddAsync(profile);
+                var profile = new ManagerProfile
+                {
+                    UserId = user.Id,
+                    IdCardNo = request.IdCardNo,
+                    TaxCode = request.TaxCode,
+                    BusinessLicenseNo = request.BusinessLicenseNo,
+                    Address = request.Address,
+                    Status = "PENDING"
+                };
+                await _managerProfileRepository.AddAsync(profile);
+            }
         }
 
         return BuildLoginResponse(user);
@@ -122,7 +127,9 @@ public class AuthService : IAuthService
         }
 
         // User chưa tồn tại → tạo tài khoản mới
-        var roles = await ResolveRolesAsync(request.Roles);
+        // Nếu FE yêu cầu MANAGER, vẫn chỉ gán PLAYER và tạo ManagerProfile ở trạng thái PENDING
+        var wantsManager = request.Roles.Any(r => r.Equals("MANAGER", StringComparison.OrdinalIgnoreCase));
+        var roles = await ResolveRolesAsync(["PLAYER"]);
 
         var newUser = new User
         {
@@ -136,6 +143,19 @@ public class AuthService : IAuthService
         };
 
         await _userRepository.AddAsync(newUser);
+
+        if (wantsManager)
+        {
+            var existingProfile = await _managerProfileRepository.GetByUserIdAsync(newUser.Id);
+            if (existingProfile == null)
+            {
+                await _managerProfileRepository.AddAsync(new ManagerProfile
+                {
+                    UserId = newUser.Id,
+                    Status = "PENDING"
+                });
+            }
+        }
 
         return BuildLoginResponse(newUser);
     }

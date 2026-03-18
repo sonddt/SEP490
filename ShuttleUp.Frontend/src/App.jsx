@@ -12,6 +12,7 @@ import ManagerAddVenue from './pages/manager/ManagerAddVenue';
 import ManagerAvailability from './pages/manager/ManagerAvailability';
 import ManagerEarnings from './pages/manager/ManagerEarnings';
 import ManagerWallet from './pages/manager/ManagerWallet';
+import ManagerProfileRequest from './pages/manager/ManagerProfileRequest';
 import VenueDetails from './pages/VenueDetails';
 import ChatPage from './pages/ChatPage';
 import Contact from './pages/Contact';
@@ -36,6 +37,7 @@ import MyProfile from './pages/user/MyProfile';
 import UserProfileEdit from './pages/user/UserProfileEdit';
 import UserProfileChangePassword from './pages/user/UserProfileChangePassword';
 import UserProfileOtherSetting from './pages/user/UserProfileOtherSetting';
+import UserManagerInfo from './pages/user/UserManagerInfo';
 
 // Admin
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -101,6 +103,7 @@ function App() {
 
           {/* Khu vực cài đặt hồ sơ */}
           <Route path="/user/profile" element={<ProtectedRoute><UserProfileEdit /></ProtectedRoute>} />
+          <Route path="/user/profile/manager-info" element={<ProtectedRoute><UserManagerInfo /></ProtectedRoute>} />
           <Route path="/user/profile/change-password" element={<ProtectedRoute><UserProfileChangePassword /></ProtectedRoute>} />
           <Route path="/user/profile/other-settings" element={<ProtectedRoute><UserProfileOtherSetting /></ProtectedRoute>} />
           <Route path="/user/bookings" element={<ProtectedRoute><PlaceholderPage title="My Bookings" /></ProtectedRoute>} />
@@ -110,16 +113,17 @@ function App() {
           <Route path="/user/wallet" element={<ProtectedRoute><PlaceholderPage title="My Wallet" /></ProtectedRoute>} />
 
           {/* Manager (Quản lý sân) – yêu cầu đăng nhập */}
-          <Route path="/manager/dashboard" element={<ProtectedRoute><ManagerDashboard /></ProtectedRoute>} />
-          <Route path="/manager/courts" element={<ProtectedRoute><ManagerCourts /></ProtectedRoute>} />
-          <Route path="/manager/courts/add" element={<ProtectedRoute><ManagerAddVenue /></ProtectedRoute>} />
-          <Route path="/manager/availability" element={<ProtectedRoute><ManagerAvailability /></ProtectedRoute>} />
-          <Route path="/manager/earnings" element={<ProtectedRoute><ManagerEarnings /></ProtectedRoute>} />
-          <Route path="/manager/wallet" element={<ProtectedRoute><ManagerWallet /></ProtectedRoute>} />
-          <Route path="/manager/requests" element={<ProtectedRoute><PlaceholderPage title="Yêu cầu đặt sân" /></ProtectedRoute>} />
-          <Route path="/manager/bookings" element={<ProtectedRoute><PlaceholderPage title="Lịch đặt sân" /></ProtectedRoute>} />
-          <Route path="/manager/chat" element={<ProtectedRoute><PlaceholderPage title="Trò chuyện" /></ProtectedRoute>} />
-          <Route path="/manager/profile" element={<ProtectedRoute><PlaceholderPage title="Hồ sơ Quản lý" /></ProtectedRoute>} />
+          <Route path="/manager/profile-request" element={<ProtectedRoute><ManagerProfileRequest /></ProtectedRoute>} />
+          <Route path="/manager/dashboard" element={<ProtectedRoute requiredRole="MANAGER"><ManagerDashboard /></ProtectedRoute>} />
+          <Route path="/manager/courts" element={<ProtectedRoute requiredRole="MANAGER"><ManagerCourts /></ProtectedRoute>} />
+          <Route path="/manager/courts/add" element={<ProtectedRoute requiredRole="MANAGER"><ManagerAddVenue /></ProtectedRoute>} />
+          <Route path="/manager/availability" element={<ProtectedRoute requiredRole="MANAGER"><ManagerAvailability /></ProtectedRoute>} />
+          <Route path="/manager/earnings" element={<ProtectedRoute requiredRole="MANAGER"><ManagerEarnings /></ProtectedRoute>} />
+          <Route path="/manager/wallet" element={<ProtectedRoute requiredRole="MANAGER"><ManagerWallet /></ProtectedRoute>} />
+          <Route path="/manager/requests" element={<ProtectedRoute requiredRole="MANAGER"><PlaceholderPage title="Yêu cầu đặt sân" /></ProtectedRoute>} />
+          <Route path="/manager/bookings" element={<ProtectedRoute requiredRole="MANAGER"><PlaceholderPage title="Lịch đặt sân" /></ProtectedRoute>} />
+          <Route path="/manager/chat" element={<ProtectedRoute requiredRole="MANAGER"><PlaceholderPage title="Trò chuyện" /></ProtectedRoute>} />
+          <Route path="/manager/profile" element={<ProtectedRoute requiredRole="MANAGER"><PlaceholderPage title="Hồ sơ Quản lý" /></ProtectedRoute>} />
           <Route path="/manager/setting-password" element={<ProtectedRoute><SettingPassword /></ProtectedRoute>} />
 
           {/* Static / Info pages */}

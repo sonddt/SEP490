@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import UserDashboardMenu from '../../components/user/UserDashboardMenu';
 import UserProfileTabs from '../../components/user/UserProfileTabs';
+import { useAuth } from '../../context/AuthContext';
 
 const PROVINCES = [
   'Hà Nội', 'Hồ Chí Minh', 'Đà Nẵng', 'Hải Phòng', 'Cần Thơ',
@@ -22,9 +23,11 @@ const PROVINCES = [
 export default function UserProfileEdit() {
   const fileInputRef = useRef(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
+  const { user } = useAuth();
 
   const [form, setForm] = useState({
     fullName: '',
+    phoneNumber: '',
     gender: '',
     dateOfBirth: '',
     about: '',
@@ -126,6 +129,11 @@ export default function UserProfileEdit() {
                         </div>
                       </div>
 
+                      {/* Personal Information Heading */}
+                      <div className="address-form-head">
+                        <h4>Thông tin cá nhân</h4>
+                      </div>
+
                       {/* Full Name */}
                       <div className="col-lg-4 col-md-6">
                         <div className="input-space">
@@ -136,6 +144,35 @@ export default function UserProfileEdit() {
                             name="fullName"
                             placeholder="Nhập họ và tên"
                             value={form.fullName}
+                            onChange={handleChange}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Email (read-only) */}
+                      <div className="col-lg-4 col-md-6">
+                        <div className="input-space">
+                          <label className="form-label">Email</label>
+                          <input
+                            type="email"
+                            className="form-control"
+                            value={user?.email || ''}
+                            readOnly
+                            style={{ background: '#f1f5f9', cursor: 'not-allowed' }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Phone number */}
+                      <div className="col-lg-4 col-md-6">
+                        <div className="input-space">
+                          <label className="form-label">Số điện thoại</label>
+                          <input
+                            type="tel"
+                            className="form-control"
+                            name="phoneNumber"
+                            placeholder="Nhập số điện thoại"
+                            value={form.phoneNumber}
                             onChange={handleChange}
                           />
                         </div>
