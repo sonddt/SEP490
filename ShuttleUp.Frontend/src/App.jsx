@@ -16,6 +16,7 @@ import VenueDetails from './pages/VenueDetails';
 import ChatPage from './pages/ChatPage';
 import Contact from './pages/Contact';
 import About from './pages/About';
+import BookingTimeline from './pages/BookingTimeline';
 
 // Auth
 import Login from './pages/Login';
@@ -83,7 +84,7 @@ function App() {
         <Route path="/venue-details" element={<VenueDetails />} />
 
         {/* Booking flow */}
-        <Route path="/booking" element={<PlaceholderPage title="Book a Court" />} />
+        <Route path="/booking" element={<BookingTimeline />} />
 
         {/* User (yêu cầu đăng nhập – UserDashboardMenu, UserProfileTabs chỉ hiện trong các trang này) */}
         {/* Dashboard chính của user → trang MyProfile */}
