@@ -1,6 +1,7 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
+import { useState } from 'react';
 
 // Temporary mock data for Iteration 1.
 // Later, this can be replaced by data from venue API using the venue ID in the route.
@@ -106,6 +107,10 @@ export default function VenueDetails() {
     });
   };
 
+  const [prevHovered, setPrevHovered] = useState(false);
+  const [nextHovered, setNextHovered] = useState(false);
+  const [moreHovered, setMoreHovered] = useState(false);
+
   return (
     <div className="main-wrapper content-below-header venue-coach-details">
       {/* Top gallery – Swiper slider để giống template */}
@@ -117,32 +122,51 @@ export default function VenueDetails() {
             nextEl: '.vg-next',
           }}
           loop
+          spaceBetween={0}
           slidesPerView={1}
           breakpoints={{
-            576: { slidesPerView: 2 },
-            992: { slidesPerView: 3 },
-            1200: { slidesPerView: 4 },
+            576: { slidesPerView: 2, spaceBetween: 0 },
+            992: { slidesPerView: 3, spaceBetween: 0 },
+            1200: { slidesPerView: 4, spaceBetween: 0 },
           }}
           className="main-gallery-slider owl-carousel owl-theme"
         >
           {MOCK_GALLERY.map((src, idx) => (
             <SwiperSlide key={src}>
               <div className="gallery-widget-item">
-                <img className="img-fluid" alt={`Ảnh sân ${idx + 1}`} src={src} />
+                <img className="img-fluid" alt={`Ảnh sân ${idx + 1}`} src={src} style={{ display: 'block', width: '100%' }} />
               </div>
             </SwiperSlide>
           ))}
         </Swiper>
         <div className="owl-nav d-none d-md-block" style={{ position: 'absolute', top: '50%', width: '100%', transform: 'translateY(-50%)', zIndex: 10, pointerEvents: 'none' }}>
-          <button className="owl-prev vg-prev" type="button" style={{ position: 'absolute', pointerEvents: 'auto', left: '30px', backgroundColor: 'rgba(255, 255, 255, 0.7)', border: 'none', borderRadius: '50%', width: '46px', height: '46px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+          <button
+            className="owl-prev vg-prev"
+            type="button"
+            onMouseEnter={() => setPrevHovered(true)}
+            onMouseLeave={() => setPrevHovered(false)}
+            style={{ position: 'absolute', pointerEvents: 'auto', left: '30px', backgroundColor: prevHovered ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.65)', border: 'none', borderRadius: '50%', width: '46px', height: '46px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: prevHovered ? '0 4px 12px rgba(0,0,0,0.2)' : '0 2px 4px rgba(0,0,0,0.1)', transition: 'background-color 0.2s ease, box-shadow 0.2s ease', cursor: 'pointer' }}
+          >
             <i className="feather-chevron-left" style={{ margin: 0, fontSize: '18px', color: '#333' }} />
           </button>
-          <button className="owl-next vg-next" type="button" style={{ position: 'absolute', pointerEvents: 'auto', right: '30px', backgroundColor: 'rgba(255, 255, 255, 0.7)', border: 'none', borderRadius: '50%', width: '46px', height: '46px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+          <button
+            className="owl-next vg-next"
+            type="button"
+            onMouseEnter={() => setNextHovered(true)}
+            onMouseLeave={() => setNextHovered(false)}
+            style={{ position: 'absolute', pointerEvents: 'auto', right: '30px', backgroundColor: nextHovered ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.65)', border: 'none', borderRadius: '50%', width: '46px', height: '46px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: nextHovered ? '0 4px 12px rgba(0,0,0,0.2)' : '0 2px 4px rgba(0,0,0,0.1)', transition: 'background-color 0.2s ease, box-shadow 0.2s ease', cursor: 'pointer' }}
+          >
             <i className="feather-chevron-right" style={{ margin: 0, fontSize: '18px', color: '#333' }} />
           </button>
         </div>
         <div className="showphotos corner-radius-10" style={{ position: 'absolute', bottom: '20px', right: '30px', zIndex: 10 }}>
-          <a href="#gallery" className="d-inline-flex align-items-center" style={{ backgroundColor: '#FBBF24', color: '#fff', padding: '10px 20px', borderRadius: '5px', textDecoration: 'none', fontWeight: '500', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
+          <a
+            href="#gallery"
+            className="d-inline-flex align-items-center"
+            onMouseEnter={() => setMoreHovered(true)}
+            onMouseLeave={() => setMoreHovered(false)}
+            style={{ backgroundColor: moreHovered ? '#F59E0B' : '#FBBF24', color: '#fff', padding: '10px 20px', borderRadius: '5px', textDecoration: 'none', fontWeight: '500', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'background-color 0.2s ease' }}
+          >
             <i className="fa-regular fa-images me-2" style={{ color: '#fff' }} /> Xem thêm hình
           </a>
         </div>
