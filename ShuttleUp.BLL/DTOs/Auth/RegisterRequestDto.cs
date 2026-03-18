@@ -33,19 +33,8 @@ public class RegisterRequestDto : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (IsManagerRoleRequested)
-        {
-            if (string.IsNullOrWhiteSpace(IdCardNo))
-                yield return new ValidationResult("CCCD/CMND là bắt buộc đối với Chủ sân.", [nameof(IdCardNo)]);
-            
-            if (string.IsNullOrWhiteSpace(TaxCode))
-                yield return new ValidationResult("Mã số thuế là bắt buộc đối với Chủ sân.", [nameof(TaxCode)]);
-            
-            if (string.IsNullOrWhiteSpace(BusinessLicenseNo))
-                yield return new ValidationResult("Giấy phép kinh doanh là bắt buộc đối với Chủ sân.", [nameof(BusinessLicenseNo)]);
-            
-            if (string.IsNullOrWhiteSpace(Address))
-                yield return new ValidationResult("Địa chỉ là bắt buộc đối với Chủ sân.", [nameof(Address)]);
-        }
+        // Không bắt buộc các thông tin pháp lý tại bước đăng ký.
+        // Người dùng sẽ hoàn thiện trong trang hồ sơ Quản lý và chờ Admin duyệt.
+        yield break;
     }
 }

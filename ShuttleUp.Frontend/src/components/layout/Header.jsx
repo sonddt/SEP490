@@ -145,6 +145,25 @@ const Header = ({ transparent = false }) => {
                   <li className={isActive('/courts/map') ? 'active' : ''}><Link to="/courts/map" onClick={closeMobileMenu}>Bản đồ Sân</Link></li>
                 </ul>
               </li>
+              <li className={`has-submenu ${isActive('/user/dashboard') || isActive('/manager/dashboard') ? 'active' : ''} ${openSubmenu === 'dashboard' ? 'active' : ''}`}>
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    toggleSubmenu('dashboard');
+                  }}
+                >
+                  Bảng Điều Khiển <i className="fas fa-chevron-down"></i>
+                </a>
+                <ul className={`submenu ${openSubmenu === 'dashboard' ? 'd-block' : ''}`}>
+                  <li className={isActive('/user/dashboard') ? 'active' : ''}><Link to="/user/dashboard" onClick={closeMobileMenu}>Dành cho Người chơi</Link></li>
+                  {isManager && (
+                    <li className={isActive('/manager/dashboard') ? 'active' : ''}>
+                      <Link to="/manager/dashboard" onClick={closeMobileMenu}>Dành cho Quản lý sân</Link>
+                    </li>
+                  )}
+                </ul>
+              </li>
 
               <li className={isActive('/about') ? 'active' : ''}>
                 <Link to="/about" onClick={closeMobileMenu}>Nổi bật</Link>

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { registerEmail, loginGoogle } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
+import { managerProfileApi } from '../api/managerProfileApi';
 
 export default function Register() {
   const [activeTab, setActiveTab] = useState('user');
@@ -18,10 +19,6 @@ export default function Register() {
     password: '',
     confirmPassword: '',
     agreedToTerms: false,
-    idCardNo: '',
-    taxCode: '',
-    businessLicenseNo: '',
-    address: '',
   });
 
   const { login } = useAuth();
@@ -60,15 +57,14 @@ export default function Register() {
         password: formData.password,
         fullName: formData.fullName,
         isManagerRoleRequested: activeTab === 'manager',
-        idCardNo: formData.idCardNo,
-        taxCode: formData.taxCode,
-        businessLicenseNo: formData.businessLicenseNo,
-        address: formData.address,
       });
       login(data);
-      // Mặc định luôn là PLAYER khi mới đăng ký, Manager cần chờ duyệt. 
-      // Do đó, dù đăng ký vai trò gì, hệ thống cũng điều hướng về user dashboard
-      navigate('/user/dashboard');
+      if (activeTab === 'manager') {
+        // Manager: chuyển sang trang hoàn thiện hồ sơ quản lý (PENDING)
+        navigate('/manager/profile-request');
+      } else {
+        navigate('/user/dashboard');
+      }
     } catch (err) {
       const res = err.response;
       if (!res) {
@@ -97,10 +93,14 @@ export default function Register() {
         roles: getRoles(),
       });
       login(data);
-      // Redirect dựa theo role nhận được từ BE
-      const roles = data.user?.roles ?? [];
-      if (roles.includes('MANAGER')) navigate('/manager/dashboard');
-      else navigate('/user/dashboard');
+      // Nếu đang ở tab Manager thì coi như user đang yêu cầu đăng ký làm Manager → chuyển sang trang hồ sơ
+      if (activeTab === 'manager') {
+        // đảm bảo có hồ sơ PENDING (backend sẽ tạo nếu cần)
+        try { await managerProfileApi.getMe(); } catch { /* ignore */ }
+        navigate('/manager/profile-request');
+      } else {
+        navigate('/user/dashboard');
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Đăng ký Google thất bại.');
     } finally {
@@ -224,64 +224,9 @@ export default function Register() {
                             </div>
 
                             {activeTab === 'manager' && (
-                              <>
-                                <div className="form-group">
-                                  <div className="group-img">
-                                    <i className="feather-credit-card"></i>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      placeholder="CCCD / Chứng minh nhân dân"
-                                      name="idCardNo"
-                                      value={formData.idCardNo}
-                                      onChange={handleInputChange}
-                                      required
-                                    />
-                                  </div>
-                                </div>
-                                <div className="form-group">
-                                  <div className="group-img">
-                                    <i className="feather-file-text"></i>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      placeholder="Mã số thuế"
-                                      name="taxCode"
-                                      value={formData.taxCode}
-                                      onChange={handleInputChange}
-                                      required
-                                    />
-                                  </div>
-                                </div>
-                                <div className="form-group">
-                                  <div className="group-img">
-                                    <i className="feather-award"></i>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      placeholder="Giấy phép kinh doanh"
-                                      name="businessLicenseNo"
-                                      value={formData.businessLicenseNo}
-                                      onChange={handleInputChange}
-                                      required
-                                    />
-                                  </div>
-                                </div>
-                                <div className="form-group">
-                                  <div className="group-img">
-                                    <i className="feather-map-pin"></i>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      placeholder="Địa chỉ doanh nghiệp / Cá nhân"
-                                      name="address"
-                                      value={formData.address}
-                                      onChange={handleInputChange}
-                                      required
-                                    />
-                                  </div>
-                                </div>
-                              </>
+                              <div className="alert alert-info mt-2">
+                                Sau khi đăng ký, bạn sẽ được chuyển sang trang <b>Hoàn tất Hồ sơ Quản lý</b> để nhập CCCD/Mã số thuế/Giấy phép kinh doanh và chờ Admin duyệt.
+                              </div>
                             )}
                             <div className="form-group">
                               <div className="pass-group group-img">
