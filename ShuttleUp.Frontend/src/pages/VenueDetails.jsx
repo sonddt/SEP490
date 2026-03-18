@@ -3,7 +3,10 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
 import { useState } from 'react';
 import Lightbox from 'yet-another-react-lightbox';
+import Zoom from 'yet-another-react-lightbox/plugins/zoom';
+import Thumbnails from 'yet-another-react-lightbox/plugins/thumbnails';
 import 'yet-another-react-lightbox/styles.css';
+import 'yet-another-react-lightbox/plugins/thumbnails.css';
 
 // Temporary mock data for Iteration 1.
 // Later, this can be replaced by data from venue API using the venue ID in the route.
@@ -195,12 +198,16 @@ export default function VenueDetails() {
         </div>
       </section>
 
-      {/* Lightbox */}
+      {/* Lightbox with Zoom + Thumbnails on the right */}
       <Lightbox
         open={lightboxOpen}
         close={() => setLightboxOpen(false)}
         slides={slides}
         index={lightboxIndex}
+        plugins={[Zoom, Thumbnails]}
+        zoom={{ maxZoomPixelRatio: 4, zoomInMultiplier: 1.5, doubleTapDelay: 300, doubleClickDelay: 300 }}
+        thumbnails={{ position: 'end', width: 120, height: 80, gap: 10, border: 2, borderRadius: 6, padding: 0, showToggle: false }}
+        animation={{ fade: 300, swipe: 300 }}
       />
 
       {/* Venue header info */}
