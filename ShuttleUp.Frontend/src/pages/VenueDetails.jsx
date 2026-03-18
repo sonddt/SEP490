@@ -1,22 +1,7 @@
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
-
-// Temporary mock data for Iteration 1.
-// Later, this can be replaced by data from venue API using the venue ID in the route.
-const MOCK_VENUE = {
-  name: 'Badminton Academy',
-  isVerified: true,
-  address: '70 Bright St New York, USA',
-  phone: '+3 80992 31212',
-  email: 'info@badmintonacademy.com',
-  venueType: 'Sân trong nhà',
-  ownerName: 'Hendry Williams',
-  startingPrice: 150,
-  currency: '$',
-  rating: 5.0,
-  reviewCount: 15,
-};
 
 const MOCK_GALLERY = [
   '/assets/img/gallery/gallery1/gallery-01.png',
@@ -90,7 +75,78 @@ const MOCK_SIMILAR_VENUES = [
 ];
 
 export default function VenueDetails() {
-  const venue = MOCK_VENUE;
+  const { venueId } = useParams();
+  const [venue, setVenue] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function loadVenue() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await fetch(`/api/venues/${venueId}`);
+        if (!response.ok) {
+          throw new Error('Không tìm thấy thông tin sân.');
+        }
+        const data = await response.json();
+
+        // Map dữ liệu backend sang model dùng trong UI
+        setVenue({
+          id: data.id,
+          name: data.name,
+          isVerified: data.isVerified ?? true,
+          address: data.address,
+          phone: data.phoneNumber ?? 'Đang cập nhật',
+          email: data.email ?? 'Đang cập nhật',
+          venueType: data.venueType ?? 'Sân cầu lông',
+          ownerName: data.ownerName ?? 'Chủ sân',
+          startingPrice: data.minPrice ?? 0,
+          currency: '₫',
+          rating: data.rating ?? 5.0,
+          reviewCount: data.reviewCount ?? 0,
+          lat: data.lat,
+          lng: data.lng,
+        });
+      } catch (err) {
+        setError(err.message || 'Đã xảy ra lỗi khi tải thông tin sân.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (venueId) {
+      loadVenue();
+    }
+  }, [venueId]);
+
+  if (loading) {
+    return (
+      <div className="main-wrapper content-below-header">
+        <div className="content">
+          <div className="container py-5 text-center">
+            <p>Đang tải thông tin sân...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !venue) {
+    return (
+      <div className="main-wrapper content-below-header">
+        <div className="content">
+          <div className="container py-5 text-center">
+            <p className="text-danger mb-3">{error || 'Không tìm thấy sân.'}</p>
+            <Link to="/courts" className="btn btn-secondary">
+              Quay lại danh sách sân
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="main-wrapper content-below-header venue-coach-details">
