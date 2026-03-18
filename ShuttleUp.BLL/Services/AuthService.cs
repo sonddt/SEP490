@@ -33,14 +33,19 @@ public class AuthService : IAuthService
         _configuration = configuration;
     }
 
-    // ── Đăng nhập bằng email + mật khẩu ─────────────────────────────────────
+    // ── Đăng nhập bằng email/SĐT + mật khẩu ─────────────────────────────────
     public async Task<LoginResponseDto> LoginAsync(LoginRequestDto request)
     {
-        var user = await _userRepository.GetByEmailAsync(request.Email);
+        User? user = null;
+
+        if (!string.IsNullOrWhiteSpace(request.Email))
+            user = await _userRepository.GetByEmailAsync(request.Email);
+        else if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
+            user = await _userRepository.GetByPhoneAsync(request.PhoneNumber);
 
         if (user == null || string.IsNullOrEmpty(user.PasswordHash)
             || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-            throw new UnauthorizedAccessException("Email hoặc mật khẩu không đúng.");
+            throw new UnauthorizedAccessException("Email/SĐT hoặc mật khẩu không đúng.");
 
         if (user.IsActive == false)
             throw new UnauthorizedAccessException("Tài khoản đã bị khóa.");
