@@ -4,53 +4,40 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 function CalendarPopup({ value, onChange, onClose }) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth()); // 0-based
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [tempDate, setTempDate] = useState(value);
 
   const DAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+  const monthNames = [
+    'tháng 1','tháng 2','tháng 3','tháng 4','tháng 5','tháng 6',
+    'tháng 7','tháng 8','tháng 9','tháng 10','tháng 11','tháng 12',
+  ];
 
-  const firstDay = new Date(viewYear, viewMonth, 1).getDay(); // 0=Sun
-  // Convert to Mon-based (Mon=0 ... Sun=6)
-  const startOffset = (firstDay + 6) % 7;
+  const firstDay   = new Date(viewYear, viewMonth, 1).getDay();
+  const startOffset = (firstDay + 6) % 7; // Mon-based
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const todayIso    = today.toISOString().split('T')[0];
 
-  const prevMonth = () => {
-    if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
-    else setViewMonth(m => m - 1);
-  };
-  const nextMonth = () => {
-    if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0); }
-    else setViewMonth(m => m + 1);
-  };
+  const prevMonth = () => viewMonth === 0 ? (setViewYear(y => y - 1), setViewMonth(11)) : setViewMonth(m => m - 1);
+  const nextMonth = () => viewMonth === 11 ? (setViewYear(y => y + 1), setViewMonth(0)) : setViewMonth(m => m + 1);
 
-  const monthNames = ['tháng 1','tháng 2','tháng 3','tháng 4','tháng 5','tháng 6','tháng 7','tháng 8','tháng 9','tháng 10','tháng 11','tháng 12'];
-
-  const cells = [];
-  for (let i = 0; i < startOffset; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
-  const toIso = (d) => {
+  const toIso = d => {
     const mm = String(viewMonth + 1).padStart(2, '0');
     const dd = String(d).padStart(2, '0');
     return `${viewYear}-${mm}-${dd}`;
   };
 
-  const todayIso = today.toISOString().split('T')[0];
+  const cells = [];
+  for (let i = 0; i < startOffset; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
   return (
-    <div 
-      style={{
-        position: 'fixed', inset: 0, zIndex: 2000,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        backgroundColor: 'rgba(0,0,0,0.4)'
-      }}
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }}
       onClick={onClose}
     >
-      <div 
-        style={{
-          backgroundColor: '#fff', borderRadius: '12px', padding: '24px',
-          minWidth: '320px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-        }}
+      <div
+        style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', minWidth: '320px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Month nav */}
@@ -60,8 +47,8 @@ function CalendarPopup({ value, onChange, onClose }) {
           <button className="btn btn-sm btn-link text-dark p-0 fs-5" onClick={nextMonth}>&#8250;</button>
         </div>
 
-        {/* Day headers */}
-        <div className="d-grid mb-1" style={{ gridTemplateColumns: 'repeat(7, 1fr)', display: 'grid' }}>
+        {/* Day-of-week headers */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }} className="mb-1">
           {DAYS.map(d => (
             <div key={d} className="text-center text-muted" style={{ fontSize: '12px', padding: '4px 0' }}>{d}</div>
           ))}
@@ -73,29 +60,22 @@ function CalendarPopup({ value, onChange, onClose }) {
             if (!d) return <div key={i} />;
             const iso = toIso(d);
             const isSelected = iso === tempDate;
-            const isToday = iso === todayIso;
-            const isPast = iso < todayIso;
+            const isToday    = iso === todayIso;
+            const isPast     = iso < todayIso;
             return (
               <button
                 key={i}
                 disabled={isPast}
                 onClick={() => !isPast && setTempDate(iso)}
                 style={{
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: '36px',
-                  height: '36px',
-                  margin: '1px auto',
-                  display: 'block',
-                  fontSize: '14px',
+                  border: 'none', borderRadius: '50%', width: '36px', height: '36px',
+                  margin: '1px auto', display: 'block', fontSize: '14px',
                   cursor: isPast ? 'not-allowed' : 'pointer',
                   backgroundColor: isSelected ? '#16a34a' : isToday ? '#dcfce7' : 'transparent',
                   color: isSelected ? '#fff' : isPast ? '#ccc' : '#111',
                   fontWeight: isToday ? '700' : '400',
                 }}
-              >
-                {d}
-              </button>
+              >{d}</button>
             );
           })}
         </div>
@@ -123,27 +103,20 @@ function formatDateVN(isoDate) {
   return `${d}/${m}/${y}`;
 }
 
-function slotToTime(index, startHour = 5) {
-  const totalMins = startHour * 60 + index * 30;
-  const h = Math.floor(totalMins / 60);
-  const m = totalMins % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function BookingTimeline() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [showCalendar, setShowCalendar] = useState(false);
+  const [showCalendar, setShowCalendar]  = useState(false);
 
-  // selections: Map<courtId, Set<slotIndex>>
+  // selections: { [courtId]: Set<slotIndex> }
   const [selections, setSelections] = useState({});
 
-  // Drag state per-court (each court tracks independently)
-  const isDraggingRef = useRef(false);
-  const dragStartRef = useRef(null); // { courtId, slotIndex }
-  const [, forceUpdate] = useState(0);
+  // Drag refs — distinguish click vs drag
+  const isDraggingRef  = useRef(false);
+  const hasDraggedRef  = useRef(false);
+  const dragStartRef   = useRef(null); // { courtId, slotIndex }
 
-  // ── Courts & time slots ──────────────────────────────────────────────────
+  // ── Static data ──────────────────────────────────────────────────────────
   const courts = useMemo(() => [
     { id: 1, name: 'Sân 1', pricePerSlot: 100000 },
     { id: 2, name: 'Sân 2', pricePerSlot: 100000 },
@@ -152,7 +125,7 @@ export default function BookingTimeline() {
   ], []);
 
   const START_HOUR = 5;
-  const END_HOUR = 24;
+  const END_HOUR   = 24;
 
   const timeSlots = useMemo(() => {
     const slots = [];
@@ -164,7 +137,6 @@ export default function BookingTimeline() {
     return slots;
   }, []);
 
-  // ── Existing bookings (mock data) ────────────────────────────────────────
   const existingBookings = useMemo(() => [
     { courtId: 1, startIndex: 2,  endIndex: 6,  type: 'booked' },
     { courtId: 1, startIndex: 8,  endIndex: 11, type: 'booked' },
@@ -175,51 +147,41 @@ export default function BookingTimeline() {
     { courtId: 4, startIndex: 25, endIndex: 31, type: 'booked' },
   ], []);
 
+  // ── Cell status ──────────────────────────────────────────────────────────
   const getBookingAt = (courtId, slotIndex) =>
     existingBookings.find(b => b.courtId === courtId && slotIndex >= b.startIndex && slotIndex < b.endIndex);
 
-  const isCellSelected = (courtId, slotIndex) =>
-    !!(selections[courtId] && selections[courtId].has(slotIndex));
-
   const getCellStatus = (courtId, slotIndex) => {
     const booking = getBookingAt(courtId, slotIndex);
-    if (booking) return { status: booking.type, label: booking.label, isBlockStart: slotIndex === booking.startIndex, booking };
-    if (isCellSelected(courtId, slotIndex)) return { status: 'selected' };
+    if (booking) return { status: booking.type, label: booking.label, isBlockStart: slotIndex === booking.startIndex };
+    if (selections[courtId]?.has(slotIndex)) return { status: 'selected' };
     return { status: 'free' };
   };
 
-  // ── Drag logic (per-court, multi-court allowed) ─────────────────────────
+  // ── Interaction logic ────────────────────────────────────────────────────
+  // mousedown → start tracking, but DON'T change selection yet
   const handleMouseDown = (courtId, slotIndex) => {
     const { status } = getCellStatus(courtId, slotIndex);
     if (status !== 'free' && status !== 'selected') return;
 
-    isDraggingRef.current = true;
-    dragStartRef.current = { courtId, slotIndex };
-
-    setSelections(prev => {
-      const next = { ...prev };
-      // Toggle: if already selected this slot and it's a single-court click, deselect whole court
-      if (status === 'selected' && next[courtId]?.has(slotIndex) && next[courtId].size === 1) {
-        delete next[courtId];
-        return next;
-      }
-      // Start new selection on this court (keep other courts)
-      next[courtId] = new Set([slotIndex]);
-      return next;
-    });
+    isDraggingRef.current  = true;
+    hasDraggedRef.current  = false;
+    dragStartRef.current   = { courtId, slotIndex };
   };
 
+  // mouseenter during drag → extend range (same court only), mark as dragged
   const handleMouseEnter = (courtId, slotIndex) => {
     if (!isDraggingRef.current || !dragStartRef.current) return;
-    // Only extend drag within the same court
     if (courtId !== dragStartRef.current.courtId) return;
+    if (slotIndex === dragStartRef.current.slotIndex) return;
+
+    hasDraggedRef.current = true;
 
     const start = Math.min(dragStartRef.current.slotIndex, slotIndex);
     const end   = Math.max(dragStartRef.current.slotIndex, slotIndex);
 
-    // Check conflict
     for (let i = start; i <= end; i++) {
-      if (getBookingAt(courtId, i)) return;
+      if (getBookingAt(courtId, i)) return; // block on conflict
     }
 
     const newSet = new Set();
@@ -227,12 +189,40 @@ export default function BookingTimeline() {
     setSelections(prev => ({ ...prev, [courtId]: newSet }));
   };
 
-  // ── Global mouseup ───────────────────────────────────────────────────────
+  // mouseup on cell → if pure click, toggle individual slot
+  const handleMouseUp = (courtId, slotIndex) => {
+    if (!isDraggingRef.current) return;
+
+    if (!hasDraggedRef.current) {
+      // Pure click: toggle this one slot, keep other courts unchanged
+      const { status } = getCellStatus(courtId, slotIndex);
+      if (status === 'free' || status === 'selected') {
+        setSelections(prev => {
+          const next     = { ...prev };
+          const courtSet = new Set(next[courtId] || []);
+          if (courtSet.has(slotIndex)) {
+            courtSet.delete(slotIndex);
+          } else {
+            courtSet.add(slotIndex);
+          }
+          if (courtSet.size === 0) delete next[courtId];
+          else next[courtId] = courtSet;
+          return next;
+        });
+      }
+    }
+
+    isDraggingRef.current = false;
+    hasDraggedRef.current = false;
+    dragStartRef.current  = null;
+  };
+
+  // Global mouseup: stop drag when mouse released outside any cell
   useEffect(() => {
     const stop = () => {
       isDraggingRef.current = false;
-      dragStartRef.current = null;
-      forceUpdate(n => n + 1);
+      hasDraggedRef.current = false;
+      dragStartRef.current  = null;
     };
     window.addEventListener('mouseup', stop);
     return () => window.removeEventListener('mouseup', stop);
@@ -250,12 +240,11 @@ export default function BookingTimeline() {
     const hours = slots * 0.5;
     const h = Math.floor(hours);
     const m = (hours - h) * 60;
-    const label = m > 0 ? `${h}h${m}` : `${h}h`;
-    return { totalSlots: slots, totalPrice: price, totalHours: label };
+    return { totalSlots: slots, totalPrice: price, totalHours: m > 0 ? `${h}h${m}` : `${h}h` };
   }, [selections, courts]);
 
-  // ── Cell color ───────────────────────────────────────────────────────────
-  const getCellColor = (status) => {
+  // ── Cell colour ──────────────────────────────────────────────────────────
+  const getCellColor = status => {
     switch (status) {
       case 'booked':   return '#ef4444';
       case 'locked':   return '#c084fc';
@@ -265,27 +254,27 @@ export default function BookingTimeline() {
   };
 
   // ── Render ───────────────────────────────────────────────────────────────
+  // paddingTop: 96px compensates for the fixed site navbar
   return (
-    <div style={{ backgroundColor: '#f0fdf4', minHeight: '100vh', paddingBottom: '80px' }}>
+    <div style={{ backgroundColor: '#f0fdf4', minHeight: '100vh', paddingTop: '96px', paddingBottom: '80px' }}>
 
-      {/* ── Header ─────────────────────────────────────────────────────── */}
+      {/* ── Sub-header ─────────────────────────────────────────────────── */}
       <div
         className="d-flex justify-content-between align-items-center px-4 py-3"
         style={{ backgroundColor: '#0f766e' }}
       >
         <h5 className="mb-0 text-white fw-semibold">Đặt lịch ngày trực quan</h5>
 
-        {/* Calendar trigger button */}
+        {/* Date picker button */}
         <button
           onClick={() => setShowCalendar(true)}
           className="d-flex align-items-center gap-2 px-3 py-2 rounded"
           style={{
             backgroundColor: '#115e59', border: '1px solid #14b8a6',
-            color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: '500'
+            color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: '500',
           }}
         >
-          <i className="feather-calendar" style={{ fontSize: '16px' }}></i>
-          {formatDateVN(selectedDate)}
+          📅 {formatDateVN(selectedDate)}
         </button>
       </div>
 
@@ -301,13 +290,14 @@ export default function BookingTimeline() {
           <div key={label} className="d-flex align-items-center gap-1">
             <div style={{
               width: '18px', height: '18px', borderRadius: '4px',
-              backgroundColor: color,
-              border: `1px solid ${border || color}`,
-              flexShrink: 0
+              backgroundColor: color, border: `1px solid ${border || color}`, flexShrink: 0,
             }} />
             <span style={{ fontSize: '13px' }}>{label}</span>
           </div>
         ))}
+        <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: 'auto' }}>
+          💡 Click để chọn từng ô · Kéo để chọn nhiều ô liên tiếp
+        </span>
       </div>
 
       {/* ── Notice ─────────────────────────────────────────────────────── */}
@@ -319,11 +309,14 @@ export default function BookingTimeline() {
       <div style={{ overflowX: 'auto', backgroundColor: '#fff', margin: '12px', borderRadius: '8px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
         <div style={{ minWidth: `${80 + (timeSlots.length - 1) * 44}px` }}>
 
-          {/* Time header row */}
-          <div className="d-flex" style={{ backgroundColor: '#f0fdf4', borderBottom: '1px solid #d1fae5', position: 'sticky', top: 0, zIndex: 20 }}>
+          {/* Time header row — sticky */}
+          <div
+            className="d-flex"
+            style={{ backgroundColor: '#f0fdf4', borderBottom: '1px solid #d1fae5', position: 'sticky', top: 0, zIndex: 20 }}
+          >
             <div style={{
               width: '72px', minWidth: '72px', position: 'sticky', left: 0,
-              backgroundColor: '#f0fdf4', zIndex: 21, borderRight: '1px solid #d1fae5'
+              backgroundColor: '#f0fdf4', zIndex: 21, borderRight: '1px solid #d1fae5',
             }} />
             {timeSlots.slice(0, -1).map((slot, i) => (
               <div
@@ -331,36 +324,30 @@ export default function BookingTimeline() {
                 style={{
                   width: '44px', minWidth: '44px', textAlign: 'center',
                   fontSize: '11px', color: '#0369a1', padding: '6px 0',
-                  borderRight: '1px solid #e0f2fe'
+                  borderRight: '1px solid #e0f2fe',
                 }}
-              >
-                {slot}
-              </div>
+              >{slot}</div>
             ))}
           </div>
 
           {/* Court rows */}
           {courts.map(court => (
-            <div
-              key={court.id}
-              className="d-flex"
-              style={{ borderBottom: '1px solid #e5e7eb' }}
-            >
+            <div key={court.id} className="d-flex" style={{ borderBottom: '1px solid #e5e7eb' }}>
+
               {/* Court name — sticky */}
               <div style={{
                 width: '72px', minWidth: '72px', position: 'sticky', left: 0,
-                backgroundColor: '#f8fafc', zIndex: 10,
-                borderRight: '1px solid #e5e7eb',
+                backgroundColor: '#f8fafc', zIndex: 10, borderRight: '1px solid #e5e7eb',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '13px', fontWeight: '600', color: '#374151'
+                fontSize: '13px', fontWeight: '600', color: '#374151',
               }}>
                 {court.name}
               </div>
 
               {/* Time cells */}
-              {timeSlots.slice(0, -1).map((slot, slotIdx) => {
+              {timeSlots.slice(0, -1).map((_, slotIdx) => {
                 const { status, label, isBlockStart } = getCellStatus(court.id, slotIdx);
-                const bg = getCellColor(status);
+                const bg          = getCellColor(status);
                 const isClickable = status === 'free' || status === 'selected';
 
                 return (
@@ -368,6 +355,7 @@ export default function BookingTimeline() {
                     key={slotIdx}
                     onMouseDown={() => handleMouseDown(court.id, slotIdx)}
                     onMouseEnter={() => handleMouseEnter(court.id, slotIdx)}
+                    onMouseUp={() => handleMouseUp(court.id, slotIdx)}
                     style={{
                       width: '44px', minWidth: '44px', height: '44px',
                       backgroundColor: bg,
@@ -375,8 +363,7 @@ export default function BookingTimeline() {
                       cursor: isClickable ? 'pointer' : 'not-allowed',
                       userSelect: 'none',
                       display: 'flex', alignItems: 'center',
-                      overflow: 'hidden',
-                      position: 'relative'
+                      overflow: 'hidden', position: 'relative',
                     }}
                     title={isBlockStart && label ? label : undefined}
                   >
@@ -384,7 +371,7 @@ export default function BookingTimeline() {
                       <span style={{
                         fontSize: '10px', color: '#fff', paddingLeft: '4px',
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                        position: 'absolute', left: 0, right: 0
+                        position: 'absolute', left: 0, right: 0,
                       }}>
                         {label}
                       </span>
@@ -412,14 +399,11 @@ export default function BookingTimeline() {
         </div>
         <button
           disabled={totalSlots === 0}
-          className="btn fw-bold px-5 py-2"
           style={{
             backgroundColor: totalSlots > 0 ? '#eab308' : '#d1d5db',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '15px',
-            letterSpacing: '0.5px'
+            color: '#fff', border: 'none', borderRadius: '8px',
+            fontSize: '15px', letterSpacing: '0.5px', padding: '10px 40px',
+            cursor: totalSlots > 0 ? 'pointer' : 'not-allowed',
           }}
         >
           TIẾP THEO
