@@ -205,9 +205,17 @@ export default function VenueDetails() {
         slides={slides}
         index={lightboxIndex}
         plugins={[Zoom, Thumbnails]}
-        zoom={{ maxZoomPixelRatio: 4, zoomInMultiplier: 1.5, doubleTapDelay: 300, doubleClickDelay: 300 }}
+        zoom={{
+          maxZoomPixelRatio: 4,
+          zoomInMultiplier: 1.5,
+          doubleTapDelay: 300,
+          doubleClickDelay: 300,
+          scrollToZoom: true,
+        }}
         thumbnails={{ position: 'end', width: 120, height: 80, gap: 10, border: 2, borderRadius: 6, padding: 0, showToggle: false }}
         animation={{ fade: 300, swipe: 300 }}
+        on={{ backdropClick: () => setLightboxOpen(false) }}
+        styles={{ root: { '--yarl__color_backdrop': 'rgba(0, 0, 0, 0.75)' } }}
       />
 
       {/* Venue header info */}
