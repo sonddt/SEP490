@@ -80,7 +80,7 @@ function App() {
         <Route path="/courts/list" element={<CourtsListing />} />
         <Route path="/courts/map" element={<PlaceholderPage title="Courts Map" />} />
         <Route path="/courts/add" element={<PlaceholderPage title="List Your Court" />} />
-        <Route path="/venue-details" element={<VenueDetails />} />
+        <Route path="/venue-details/:venueId" element={<VenueDetails />} />
 
         {/* Booking flow */}
         <Route path="/booking" element={<PlaceholderPage title="Book a Court" />} />
