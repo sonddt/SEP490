@@ -1,4 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import BookingSteps from '../components/booking/BookingSteps';
 
 // ── Mini Calendar Popup ────────────────────────────────────────────────────
 function CalendarPopup({ value, onChange, onClose }) {
@@ -105,6 +107,16 @@ function formatDateVN(isoDate) {
 
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function BookingTimeline() {
+  const navigate = useNavigate();
+  const location  = useLocation();
+
+  // Venue info passed from VenueDetails
+  const venueState = location.state ?? {};
+  const venueName    = venueState.venueName    ?? 'Chọn sân';
+  const venueAddress = venueState.venueAddress ?? '';
+  const venueId      = venueState.venueId      ?? null;
+  const pricePerSlot = venueState.pricePerSlot ?? 100000;
+
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [showCalendar, setShowCalendar]  = useState(false);
 
@@ -118,11 +130,11 @@ export default function BookingTimeline() {
 
   // ── Static data ──────────────────────────────────────────────────────────
   const courts = useMemo(() => [
-    { id: 1, name: 'Sân 1', pricePerSlot: 100000 },
-    { id: 2, name: 'Sân 2', pricePerSlot: 100000 },
-    { id: 3, name: 'Sân 3', pricePerSlot: 100000 },
-    { id: 4, name: 'Sân 4', pricePerSlot: 120000 },
-  ], []);
+    { id: 1, name: 'Sân 1', pricePerSlot },
+    { id: 2, name: 'Sân 2', pricePerSlot },
+    { id: 3, name: 'Sân 3', pricePerSlot },
+    { id: 4, name: 'Sân 4', pricePerSlot: Math.round(pricePerSlot * 1.2) },
+  ], [pricePerSlot]);
 
   const START_HOUR = 5;
   const END_HOUR   = 24;
@@ -253,17 +265,50 @@ export default function BookingTimeline() {
     }
   };
 
+  const handleNext = () => {
+    if (totalSlots === 0) return;
+    // Build flat list of selected slots for passing to next step
+    const selectedSlots = courts.flatMap(c =>
+      Array.from(selections[c.id] ?? []).map(slotIdx => ({
+        courtId:   c.id,
+        courtName: c.name,
+        slotIndex: slotIdx,
+        timeLabel: timeSlots[slotIdx],
+        price:     c.pricePerSlot,
+      }))
+    );
+    navigate('/booking/confirm', {
+      state: {
+        venueId,
+        venueName,
+        venueAddress,
+        date:          selectedDate,
+        selectedSlots,
+        totalPrice,
+        totalHours,
+      },
+    });
+  };
+
   // ── Render ───────────────────────────────────────────────────────────────
   // paddingTop: 96px compensates for the fixed site navbar
   return (
     <div style={{ backgroundColor: '#f0fdf4', minHeight: '100vh', paddingTop: '96px', paddingBottom: '80px' }}>
+
+      {/* ── Booking step progress ───────────────────────────────────────── */}
+      <BookingSteps currentStep={1} />
 
       {/* ── Sub-header ─────────────────────────────────────────────────── */}
       <div
         className="d-flex justify-content-between align-items-center px-4 py-3"
         style={{ backgroundColor: '#0f766e' }}
       >
-        <h5 className="mb-0 text-white fw-semibold">Đặt lịch ngày trực quan</h5>
+        <div>
+          <h5 className="mb-0 text-white fw-semibold">Đặt lịch ngày trực quan</h5>
+          {venueName !== 'Chọn sân' && (
+            <small className="text-white opacity-75">{venueName}{venueAddress ? ` — ${venueAddress}` : ''}</small>
+          )}
+        </div>
 
         {/* Date picker button */}
         <button
@@ -399,6 +444,7 @@ export default function BookingTimeline() {
         </div>
         <button
           disabled={totalSlots === 0}
+          onClick={handleNext}
           style={{
             backgroundColor: totalSlots > 0 ? '#eab308' : '#d1d5db',
             color: '#fff', border: 'none', borderRadius: '8px',

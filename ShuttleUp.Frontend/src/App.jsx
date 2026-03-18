@@ -17,6 +17,9 @@ import ChatPage from './pages/ChatPage';
 import Contact from './pages/Contact';
 import About from './pages/About';
 import BookingTimeline from './pages/BookingTimeline';
+import BookingConfirm from './pages/BookingConfirm';
+import BookingPayment from './pages/BookingPayment';
+import BookingComplete from './pages/BookingComplete';
 
 // Auth
 import Login from './pages/Login';
@@ -82,9 +85,13 @@ function App() {
         <Route path="/courts/map" element={<PlaceholderPage title="Courts Map" />} />
         <Route path="/courts/add" element={<PlaceholderPage title="List Your Court" />} />
         <Route path="/venue-details" element={<VenueDetails />} />
+        <Route path="/courts/:id" element={<VenueDetails />} />
 
         {/* Booking flow */}
         <Route path="/booking" element={<BookingTimeline />} />
+        <Route path="/booking/confirm"  element={<ProtectedRoute><BookingConfirm /></ProtectedRoute>} />
+        <Route path="/booking/payment"  element={<ProtectedRoute><BookingPayment /></ProtectedRoute>} />
+        <Route path="/booking/complete" element={<ProtectedRoute><BookingComplete /></ProtectedRoute>} />
 
         {/* User (yêu cầu đăng nhập – UserDashboardMenu, UserProfileTabs chỉ hiện trong các trang này) */}
         {/* Dashboard chính của user → trang MyProfile */}

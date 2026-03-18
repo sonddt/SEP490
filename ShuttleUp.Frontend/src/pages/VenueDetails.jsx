@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
 
@@ -90,7 +90,21 @@ const MOCK_SIMILAR_VENUES = [
 ];
 
 export default function VenueDetails() {
-  const venue = MOCK_VENUE;
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const venue = { ...MOCK_VENUE, id: id ?? '1' };
+
+  const handleBooking = () => {
+    navigate('/booking', {
+      state: {
+        venueId:      venue.id,
+        venueName:    venue.name,
+        venueAddress: venue.address,
+        pricePerSlot: venue.startingPrice,
+        currency:     venue.currency,
+      },
+    });
+  };
 
   return (
     <div className="main-wrapper content-below-header venue-coach-details">
@@ -458,13 +472,14 @@ export default function VenueDetails() {
                   </li>
                 </ul>
                 <div className="d-grid btn-block mt-3">
-                  <Link
-                    to="/booking"
+                  <button
+                    type="button"
+                    onClick={handleBooking}
                     className="btn btn-secondary d-inline-flex justify-content-center align-items-center"
                   >
                     <i className="feather-calendar" />
-                    <span className="ms-2">Đặt ngay</span>
-                  </Link>
+                    <span className="ms-2">ĐẶT LỊCH</span>
+                  </button>
                 </div>
               </div>
 
@@ -553,13 +568,13 @@ export default function VenueDetails() {
                   {MOCK_SIMILAR_VENUES.slice(0, 2).map((v) => (
                     <li key={v.id} className="d-flex justify-content-start align-items-center">
                       <div>
-                        <Link to="/venue-details">
+                        <Link to={`/courts/${v.id}`}>
                           <img className="img-fluid" alt={v.name} src={v.img} />
                         </Link>
                       </div>
-                      <div className="owner-info ms-2">
+                        <div className="owner-info ms-2">
                         <h5>
-                          <Link to="/venue-details">{v.name}</Link>
+                          <Link to={`/courts/${v.id}`}>{v.name}</Link>
                         </h5>
                         <p>
                           <i className="feather-map-pin" />
@@ -626,7 +641,7 @@ export default function VenueDetails() {
                     <div className="featured-venues-item">
                       <div className="listing-item mb-0">
                         <div className="listing-img">
-                          <Link to="/venue-details">
+                          <Link to={`/courts/${v.id}`}>
                             <img src={v.img} alt={v.name} className="img-fluid" />
                           </Link>
                           <div className="fav-item-venues">
@@ -648,7 +663,7 @@ export default function VenueDetails() {
                             </button>
                           </div>
                           <h3 className="listing-title">
-                            <Link to="/venue-details">{v.name}</Link>
+                            <Link to={`/courts/${v.id}`}>{v.name}</Link>
                           </h3>
                           <div className="listing-details-group">
                             <p>{v.desc}</p>
@@ -674,11 +689,11 @@ export default function VenueDetails() {
                                 {v.owner}
                               </span>
                             </div>
-                            <Link to="/booking" className="user-book-now">
+                            <Link to={`/courts/${v.id}`} className="user-book-now">
                               <span>
                                 <i className="feather-calendar me-2" />
                               </span>
-                              Đặt ngay
+                              Xem chi tiết
                             </Link>
                           </div>
                         </div>
