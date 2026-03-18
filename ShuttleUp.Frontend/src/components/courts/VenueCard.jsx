@@ -36,7 +36,7 @@ export default function VenueCard({ venue, viewMode = 'grid' }) {
       <div className={isList ? 'featured-venues-item venue-list-item' : 'wrapper'}>
         <div className="listing-item listing-item-grid">
           <div className="listing-img">
-            <Link to="/venue-details">
+            <Link to={`/venue-details/${venue.id}`}>
               <img src={venue.img} className="img-fluid" alt={venue.name} />
             </Link>
             <div className="fav-item-venues">
@@ -49,7 +49,7 @@ export default function VenueCard({ venue, viewMode = 'grid' }) {
               </h5>
             </div>
           </div>
-          <div className="listing-content">
+            <div className="listing-content">
             <div className="list-reviews">
               <div className="d-flex align-items-center">
                 <span className="rating-bg">{venue.rating}</span>
@@ -65,7 +65,7 @@ export default function VenueCard({ venue, viewMode = 'grid' }) {
               </button>
             </div>
             <h3 className="listing-title">
-              <Link to="/venue-details">{venue.name}</Link>
+              <Link to={`/venue-details/${venue.id}`}>{venue.name}</Link>
             </h3>
             <div className="listing-details-group">
               <p>{venue.desc}</p>
@@ -91,7 +91,7 @@ export default function VenueCard({ venue, viewMode = 'grid' }) {
                   {venue.owner}
                 </Link>
               </div>
-              <Link to="/venue-details" className="user-book-now">
+              <Link to={`/venue-details/${venue.id}`} className="user-book-now">
                 <span><i className="feather-calendar me-2"></i></span>
                 Đặt sân
               </Link>
