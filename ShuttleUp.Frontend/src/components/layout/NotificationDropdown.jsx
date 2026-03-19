@@ -12,12 +12,13 @@ export default function NotificationDropdown({ open, onToggle, onClose, iconColo
   const unreadCount = MOCK_NOTIFICATIONS.filter((n) => !n.read).length;
 
   useEffect(() => {
+    if (!open) return;
     const handler = (e) => {
       if (ref.current && !ref.current.contains(e.target)) onClose();
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
+  }, [open, onClose]);
 
   return (
     <li className="nav-item dropdown noti-nav" ref={ref} style={{ position: 'relative' }}>

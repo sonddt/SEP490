@@ -1,30 +1,24 @@
 import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-function DropItem({ to, icon, label, onClick }) {
-  const navigate = useNavigate();
-
-  const handleClick = (e) => {
-    e.preventDefault();
-    onClick?.();
-    navigate(to);
-  };
-
+function DropItem({ to, icon, label, onNav }) {
   return (
-    <a
-      href={to}
-      onClick={handleClick}
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onNav(to)}
+      onKeyDown={(e) => { if (e.key === 'Enter') onNav(to); }}
       style={{
         display: 'flex', alignItems: 'center', gap: 10,
         padding: '9px 18px', color: '#475569', fontSize: 14,
-        textDecoration: 'none', transition: 'background 0.15s', cursor: 'pointer',
+        cursor: 'pointer', transition: 'background 0.15s',
       }}
       onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
     >
       <i className={icon} style={{ fontSize: 15, color: '#94a3b8', width: 18, textAlign: 'center' }} />
       {label}
-    </a>
+    </div>
   );
 }
 
@@ -53,13 +47,19 @@ export default function UserDropdown({
 
   const roleName   = isAdmin ? 'Admin' : isManager ? 'Chủ Sân' : 'Người chơi';
 
+  const handleNav = (path) => {
+    onClose();
+    navigate(path);
+  };
+
   useEffect(() => {
+    if (!open) return;
     const handler = (e) => {
       if (ref.current && !ref.current.contains(e.target)) onClose();
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
+  }, [open, onClose]);
 
   return (
     /* Removed has-arrow to avoid double-arrow (has-arrow adds a CSS ::after arrow) */
@@ -117,24 +117,25 @@ export default function UserDropdown({
             <h6 style={{ margin: '0 0 1px', fontSize: 14, fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {user?.fullName || user?.email}
             </h6>
-            {/* Role badge + navigate to profile */}
-            <a
-              href={profileMenuPath}
-              onClick={(e) => { e.preventDefault(); onClose(); navigate(profileMenuPath); }}
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={() => handleNav(profileMenuPath)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleNav(profileMenuPath); }}
               className="text-profile mb-0"
-              style={{ fontSize: 12, color: '#16a34a', fontWeight: 600, textDecoration: 'none' }}
+              style={{ fontSize: 12, color: '#16a34a', fontWeight: 600, cursor: 'pointer' }}
             >
               {roleName}
-            </a>
+            </span>
           </div>
         </div>
 
         {/* Menu items */}
         <div style={{ padding: '6px 0', background: '#fff' }}>
-          <DropItem to={profileMenuPath}  icon="feather-user"     label="Hồ sơ của tôi" onClick={onClose} />
-          <DropItem to={settingsMenuPath} icon="feather-settings" label="Cài đặt"        onClick={onClose} />
+          <DropItem to={profileMenuPath}  icon="feather-user"     label="Hồ sơ của tôi" onNav={handleNav} />
+          <DropItem to={settingsMenuPath} icon="feather-settings" label="Cài đặt"        onNav={handleNav} />
           {isManager && !isAdmin && (
-            <DropItem to={switchTo} icon={switchIcon} label={switchLabel} onClick={onClose} />
+            <DropItem to={switchTo} icon={switchIcon} label={switchLabel} onNav={handleNav} />
           )}
         </div>
 
