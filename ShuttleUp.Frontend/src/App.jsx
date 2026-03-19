@@ -8,6 +8,13 @@ import PageLoader from './components/common/PageLoader';
 // Public pages
 import HomePage from './pages/HomePage';
 import CourtsListing from './pages/CourtsListing';
+import ManagerCourts from './pages/ManagerCourts';
+import ManagerDashboard from './pages/manager/ManagerDashboard';
+import ManagerAddVenue from './pages/manager/ManagerAddVenue';
+import ManagerAvailability from './pages/manager/ManagerAvailability';
+import ManagerEarnings from './pages/manager/ManagerEarnings';
+import ManagerWallet from './pages/manager/ManagerWallet';
+import ManagerProfileRequest from './pages/manager/ManagerProfileRequest';
 import VenueDetails from './pages/VenueDetails';
 import ChatPage from './pages/ChatPage';
 import Contact from './pages/Contact';
@@ -31,6 +38,7 @@ import UserProfileEdit from './pages/user/UserProfileEdit';
 import UserProfileChangePassword from './pages/user/UserProfileChangePassword';
 import UserProfileOtherSetting from './pages/user/UserProfileOtherSetting';
 import UserManagerInfo from './pages/user/UserManagerInfo';
+import UserBookings from './pages/user/UserBookings';
 
 // Manager — Layout + Pages
 import ManagerLayout from './layouts/ManagerLayout';
