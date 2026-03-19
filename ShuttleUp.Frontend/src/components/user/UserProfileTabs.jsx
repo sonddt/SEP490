@@ -4,7 +4,6 @@ const tabs = [
   { to: '/user/profile',                   label: 'Hồ sơ',        end: true },
   { to: '/user/profile/manager-info',      label: 'Thông tin quản lý', end: false },
   { to: '/user/profile/change-password',   label: 'Đổi mật khẩu', end: false },
-  { to: '/user/profile/other-settings',    label: 'Cài đặt khác', end: false },
 ];
 
 export default function UserProfileTabs() {

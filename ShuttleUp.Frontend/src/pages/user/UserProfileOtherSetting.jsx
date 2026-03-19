@@ -40,7 +40,7 @@ export default function UserProfileOtherSetting() {
       <UserDashboardMenu />
 
       {/* Page Content */}
-      <div className="content court-bg">
+      <div className="content court-bg" style={{ paddingTop: '90px' }}>
         <div className="container">
 
           {/* Profile Tabs */}

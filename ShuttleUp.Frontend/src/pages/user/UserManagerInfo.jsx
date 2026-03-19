@@ -129,7 +129,7 @@ export default function UserManagerInfo() {
 
       <UserDashboardMenu />
 
-      <div className="content court-bg">
+      <div className="content court-bg" style={{ paddingTop: '90px' }}>
         <div className="container">
           <UserProfileTabs />
 

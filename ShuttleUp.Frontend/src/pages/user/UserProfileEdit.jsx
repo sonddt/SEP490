@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import UserDashboardMenu from '../../components/user/UserDashboardMenu';
 import UserProfileTabs from '../../components/user/UserProfileTabs';
 import { useAuth } from '../../context/AuthContext';
+import { profileApi } from '../../api/profileApi';
 
 const PROVINCES = [
   'Hà Nội', 'Hồ Chí Minh', 'Đà Nẵng', 'Hải Phòng', 'Cần Thơ',
@@ -23,7 +24,13 @@ const PROVINCES = [
 export default function UserProfileEdit() {
   const fileInputRef = useRef(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
-  const { user } = useAuth();
+  const { user: authUser } = useAuth();
+  const [currentAvatarUrl, setCurrentAvatarUrl] = useState(null);
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
 
   const [form, setForm] = useState({
     fullName: '',
@@ -35,6 +42,7 @@ export default function UserProfileEdit() {
     district: '',
     province: '',
   });
+  const [initialForm, setInitialForm] = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -48,14 +56,111 @@ export default function UserProfileEdit() {
   };
 
   const handleReset = () => {
-    setForm({ fullName: '', gender: '', dateOfBirth: '', about: '', address: '', district: '', province: '' });
-    setAvatarPreview(null);
+    if (initialForm) setForm(initialForm);
+    setAvatarPreview(currentAvatarUrl);
+    setSuccess('');
+    setError('');
   };
 
-  const handleSubmit = (e) => {
+  const VN_PHONE_REGEX = /^(0[3|5|7|8|9][0-9]{8})$/;
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoading(true);
+        setSuccess('');
+        setError('');
+        const data = await profileApi.getMe();
+        if (!mounted) return;
+        const u = data?.user || {};
+
+        const loaded = {
+          fullName: u.fullName || '',
+          phoneNumber: u.phoneNumber || '',
+          gender: u.gender || '',
+          dateOfBirth: u.dateOfBirth || '',
+          about: u.about || '',
+          address: u.address || '',
+          district: u.district || '',
+          province: u.province || '',
+        };
+
+        setForm(loaded);
+        setInitialForm(loaded);
+        setCurrentAvatarUrl(u.avatarUrl || null);
+        setAvatarPreview(u.avatarUrl || null);
+      } catch (e) {
+        if (!mounted) return;
+        setError(e?.response?.data?.message || 'Không tải được hồ sơ.');
+        const fallback = {
+          fullName: authUser?.fullName || '',
+          phoneNumber: authUser?.phoneNumber || '',
+          gender: '',
+          dateOfBirth: '',
+          about: '',
+          address: '',
+          district: '',
+          province: '',
+        };
+        setForm(fallback);
+        setInitialForm(fallback);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // TODO: call API to update profile
-    console.log('Saving profile:', form);
+    setSuccess('');
+    setError('');
+
+    const fullName = (form.fullName || '').trim();
+    if (!fullName) {
+      setError('Vui lòng nhập họ và tên.');
+      return;
+    }
+
+    const cleanedPhone = (form.phoneNumber || '').trim();
+    if (cleanedPhone) {
+      const withoutSpaces = cleanedPhone.replace(/\s+/g, '');
+      // Cho phép hoặc số VN 0xxxxxxxxx, hoặc dạng +84xxxxxxxxx
+      const isValid = VN_PHONE_REGEX.test(withoutSpaces) || /^\+84\d{9,10}$/.test(withoutSpaces);
+      if (!isValid) {
+        setError('Số điện thoại không hợp lệ. Vui lòng nhập đúng định dạng.');
+        return;
+      }
+    }
+
+    setSaving(true);
+    try {
+      await profileApi.updateMe({
+        fullName,
+        phoneNumber: cleanedPhone || null,
+        gender: form.gender || null,
+        dateOfBirth: form.dateOfBirth || null,
+        about: form.about || null,
+        address: form.address || null,
+        district: form.district || null,
+        province: form.province || null,
+      });
+
+      const nextForm = {
+        ...form,
+        fullName,
+      };
+      setInitialForm(nextForm);
+      setSuccess('Cập nhật hồ sơ thành công.');
+    } catch (e2) {
+      setError(e2?.response?.data?.message || 'Cập nhật hồ sơ thất bại, vui lòng thử lại.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -77,7 +182,7 @@ export default function UserProfileEdit() {
       <UserDashboardMenu />
 
       {/* Page Content */}
-      <div className="content court-bg">
+      <div className="content court-bg" style={{ paddingTop: '90px' }}>
         <div className="container">
 
           {/* Profile Tabs */}
@@ -89,6 +194,16 @@ export default function UserProfileEdit() {
                 <div className="card">
                   <form onSubmit={handleSubmit}>
                     <div className="row">
+                      {error && (
+                        <div className="col-12">
+                          <div className="alert alert-danger">{error}</div>
+                        </div>
+                      )}
+                      {success && (
+                        <div className="col-12">
+                          <div className="alert alert-success">{success}</div>
+                        </div>
+                      )}
 
                       {/* Avatar Upload */}
                       <div className="col-md-12">
@@ -156,7 +271,7 @@ export default function UserProfileEdit() {
                           <input
                             type="email"
                             className="form-control"
-                            value={user?.email || ''}
+                            value={authUser?.email || ''}
                             readOnly
                             style={{ background: '#f1f5f9', cursor: 'not-allowed' }}
                           />
@@ -291,11 +406,12 @@ export default function UserProfileEdit() {
                     Đặt lại
                   </button>
                   <button
-                    type="submit"
+                    type="button"
                     className="btn btn-primary save-profile"
                     onClick={handleSubmit}
+                    disabled={loading || saving}
                   >
-                    Lưu thay đổi
+                    {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
                   </button>
                 </div>
               </div>

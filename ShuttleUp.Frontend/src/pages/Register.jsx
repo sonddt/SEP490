@@ -24,6 +24,36 @@ export default function Register() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  const isValidGmail = (email) => {
+    if (!email) return false;
+    return /^[A-Za-z0-9._%+-]+@gmail\.com$/i.test(email.trim());
+  };
+
+  // Số điện thoại: 9-11 chữ số (chỉ số)
+  const normalizePhone = (phone) => (phone || '').replace(/\s+/g, '');
+  const isValidPhone = (phone) => /^\d{9,11}$/.test(normalizePhone(phone));
+
+  const validatePassword = (password) => {
+    const p = password || '';
+
+    const lengthOk = p.length >= 8 && p.length <= 32;
+    const hasUpper = /[A-Z]/.test(p);
+    const hasLower = /[a-z]/.test(p);
+    const hasNumber = /\d/.test(p);
+    // Special chars theo ví dụ trong ảnh: ! @ # $ % ^ & * ( ) _ - + .
+    const hasSpecial = /[!@#$%^&*()_+\-\.]/.test(p);
+
+    // Ép độ dài phải nằm trong 8-32, phần còn lại cần thỏa tối thiểu 3/4 điều kiện.
+    const otherPassed = [hasUpper, hasLower, hasNumber, hasSpecial].filter(Boolean).length;
+    const passed = (lengthOk ? 1 : 0) + otherPassed;
+
+    return {
+      ok: lengthOk && otherPassed >= 3,
+      passed,
+      details: { lengthOk, hasUpper, hasLower, hasNumber, hasSpecial },
+    };
+  };
+
   // tab → roles
   const getRoles = () => (activeTab === 'manager' ? ['MANAGER'] : ['PLAYER']);
 
@@ -44,6 +74,27 @@ export default function Register() {
       setError('Mật khẩu xác nhận không khớp!');
       return;
     }
+
+    const email = (formData.email || '').trim();
+    const phoneNumber = normalizePhone(formData.phoneNumber);
+    const password = formData.password || '';
+
+    if (!isValidGmail(email)) {
+      setError('Email phải đúng định dạng Gmail (ví dụ: yourname@gmail.com).');
+      return;
+    }
+
+    if (!isValidPhone(phoneNumber)) {
+      setError('Số điện thoại phải gồm 9-11 chữ số (chỉ nhập số).');
+      return;
+    }
+
+    const pwCheck = validatePassword(password);
+    if (!pwCheck.ok) {
+      setError('Mật khẩu phải dài 8-32 ký tự và thỏa ít nhất 3/4 điều kiện còn lại: HOA, thường, số, ký tự đặc biệt.');
+      return;
+    }
+
     if (!formData.agreedToTerms) {
       setError('Bạn cần đồng ý với Điều khoản sử dụng.');
       return;
@@ -52,9 +103,9 @@ export default function Register() {
     setLoading(true);
     try {
       const data = await registerEmail({
-        email: formData.email,
-        phoneNumber: formData.phoneNumber,
-        password: formData.password,
+        email,
+        phoneNumber,
+        password,
         fullName: formData.fullName,
         isManagerRoleRequested: activeTab === 'manager',
       });
@@ -63,7 +114,7 @@ export default function Register() {
         // Manager: chuyển sang trang hoàn thiện hồ sơ quản lý (PENDING)
         navigate('/manager/profile-request');
       } else {
-        navigate('/user/dashboard');
+        navigate('/courts');
       }
     } catch (err) {
       const res = err.response;
@@ -99,7 +150,7 @@ export default function Register() {
         try { await managerProfileApi.getMe(); } catch { /* ignore */ }
         navigate('/manager/profile-request');
       } else {
-        navigate('/user/dashboard');
+        navigate('/courts');
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Đăng ký Google thất bại.');
@@ -203,6 +254,8 @@ export default function Register() {
                                   value={formData.email}
                                   onChange={handleInputChange}
                                   required
+                                  pattern="^[A-Za-z0-9._%+-]+@gmail\.com$"
+                                  title="Email phải thuộc định dạng @gmail.com"
                                 />
                               </div>
                             </div>
@@ -218,7 +271,7 @@ export default function Register() {
                                   onChange={handleInputChange}
                                   required
                                   pattern="[0-9]{9,11}"
-                                  title="Số điện thoại gồm 9-11 chữ số"
+                                  title="Số điện thoại gồm 9-11 chữ số (chỉ nhập số)"
                                 />
                               </div>
                             </div>
@@ -238,12 +291,13 @@ export default function Register() {
                                 <input
                                   type={showPassword ? 'text' : 'password'}
                                   className="form-control pass-input"
-                                  placeholder="Mật khẩu (ít nhất 6 ký tự)"
+                                  placeholder="Mật khẩu (8-32 ký tự)"
                                   name="password"
                                   value={formData.password}
                                   onChange={handleInputChange}
                                   required
-                                  minLength={6}
+                                  minLength={8}
+                                  maxLength={32}
                                 />
                               </div>
                             </div>
@@ -262,6 +316,8 @@ export default function Register() {
                                   value={formData.confirmPassword}
                                   onChange={handleInputChange}
                                   required
+                                  minLength={8}
+                                  maxLength={32}
                                 />
                               </div>
                             </div>

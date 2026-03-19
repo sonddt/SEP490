@@ -64,6 +64,10 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(255) NOT NULL,
     phone_number VARCHAR(20),
+    about TEXT,
+    address VARCHAR(500),
+    district VARCHAR(100),
+    province VARCHAR(100),
     gender VARCHAR(20),
     date_of_birth DATE,
     is_active BOOLEAN DEFAULT TRUE,
@@ -424,10 +428,11 @@ CREATE TABLE report_files (
 -- SAMPLE USERS
 -- ======================================================================
 
-INSERT INTO users VALUES
-('a0000001-0000-0000-0000-000000000001','player@shuttleup.vn','$2a$11$tZrQ/eYOHNsLwXmBdiOIA.lyzWbFOZI1I.1B0rPYLCvMveALbDAWC','Người chơi Mẫu','0901234567',NULL,NULL,TRUE,NULL,NULL,NULL,NULL,NOW(),NOW()),
-('a0000002-0000-0000-0000-000000000002','manager@shuttleup.vn','$2a$11$tZrQ/eYOHNsLwXmBdiOIA.lyzWbFOZI1I.1B0rPYLCvMveALbDAWC','Quản lý Sân Mẫu','0907654321',NULL,NULL,TRUE,NULL,NULL,NULL,NULL,NOW(),NOW()),
-('a0000003-0000-0000-0000-000000000003','admin@shuttleup.vn','$2a$11$tZrQ/eYOHNsLwXmBdiOIA.lyzWbFOZI1I.1B0rPYLCvMveALbDAWC','Admin Hệ thống',NULL,NULL,NULL,TRUE,NULL,NULL,NULL,NULL,NOW(),NOW());
+-- LƯU Ý: Phải chỉ định danh sách cột để tránh lỗi mismatch số lượng value
+INSERT INTO users (id, email, password_hash, full_name, phone_number, is_active) VALUES
+('a0000001-0000-0000-0000-000000000001','player@shuttleup.vn','$2a$11$tZrQ/eYOHNsLwXmBdiOIA.lyzWbFOZI1I.1B0rPYLCvMveALbDAWC','Người chơi Mẫu','0901234567', TRUE),
+('a0000002-0000-0000-0000-000000000002','manager@shuttleup.vn','$2a$11$tZrQ/eYOHNsLwXmBdiOIA.lyzWbFOZI1I.1B0rPYLCvMveALbDAWC','Quản lý Sân Mẫu','0907654321', TRUE),
+('a0000003-0000-0000-0000-000000000003','admin@shuttleup.vn','$2a$11$tZrQ/eYOHNsLwXmBdiOIA.lyzWbFOZI1I.1B0rPYLCvMveALbDAWC','Admin Hệ thống',NULL, TRUE);
 
 INSERT INTO user_roles VALUES
 ('a0000001-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002'),

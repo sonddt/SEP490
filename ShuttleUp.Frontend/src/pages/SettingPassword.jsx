@@ -58,7 +58,7 @@ export default function SettingPassword() {
   };
 
   return (
-    <div className="content court-bg">
+    <div className="content court-bg" style={{ paddingTop: '90px' }}>
       <div className="container">
         {/* Profile Navigation */}
         <div className="coach-court-list profile-court-list">
