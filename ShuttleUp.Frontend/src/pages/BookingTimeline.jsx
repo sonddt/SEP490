@@ -119,8 +119,14 @@ export default function BookingTimeline() {
 
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [showCalendar, setShowCalendar]  = useState(false);
-  // cellWidth controls zoom: 18=compact (fit screen), 56=expanded (scroll)
-  const [cellWidth, setCellWidth] = useState(24);
+
+  // Ref to measure the grid container for computing the exact "fit" minimum
+  const gridContainerRef = useRef(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  // cellWidth is the zoom level controlled by the slider
+  // It's always clamped to >= minCellWidth so slider-at-min = no scroll
+  const [cellWidth, setCellWidth] = useState(0); // 0 = uninitialized, will be set to minCellWidth on first measure
 
   // selections: { [courtId]: Set<slotIndex> }
   const [selections, setSelections] = useState({});
@@ -129,6 +135,41 @@ export default function BookingTimeline() {
   const isDraggingRef  = useRef(false);
   const hasDraggedRef  = useRef(false);
   const dragStartRef   = useRef(null); // { courtId, slotIndex }
+
+  // ── Responsive min cell width ────────────────────────────────────────────
+  const COURT_LABEL_W = 72; // px reserved for court name column
+  const MAX_CELL_W    = 56; // px maximum zoom
+
+  // Measure container and derive minCellWidth dynamically
+  useEffect(() => {
+    const el = gridContainerRef.current;
+    if (!el) return;
+    const measure = (width) => {
+      // numTimeSlots = (24-5)*2 = 38
+      const slots = 38;
+      const minW = Math.max(10, Math.floor((width - COURT_LABEL_W) / slots));
+      setContainerWidth(width);
+      setCellWidth(prev => {
+        // On first measure (prev===0) default to minW; otherwise preserve user zoom but re-clamp
+        if (prev === 0) return minW;
+        return Math.max(prev, minW);
+      });
+    };
+    measure(el.getBoundingClientRect().width);
+    const ro = new ResizeObserver(entries => {
+      for (const entry of entries) measure(entry.contentRect.width);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Minimum cell width derived from current container width
+  const minCellWidth = containerWidth > 0
+    ? Math.max(10, Math.floor((containerWidth - COURT_LABEL_W) / 38))
+    : 10;
+
+  // Effective cell width — never less than what fits the container
+  const effectiveCellW = Math.max(cellWidth || minCellWidth, minCellWidth);
 
   // ── Static data ──────────────────────────────────────────────────────────
   const courts = useMemo(() => [
@@ -353,8 +394,11 @@ export default function BookingTimeline() {
       </div>
 
       {/* ── Timeline Grid ──────────────────────────────────────────────── */}
-      <div style={{ overflowX: 'auto', backgroundColor: '#fff', margin: '12px', borderRadius: '8px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-        <div style={{ minWidth: `${72 + (timeSlots.length - 1) * cellWidth}px` }}>
+      <div
+        ref={gridContainerRef}
+        style={{ overflowX: effectiveCellW <= minCellWidth ? 'hidden' : 'auto', backgroundColor: '#fff', margin: '12px', borderRadius: '8px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}
+      >
+        <div style={{ minWidth: effectiveCellW <= minCellWidth ? '100%' : `${COURT_LABEL_W + (timeSlots.length - 1) * effectiveCellW}px` }}>
 
           {/* Time header row — sticky */}
           <div
@@ -369,11 +413,15 @@ export default function BookingTimeline() {
               <div
                 key={i}
                 style={{
-                  width: `${cellWidth}px`, minWidth: `${cellWidth}px`, flexShrink: 0, textAlign: 'center',
-                  fontSize: cellWidth < 28 ? '9px' : '11px', color: '#0369a1', padding: '6px 0',
+                  flex: effectiveCellW <= minCellWidth ? '1 1 0' : 'none',
+                  width: effectiveCellW <= minCellWidth ? 'auto' : `${effectiveCellW}px`,
+                  minWidth: effectiveCellW <= minCellWidth ? 0 : `${effectiveCellW}px`,
+                  flexShrink: effectiveCellW <= minCellWidth ? 1 : 0,
+                  textAlign: 'center',
+                  fontSize: effectiveCellW < 28 ? '9px' : '11px', color: '#0369a1', padding: '6px 0',
                   borderRight: '1px solid #e0f2fe', overflow: 'hidden',
                 }}
-              >{cellWidth >= 26 ? slot : (i % 2 === 0 ? slot : '')}</div>
+              >{effectiveCellW >= 26 ? slot : (i % 2 === 0 ? slot : '')}</div>
             ))}
           </div>
 
@@ -404,7 +452,11 @@ export default function BookingTimeline() {
                     onMouseEnter={() => handleMouseEnter(court.id, slotIdx)}
                     onMouseUp={() => handleMouseUp(court.id, slotIdx)}
                     style={{
-                      width: `${cellWidth}px`, minWidth: `${cellWidth}px`, flexShrink: 0, height: '44px',
+                      flex: effectiveCellW <= minCellWidth ? '1 1 0' : 'none',
+                      width: effectiveCellW <= minCellWidth ? 'auto' : `${effectiveCellW}px`,
+                      minWidth: effectiveCellW <= minCellWidth ? 0 : `${effectiveCellW}px`,
+                      flexShrink: effectiveCellW <= minCellWidth ? 1 : 0,
+                      height: '44px',
                       backgroundColor: bg,
                       borderRight: '1px solid #e5e7eb',
                       cursor: isClickable ? 'pointer' : 'not-allowed',
@@ -441,9 +493,9 @@ export default function BookingTimeline() {
         <span style={{ fontSize: '13px', color: '#6b7280', flexShrink: 0 }}>🔍</span>
         <input
           type="range"
-          min={14}
-          max={56}
-          value={cellWidth}
+          min={minCellWidth}
+          max={MAX_CELL_W}
+          value={effectiveCellW}
           onChange={e => setCellWidth(Number(e.target.value))}
           style={{
             flex: 1, accentColor: '#16a34a', cursor: 'pointer', height: '4px',
