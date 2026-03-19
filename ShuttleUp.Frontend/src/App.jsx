@@ -13,6 +13,11 @@ import ManagerAvailability from './pages/manager/ManagerAvailability';
 import ManagerEarnings from './pages/manager/ManagerEarnings';
 import ManagerWallet from './pages/manager/ManagerWallet';
 import ManagerProfileRequest from './pages/manager/ManagerProfileRequest';
+import ManagerBookings from './pages/manager/ManagerBookings';
+import ManagerRequests from './pages/manager/ManagerRequests';
+import ManagerVenueCourts from './pages/manager/ManagerVenueCourts';
+import ManagerAddCourt from './pages/manager/ManagerAddCourt';
+import ManagerEditVenue from './pages/manager/ManagerEditVenue';
 import VenueDetails from './pages/VenueDetails';
 import ChatPage from './pages/ChatPage';
 import Contact from './pages/Contact';
@@ -121,8 +126,12 @@ function App() {
           <Route path="/manager/availability" element={<ProtectedRoute requiredRole="MANAGER"><ManagerAvailability /></ProtectedRoute>} />
           <Route path="/manager/earnings" element={<ProtectedRoute requiredRole="MANAGER"><ManagerEarnings /></ProtectedRoute>} />
           <Route path="/manager/wallet" element={<ProtectedRoute requiredRole="MANAGER"><ManagerWallet /></ProtectedRoute>} />
-          <Route path="/manager/requests" element={<ProtectedRoute requiredRole="MANAGER"><PlaceholderPage title="Yêu cầu đặt sân" /></ProtectedRoute>} />
-          <Route path="/manager/bookings" element={<ProtectedRoute requiredRole="MANAGER"><PlaceholderPage title="Lịch đặt sân" /></ProtectedRoute>} />
+          <Route path="/manager/requests" element={<ProtectedRoute requiredRole="MANAGER"><ManagerRequests /></ProtectedRoute>} />
+          <Route path="/manager/bookings" element={<ProtectedRoute requiredRole="MANAGER"><ManagerBookings /></ProtectedRoute>} />
+          <Route path="/manager/venues/:venueId/courts" element={<ProtectedRoute requiredRole="MANAGER"><ManagerVenueCourts /></ProtectedRoute>} />
+          <Route path="/manager/venues/:venueId/courts/add" element={<ProtectedRoute requiredRole="MANAGER"><ManagerAddCourt /></ProtectedRoute>} />
+          <Route path="/manager/venues/:venueId/courts/:courtId/edit" element={<ProtectedRoute requiredRole="MANAGER"><ManagerAddCourt /></ProtectedRoute>} />
+          <Route path="/manager/venues/:venueId/edit" element={<ProtectedRoute requiredRole="MANAGER"><ManagerEditVenue /></ProtectedRoute>} />
           <Route path="/manager/chat" element={<ProtectedRoute requiredRole="MANAGER"><PlaceholderPage title="Trò chuyện" /></ProtectedRoute>} />
           <Route path="/manager/profile" element={<ProtectedRoute requiredRole="MANAGER"><MyProfile /></ProtectedRoute>} />
           <Route path="/manager/setting-password" element={<ProtectedRoute><SettingPassword /></ProtectedRoute>} />

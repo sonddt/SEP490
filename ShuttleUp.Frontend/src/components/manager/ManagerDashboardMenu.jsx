@@ -1,15 +1,15 @@
 import { NavLink } from 'react-router-dom';
 
 const menuItems = [
-  { to: '/manager/dashboard', icon: 'dashboard-icon.svg', label: 'Tổng quan' },
-  { to: '/manager/courts',    icon: 'court-icon.svg',     label: 'Sân của tôi' },
-  { to: '/manager/courts/add',icon: 'court-icon.svg',     label: 'Thêm sân mới' },
-  { to: '/manager/requests',  icon: 'request-icon.svg',   label: 'Yêu cầu', badge: null },
-  { to: '/manager/bookings',  icon: 'booking-icon.svg',   label: 'Đặt sân' },
-  { to: '/manager/chat',      icon: 'chat-icon.svg',      label: 'Trò chuyện' },
-  { to: '/manager/earnings',  icon: 'invoice-icon.svg',   label: 'Doanh thu' },
-  { to: '/manager/wallet',    icon: 'wallet-icon.svg',    label: 'Ví' },
-  { to: '/manager/profile',   icon: 'profile-icon.svg',   label: 'Hồ sơ' },
+  { to: '/manager/dashboard',  icon: 'dashboard-icon.svg', label: 'Tổng quan' },
+  { to: '/manager/courts',     icon: 'court-icon.svg',     label: 'Cụm sân' },
+  { to: '/manager/courts/add', icon: 'court-icon.svg',     label: 'Thêm cụm sân' },
+  { to: '/manager/requests',   icon: 'request-icon.svg',   label: 'Yêu cầu' },
+  { to: '/manager/bookings',   icon: 'booking-icon.svg',   label: 'Đặt sân' },
+  { to: '/manager/chat',       icon: 'chat-icon.svg',      label: 'Trò chuyện' },
+  { to: '/manager/earnings',   icon: 'invoice-icon.svg',   label: 'Doanh thu' },
+  { to: '/manager/wallet',     icon: 'wallet-icon.svg',    label: 'Ví' },
+  { to: '/manager/profile',    icon: 'profile-icon.svg',   label: 'Hồ sơ' },
 ];
 
 export default function ManagerDashboardMenu() {
