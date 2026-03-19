@@ -42,9 +42,9 @@ export default function UserDropdown({
   const settingsMenuPath = isManager  ? '/manager/setting-password'
                          :              '/user/profile/other-settings';
 
-  const switchTo   = inManagerMode ? '/user/dashboard'   : '/manager/dashboard';
+  const switchTo   = inManagerMode ? '/'                  : '/manager/venues';
   const switchIcon = inManagerMode ? 'feather-user'       : 'feather-briefcase';
-  const switchLabel= inManagerMode ? 'Chế độ Người chơi' : 'Chế độ Quản lý sân';
+  const switchLabel= inManagerMode ? 'Chế độ Người chơi' : 'Quản lý sân';
 
   // Show role label based on current mode (route), not only granted roles.
   // Managers can switch between /user and /manager views.

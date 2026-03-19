@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import ManagerDashboardMenu from '../../components/manager/ManagerDashboardMenu';
 
 const MOCK_COURTS = [
   { id: 1, venueId: 'v1', name: 'Sân 1', type: 'Đơn / Đôi', image: '/assets/img/booking/booking-01.jpg', pricePerHour: 120000, maxGuest: 4, surface: 'Gỗ PU', status: true, addedOn: '01/03/2026' },
@@ -35,24 +34,7 @@ export default function ManagerVenueCourts() {
   });
 
   return (
-    <div className="main-wrapper content-below-header">
-      <section className="breadcrumb breadcrumb-list mb-0">
-        <span className="primary-right-round" />
-        <div className="container">
-          <h1 className="text-white">Quản lý sân</h1>
-          <ul>
-            <li><Link to="/">Trang chủ</Link></li>
-            <li><Link to="/manager/courts">Sân của tôi</Link></li>
-            <li>Danh sách sân</li>
-          </ul>
-        </div>
-      </section>
-
-      <ManagerDashboardMenu />
-
-      <div className="content court-bg">
-        <div className="container">
-
+    <>
           {/* Filter bar */}
           <div className="row">
             <div className="col-lg-12">
@@ -203,9 +185,6 @@ export default function ManagerVenueCourts() {
               </div>
             </div>
           </div>
-        </div>
-      </div>
-
       {/* Delete Confirm Modal */}
       {deleteModal && (
         <div className="modal fade show d-block" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setDeleteModal(null)}>
@@ -226,6 +205,6 @@ export default function ManagerVenueCourts() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

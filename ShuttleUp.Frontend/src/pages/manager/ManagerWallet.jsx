@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import ManagerDashboardMenu from '../../components/manager/ManagerDashboardMenu';
 
 const mockTransactions = [
   { id: 1, refId: 'TXN-001', name: 'Nguyễn Văn A', img: '/assets/img/profiles/user-01.jpg', dateTime: '12/03/2026 10:15', amount: 240000, type: 'credit', status: 'PAID' },
@@ -43,24 +41,7 @@ export default function ManagerWallet() {
   };
 
   return (
-    <div className="main-wrapper content-below-header">
-      {/* Breadcrumb */}
-      <section className="breadcrumb breadcrumb-list mb-0">
-        <span className="primary-right-round"></span>
-        <div className="container">
-          <h1 className="text-white">Ví của tôi</h1>
-          <ul>
-            <li><Link to="/">Trang chủ</Link></li>
-            <li><Link to="/manager/dashboard">Quản lý sân</Link></li>
-            <li>Ví</li>
-          </ul>
-        </div>
-      </section>
-
-      <ManagerDashboardMenu />
-
-      <div className="content court-bg">
-        <div className="container">
+    <>
           <div className="row mb-4">
 
             {/* ── Wallet Balance ──────────────────────────── */}
@@ -210,9 +191,6 @@ export default function ManagerWallet() {
             </div>
           </div>
 
-        </div>
-      </div>
-
       {/* ── Add Payment Modal ────────────────────────────── */}
       {showAddModal && (
         <div className="modal fade show d-block" style={{ background: 'rgba(0,0,0,0.5)' }}>
@@ -311,6 +289,6 @@ export default function ManagerWallet() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

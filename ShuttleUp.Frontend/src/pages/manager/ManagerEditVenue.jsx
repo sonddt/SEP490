@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import ManagerDashboardMenu from '../../components/manager/ManagerDashboardMenu';
 
 const DAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
 const AMENITIES = ['Bãi đỗ xe', 'Nước uống', 'Sơ cứu', 'Phòng thay đồ', 'Nhà tắm', 'WiFi', 'Căn-tin', 'Điều hoà'];
@@ -71,37 +70,19 @@ export default function ManagerEditVenue() {
     e.preventDefault();
     console.log({ venueId, form, dayHours, existingImages, newImageFiles });
     alert('Đã cập nhật thông tin cụm sân thành công!');
-    navigate('/manager/courts');
+    navigate('/manager/venues');
   };
 
   if (loading) {
     return (
-      <div className="main-wrapper content-below-header">
-        <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="spinner-border text-secondary" role="status"><span className="visually-hidden">Loading...</span></div>
-        </div>
+      <div style={{ minHeight: '40vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="spinner-border text-secondary" role="status"><span className="visually-hidden">Loading...</span></div>
       </div>
     );
   }
 
   return (
-    <div className="main-wrapper content-below-header">
-      <section className="breadcrumb breadcrumb-list mb-0">
-        <span className="primary-right-round" />
-        <div className="container">
-          <h1 className="text-white">Chỉnh sửa cụm sân</h1>
-          <ul>
-            <li><Link to="/">Trang chủ</Link></li>
-            <li><Link to="/manager/courts">Sân của tôi</Link></li>
-            <li>Chỉnh sửa</li>
-          </ul>
-        </div>
-      </section>
-
-      <ManagerDashboardMenu />
-
-      <div className="content court-bg">
-        <div className="container">
+    <>
           <form onSubmit={handleSubmit}>
 
             {/* Basic Info */}
@@ -307,11 +288,9 @@ export default function ManagerEditVenue() {
               <button type="submit" className="btn btn-secondary d-inline-flex align-items-center">
                 <i className="feather-save me-2" />Lưu thay đổi
               </button>
-              <Link to="/manager/courts" className="btn btn-outline-secondary">Huỷ</Link>
+              <Link to="/manager/venues" className="btn btn-outline-secondary">Huỷ</Link>
             </div>
           </form>
-        </div>
-      </div>
-    </div>
+    </>
   );
 }
