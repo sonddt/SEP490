@@ -45,7 +45,13 @@ export default function UserDropdown({
   const switchIcon = inManagerMode ? 'feather-user'       : 'feather-briefcase';
   const switchLabel= inManagerMode ? 'Chế độ Người chơi' : 'Chế độ Quản lý sân';
 
-  const roleName   = isAdmin ? 'Admin' : isManager ? 'Chủ Sân' : 'Người chơi';
+  // Show role label based on current mode (route), not only granted roles.
+  // Managers can switch between /user and /manager views.
+  const roleName = isAdmin
+    ? 'Admin'
+    : isManager
+      ? (inManagerMode ? 'Chủ Sân' : 'Người chơi')
+      : 'Người chơi';
 
   const handleNav = (path) => {
     onClose();
