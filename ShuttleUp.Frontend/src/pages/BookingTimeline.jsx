@@ -135,6 +135,9 @@ export default function BookingTimeline() {
   const isDraggingRef  = useRef(false);
   const hasDraggedRef  = useRef(false);
   const dragStartRef   = useRef(null); // { courtId, slotIndex }
+  // Snapshot of the court's selection BEFORE the current drag started
+  // so new drag ranges ADD to existing selection rather than replace it
+  const dragBaseRef    = useRef(new Set());
 
   // ── Responsive min cell width ────────────────────────────────────────────
   const COURT_LABEL_W = 72; // px reserved for court name column
@@ -214,7 +217,7 @@ export default function BookingTimeline() {
   };
 
   // ── Interaction logic ────────────────────────────────────────────────────
-  // mousedown → start tracking, but DON'T change selection yet
+  // mousedown → snapshot existing selection for this court, then start tracking
   const handleMouseDown = (courtId, slotIndex) => {
     const { status } = getCellStatus(courtId, slotIndex);
     if (status !== 'free' && status !== 'selected') return;
@@ -222,9 +225,12 @@ export default function BookingTimeline() {
     isDraggingRef.current  = true;
     hasDraggedRef.current  = false;
     dragStartRef.current   = { courtId, slotIndex };
+    // Save a copy of whatever is already selected on this court.
+    // The new drag range will be MERGED with this base, not replace it.
+    dragBaseRef.current    = new Set(selections[courtId] ?? []);
   };
 
-  // mouseenter during drag → extend range (same court only), mark as dragged
+  // mouseenter during drag → merge base selection + current drag range
   const handleMouseEnter = (courtId, slotIndex) => {
     if (!isDraggingRef.current || !dragStartRef.current) return;
     if (courtId !== dragStartRef.current.courtId) return;
@@ -235,13 +241,15 @@ export default function BookingTimeline() {
     const start = Math.min(dragStartRef.current.slotIndex, slotIndex);
     const end   = Math.max(dragStartRef.current.slotIndex, slotIndex);
 
+    // If any slot in the new range hits an existing booking, abort the drag update
     for (let i = start; i <= end; i++) {
-      if (getBookingAt(courtId, i)) return; // block on conflict
+      if (getBookingAt(courtId, i)) return;
     }
 
-    const newSet = new Set();
-    for (let i = start; i <= end; i++) newSet.add(i);
-    setSelections(prev => ({ ...prev, [courtId]: newSet }));
+    // Merge: keep everything that was already selected + add the drag range
+    const merged = new Set(dragBaseRef.current);
+    for (let i = start; i <= end; i++) merged.add(i);
+    setSelections(prev => ({ ...prev, [courtId]: merged }));
   };
 
   // mouseup on cell → if pure click, toggle individual slot
@@ -270,6 +278,7 @@ export default function BookingTimeline() {
     isDraggingRef.current = false;
     hasDraggedRef.current = false;
     dragStartRef.current  = null;
+    dragBaseRef.current   = new Set();
   };
 
   // Global mouseup: stop drag when mouse released outside any cell
@@ -278,6 +287,7 @@ export default function BookingTimeline() {
       isDraggingRef.current = false;
       hasDraggedRef.current = false;
       dragStartRef.current  = null;
+      dragBaseRef.current   = new Set();
     };
     window.addEventListener('mouseup', stop);
     return () => window.removeEventListener('mouseup', stop);
