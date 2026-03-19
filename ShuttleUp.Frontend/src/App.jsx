@@ -34,6 +34,7 @@ import UserManagerInfo from './pages/user/UserManagerInfo';
 
 // Manager — Layout + Pages
 import ManagerLayout from './layouts/ManagerLayout';
+import ManagerDashboard from './pages/manager/ManagerDashboard';
 import ManagerVenueList from './pages/manager/ManagerVenueList';
 import ManagerAddVenue from './pages/manager/ManagerAddVenue';
 import ManagerEditVenue from './pages/manager/ManagerEditVenue';
@@ -42,6 +43,7 @@ import ManagerAddCourt from './pages/manager/ManagerAddCourt';
 import ManagerBookings from './pages/manager/ManagerBookings';
 import ManagerNotifications from './pages/manager/ManagerNotifications';
 import ManagerEarnings from './pages/manager/ManagerEarnings';
+// ManagerWallet removed — project does not use wallet feature
 import ManagerPaymentSettings from './pages/manager/ManagerPaymentSettings';
 import ManagerAvailability from './pages/manager/ManagerAvailability';
 
@@ -133,6 +135,9 @@ function App() {
           >
             <Route index element={<Navigate to="/manager/venues" replace />} />
 
+            {/* Dashboard */}
+            <Route path="dashboard" element={<ManagerDashboard />} />
+
             {/* Venue CRUD */}
             <Route path="venues" element={<ManagerVenueList />} />
             <Route path="venues/add" element={<ManagerAddVenue />} />
@@ -144,7 +149,7 @@ function App() {
             <Route path="venues/:venueId/courts/add" element={<ManagerAddCourt />} />
             <Route path="venues/:venueId/courts/:courtId/edit" element={<ManagerAddCourt />} />
 
-            {/* Bookings (merged: pending / upcoming / completed / rejected / cancelled) */}
+            {/* Bookings */}
             <Route path="bookings" element={<ManagerBookings />} />
 
             {/* Notifications */}
@@ -152,6 +157,7 @@ function App() {
 
             {/* Finance */}
             <Route path="earnings" element={<ManagerEarnings />} />
+            {/* Wallet route removed — project does not use wallet */}
             <Route path="payment-settings" element={<ManagerPaymentSettings />} />
           </Route>
 

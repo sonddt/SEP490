@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { BOOKING_STATUSES, PAYMENT_METHODS } from '../../data/bookingsMock';
 
 function InfoRow({ label, value, valueClass = '' }) {
@@ -5,6 +6,88 @@ function InfoRow({ label, value, valueClass = '' }) {
     <div className="bk-detail-row">
       <span className="bk-detail-label">{label}</span>
       <span className={`bk-detail-value ${valueClass}`}>{value}</span>
+    </div>
+  );
+}
+
+/* ── Payment proof lightbox ──────────────────────────────────────────── */
+function PaymentProofSection({ proofImg }) {
+  const [showFull, setShowFull] = useState(false);
+  if (!proofImg) return null;
+
+  return (
+    <div className="bk-detail-section mt-3">
+      <h6 className="bk-detail-section-title">
+        <i className="feather-image me-1" />Ảnh minh chứng chuyển khoản
+      </h6>
+      <div
+        style={{
+          position: 'relative', cursor: 'pointer', borderRadius: 10,
+          overflow: 'hidden', border: '2px solid #d1fae5', background: '#f0fdf4',
+        }}
+        onClick={() => setShowFull(true)}
+      >
+        <img
+          src={proofImg}
+          alt="Minh chứng thanh toán"
+          style={{
+            width: '100%', maxHeight: 200, objectFit: 'contain',
+            display: 'block',
+          }}
+          onError={(e) => { e.target.src = '/assets/img/booking/booking-01.jpg'; }}
+        />
+        <div
+          style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(transparent 50%, rgba(0,0,0,.4))',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            padding: 10,
+          }}
+        >
+          <span style={{ color: '#fff', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <i className="feather-maximize-2" style={{ fontSize: 14 }} />
+            Nhấn để phóng to
+          </span>
+        </div>
+      </div>
+
+      {/* Fullscreen lightbox */}
+      {showFull && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,.7)', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20,
+          }}
+          onClick={() => setShowFull(false)}
+        >
+          <img
+            src={proofImg}
+            alt="Minh chứng thanh toán"
+            style={{
+              maxWidth: '90vw', maxHeight: '85vh', borderRadius: 12,
+              boxShadow: '0 20px 60px rgba(0,0,0,.4)', objectFit: 'contain',
+              background: '#fff',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            type="button"
+            onClick={() => setShowFull(false)}
+            style={{
+              position: 'absolute', top: 16, right: 16,
+              width: 40, height: 40, borderRadius: '50%',
+              background: 'rgba(255,255,255,.9)', border: 'none',
+              fontSize: 20, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#1e293b',
+            }}
+          >
+            <i className="feather-x" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -79,6 +162,9 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
                   </div>
                 </div>
               </div>
+
+              {/* Payment proof image */}
+              <PaymentProofSection proofImg={booking.paymentProofImg} />
             </div>
 
             {/* Right: booking details */}

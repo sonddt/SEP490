@@ -3,6 +3,12 @@ import { useAuth } from '../../context/AuthContext';
 
 const NAV_SECTIONS = [
   {
+    label: 'Tổng quan',
+    items: [
+      { to: '/manager/dashboard',     icon: 'feather-home',        label: 'Tổng quan' },
+    ],
+  },
+  {
     label: 'Quản lý',
     items: [
       { to: '/manager/venues',        icon: 'feather-map-pin',      label: 'Cụm sân' },
@@ -14,7 +20,6 @@ const NAV_SECTIONS = [
     label: 'Tài chính',
     items: [
       { to: '/manager/earnings',          icon: 'feather-bar-chart-2',  label: 'Doanh thu' },
-      { to: '/manager/payment-settings',  icon: 'feather-credit-card',  label: 'Thanh toán' },
     ],
   },
 ];

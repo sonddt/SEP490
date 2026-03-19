@@ -3,11 +3,13 @@ import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import ManagerSidebar from '../components/manager/ManagerSidebar';
 
 const PAGE_TITLES = {
+  '/manager/dashboard':       { title: 'Tổng quan', crumbs: [] },
   '/manager/venues':           { title: 'Cụm sân của tôi', crumbs: [] },
   '/manager/venues/add':       { title: 'Thêm cụm sân mới', crumbs: [{ label: 'Cụm sân', to: '/manager/venues' }] },
   '/manager/bookings':         { title: 'Quản lý đặt sân', crumbs: [] },
   '/manager/notifications':    { title: 'Thông báo', crumbs: [] },
   '/manager/earnings':         { title: 'Doanh thu', crumbs: [] },
+  '/manager/wallet':           { title: 'Ví tiền', crumbs: [] },
   '/manager/payment-settings': { title: 'Cài đặt thanh toán', crumbs: [] },
 };
 
