@@ -36,7 +36,7 @@ export default function Login() {
     if (safeReturnUrl) return navigate(safeReturnUrl);
     if (roles?.includes('ADMIN')) return navigate('/admin/dashboard');
     if (roles?.includes('MANAGER') && tab === 'manager') return navigate('/manager/dashboard');
-    return navigate('/user/dashboard');
+    return navigate('/courts');
   };
 
   const resolveManagerLoginGate = async (roles) => {
