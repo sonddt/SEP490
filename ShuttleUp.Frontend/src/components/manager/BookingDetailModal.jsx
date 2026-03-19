@@ -91,7 +91,7 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
                 <InfoRow
                   label="Trạng thái"
                   value={
-                    <span className="bk-status-badge" style={{ color: st.color, background: st.bg, borderColor: st.border }}>
+                    <span className="bk-badge" style={{ color: st.color, background: st.bg, borderColor: st.border }}>
                       <i className={st.icon} />{st.label}
                     </span>
                   }

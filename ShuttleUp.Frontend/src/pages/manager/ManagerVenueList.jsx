@@ -3,47 +3,35 @@ import { Link } from 'react-router-dom';
 
 const MOCK_VENUES = [
   {
-    id: 'v1',
-    name: 'ShuttleUp Quận 7',
+    id: 'v1', name: 'ShuttleUp Quận 7',
     address: '12 Nguyễn Thị Thập, Q.7, TP.HCM',
     image: '/assets/img/venue/venue-01.jpg',
-    courtCount: 3,
-    activeCourts: 3,
-    totalBookingsThisMonth: 42,
-    revenueThisMonth: 12400000,
-    status: 'active',
-    createdAt: '01/01/2026',
+    courtCount: 3, activeCourts: 3,
+    totalBookingsThisMonth: 42, revenueThisMonth: 12400000,
+    status: 'active', createdAt: '01/01/2026',
   },
   {
-    id: 'v2',
-    name: 'ShuttleUp Bình Thạnh',
+    id: 'v2', name: 'ShuttleUp Bình Thạnh',
     address: '45 Đinh Tiên Hoàng, Q.Bình Thạnh, TP.HCM',
     image: '/assets/img/venue/venue-02.jpg',
-    courtCount: 2,
-    activeCourts: 2,
-    totalBookingsThisMonth: 28,
-    revenueThisMonth: 8500000,
-    status: 'active',
-    createdAt: '15/01/2026',
+    courtCount: 2, activeCourts: 2,
+    totalBookingsThisMonth: 28, revenueThisMonth: 8500000,
+    status: 'active', createdAt: '15/01/2026',
   },
   {
-    id: 'v3',
-    name: 'Cầu lông Gò Vấp',
+    id: 'v3', name: 'Cầu lông Gò Vấp',
     address: '88 Quang Trung, Q.Gò Vấp, TP.HCM',
     image: '/assets/img/venue/venue-03.jpg',
-    courtCount: 4,
-    activeCourts: 2,
-    totalBookingsThisMonth: 15,
-    revenueThisMonth: 3200000,
-    status: 'inactive',
-    createdAt: '01/02/2026',
+    courtCount: 4, activeCourts: 2,
+    totalBookingsThisMonth: 15, revenueThisMonth: 3200000,
+    status: 'inactive', createdAt: '01/02/2026',
   },
 ];
 
-const statusMap = {
-  active:   { label: 'Hoạt động', cls: 'bg-success' },
-  inactive: { label: 'Tạm ngưng', cls: 'bg-secondary' },
-  pending:  { label: 'Chờ duyệt', cls: 'bg-warning text-dark' },
+const STATUS_STYLES = {
+  active:   { label: 'Hoạt động', bg: '#dcfce7', color: '#15803d' },
+  inactive: { label: 'Tạm ngưng', bg: '#f1f5f9', color: '#64748b' },
+  pending:  { label: 'Chờ duyệt', bg: '#fef3c7', color: '#d97706' },
 };
 
 export default function ManagerVenueList() {
@@ -74,24 +62,19 @@ export default function ManagerVenueList() {
       {/* Summary stats */}
       <div className="row g-3 mb-4">
         {[
-          { label: 'Tổng cụm sân', value: venues.length, icon: 'feather-map-pin', color: '#0d7c5f' },
-          { label: 'Tổng sân', value: totalCourts, icon: 'feather-grid', color: '#2563eb' },
-          { label: 'Đặt sân tháng này', value: totalBookings, icon: 'feather-calendar', color: '#f59e0b' },
-          { label: 'Doanh thu tháng', value: totalRevenue.toLocaleString('vi-VN') + ' ₫', icon: 'feather-trending-up', color: '#10b981' },
+          { label: 'Tổng cụm sân', value: venues.length, icon: 'feather-map-pin', color: '#0d7c5f', bg: '#e8f5ee' },
+          { label: 'Tổng sân', value: totalCourts, icon: 'feather-grid', color: '#2563eb', bg: '#eff6ff' },
+          { label: 'Đặt sân tháng này', value: totalBookings, icon: 'feather-calendar', color: '#d97706', bg: '#fffbeb' },
+          { label: 'Doanh thu tháng', value: totalRevenue.toLocaleString('vi-VN') + ' ₫', icon: 'feather-trending-up', color: '#10b981', bg: '#ecfdf5' },
         ].map((s) => (
           <div key={s.label} className="col-xl-3 col-sm-6">
-            <div className="card border-0 shadow-sm h-100">
-              <div className="card-body d-flex align-items-center gap-3">
-                <div style={{
-                  width: 48, height: 48, borderRadius: 12, background: `${s.color}14`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                }}>
-                  <i className={s.icon} style={{ fontSize: 20, color: s.color }} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>{s.label}</div>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: '#1e293b' }}>{s.value}</div>
-                </div>
+            <div className="mgr-stat-card">
+              <div className="mgr-stat-card__icon" style={{ background: s.bg }}>
+                <i className={s.icon} style={{ color: s.color }} />
+              </div>
+              <div>
+                <div className="mgr-stat-card__label">{s.label}</div>
+                <div className="mgr-stat-card__value">{s.value}</div>
               </div>
             </div>
           </div>
@@ -99,130 +82,141 @@ export default function ManagerVenueList() {
       </div>
 
       {/* Toolbar */}
-      <div className="card border-0 shadow-sm mb-4">
+      <div className="card border-0 mb-4">
         <div className="card-body py-3">
-          <div className="row align-items-center g-3">
-            <div className="col-md-4">
-              <div className="input-group">
-                <span className="input-group-text bg-white border-end-0"><i className="feather-search" style={{ fontSize: 15, color: '#94a3b8' }} /></span>
-                <input
-                  type="text" className="form-control border-start-0 ps-0"
-                  placeholder="Tìm kiếm cụm sân..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
+          <div className="d-flex align-items-center gap-3 flex-wrap">
+            <div className="bk-search-wrap" style={{ flex: '1 1 280px', maxWidth: 400 }}>
+              <i className="feather-search bk-search-icon" />
+              <input
+                type="text"
+                className="form-control bk-search-input"
+                placeholder="Tìm kiếm cụm sân..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {search && (
+                <button type="button" className="bk-search-clear" onClick={() => setSearch('')}>
+                  <i className="feather-x" />
+                </button>
+              )}
             </div>
-            <div className="col-md-3">
-              <select className="form-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-                <option value="all">Tất cả trạng thái</option>
-                <option value="active">Hoạt động</option>
-                <option value="inactive">Tạm ngưng</option>
-                <option value="pending">Chờ duyệt</option>
-              </select>
-            </div>
-            <div className="col-md-5 text-md-end">
+            <select
+              className="form-select"
+              style={{ width: 180, flex: '0 0 auto' }}
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="all">Tất cả trạng thái</option>
+              <option value="active">Hoạt động</option>
+              <option value="inactive">Tạm ngưng</option>
+              <option value="pending">Chờ duyệt</option>
+            </select>
+            <div style={{ marginLeft: 'auto' }}>
               <Link to="/manager/venues/add" className="btn btn-secondary">
-                <i className="feather-plus-circle me-2" />Thêm cụm sân mới
+                <i className="feather-plus-circle" />Thêm cụm sân mới
               </Link>
             </div>
+            {search && (
+              <span style={{ fontSize: 13, color: '#94a3b8' }}>
+                {filtered.length} kết quả
+              </span>
+            )}
           </div>
         </div>
       </div>
 
       {/* Venue cards */}
       {filtered.length === 0 ? (
-        <div className="card border-0 shadow-sm">
-          <div className="card-body text-center py-5">
-            <i className="feather-map-pin" style={{ fontSize: 48, color: '#cbd5e1' }} />
-            <p className="text-muted mt-3 mb-0">Không tìm thấy cụm sân nào</p>
+        <div className="card border-0">
+          <div className="card-body text-center" style={{ padding: '56px 20px' }}>
+            <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <i className="feather-map-pin" style={{ fontSize: 28, color: '#94a3b8' }} />
+            </div>
+            <h5 style={{ color: '#334155', marginBottom: 6 }}>Không tìm thấy cụm sân nào</h5>
+            <p className="text-muted mb-3">Hãy thêm cụm sân đầu tiên của bạn</p>
+            <Link to="/manager/venues/add" className="btn btn-secondary btn-sm">
+              <i className="feather-plus-circle" />Thêm cụm sân
+            </Link>
           </div>
         </div>
       ) : (
         <div className="row g-4">
-          {filtered.map((venue) => (
-            <div key={venue.id} className="col-xl-4 col-md-6">
-              <div className="card border-0 shadow-sm h-100" style={{ overflow: 'hidden' }}>
-                {/* Image */}
-                <div style={{ position: 'relative', height: 180, overflow: 'hidden' }}>
-                  <img
-                    src={venue.image}
-                    alt={venue.name}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    onError={(e) => { e.target.src = '/assets/img/booking/booking-01.jpg'; }}
-                  />
-                  <span
-                    className={`badge ${statusMap[venue.status].cls}`}
-                    style={{ position: 'absolute', top: 12, right: 12, fontSize: 11 }}
-                  >
-                    {statusMap[venue.status].label}
-                  </span>
-                </div>
-
-                {/* Body */}
-                <div className="card-body">
-                  <h5 className="mb-1" style={{ fontSize: 16, fontWeight: 700 }}>
-                    <Link to={`/manager/venues/${venue.id}/courts`} style={{ color: '#1e293b', textDecoration: 'none' }}>
+          {filtered.map((venue) => {
+            const st = STATUS_STYLES[venue.status] || STATUS_STYLES.active;
+            return (
+              <div key={venue.id} className="col-xl-4 col-md-6">
+                <div className="mgr-venue-card">
+                  <div className="mgr-venue-card__img">
+                    <img
+                      src={venue.image} alt={venue.name}
+                      onError={(e) => { e.target.src = '/assets/img/booking/booking-01.jpg'; }}
+                    />
+                    <span className="mgr-venue-card__badge" style={{ background: st.bg, color: st.color }}>
+                      {st.label}
+                    </span>
+                  </div>
+                  <div className="mgr-venue-card__body">
+                    <Link to={`/manager/venues/${venue.id}/courts`} className="mgr-venue-card__name">
                       {venue.name}
                     </Link>
-                  </h5>
-                  <p className="text-muted mb-3" style={{ fontSize: 13 }}>
-                    <i className="feather-map-pin me-1" style={{ fontSize: 13 }} />{venue.address}
-                  </p>
-
-                  <div className="d-flex gap-4 mb-3" style={{ fontSize: 13 }}>
-                    <div>
-                      <span className="text-muted">Sân: </span>
-                      <strong>{venue.activeCourts}/{venue.courtCount}</strong>
+                    <div className="mgr-venue-card__addr">
+                      <i className="feather-map-pin" style={{ fontSize: 13, color: '#94a3b8', flexShrink: 0 }} />
+                      {venue.address}
                     </div>
-                    <div>
-                      <span className="text-muted">Đặt: </span>
-                      <strong>{venue.totalBookingsThisMonth}</strong>
-                    </div>
-                    <div>
-                      <span className="text-muted">DT: </span>
-                      <strong className="text-success">{(venue.revenueThisMonth / 1000000).toFixed(1)}tr</strong>
+                    <div className="mgr-venue-card__stats">
+                      <div className="mgr-venue-card__stat-item">
+                        <div className="mgr-venue-card__stat-val">
+                          {venue.activeCourts}<span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 400 }}>/{venue.courtCount}</span>
+                        </div>
+                        <div className="mgr-venue-card__stat-lbl">Sân hoạt động</div>
+                      </div>
+                      <div className="mgr-venue-card__stat-item">
+                        <div className="mgr-venue-card__stat-val">{venue.totalBookingsThisMonth}</div>
+                        <div className="mgr-venue-card__stat-lbl">Đặt sân</div>
+                      </div>
+                      <div className="mgr-venue-card__stat-item">
+                        <div className="mgr-venue-card__stat-val" style={{ color: '#097E52' }}>
+                          {(venue.revenueThisMonth / 1000000).toFixed(1)}tr
+                        </div>
+                        <div className="mgr-venue-card__stat-lbl">Doanh thu</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-
-                {/* Footer actions */}
-                <div className="card-footer bg-white border-top d-flex gap-2" style={{ padding: '12px 16px' }}>
-                  <Link to={`/manager/venues/${venue.id}/courts`} className="btn btn-sm btn-outline-secondary flex-fill">
-                    <i className="feather-grid me-1" />Xem sân
-                  </Link>
-                  <Link to={`/manager/venues/${venue.id}/edit`} className="btn btn-sm btn-outline-primary flex-fill">
-                    <i className="feather-edit-2 me-1" />Sửa
-                  </Link>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-danger"
-                    onClick={() => setDeleteModal(venue)}
-                    style={{ width: 38 }}
-                  >
-                    <i className="feather-trash-2" />
-                  </button>
+                  <div className="mgr-venue-card__footer">
+                    <Link to={`/manager/venues/${venue.id}/courts`} className="btn btn-sm btn-outline-secondary" style={{ flex: 1 }}>
+                      <i className="feather-grid" />Xem sân
+                    </Link>
+                    <Link to={`/manager/venues/${venue.id}/edit`} className="btn btn-sm btn-outline-primary" style={{ flex: 1 }}>
+                      <i className="feather-edit-2" />Sửa
+                    </Link>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-danger"
+                      onClick={() => setDeleteModal(venue)}
+                      style={{ width: 40, padding: '7px 0', justifyContent: 'center' }}
+                    >
+                      <i className="feather-trash-2" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
       {/* Delete confirm */}
       {deleteModal && (
-        <div className="modal fade show d-block" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setDeleteModal(null)}>
-          <div className="modal-dialog modal-dialog-centered modal-sm" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-content border-0">
-              <div className="modal-body text-center py-4">
-                <div className="mb-3"><i className="feather-alert-triangle" style={{ fontSize: 48, color: '#ef4444' }} /></div>
-                <h5>Xoá cụm sân?</h5>
-                <p className="text-muted mb-0">Bạn có chắc muốn xoá <strong>{deleteModal.name}</strong>? Tất cả sân và dữ liệu liên quan sẽ bị xoá.</p>
-                <div className="d-flex gap-2 justify-content-center mt-4">
-                  <button className="btn btn-outline-secondary" onClick={() => setDeleteModal(null)}>Huỷ</button>
-                  <button className="btn btn-danger" onClick={handleDelete}>Xoá</button>
-                </div>
-              </div>
+        <div className="mgr-delete-modal" onClick={() => setDeleteModal(null)}>
+          <div className="mgr-delete-modal__box" onClick={(e) => e.stopPropagation()}>
+            <div className="mgr-delete-modal__icon">
+              <i className="feather-alert-triangle" />
+            </div>
+            <h5>Xoá cụm sân?</h5>
+            <p>Bạn có chắc muốn xoá <strong>{deleteModal.name}</strong>? Tất cả sân và dữ liệu liên quan sẽ bị xoá.</p>
+            <div className="mgr-delete-modal__actions">
+              <button className="btn btn-outline-secondary" onClick={() => setDeleteModal(null)}>Huỷ</button>
+              <button className="btn btn-danger" onClick={handleDelete}>Xoá cụm sân</button>
             </div>
           </div>
         </div>

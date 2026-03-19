@@ -1,40 +1,48 @@
 import { useState } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import ManagerSidebar from '../components/manager/ManagerSidebar';
 
 const PAGE_TITLES = {
-  '/manager/venues':            'Cụm sân của tôi',
-  '/manager/venues/add':        'Thêm cụm sân mới',
-  '/manager/bookings':          'Quản lý đặt sân',
-  '/manager/notifications':     'Thông báo',
-  '/manager/earnings':          'Doanh thu',
-  '/manager/payment-settings':  'Cài đặt thanh toán',
+  '/manager/venues':           { title: 'Cụm sân của tôi', crumbs: [] },
+  '/manager/venues/add':       { title: 'Thêm cụm sân mới', crumbs: [{ label: 'Cụm sân', to: '/manager/venues' }] },
+  '/manager/bookings':         { title: 'Quản lý đặt sân', crumbs: [] },
+  '/manager/notifications':    { title: 'Thông báo', crumbs: [] },
+  '/manager/earnings':         { title: 'Doanh thu', crumbs: [] },
+  '/manager/payment-settings': { title: 'Cài đặt thanh toán', crumbs: [] },
 };
 
-function getPageTitle(pathname) {
+function getPageMeta(pathname) {
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
-  if (pathname.includes('/courts/add')) return 'Thêm sân mới';
-  if (pathname.includes('/courts') && pathname.includes('/edit')) return 'Chỉnh sửa sân';
-  if (pathname.includes('/courts')) return 'Danh sách sân';
-  if (pathname.includes('/edit')) return 'Chỉnh sửa cụm sân';
-  if (pathname.includes('/availability')) return 'Giờ hoạt động';
-  return 'Quản lý sân';
+  if (pathname.includes('/courts/add'))
+    return { title: 'Thêm sân mới', crumbs: [{ label: 'Cụm sân', to: '/manager/venues' }, { label: 'Danh sách sân', to: pathname.replace(/\/courts\/add$/, '/courts') }] };
+  if (/\/courts\/\d+\/edit/.test(pathname))
+    return { title: 'Chỉnh sửa sân', crumbs: [{ label: 'Cụm sân', to: '/manager/venues' }, { label: 'Danh sách sân', to: pathname.replace(/\/courts\/\d+\/edit$/, '/courts') }] };
+  if (pathname.includes('/courts'))
+    return { title: 'Danh sách sân', crumbs: [{ label: 'Cụm sân', to: '/manager/venues' }] };
+  if (pathname.includes('/edit'))
+    return { title: 'Chỉnh sửa cụm sân', crumbs: [{ label: 'Cụm sân', to: '/manager/venues' }] };
+  if (pathname.includes('/availability'))
+    return { title: 'Giờ hoạt động', crumbs: [{ label: 'Cụm sân', to: '/manager/venues' }] };
+  return { title: 'Quản lý sân', crumbs: [] };
 }
 
 export default function ManagerLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const pageTitle = getPageTitle(location.pathname);
+  const { title, crumbs } = getPageMeta(location.pathname);
+
+  const user = (() => {
+    try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
+  })();
 
   return (
     <div className="mgr-layout">
       <ManagerSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="mgr-content">
-        {/* Top bar */}
         <header className="mgr-topbar">
-          <div className="d-flex align-items-center gap-2">
+          <div className="mgr-topbar__left">
             <button
               type="button"
               className="mgr-sidebar-toggle"
@@ -42,8 +50,20 @@ export default function ManagerLayout() {
             >
               <i className="feather-menu" />
             </button>
-            <h1 className="mgr-topbar__title">{pageTitle}</h1>
+            <div>
+              <h1 className="mgr-topbar__title">{title}</h1>
+              {crumbs.length > 0 && (
+                <div className="mgr-topbar__breadcrumb">
+                  <Link to="/manager/venues">Quản lý</Link>
+                  {crumbs.map((c, i) => (
+                    <span key={i}> / <Link to={c.to}>{c.label}</Link></span>
+                  ))}
+                  <span> / {title}</span>
+                </div>
+              )}
+            </div>
           </div>
+
           <div className="mgr-topbar__actions">
             <button
               type="button"
@@ -53,15 +73,28 @@ export default function ManagerLayout() {
             >
               <i className="feather-bell" />
               <span style={{
-                position: 'absolute', top: 6, right: 6,
+                position: 'absolute', top: 8, right: 8,
                 width: 7, height: 7, borderRadius: '50%',
                 background: '#ef4444', border: '2px solid #fff',
               }} />
             </button>
+
+            <Link
+              to="/profile"
+              style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}
+            >
+              <img
+                src={user?.avatarUrl || '/assets/img/profiles/avatar-01.jpg'}
+                alt=""
+                style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--mgr-border)' }}
+              />
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user?.fullName || user?.email || 'Manager'}
+              </span>
+            </Link>
           </div>
         </header>
 
-        {/* Page content */}
         <main className="mgr-page">
           <Outlet />
         </main>

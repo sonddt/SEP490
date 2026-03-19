@@ -18,16 +18,15 @@ export default function BookingPagination({ currentPage, totalPages, totalItems,
   return (
     <div className="bk-pagination">
       <span className="bk-pagination-info">
-        Hiển thị {start}–{end} trong {totalItems} kết quả
+        Hiển thị <strong>{start}</strong>–<strong>{end}</strong> trong <strong>{totalItems}</strong> kết quả
       </span>
 
       <div className="d-flex align-items-center gap-2">
-        {/* Per-page selector */}
-        <div className="d-flex align-items-center gap-1" style={{ fontSize: 12, color: '#94a3b8' }}>
+        <div className="d-flex align-items-center gap-1" style={{ fontSize: 13, color: '#94a3b8' }}>
           <span>Hiển thị</span>
           <select
             className="form-select form-select-sm"
-            style={{ width: 65, fontSize: 12 }}
+            style={{ width: 65, fontSize: 13 }}
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
           >
@@ -36,20 +35,13 @@ export default function BookingPagination({ currentPage, totalPages, totalItems,
           <span>dòng</span>
         </div>
 
-        {/* Page buttons */}
         <nav>
           <ul className="pagination pagination-sm mb-0 gap-1">
             <li className={`page-item${currentPage === 1 ? ' disabled' : ''}`}>
-              <button
-                type="button"
-                className="page-link bk-page-btn"
-                onClick={() => onPageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                <i className="feather-chevron-left" style={{ fontSize: 13 }} />
+              <button type="button" className="page-link bk-page-btn" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1}>
+                <i className="feather-chevron-left" style={{ fontSize: 14 }} />
               </button>
             </li>
-
             {pages.map((p, i) =>
               p === '...' ? (
                 <li key={`ellipsis-${i}`} className="page-item disabled">
@@ -57,25 +49,15 @@ export default function BookingPagination({ currentPage, totalPages, totalItems,
                 </li>
               ) : (
                 <li key={p} className={`page-item${currentPage === p ? ' active' : ''}`}>
-                  <button
-                    type="button"
-                    className="page-link bk-page-btn"
-                    onClick={() => onPageChange(p)}
-                  >
+                  <button type="button" className="page-link bk-page-btn" onClick={() => onPageChange(p)}>
                     {p}
                   </button>
                 </li>
               )
             )}
-
             <li className={`page-item${currentPage === totalPages ? ' disabled' : ''}`}>
-              <button
-                type="button"
-                className="page-link bk-page-btn"
-                onClick={() => onPageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-              >
-                <i className="feather-chevron-right" style={{ fontSize: 13 }} />
+              <button type="button" className="page-link bk-page-btn" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages}>
+                <i className="feather-chevron-right" style={{ fontSize: 14 }} />
               </button>
             </li>
           </ul>

@@ -22,20 +22,12 @@ export default function BookingTabs({ activeTab, counts, onChange }) {
             type="button"
             className={`bk-tab-btn${isActive ? ' active' : ''}`}
             onClick={() => onChange(key)}
-            style={isActive ? {
-              borderColor: st.color,
-              color: st.color,
-              background: st.bg,
-            } : {}}
           >
-            <i className={st.icon} style={{ fontSize: 14 }} />
+            <i className={st.icon} style={{ fontSize: 15 }} />
             <span className="bk-tab-label">{st.label}</span>
-            <span
-              className="bk-tab-count"
-              style={isActive ? { background: st.color, color: '#fff' } : {}}
-            >
-              {count}
-            </span>
+            {count > 0 && (
+              <span className="bk-tab-count">{count}</span>
+            )}
           </button>
         );
       })}
