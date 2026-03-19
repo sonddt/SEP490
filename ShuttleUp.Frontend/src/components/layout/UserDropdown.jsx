@@ -27,6 +27,7 @@ export default function UserDropdown({
   profilePath,          // Xem hồ sơ (top section link)
   open, onToggle, onClose, onLogout,
   iconColor = '#555',   // colour for trigger icons
+  avatarSize = 33,      // avatar diameter in px
 }) {
   const ref = useRef(null);
   const navigate = useNavigate();
@@ -83,7 +84,7 @@ export default function UserDropdown({
             className="rounded-circle"
             src="/assets/img/profiles/avatar-01.jpg"
             alt={user?.fullName || 'User'}
-            style={{ width: 33, height: 33, objectFit: 'cover', border: '2px solid rgba(255,255,255,0.45)', borderRadius: '50%' }}
+            style={{ width: avatarSize, height: avatarSize, objectFit: 'cover', border: '2px solid rgba(255,255,255,0.55)', borderRadius: '50%' }}
           />
         </span>
         <i

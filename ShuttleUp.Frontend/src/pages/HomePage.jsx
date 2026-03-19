@@ -6,9 +6,7 @@ import HeroSection from '../components/home/HeroSection';
 import FeaturedVenues from '../components/home/FeaturedVenues';
 import WorkSection from '../components/home/WorkSection';
 import Services from '../components/home/Services';
-import FeaturesSection from '../components/home/FeaturesSection';
 import StatsCounter from '../components/home/StatsCounter';
-import FeaturedPlan from '../components/home/FeaturedPlan';
 
 export default function HomePage() {
   useEffect(() => {
@@ -29,9 +27,7 @@ export default function HomePage() {
       <FeaturedVenues />
       <WorkSection />
       <Services />
-      <FeaturesSection />
       <StatsCounter />
-      <FeaturedPlan />
     </div>
   );
 }

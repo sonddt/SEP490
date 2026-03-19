@@ -7,7 +7,7 @@ const MOCK_NOTIFICATIONS = [
   { id: 4, avatar: '/assets/img/profiles/avatar-04.jpg', name: 'Phạm Thị D',   message: 'gửi tin nhắn cho bạn',  detail: '',                      time: '8:30 SA',        read: true  },
 ];
 
-export default function NotificationDropdown({ open, onToggle, onClose, iconColor = '#555' }) {
+export default function NotificationDropdown({ open, onToggle, onClose, iconColor = '#555', iconSize = 19 }) {
   const ref = useRef(null);
   const unreadCount = MOCK_NOTIFICATIONS.filter((n) => !n.read).length;
 
@@ -30,7 +30,7 @@ export default function NotificationDropdown({ open, onToggle, onClose, iconColo
         onClick={(e) => { e.preventDefault(); onToggle(); }}
         style={{ padding: '8px 10px', display: 'flex', alignItems: 'center' }}
       >
-        <i className="feather-bell" style={{ fontSize: 19, color: iconColor }} />
+        <i className="feather-bell" style={{ fontSize: iconSize, color: iconColor }} />
         {unreadCount > 0 && (
           <span style={{
             position: 'absolute', top: 6, right: 8,

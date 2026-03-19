@@ -70,6 +70,9 @@ const Header = ({ transparent = false }) => {
   const isWhiteBg = !transparent || scrolled;
   const logoSrc   = isWhiteBg ? '/assets/img/logo-black.svg' : '/assets/img/logo.svg';
 
+  // Icon colour: white on transparent header OR when scrolled (fixed header stays green)
+  const iconColor = (!isWhiteBg || scrolled) ? '#fff' : '#555';
+
   const headerClass = ['header', transparent && !scrolled ? 'header-trans' : '', scrolled ? 'fixed' : '']
     .filter(Boolean).join(' ');
 
@@ -130,22 +133,6 @@ const Header = ({ transparent = false }) => {
                 </ul>
               </li>
 
-              <li className={`has-submenu ${isActive('/user/dashboard') || isActive('/manager/dashboard') ? 'active' : ''} ${openSubmenu === 'dashboard' ? 'active' : ''}`}>
-                <a href="#" onClick={(e) => { e.preventDefault(); toggleSubmenu('dashboard'); }}>
-                  Bảng Điều Khiển <i className="fas fa-chevron-down" />
-                </a>
-                <ul className={`submenu ${openSubmenu === 'dashboard' ? 'd-block' : ''}`}>
-                  <li className={isActive('/user/dashboard') ? 'active' : ''}>
-                    <Link to="/user/dashboard" onClick={closeMobileMenu}>Dành cho Người chơi</Link>
-                  </li>
-                  {isManager && (
-                    <li className={isActive('/manager/dashboard') ? 'active' : ''}>
-                      <Link to="/manager/dashboard" onClick={closeMobileMenu}>Dành cho Quản lý sân</Link>
-                    </li>
-                  )}
-                </ul>
-              </li>
-
               <li className={isActive('/about') ? 'active' : ''}>
                 <Link to="/about" onClick={closeMobileMenu}>Nổi bật</Link>
               </li>
@@ -174,7 +161,7 @@ const Header = ({ transparent = false }) => {
                     onClick={(e) => e.preventDefault()}
                     style={{ padding: '8px 10px', display: 'flex', alignItems: 'center' }}
                   >
-                    <i className="feather-search" style={{ fontSize: 19, color: isWhiteBg ? '#555' : '#fff' }} />
+                    <i className="feather-search" style={{ fontSize: 22, color: iconColor }} />
                   </a>
                 </li>
 
@@ -183,7 +170,8 @@ const Header = ({ transparent = false }) => {
                   open={openDropdown === 'notif'}
                   onToggle={() => toggleDropdown('notif')}
                   onClose={() => setOpenDropdown(null)}
-                  iconColor={isWhiteBg ? '#555' : '#fff'}
+                  iconColor={iconColor}
+                  iconSize={22}
                 />
 
                 {/* 1. User avatar */}
@@ -196,7 +184,8 @@ const Header = ({ transparent = false }) => {
                   onToggle={() => toggleDropdown('user')}
                   onClose={() => setOpenDropdown(null)}
                   onLogout={handleLogout}
-                  iconColor={isWhiteBg ? '#555' : 'rgba(255,255,255,0.8)'}
+                  iconColor={iconColor}
+                  avatarSize={38}
                 />
               </>
             ) : (
