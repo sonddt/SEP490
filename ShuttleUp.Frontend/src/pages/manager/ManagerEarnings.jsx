@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import ManagerDashboardMenu from '../../components/manager/ManagerDashboardMenu';
 
 // Mock data – thay bằng API call sau
 const mockTransactions = [
@@ -38,26 +37,8 @@ export default function ManagerEarnings() {
   });
 
   return (
-    <div className="main-wrapper content-below-header">
-      {/* Breadcrumb */}
-      <section className="breadcrumb breadcrumb-list mb-0">
-        <span className="primary-right-round"></span>
-        <div className="container">
-          <h1 className="text-white">Doanh thu</h1>
-          <ul>
-            <li><Link to="/">Trang chủ</Link></li>
-            <li><Link to="/manager/dashboard">Quản lý sân</Link></li>
-            <li>Doanh thu</li>
-          </ul>
-        </div>
-      </section>
-
-      <ManagerDashboardMenu />
-
-      <div className="content court-bg">
-        <div className="container">
-
-          {/* ── Summary stats ─────────────────────────────── */}
+    <>
+      {/* ── Summary stats ─────────────────────────────── */}
           <div className="row mb-4">
             {summaryStats.map((s) => (
               <div key={s.label} className="col-xl-3 col-sm-6 col-12 d-flex">
@@ -187,8 +168,6 @@ export default function ManagerEarnings() {
             </div>
           </div>
 
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

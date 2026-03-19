@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import ManagerDashboardMenu from '../../components/manager/ManagerDashboardMenu';
 
 const INITIAL_REQUESTS = [
   { id: 1, court: 'Sân 1 – ShuttleUp Q7', courtImg: '/assets/img/booking/booking-01.jpg', player: 'Nguyễn Văn A', playerImg: '/assets/img/profiles/avatar-01.jpg', date: '17/03/2026', time: '08:00 – 10:00', guests: 2, amount: 240000, status: 'PENDING' },
@@ -44,25 +42,8 @@ export default function ManagerRequests() {
   ];
 
   return (
-    <div className="main-wrapper content-below-header">
-      <section className="breadcrumb breadcrumb-list mb-0">
-        <span className="primary-right-round" />
-        <div className="container">
-          <h1 className="text-white">Yêu cầu đặt sân</h1>
-          <ul>
-            <li><Link to="/">Trang chủ</Link></li>
-            <li><Link to="/manager/dashboard">Quản lý sân</Link></li>
-            <li>Yêu cầu</li>
-          </ul>
-        </div>
-      </section>
-
-      <ManagerDashboardMenu />
-
-      <div className="content court-bg">
-        <div className="container">
-
-          {/* Filter bar */}
+    <>
+      {/* Filter bar */}
           <div className="row">
             <div className="col-lg-12">
               <div className="sortby-section court-sortby-section">
@@ -203,8 +184,6 @@ export default function ManagerRequests() {
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
       {/* Reject Reason Modal */}
       {rejectModal && (
@@ -291,6 +270,6 @@ export default function ManagerRequests() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import ManagerDashboardMenu from '../../components/manager/ManagerDashboardMenu';
 
 const DAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
 const AMENITIES = ['Bãi đỗ xe', 'Nước uống', 'Sơ cứu', 'Phòng thay đồ', 'Nhà tắm', 'WiFi', 'Căn-tin', 'Điều hoà'];
@@ -70,7 +69,7 @@ export default function ManagerAddVenue() {
     // TODO: gọi API submit form
     console.log({ form, dayHours, imageFiles });
     alert('Đã gửi yêu cầu đăng ký sân! Vui lòng chờ Admin xét duyệt.');
-    navigate('/manager/courts');
+    navigate('/manager/venues');
   };
 
   // ── Section accordion wrapper ─────────────────────────────────
@@ -94,24 +93,7 @@ export default function ManagerAddVenue() {
   );
 
   return (
-    <div className="main-wrapper content-below-header">
-      {/* Breadcrumb */}
-      <section className="breadcrumb breadcrumb-list mb-0">
-        <span className="primary-right-round"></span>
-        <div className="container">
-          <h1 className="text-white">Đăng ký sân mới</h1>
-          <ul>
-            <li><Link to="/">Trang chủ</Link></li>
-            <li><Link to="/manager/courts">Sân của tôi</Link></li>
-            <li>Đăng ký sân mới</li>
-          </ul>
-        </div>
-      </section>
-
-      <ManagerDashboardMenu />
-
-      <div className="content court-bg">
-        <div className="container">
+    <>
           {/* Sticky sub-nav */}
           <div className="white-bg court-sec-new mb-4">
             <ul className="nav court-tabs">
@@ -439,8 +421,6 @@ export default function ManagerAddVenue() {
               </button>
             </div>
           </form>
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

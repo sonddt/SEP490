@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import ManagerDashboardMenu from '../../components/manager/ManagerDashboardMenu';
 
 const COURT_TYPES = ['Đơn', 'Đôi', 'Đơn / Đôi'];
 const SURFACE_TYPES = ['Gỗ PU', 'Thảm nhựa PVC', 'Xi-măng', 'Thảm cao su'];
@@ -58,23 +57,7 @@ export default function ManagerAddCourt() {
   };
 
   return (
-    <div className="main-wrapper content-below-header">
-      <section className="breadcrumb breadcrumb-list mb-0">
-        <span className="primary-right-round" />
-        <div className="container">
-          <h1 className="text-white">Thêm sân mới</h1>
-          <ul>
-            <li><Link to="/">Trang chủ</Link></li>
-            <li><Link to="/manager/courts">Sân của tôi</Link></li>
-            <li>Thêm sân mới</li>
-          </ul>
-        </div>
-      </section>
-
-      <ManagerDashboardMenu />
-
-      <div className="content court-bg">
-        <div className="container">
+    <>
           <div className="row">
             <div className="col-md-10 mx-auto">
               <form onSubmit={handleSubmit}>
@@ -263,8 +246,6 @@ export default function ManagerAddCourt() {
               </form>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

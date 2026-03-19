@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import ManagerDashboardMenu from '../../components/manager/ManagerDashboardMenu';
 
 const DAYS = [
   { key: 'mon', label: 'Thứ 2' },
@@ -35,24 +34,7 @@ export default function ManagerAvailability() {
   };
 
   return (
-    <div className="main-wrapper content-below-header">
-      {/* Breadcrumb */}
-      <section className="breadcrumb breadcrumb-list mb-0">
-        <span className="primary-right-round"></span>
-        <div className="container">
-          <h1 className="text-white">Giờ hoạt động &amp; Giá tiền</h1>
-          <ul>
-            <li><Link to="/">Trang chủ</Link></li>
-            <li><Link to="/manager/dashboard">Quản lý sân</Link></li>
-            <li>Giờ hoạt động</li>
-          </ul>
-        </div>
-      </section>
-
-      <ManagerDashboardMenu />
-
-      <div className="content court-bg">
-        <div className="container">
+    <>
           <div className="row">
             <div className="col-md-10 mx-auto">
 
@@ -211,8 +193,6 @@ export default function ManagerAvailability() {
 
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+    </>
   );
 }
