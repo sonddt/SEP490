@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import BookingSteps from '../components/booking/BookingSteps';
+import { useAuth } from '../context/AuthContext';
 
 function formatDateVN(isoDate) {
   if (!isoDate) return '';
@@ -14,6 +15,7 @@ export default function BookingConfirm() {
   const navigate = useNavigate();
   const location  = useLocation();
   const state     = location.state ?? {};
+  const { user }  = useAuth();
 
   const {
     venueId      = null,
@@ -35,8 +37,38 @@ export default function BookingConfirm() {
     return map;
   }, [selectedSlots]);
 
-  const [form, setForm] = useState({ name: '', phone: '', note: '' });
+  // Pre-fill from logged-in user; phone fetched from profile API
+  const [form, setForm] = useState({
+    name:  user?.fullName  ?? '',
+    phone: '',
+    note:  '',
+  });
+  const [autoFilled, setAutoFilled] = useState({ name: !!user?.fullName, phone: false });
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const apiBase = import.meta.env.VITE_API_URL ?? '';
+    fetch(`${apiBase}/api/profile/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .catch(() => null)
+      .then(data => {
+        if (!data) return;
+        setForm(prev => ({
+          ...prev,
+          name:  prev.name  || data.fullName  || '',
+          phone: prev.phone || data.phoneNumber || '',
+        }));
+        setAutoFilled(prev => ({
+          name:  prev.name  || !!data.fullName,
+          phone: !!data.phoneNumber,
+        }));
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const validate = () => {
     const e = {};
@@ -130,29 +162,59 @@ export default function BookingConfirm() {
               <section className="card booking-form mb-4">
                 <h3 className="border-bottom">Thông tin liên hệ</h3>
                 <form noValidate>
+                  {user && (
+                    <p className="text-muted small mb-3" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <i className="feather-user" style={{ color: 'var(--primary-color)' }} />
+                      Thông tin được điền tự động từ tài khoản của bạn. Bạn có thể chỉnh sửa nếu cần.
+                    </p>
+                  )}
                   <div className="mb-3">
-                    <label className="form-label fw-semibold">
+                    <label className="form-label fw-semibold d-flex align-items-center gap-2">
                       Họ tên <span className="text-danger">*</span>
+                      {autoFilled.name && (
+                        <span
+                          className="badge"
+                          style={{ fontSize: '0.7rem', background: 'rgba(var(--primary-rgb,34,139,34),0.12)', color: 'var(--primary-color)', border: '1px solid currentColor', borderRadius: 20, padding: '1px 8px', fontWeight: 500 }}
+                        >
+                          Tự động điền
+                        </span>
+                      )}
                     </label>
                     <input
                       type="text"
                       className={`form-control ${errors.name ? 'is-invalid' : ''}`}
                       placeholder="Nhập họ và tên"
                       value={form.name}
-                      onChange={e => { setForm(f => ({ ...f, name: e.target.value })); setErrors(er => ({ ...er, name: '' })); }}
+                      onChange={e => {
+                        setForm(f => ({ ...f, name: e.target.value }));
+                        setErrors(er => ({ ...er, name: '' }));
+                        if (autoFilled.name) setAutoFilled(a => ({ ...a, name: false }));
+                      }}
                     />
                     {errors.name && <div className="invalid-feedback">{errors.name}</div>}
                   </div>
                   <div className="mb-3">
-                    <label className="form-label fw-semibold">
+                    <label className="form-label fw-semibold d-flex align-items-center gap-2">
                       Số điện thoại <span className="text-danger">*</span>
+                      {autoFilled.phone && (
+                        <span
+                          className="badge"
+                          style={{ fontSize: '0.7rem', background: 'rgba(var(--primary-rgb,34,139,34),0.12)', color: 'var(--primary-color)', border: '1px solid currentColor', borderRadius: 20, padding: '1px 8px', fontWeight: 500 }}
+                        >
+                          Tự động điền
+                        </span>
+                      )}
                     </label>
                     <input
                       type="tel"
                       className={`form-control ${errors.phone ? 'is-invalid' : ''}`}
                       placeholder="Nhập số điện thoại"
                       value={form.phone}
-                      onChange={e => { setForm(f => ({ ...f, phone: e.target.value })); setErrors(er => ({ ...er, phone: '' })); }}
+                      onChange={e => {
+                        setForm(f => ({ ...f, phone: e.target.value }));
+                        setErrors(er => ({ ...er, phone: '' }));
+                        if (autoFilled.phone) setAutoFilled(a => ({ ...a, phone: false }));
+                      }}
                     />
                     {errors.phone && <div className="invalid-feedback">{errors.phone}</div>}
                   </div>
