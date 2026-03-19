@@ -1,87 +1,77 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import NotificationDropdown from './NotificationDropdown';
+import UserDropdown from './UserDropdown';
 
 const Header = ({ transparent = false }) => {
-  const [scrolled, setScrolled] = useState(false);
+  const [scrolled, setScrolled]         = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [openSubmenu, setOpenSubmenu] = useState(null); // 'search' | 'booking' | 'dashboard' | null
-  const { user, isAuthenticated, logout } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const [openSubmenu, setOpenSubmenu]   = useState(null);
+  const [openDropdown, setOpenDropdown] = useState(null); // 'notif' | 'user' | null
 
-  // ── Scroll listener: add 'header-fixed' class when scrolled past 100px ──
+  const { user, isAuthenticated, logout } = useAuth();
+  const navigate  = useNavigate();
+  const location  = useLocation();
+
+  // ── Scroll ────────────────────────────────────────────────────────────────
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 100);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    const fn = () => setScrolled(window.scrollY > 100);
+    window.addEventListener('scroll', fn, { passive: true });
+    return () => window.removeEventListener('scroll', fn);
   }, []);
 
-  // ── Close mobile menu on route change / outside click ───────────────────
+  // ── Mobile menu body-class ────────────────────────────────────────────────
   useEffect(() => {
-    if (mobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-      document.body.classList.add('menu-opened');
-    } else {
-      document.body.style.overflow = '';
-      document.body.classList.remove('menu-opened');
-    }
+    document.body.style.overflow = mobileMenuOpen ? 'hidden' : '';
+    document.body.classList.toggle('menu-opened', mobileMenuOpen);
     return () => {
       document.body.style.overflow = '';
       document.body.classList.remove('menu-opened');
     };
   }, [mobileMenuOpen]);
 
-  const closeMobileMenu = () => {
+  // ── Close dropdowns on route change ──────────────────────────────────────
+  useEffect(() => {
+    setOpenDropdown(null);
     setMobileMenuOpen(false);
     setOpenSubmenu(null);
-  };
+  }, [location.pathname]);
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const closeMobileMenu = () => { setMobileMenuOpen(false); setOpenSubmenu(null); };
 
   const toggleSubmenu = (name) => {
-    // Only toggle submenu on mobile / tablet viewports
-    if (window.innerWidth < 992) {
-      setOpenSubmenu((prev) => (prev === name ? null : name));
-    }
+    if (window.innerWidth < 992) setOpenSubmenu((p) => (p === name ? null : name));
   };
+
+  const toggleDropdown = (name) => setOpenDropdown((p) => (p === name ? null : name));
 
   const handleLogout = () => {
     logout();
+    setOpenDropdown(null);
     closeMobileMenu();
     navigate('/login');
   };
 
-  // Dashboard path based on role
+  // ── Role flags ────────────────────────────────────────────────────────────
   const isAdmin   = user?.roles?.includes('ADMIN');
   const isManager = user?.roles?.includes('MANAGER');
-  const dashboardPath = isAdmin
-    ? '/admin/dashboard'
-    : isManager
-      ? '/manager/dashboard'
-      : '/user/dashboard';
 
-  // Profile path based on role
+  // Profile path — fixed bug: manager -> /manager/profile, player -> /user/my-profile
   const profilePath = isAdmin
     ? '/admin/dashboard'
     : isManager
-      ? '/manager/setting-password'
+      ? '/manager/profile'
       : '/user/my-profile';
 
-  // Helper to check if path is active
-  const isActive = (path) => {
-    if (path === '/') return location.pathname === '/';
-    return location.pathname.startsWith(path);
-  };
-
-  const headerClass = [
-    'header',
-    transparent && !scrolled ? 'header-trans' : '',
-    scrolled ? 'fixed' : '',
-  ].filter(Boolean).join(' ');
+  const isActive = (path) => path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
 
   const isWhiteBg = !transparent || scrolled;
-  const logoSrc = isWhiteBg ? "/assets/img/logo-black.svg" : "/assets/img/logo.svg";
+  const logoSrc   = isWhiteBg ? '/assets/img/logo-black.svg' : '/assets/img/logo.svg';
+
+  const headerClass = ['header', transparent && !scrolled ? 'header-trans' : '', scrolled ? 'fixed' : '']
+    .filter(Boolean).join(' ');
 
   return (
     <header className={headerClass}>
@@ -97,9 +87,7 @@ const Header = ({ transparent = false }) => {
               style={{ background: 'none', border: 'none', cursor: 'pointer' }}
             >
               <span className="bar-icon">
-                <span></span>
-                <span></span>
-                <span></span>
+                <span /><span /><span />
               </span>
             </button>
             <Link to="/" className="navbar-brand logo" onClick={closeMobileMenu}>
@@ -117,46 +105,39 @@ const Header = ({ transparent = false }) => {
                 id="menu_close"
                 className="menu-close"
                 onClick={closeMobileMenu}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20 }}
               >
-                <i className="fas fa-times"></i>
+                <i className="fas fa-times" />
               </button>
             </div>
 
             <ul className="main-nav">
               <li className={isActive('/') ? 'active' : ''}>
-                <Link to="/" onClick={closeMobileMenu}>
-                  Trang chủ
-                </Link>
+                <Link to="/" onClick={closeMobileMenu}>Trang chủ</Link>
               </li>
 
               <li className={`has-submenu ${isActive('/courts') || isActive('/venue-details') ? 'active' : ''} ${openSubmenu === 'search' ? 'active' : ''}`}>
-                <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    toggleSubmenu('search');
-                  }}
-                >
-                  Tìm Sân <i className="fas fa-chevron-down"></i>
+                <a href="#" onClick={(e) => { e.preventDefault(); toggleSubmenu('search'); }}>
+                  Tìm Sân <i className="fas fa-chevron-down" />
                 </a>
                 <ul className={`submenu ${openSubmenu === 'search' ? 'd-block' : ''}`}>
-                  <li className={isActive('/courts') && !isActive('/courts/map') ? 'active' : ''}><Link to="/courts" onClick={closeMobileMenu}>Danh sách Sân</Link></li>
-                  <li className={isActive('/courts/map') ? 'active' : ''}><Link to="/courts/map" onClick={closeMobileMenu}>Bản đồ Sân</Link></li>
+                  <li className={isActive('/courts') && !isActive('/courts/map') ? 'active' : ''}>
+                    <Link to="/courts" onClick={closeMobileMenu}>Danh sách Sân</Link>
+                  </li>
+                  <li className={isActive('/courts/map') ? 'active' : ''}>
+                    <Link to="/courts/map" onClick={closeMobileMenu}>Bản đồ Sân</Link>
+                  </li>
                 </ul>
               </li>
+
               <li className={`has-submenu ${isActive('/user/dashboard') || isActive('/manager/dashboard') ? 'active' : ''} ${openSubmenu === 'dashboard' ? 'active' : ''}`}>
-                <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    toggleSubmenu('dashboard');
-                  }}
-                >
-                  Bảng Điều Khiển <i className="fas fa-chevron-down"></i>
+                <a href="#" onClick={(e) => { e.preventDefault(); toggleSubmenu('dashboard'); }}>
+                  Bảng Điều Khiển <i className="fas fa-chevron-down" />
                 </a>
                 <ul className={`submenu ${openSubmenu === 'dashboard' ? 'd-block' : ''}`}>
-                  <li className={isActive('/user/dashboard') ? 'active' : ''}><Link to="/user/dashboard" onClick={closeMobileMenu}>Dành cho Người chơi</Link></li>
+                  <li className={isActive('/user/dashboard') ? 'active' : ''}>
+                    <Link to="/user/dashboard" onClick={closeMobileMenu}>Dành cho Người chơi</Link>
+                  </li>
                   {isManager && (
                     <li className={isActive('/manager/dashboard') ? 'active' : ''}>
                       <Link to="/manager/dashboard" onClick={closeMobileMenu}>Dành cho Quản lý sân</Link>
@@ -168,74 +149,66 @@ const Header = ({ transparent = false }) => {
               <li className={isActive('/about') ? 'active' : ''}>
                 <Link to="/about" onClick={closeMobileMenu}>Nổi bật</Link>
               </li>
+
               {isAuthenticated && (
                 <li className={isActive('/chat') ? 'active' : ''}>
                   <Link to="/chat" onClick={closeMobileMenu}>💬 Chat</Link>
                 </li>
               )}
-              <li className="login-link">
-                <Link to="/register" onClick={closeMobileMenu}>Đăng ký</Link>
-              </li>
-              <li className="login-link">
-                <Link to="/login" onClick={closeMobileMenu}>Đăng nhập</Link>
-              </li>
+
+              <li className="login-link"><Link to="/register" onClick={closeMobileMenu}>Đăng ký</Link></li>
+              <li className="login-link"><Link to="/login"    onClick={closeMobileMenu}>Đăng nhập</Link></li>
             </ul>
           </div>
 
-          {/* ── Right side buttons ───────────────────────────────────────── */}
-          <ul className="nav header-navbar-rht">
+          {/* ── Right side ───────────────────────────────────────────────── */}
+          {/* iconColor: white on transparent homepage header, dark on white header */}
+          <ul className="nav header-navbar-rht logged-in" style={{ alignItems: 'center', gap: 0 }}>
             {isAuthenticated ? (
               <>
-                {isManager && !isAdmin && (
-                  <li className="nav-item d-none d-sm-block">
-                    <Link
-                      className={`nav-link btn ${isWhiteBg ? 'btn-primary' : 'btn-limegreen'} me-2 text-white`}
-                      to={location.pathname.startsWith('/manager') ? '/user/dashboard' : '/manager/dashboard'}
-                      onClick={closeMobileMenu}
-                      style={{ padding: '8px 20px', borderRadius: '25px', fontWeight: '600', transition: 'all 0.3s' }}
-                    >
-                      <i className={location.pathname.startsWith('/manager') ? 'feather-user me-2' : 'feather-briefcase me-2'}></i>
-                      {location.pathname.startsWith('/manager') ? 'Chế độ Người chơi' : 'Dashboard Chủ sân'}
-                    </Link>
-                  </li>
-                )}
+                {/* 3. Search */}
                 <li className="nav-item">
-                  <Link
-                    className="nav-link btn btn-white log-register"
-                    to={profilePath}
-                    onClick={closeMobileMenu}
+                  <a
+                    className="nav-link"
+                    href="#"
+                    onClick={(e) => e.preventDefault()}
+                    style={{ padding: '8px 10px', display: 'flex', alignItems: 'center' }}
                   >
-                    <span><i className="feather-user"></i></span>
-                    {user?.fullName || user?.email}
-                    {isAdmin && (
-                      <span className="badge bg-danger ms-1" style={{ fontSize: '0.68rem', verticalAlign: 'middle' }}>ADMIN</span>
-                    )}
-                  </Link>
+                    <i className="feather-search" style={{ fontSize: 19, color: isWhiteBg ? '#555' : '#fff' }} />
+                  </a>
                 </li>
-                <li className="nav-item">
-                  <button
-                    className="nav-link btn btn-secondary"
-                    onClick={handleLogout}
-                    style={{ border: 'none', cursor: 'pointer' }}
-                  >
-                    <span><i className="feather-log-out"></i></span>Đăng xuất
-                  </button>
-                </li>
+
+                {/* 2. Notification */}
+                <NotificationDropdown
+                  open={openDropdown === 'notif'}
+                  onToggle={() => toggleDropdown('notif')}
+                  onClose={() => setOpenDropdown(null)}
+                  iconColor={isWhiteBg ? '#555' : '#fff'}
+                />
+
+                {/* 1. User avatar */}
+                <UserDropdown
+                  user={user}
+                  isAdmin={isAdmin}
+                  isManager={isManager}
+                  profilePath={profilePath}
+                  open={openDropdown === 'user'}
+                  onToggle={() => toggleDropdown('user')}
+                  onClose={() => setOpenDropdown(null)}
+                  onLogout={handleLogout}
+                  iconColor={isWhiteBg ? '#555' : 'rgba(255,255,255,0.8)'}
+                />
               </>
             ) : (
               <>
                 <li className="nav-item">
-                  <Link
-                    className="nav-link btn header-login-btn"
-                    to="/register"
-                    onClick={closeMobileMenu}
-                  >
-                    <span><i className="feather-user-plus"></i></span>Đăng ký
+                  <Link className="nav-link btn header-login-btn" to="/register" onClick={closeMobileMenu}>
+                    <span><i className="feather-user-plus" /></span>Đăng ký
                   </Link>
                 </li>
                 <li className="nav-item">
                   <Link className="nav-link btn btn-secondary" to="/login" onClick={closeMobileMenu}>
-                    <span><i className="feather-log-in"></i></span>Đăng nhập
+                    <span><i className="feather-log-in" /></span>Đăng nhập
                   </Link>
                 </li>
               </>
@@ -245,14 +218,12 @@ const Header = ({ transparent = false }) => {
         </nav>
       </div>
 
-      {/* Mobile menu overlay */}
+      {/* Mobile overlay */}
       {mobileMenuOpen && (
         <div
           className="sidebar-overlay"
           onClick={closeMobileMenu}
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000,
-          }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000 }}
         />
       )}
     </header>

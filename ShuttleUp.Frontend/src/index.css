@@ -449,3 +449,37 @@ a:active {
 .banner-bg.login, .banner-bg.register {
     min-height: 100vh !important;
 }
+
+/* ── Navbar dropdown animation ─────────────────────────────────────────── */
+@keyframes fadeSlideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.noti-dropdown-animate {
+  animation: fadeSlideDown 0.18s ease forwards;
+}
+
+/* Notification bell dot */
+.alert-bg {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: #22c55e;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  position: absolute;
+  top: 8px;
+  right: 10px;
+}
+
+/* User dropdown hover items */
+.has-arrow .dropdown-menu .dropdown-item:hover,
+.noti-nav .dropdown-menu a:hover {
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+/* Avatar arrow indicator */
+.has-arrow .dropdown-toggle::after {
+  display: none; /* use our custom chevron icon */
+}
