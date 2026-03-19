@@ -119,6 +119,8 @@ export default function BookingTimeline() {
 
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [showCalendar, setShowCalendar]  = useState(false);
+  // cellWidth controls zoom: 18=compact (fit screen), 56=expanded (scroll)
+  const [cellWidth, setCellWidth] = useState(24);
 
   // selections: { [courtId]: Set<slotIndex> }
   const [selections, setSelections] = useState({});
@@ -352,7 +354,7 @@ export default function BookingTimeline() {
 
       {/* ── Timeline Grid ──────────────────────────────────────────────── */}
       <div style={{ overflowX: 'auto', backgroundColor: '#fff', margin: '12px', borderRadius: '8px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-        <div style={{ minWidth: `${80 + (timeSlots.length - 1) * 44}px` }}>
+        <div style={{ minWidth: `${72 + (timeSlots.length - 1) * cellWidth}px` }}>
 
           {/* Time header row — sticky */}
           <div
@@ -367,11 +369,11 @@ export default function BookingTimeline() {
               <div
                 key={i}
                 style={{
-                  width: '44px', minWidth: '44px', textAlign: 'center',
-                  fontSize: '11px', color: '#0369a1', padding: '6px 0',
-                  borderRight: '1px solid #e0f2fe',
+                  width: `${cellWidth}px`, minWidth: `${cellWidth}px`, flexShrink: 0, textAlign: 'center',
+                  fontSize: cellWidth < 28 ? '9px' : '11px', color: '#0369a1', padding: '6px 0',
+                  borderRight: '1px solid #e0f2fe', overflow: 'hidden',
                 }}
-              >{slot}</div>
+              >{cellWidth >= 26 ? slot : (i % 2 === 0 ? slot : '')}</div>
             ))}
           </div>
 
@@ -402,7 +404,7 @@ export default function BookingTimeline() {
                     onMouseEnter={() => handleMouseEnter(court.id, slotIdx)}
                     onMouseUp={() => handleMouseUp(court.id, slotIdx)}
                     style={{
-                      width: '44px', minWidth: '44px', height: '44px',
+                      width: `${cellWidth}px`, minWidth: `${cellWidth}px`, flexShrink: 0, height: '44px',
                       backgroundColor: bg,
                       borderRight: '1px solid #e5e7eb',
                       cursor: isClickable ? 'pointer' : 'not-allowed',
@@ -427,6 +429,27 @@ export default function BookingTimeline() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* ── Zoom slider — floating pill (bottom-right, above footer) ──── */}
+      <div style={{
+        position: 'fixed', bottom: '76px', right: '20px', zIndex: 999,
+        backgroundColor: '#fff', borderRadius: '999px',
+        padding: '8px 16px', boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+        display: 'flex', alignItems: 'center', gap: '10px', minWidth: '180px',
+      }}>
+        <span style={{ fontSize: '13px', color: '#6b7280', flexShrink: 0 }}>🔍</span>
+        <input
+          type="range"
+          min={14}
+          max={56}
+          value={cellWidth}
+          onChange={e => setCellWidth(Number(e.target.value))}
+          style={{
+            flex: 1, accentColor: '#16a34a', cursor: 'pointer', height: '4px',
+          }}
+        />
+        <span style={{ fontSize: '13px', color: '#6b7280', flexShrink: 0 }}>🔎</span>
       </div>
 
       {/* ── Footer ─────────────────────────────────────────────────────── */}
