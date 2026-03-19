@@ -13,11 +13,6 @@ import ManagerAvailability from './pages/manager/ManagerAvailability';
 import ManagerEarnings from './pages/manager/ManagerEarnings';
 import ManagerWallet from './pages/manager/ManagerWallet';
 import ManagerProfileRequest from './pages/manager/ManagerProfileRequest';
-import ManagerBookings from './pages/manager/ManagerBookings';
-import ManagerRequests from './pages/manager/ManagerRequests';
-import ManagerVenueCourts from './pages/manager/ManagerVenueCourts';
-import ManagerAddCourt from './pages/manager/ManagerAddCourt';
-import ManagerEditVenue from './pages/manager/ManagerEditVenue';
 import VenueDetails from './pages/VenueDetails';
 import ChatPage from './pages/ChatPage';
 import Contact from './pages/Contact';
@@ -44,6 +39,7 @@ import UserProfileEdit from './pages/user/UserProfileEdit';
 import UserProfileChangePassword from './pages/user/UserProfileChangePassword';
 import UserProfileOtherSetting from './pages/user/UserProfileOtherSetting';
 import UserManagerInfo from './pages/user/UserManagerInfo';
+import UserBookings from './pages/user/UserBookings';
 
 // Admin
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -112,7 +108,7 @@ function App() {
           <Route path="/user/profile/manager-info" element={<ProtectedRoute><UserManagerInfo /></ProtectedRoute>} />
           <Route path="/user/profile/change-password" element={<ProtectedRoute><UserProfileChangePassword /></ProtectedRoute>} />
           <Route path="/user/profile/other-settings" element={<ProtectedRoute><UserProfileOtherSetting /></ProtectedRoute>} />
-          <Route path="/user/bookings" element={<ProtectedRoute><PlaceholderPage title="My Bookings" /></ProtectedRoute>} />
+          <Route path="/user/bookings" element={<ProtectedRoute><UserBookings /></ProtectedRoute>} />
           <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
           <Route path="/user/chat" element={<ProtectedRoute><PlaceholderPage title="Chat" /></ProtectedRoute>} />
           <Route path="/user/invoices" element={<ProtectedRoute><PlaceholderPage title="Invoices" /></ProtectedRoute>} />
@@ -126,12 +122,8 @@ function App() {
           <Route path="/manager/availability" element={<ProtectedRoute requiredRole="MANAGER"><ManagerAvailability /></ProtectedRoute>} />
           <Route path="/manager/earnings" element={<ProtectedRoute requiredRole="MANAGER"><ManagerEarnings /></ProtectedRoute>} />
           <Route path="/manager/wallet" element={<ProtectedRoute requiredRole="MANAGER"><ManagerWallet /></ProtectedRoute>} />
-          <Route path="/manager/requests" element={<ProtectedRoute requiredRole="MANAGER"><ManagerRequests /></ProtectedRoute>} />
-          <Route path="/manager/bookings" element={<ProtectedRoute requiredRole="MANAGER"><ManagerBookings /></ProtectedRoute>} />
-          <Route path="/manager/venues/:venueId/courts" element={<ProtectedRoute requiredRole="MANAGER"><ManagerVenueCourts /></ProtectedRoute>} />
-          <Route path="/manager/venues/:venueId/courts/add" element={<ProtectedRoute requiredRole="MANAGER"><ManagerAddCourt /></ProtectedRoute>} />
-          <Route path="/manager/venues/:venueId/courts/:courtId/edit" element={<ProtectedRoute requiredRole="MANAGER"><ManagerAddCourt /></ProtectedRoute>} />
-          <Route path="/manager/venues/:venueId/edit" element={<ProtectedRoute requiredRole="MANAGER"><ManagerEditVenue /></ProtectedRoute>} />
+          <Route path="/manager/requests" element={<ProtectedRoute requiredRole="MANAGER"><PlaceholderPage title="Yêu cầu đặt sân" /></ProtectedRoute>} />
+          <Route path="/manager/bookings" element={<ProtectedRoute requiredRole="MANAGER"><PlaceholderPage title="Lịch đặt sân" /></ProtectedRoute>} />
           <Route path="/manager/chat" element={<ProtectedRoute requiredRole="MANAGER"><PlaceholderPage title="Trò chuyện" /></ProtectedRoute>} />
           <Route path="/manager/profile" element={<ProtectedRoute requiredRole="MANAGER"><MyProfile /></ProtectedRoute>} />
           <Route path="/manager/setting-password" element={<ProtectedRoute><SettingPassword /></ProtectedRoute>} />
