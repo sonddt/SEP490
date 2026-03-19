@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 function DropItem({ to, icon, label, onNav }) {
   return (
@@ -24,39 +24,25 @@ function DropItem({ to, icon, label, onNav }) {
 
 export default function UserDropdown({
   user, isAdmin, isManager,
-  profilePath,          // Xem hồ sơ (top section link)
   open, onToggle, onClose, onLogout,
-  iconColor = '#555',   // colour for trigger icons
-  avatarSize = 33,      // avatar diameter in px
+  iconColor = '#555',
+  avatarSize = 33,
 }) {
   const ref = useRef(null);
   const navigate = useNavigate();
-  const location = useLocation();
-  const inManagerMode = location.pathname.startsWith('/manager');
-
-  // Separate routes for "Profile" menu item vs "Settings" menu item
-  const profileMenuPath  = isAdmin    ? '/admin/dashboard'
-                         : isManager  ? '/manager/profile'
-                         :              '/user/my-profile';
-
-  const settingsMenuPath = isManager  ? '/manager/setting-password'
-                         :              '/user/profile/other-settings';
-
-  const switchTo   = inManagerMode ? '/'                  : '/manager/venues';
-  const switchIcon = inManagerMode ? 'feather-user'       : 'feather-briefcase';
-  const switchLabel= inManagerMode ? 'Chế độ Người chơi' : 'Quản lý sân';
-
-  // Show role label based on current mode (route), not only granted roles.
-  // Managers can switch between /user and /manager views.
-  const roleName = isAdmin
-    ? 'Admin'
-    : isManager
-      ? (inManagerMode ? 'Chủ Sân' : 'Người chơi')
-      : 'Người chơi';
 
   const handleNav = (path) => {
     onClose();
     navigate(path);
+  };
+
+  const handleManagerAccess = () => {
+    const managerStatus = user?.managerStatus;
+    if (managerStatus === 'APPROVED' || isManager) {
+      handleNav('/manager/venues');
+    } else {
+      handleNav('/profile');
+    }
   };
 
   useEffect(() => {
@@ -68,11 +54,11 @@ export default function UserDropdown({
     return () => document.removeEventListener('mousedown', handler);
   }, [open, onClose]);
 
-  return (
-    /* Removed has-arrow to avoid double-arrow (has-arrow adds a CSS ::after arrow) */
-    <li className="nav-item dropdown logged-item" ref={ref} style={{ position: 'relative', marginLeft: 2 }}>
+  const roleName = isAdmin ? 'Admin' : isManager ? 'Chủ Sân' : 'Người chơi';
 
-      {/* ── Trigger ──────────────────────────────────────────────────────── */}
+  return (
+    <li className="nav-item dropdown logged-item" ref={ref} style={{ position: 'relative', marginLeft: 2 }}>
+      {/* Trigger */}
       <a
         href="#"
         className="nav-link"
@@ -97,7 +83,7 @@ export default function UserDropdown({
         />
       </a>
 
-      {/* ── Dropdown ─────────────────────────────────────────────────────── */}
+      {/* Dropdown */}
       <div
         className={`dropdown-menu dropdown-menu-end${open ? ' show noti-dropdown-animate' : ''}`}
         style={{
@@ -107,7 +93,7 @@ export default function UserDropdown({
           borderRadius: 10, overflow: 'hidden', zIndex: 1050,
         }}
       >
-        {/* Header — avatar + name + "Go to Profile" */}
+        {/* Header */}
         <div
           className="user-header"
           style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 11, background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}
@@ -124,14 +110,7 @@ export default function UserDropdown({
             <h6 style={{ margin: '0 0 1px', fontSize: 14, fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {user?.fullName || user?.email}
             </h6>
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={() => handleNav(profileMenuPath)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleNav(profileMenuPath); }}
-              className="text-profile mb-0"
-              style={{ fontSize: 12, color: '#16a34a', fontWeight: 600, cursor: 'pointer' }}
-            >
+            <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 600 }}>
               {roleName}
             </span>
           </div>
@@ -139,10 +118,24 @@ export default function UserDropdown({
 
         {/* Menu items */}
         <div style={{ padding: '6px 0', background: '#fff' }}>
-          <DropItem to={profileMenuPath}  icon="feather-user"     label="Hồ sơ của tôi" onNav={handleNav} />
-          <DropItem to={settingsMenuPath} icon="feather-settings" label="Cài đặt"        onNav={handleNav} />
+          <DropItem to="/profile" icon="feather-user" label="Hồ sơ của tôi" onNav={handleNav} />
           {isManager && !isAdmin && (
-            <DropItem to={switchTo} icon={switchIcon} label={switchLabel} onNav={handleNav} />
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={handleManagerAccess}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleManagerAccess(); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '9px 18px', color: '#475569', fontSize: 14,
+                cursor: 'pointer', transition: 'background 0.15s',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            >
+              <i className="feather-briefcase" style={{ fontSize: 15, color: '#94a3b8', width: 18, textAlign: 'center' }} />
+              Quản lý sân
+            </div>
           )}
         </div>
 

@@ -490,18 +490,59 @@ a:active {
 :root {
   --mgr-sidebar-w: 260px;
   --mgr-sidebar-bg: #ffffff;
-  --mgr-accent: #0d7c5f;
-  --mgr-accent-light: #e8f5f0;
+  --mgr-accent: #097E52;
+  --mgr-accent-light: #e8f5ee;
+  --mgr-accent-hover: #086b46;
   --mgr-text: #334155;
   --mgr-text-muted: #94a3b8;
-  --mgr-border: #f1f5f9;
+  --mgr-border: #e9eef4;
   --mgr-topbar-h: 64px;
 }
 
 .mgr-layout {
   display: flex;
   min-height: 100vh;
-  background: #f5f7fa;
+  background: #f4f6f9;
+  font-family: inherit;
+}
+
+/* Manager pages use the same btn-secondary as main site */
+.mgr-page .btn-secondary {
+  background: #097E52;
+  border-color: #097E52;
+  color: #fff;
+}
+.mgr-page .btn-secondary:hover {
+  background: #086b46;
+  border-color: #086b46;
+}
+.mgr-page .btn-outline-secondary {
+  color: #097E52;
+  border-color: #097E52;
+}
+.mgr-page .btn-outline-secondary:hover {
+  background: #097E52;
+  border-color: #097E52;
+  color: #fff;
+}
+
+/* Cards in manager match main site styling */
+.mgr-page .card {
+  border-radius: 10px;
+}
+.mgr-page .card-header {
+  border-radius: 10px 10px 0 0;
+}
+
+/* Form controls match */
+.mgr-page .form-control:focus,
+.mgr-page .form-select:focus {
+  border-color: #097E52;
+  box-shadow: 0 0 0 0.2rem rgba(9, 126, 82, 0.15);
+}
+.mgr-page .form-check-input:checked {
+  background-color: #097E52;
+  border-color: #097E52;
 }
 
 /* ── Sidebar ──────────────────────────────────────────────────────────── */
@@ -631,6 +672,11 @@ a:active {
   font-size: 11px;
   color: var(--mgr-accent);
   font-weight: 600;
+}
+
+/* Sidebar logo text matches brand */
+.mgr-sidebar__logo:hover {
+  text-decoration: none;
 }
 
 /* ── Main Content ─────────────────────────────────────────────────────── */

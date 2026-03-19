@@ -21,6 +21,10 @@ export default function ManagerAddCourt() {
     surface: 'Gỗ PU',
     pricePerHour: '',
     priceWeekend: '',
+    pricePeakHour: '',
+    peakHourStart: '17:00',
+    peakHourEnd: '21:00',
+    enablePeakPricing: false,
     maxGuests: 4,
     description: '',
   });
@@ -126,6 +130,45 @@ export default function ManagerAddCourt() {
                           onChange={(e) => setField('maxGuests', e.target.value)}
                         />
                       </div>
+
+                      {/* Peak-hour pricing */}
+                      <div className="col-12 mt-2">
+                        <div className="form-check">
+                          <input
+                            className="form-check-input" type="checkbox" id="peakPricing"
+                            checked={form.enablePeakPricing}
+                            onChange={(e) => setField('enablePeakPricing', e.target.checked)}
+                          />
+                          <label className="form-check-label" htmlFor="peakPricing">
+                            Bật giá giờ cao điểm
+                          </label>
+                        </div>
+                      </div>
+                      {form.enablePeakPricing && (
+                        <>
+                          <div className="col-md-4">
+                            <label className="form-label">Giá giờ cao điểm (₫/giờ)</label>
+                            <input
+                              type="number" className="form-control" min={0}
+                              placeholder="180000"
+                              value={form.pricePeakHour}
+                              onChange={(e) => setField('pricePeakHour', e.target.value)}
+                            />
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label">Bắt đầu cao điểm</label>
+                            <select className="form-control" value={form.peakHourStart} onChange={(e) => setField('peakHourStart', e.target.value)}>
+                              {TIME_SLOTS.map((ts) => <option key={ts} value={ts}>{ts}</option>)}
+                            </select>
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label">Kết thúc cao điểm</label>
+                            <select className="form-control" value={form.peakHourEnd} onChange={(e) => setField('peakHourEnd', e.target.value)}>
+                              {TIME_SLOTS.map((ts) => <option key={ts} value={ts}>{ts}</option>)}
+                            </select>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

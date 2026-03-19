@@ -13,14 +13,8 @@ const NAV_SECTIONS = [
   {
     label: 'Tài chính',
     items: [
-      { to: '/manager/earnings', icon: 'feather-bar-chart-2', label: 'Doanh thu' },
-      { to: '/manager/wallet',  icon: 'feather-credit-card',  label: 'Ví' },
-    ],
-  },
-  {
-    label: 'Tài khoản',
-    items: [
-      { to: '/manager/profile', icon: 'feather-user',     label: 'Hồ sơ' },
+      { to: '/manager/earnings',          icon: 'feather-bar-chart-2',  label: 'Doanh thu' },
+      { to: '/manager/payment-settings',  icon: 'feather-credit-card',  label: 'Thanh toán' },
     ],
   },
 ];
@@ -37,6 +31,11 @@ export default function ManagerSidebar({ open, onClose }) {
   const handleSwitchToPlayer = () => {
     onClose?.();
     navigate('/');
+  };
+
+  const handleGoToProfile = () => {
+    onClose?.();
+    navigate('/profile');
   };
 
   return (
@@ -73,9 +72,18 @@ export default function ManagerSidebar({ open, onClose }) {
             </div>
           ))}
 
-          {/* Switch to player */}
+          {/* Extra section */}
           <div className="mgr-sidebar__section" style={{ marginTop: 8 }}>
             <div className="mgr-sidebar__section-label">Khác</div>
+            <button
+              type="button"
+              className="mgr-sidebar__item"
+              onClick={handleGoToProfile}
+              style={{ width: '100%', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left' }}
+            >
+              <i className="feather-user" />
+              Hồ sơ của tôi
+            </button>
             <button
               type="button"
               className="mgr-sidebar__item"

@@ -149,13 +149,13 @@ export default function MyProfile() {
                         <span><i className="feather-zap-off"></i></span>Vô hiệu hóa
                       </button>
                       <Link
-                        to="/user/profile"
+                        to="/profile/edit"
                         className="btn btn-secondary d-inline-flex align-items-center me-2"
                       >
                         <span><i className="feather-edit"></i></span>Chỉnh sửa hồ sơ
                       </Link>
                       <Link
-                        to="/user/profile/change-password"
+                        to="/profile/change-password"
                         className="btn btn-primary d-inline-flex align-items-center"
                       >
                         <span><i className="feather-lock"></i></span>Đổi mật khẩu

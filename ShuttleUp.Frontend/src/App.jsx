@@ -23,10 +23,9 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ChangePassword from './pages/ChangePassword';
-import SettingPassword from './pages/SettingPassword';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
-// User
+// User / Profile
 import MyProfile from './pages/user/MyProfile';
 import UserProfileEdit from './pages/user/UserProfileEdit';
 import UserProfileChangePassword from './pages/user/UserProfileChangePassword';
@@ -41,12 +40,10 @@ import ManagerEditVenue from './pages/manager/ManagerEditVenue';
 import ManagerVenueCourts from './pages/manager/ManagerVenueCourts';
 import ManagerAddCourt from './pages/manager/ManagerAddCourt';
 import ManagerBookings from './pages/manager/ManagerBookings';
-import ManagerRequests from './pages/manager/ManagerRequests';
 import ManagerNotifications from './pages/manager/ManagerNotifications';
 import ManagerEarnings from './pages/manager/ManagerEarnings';
-import ManagerWallet from './pages/manager/ManagerWallet';
+import ManagerPaymentSettings from './pages/manager/ManagerPaymentSettings';
 import ManagerAvailability from './pages/manager/ManagerAvailability';
-import ManagerProfileRequest from './pages/manager/ManagerProfileRequest';
 
 // Admin
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -71,8 +68,7 @@ function App() {
   const authRoutes = ['/login', '/register', '/forgot-password', '/change-password'];
   const isAuthPage = authRoutes.includes(location.pathname);
   const isAdminPage = location.pathname.startsWith('/admin');
-  const isManagerPage = location.pathname.startsWith('/manager')
-    && location.pathname !== '/manager/profile-request';
+  const isManagerPage = location.pathname.startsWith('/manager');
 
   const showHeaderFooter = !isAuthPage && !isAdminPage && !isManagerPage;
 
@@ -92,7 +88,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/change-password" element={<ChangePassword />} />
 
-          {/* ═══ Public — Courts (Player-facing) ═══ */}
+          {/* ═══ Public — Courts (Player) ═══ */}
           <Route path="/courts" element={<CourtsListing />} />
           <Route path="/courts/list" element={<CourtsListing />} />
           <Route path="/courts/map" element={<PlaceholderPage title="Bản đồ sân" />} />
@@ -105,19 +101,24 @@ function App() {
           <Route path="/booking/payment" element={<ProtectedRoute><BookingPayment /></ProtectedRoute>} />
           <Route path="/booking/complete" element={<ProtectedRoute><BookingComplete /></ProtectedRoute>} />
 
-          {/* ═══ User (Player) ═══ */}
-          <Route path="/user/dashboard" element={<ProtectedRoute><MyProfile /></ProtectedRoute>} />
-          <Route path="/user/my-profile" element={<ProtectedRoute><MyProfile /></ProtectedRoute>} />
-          <Route path="/user/profile" element={<ProtectedRoute><UserProfileEdit /></ProtectedRoute>} />
-          <Route path="/user/profile/manager-info" element={<ProtectedRoute><UserManagerInfo /></ProtectedRoute>} />
-          <Route path="/user/profile/change-password" element={<ProtectedRoute><UserProfileChangePassword /></ProtectedRoute>} />
-          <Route path="/user/profile/other-settings" element={<ProtectedRoute><UserProfileOtherSetting /></ProtectedRoute>} />
+          {/* ═══ Unified Profile (ALWAYS /profile, never role-specific) ═══ */}
+          <Route path="/profile" element={<ProtectedRoute><MyProfile /></ProtectedRoute>} />
+          <Route path="/profile/edit" element={<ProtectedRoute><UserProfileEdit /></ProtectedRoute>} />
+          <Route path="/profile/manager-info" element={<ProtectedRoute><UserManagerInfo /></ProtectedRoute>} />
+          <Route path="/profile/change-password" element={<ProtectedRoute><UserProfileChangePassword /></ProtectedRoute>} />
+          <Route path="/profile/settings" element={<ProtectedRoute><UserProfileOtherSetting /></ProtectedRoute>} />
+
+          {/* Legacy /user/* redirects → /profile */}
+          <Route path="/user/dashboard" element={<Navigate to="/profile" replace />} />
+          <Route path="/user/my-profile" element={<Navigate to="/profile" replace />} />
+          <Route path="/user/profile" element={<Navigate to="/profile/edit" replace />} />
+          <Route path="/user/profile/manager-info" element={<Navigate to="/profile/manager-info" replace />} />
+          <Route path="/user/profile/change-password" element={<Navigate to="/profile/change-password" replace />} />
+          <Route path="/user/profile/other-settings" element={<Navigate to="/profile/settings" replace />} />
+
+          {/* Player misc */}
           <Route path="/user/bookings" element={<ProtectedRoute><PlaceholderPage title="Lịch đặt sân" /></ProtectedRoute>} />
           <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
-          <Route path="/user/wallet" element={<ProtectedRoute><PlaceholderPage title="Ví của tôi" /></ProtectedRoute>} />
-
-          {/* ═══ Manager profile-request (standalone, no sidebar) ═══ */}
-          <Route path="/manager/profile-request" element={<ProtectedRoute><ManagerProfileRequest /></ProtectedRoute>} />
 
           {/* ═══════════════════════════════════════════════════════════
                MANAGER — Nested routes with ManagerLayout (sidebar)
@@ -143,29 +144,21 @@ function App() {
             <Route path="venues/:venueId/courts/add" element={<ManagerAddCourt />} />
             <Route path="venues/:venueId/courts/:courtId/edit" element={<ManagerAddCourt />} />
 
-            {/* Bookings */}
+            {/* Bookings (merged: pending / upcoming / completed / rejected / cancelled) */}
             <Route path="bookings" element={<ManagerBookings />} />
-            <Route path="requests" element={<ManagerRequests />} />
 
             {/* Notifications */}
             <Route path="notifications" element={<ManagerNotifications />} />
 
             {/* Finance */}
             <Route path="earnings" element={<ManagerEarnings />} />
-            <Route path="wallet" element={<ManagerWallet />} />
-
-            {/* Profile */}
-            <Route path="profile" element={<MyProfile />} />
-            <Route path="setting-password" element={<SettingPassword />} />
+            <Route path="payment-settings" element={<ManagerPaymentSettings />} />
           </Route>
 
           {/* ═══ Static pages ═══ */}
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/blog" element={<PlaceholderPage title="Blog" />} />
-          <Route path="/services" element={<PlaceholderPage title="Dịch vụ" />} />
-          <Route path="/pricing" element={<PlaceholderPage title="Bảng giá" />} />
-          <Route path="/faq" element={<PlaceholderPage title="FAQ" />} />
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/privacy-policy" element={<TermsOfService />} />
 
