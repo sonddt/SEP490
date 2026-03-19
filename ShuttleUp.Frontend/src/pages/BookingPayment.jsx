@@ -1,37 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import BookingSteps from '../components/booking/BookingSteps';
 
-const PAYMENT_METHODS = [
-  {
-    id: 'bank',
-    label: 'Chuyển khoản ngân hàng',
-    icon: 'feather-credit-card',
-    detail: {
-      bank:    'Vietcombank',
-      account: '1234 5678 9012',
-      name:    'SHUTTLEUP BADMINTON',
-      note:    'Ghi nội dung: [SDT] - [Tên sân] - [Ngày]',
-    },
-  },
-  {
-    id: 'qr',
-    label: 'Quét mã QR',
-    icon: 'feather-smartphone',
-    detail: {
-      imgSrc: '/assets/img/icons/qr-mock.png',
-      note:   'Mở ứng dụng ngân hàng và quét mã QR bên dưới',
-    },
-  },
-  {
-    id: 'deposit',
-    label: 'Đặt cọc / Thanh toán tại sân',
-    icon: 'feather-dollar-sign',
-    detail: {
-      note: 'Thanh toán phần còn lại trực tiếp tại sân trước khi vào chơi.',
-    },
-  },
-];
+const BANK_INFO = {
+  bank:    'Vietcombank',
+  account: '1234 5678 9012',
+  name:    'SHUTTLEUP BADMINTON',
+  note:    'Nội dung CK: [SĐT] - [Tên sân] - [Ngày]',
+};
+
+const HOLD_SECONDS = 15 * 60; // 15 minutes
 
 function formatDateVN(isoDate) {
   if (!isoDate) return '';
@@ -39,8 +17,10 @@ function formatDateVN(isoDate) {
   return `${d}/${m}/${y}`;
 }
 
+function padTwo(n) { return String(n).padStart(2, '0'); }
+
 export default function BookingPayment() {
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
   const location  = useLocation();
   const state     = location.state ?? {};
 
@@ -57,27 +37,95 @@ export default function BookingPayment() {
     note          = '',
   } = state;
 
-  const [method, setMethod]   = useState('bank');
-  const [agreed, setAgreed]   = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState('');
+  // ── Payment method: bank or qr only ─────────────────────────────────────
+  const [method, setMethod] = useState('bank');
 
-  const selectedMethod = PAYMENT_METHODS.find(m => m.id === method);
+  // ── Proof image upload ───────────────────────────────────────────────────
+  const [proofFile,    setProofFile]    = useState(null);   // File object
+  const [proofPreview, setProofPreview] = useState(null);   // Object URL
+  const fileInputRef = useRef(null);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Vui lòng chọn file ảnh (JPG, PNG, ...).');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Ảnh không được vượt quá 10 MB.');
+      return;
+    }
+    if (proofPreview) URL.revokeObjectURL(proofPreview);
+    setProofFile(file);
+    setProofPreview(URL.createObjectURL(file));
+    setError('');
+  };
+
+  const removeProof = () => {
+    if (proofPreview) URL.revokeObjectURL(proofPreview);
+    setProofFile(null);
+    setProofPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Cleanup object URL on unmount
+  useEffect(() => () => { if (proofPreview) URL.revokeObjectURL(proofPreview); }, [proofPreview]);
+
+  // ── 15-minute hold countdown ─────────────────────────────────────────────
+  const [secondsLeft, setSecondsLeft] = useState(HOLD_SECONDS);
+  const [expired,     setExpired]     = useState(false);
+  const intervalRef = useRef(null);
+
+  useEffect(() => {
+    intervalRef.current = setInterval(() => {
+      setSecondsLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(intervalRef.current);
+          setExpired(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(intervalRef.current);
+  }, []);
+
+  const timerMins = Math.floor(secondsLeft / 60);
+  const timerSecs = secondsLeft % 60;
+  const timerUrgent = secondsLeft <= 120; // red when ≤ 2 min
+
+  // When expired: show overlay → after user clicks "OK" send them back
+  const handleExpiredOk = useCallback(() => {
+    navigate('/booking', { state: location.state, replace: true });
+  }, [navigate, location.state]);
+
+  // ── Form ─────────────────────────────────────────────────────────────────
+  const [agreed,  setAgreed]  = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState('');
 
   const handleConfirm = async () => {
-    if (!agreed) { setError('Vui lòng đồng ý với điều khoản dịch vụ.'); return; }
+    if (!proofFile)  { setError('Vui lòng upload ảnh minh chứng chuyển khoản.'); return; }
+    if (!agreed)     { setError('Vui lòng đồng ý với điều khoản dịch vụ.'); return; }
+    if (expired)     { setError('Thời gian giữ chỗ đã hết. Vui lòng đặt lại.'); return; }
+
     setError('');
     setLoading(true);
-    // Mock API call — replace with real API later
-    await new Promise(r => setTimeout(r, 1000));
+
+    // Upload proof image + create booking — wired to real API later
+    await new Promise(r => setTimeout(r, 1200));
+
     setLoading(false);
+    clearInterval(intervalRef.current);
+
     const bookingCode = `SU${Date.now().toString().slice(-6)}`;
     navigate('/booking/complete', {
       state: {
         venueId, venueName, venueAddress, date,
         selectedSlots, totalPrice, totalHours,
         customerName, customerPhone, note,
-        paymentMethod: selectedMethod.label,
+        paymentMethod: method === 'qr' ? 'Quét mã QR' : 'Chuyển khoản ngân hàng',
         bookingCode,
       },
     });
@@ -85,6 +133,36 @@ export default function BookingPayment() {
 
   return (
     <div className="main-wrapper" style={{ paddingTop: '96px' }}>
+
+      {/* ── Expired overlay ─────────────────────────────────────────────── */}
+      {expired && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.65)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <div
+            className="card text-center p-4"
+            style={{ maxWidth: 420, width: '90%', borderRadius: 16 }}
+          >
+            <div style={{ fontSize: 52, lineHeight: 1, marginBottom: 12 }}>⏰</div>
+            <h4 className="mb-2">Thời gian giữ chỗ đã hết!</h4>
+            <p className="text-muted mb-4">
+              15 phút đã trôi qua. Các khung giờ bạn chọn đã được giải phóng để người khác đặt.
+              Vui lòng thực hiện lại quá trình đặt sân.
+            </p>
+            <button
+              type="button"
+              className="btn btn-secondary w-100"
+              onClick={handleExpiredOk}
+            >
+              Quay lại chọn giờ
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Breadcrumb */}
       <div className="breadcrumb mb-0">
@@ -102,13 +180,30 @@ export default function BookingPayment() {
 
       <div className="content">
         <div className="container">
-          <div className="text-center mb-5">
-            <h3 className="mb-1">Thanh Toán</h3>
-            <p className="sub-title mb-0">Hoàn tất thanh toán để xác nhận lịch đặt sân của bạn</p>
+
+          {/* ── Countdown banner ──────────────────────────────────────────── */}
+          <div
+            className="d-flex align-items-center justify-content-center gap-3 rounded p-3 mb-4"
+            style={{
+              background: timerUrgent ? '#fff1f1' : '#f0fdf4',
+              border: `1.5px solid ${timerUrgent ? '#fca5a5' : '#6ee7b7'}`,
+              transition: 'background 0.4s, border-color 0.4s',
+            }}
+          >
+            <i
+              className="feather-clock"
+              style={{ fontSize: 22, color: timerUrgent ? '#ef4444' : 'var(--primary-color)' }}
+            />
+            <span style={{ fontWeight: 600, color: timerUrgent ? '#ef4444' : 'var(--primary-color)', fontSize: '1.05rem' }}>
+              Giữ chỗ còn: {padTwo(timerMins)}:{padTwo(timerSecs)}
+            </span>
+            <span className="text-muted small">
+              — Hoàn tất trong 15 phút, slot sẽ tự động giải phóng khi hết giờ.
+            </span>
           </div>
 
           {/* Venue card */}
-          <div className="master-academy dull-whitesmoke-bg card mb-5">
+          <div className="master-academy dull-whitesmoke-bg card mb-4">
             <div className="d-sm-flex justify-content-start align-items-center">
               <img
                 className="corner-radius-10"
@@ -129,7 +224,7 @@ export default function BookingPayment() {
           </div>
 
           <div className="row checkout">
-            {/* Left: order summary */}
+            {/* ── Left: order summary ─────────────────────────────────────── */}
             <div className="col-12 col-lg-7 mb-4 mb-lg-0">
               <div className="card booking-details">
                 <h3 className="border-bottom">Tóm tắt đơn đặt</h3>
@@ -162,7 +257,6 @@ export default function BookingPayment() {
 
                 <hr />
 
-                {/* Selected slots grouped by court */}
                 <h6 className="mb-2">Chi tiết sân &amp; giờ</h6>
                 <div className="table-responsive">
                   <table className="table table-sm table-bordered mb-0">
@@ -187,14 +281,17 @@ export default function BookingPayment() {
               </div>
             </div>
 
-            {/* Right: payment panel */}
+            {/* ── Right: payment panel ────────────────────────────────────── */}
             <div className="col-12 col-lg-5">
               <aside className="card payment-modes">
                 <h3 className="border-bottom">Phương thức thanh toán</h3>
 
-                {/* Method selector */}
+                {/* Method selector — bank & QR only */}
                 <div className="radio mb-3">
-                  {PAYMENT_METHODS.map(pm => (
+                  {[
+                    { id: 'bank', label: 'Chuyển khoản ngân hàng', icon: 'feather-credit-card' },
+                    { id: 'qr',   label: 'Quét mã QR',              icon: 'feather-smartphone'  },
+                  ].map(pm => (
                     <div key={pm.id} className="form-check mb-2">
                       <input
                         className="form-check-input default-check"
@@ -220,26 +317,101 @@ export default function BookingPayment() {
                 >
                   {method === 'bank' && (
                     <div className="small">
-                      <p className="mb-1"><strong>Ngân hàng:</strong> {selectedMethod.detail.bank}</p>
-                      <p className="mb-1"><strong>Số tài khoản:</strong> {selectedMethod.detail.account}</p>
-                      <p className="mb-1"><strong>Chủ TK:</strong> {selectedMethod.detail.name}</p>
-                      <p className="mb-0 text-muted">{selectedMethod.detail.note}</p>
+                      <p className="mb-1"><strong>Ngân hàng:</strong> {BANK_INFO.bank}</p>
+                      <p className="mb-1">
+                        <strong>Số tài khoản:</strong>{' '}
+                        <span
+                          style={{ fontFamily: 'monospace', letterSpacing: 1, cursor: 'pointer', textDecoration: 'underline dotted' }}
+                          title="Nhấn để sao chép"
+                          onClick={() => navigator.clipboard?.writeText(BANK_INFO.account.replace(/\s/g, ''))}
+                        >
+                          {BANK_INFO.account}
+                        </span>
+                      </p>
+                      <p className="mb-1"><strong>Chủ TK:</strong> {BANK_INFO.name}</p>
+                      <p className="mb-1"><strong>Số tiền:</strong> <span className="primary-text fw-semibold">{totalPrice.toLocaleString('vi-VN')} VNĐ</span></p>
+                      <p className="mb-0 text-muted">{BANK_INFO.note}</p>
                     </div>
                   )}
                   {method === 'qr' && (
                     <div className="text-center small">
-                      <p className="mb-2 text-muted">{selectedMethod.detail.note}</p>
+                      <p className="mb-2 text-muted">Mở ứng dụng ngân hàng và quét mã QR bên dưới</p>
                       <div
                         className="mx-auto d-flex align-items-center justify-content-center rounded"
                         style={{ width: '140px', height: '140px', backgroundColor: '#e5e7eb', fontSize: '12px', color: '#6b7280' }}
                       >
                         [QR mock]
                       </div>
+                      <p className="mt-2 mb-0 primary-text fw-semibold">{totalPrice.toLocaleString('vi-VN')} VNĐ</p>
                     </div>
                   )}
-                  {method === 'deposit' && (
-                    <p className="mb-0 small text-muted">{selectedMethod.detail.note}</p>
+                </div>
+
+                {/* ── Upload proof image ───────────────────────────────── */}
+                <div className="mb-3">
+                  <label className="form-label fw-semibold d-flex align-items-center gap-2">
+                    <i className="feather-image text-primary" />
+                    Ảnh minh chứng chuyển khoản <span className="text-danger">*</span>
+                  </label>
+
+                  {proofPreview ? (
+                    <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
+                      <img
+                        src={proofPreview}
+                        alt="Minh chứng thanh toán"
+                        style={{
+                          width: '100%',
+                          maxHeight: '220px',
+                          objectFit: 'contain',
+                          borderRadius: 10,
+                          border: '2px solid #6ee7b7',
+                          backgroundColor: '#f8fafc',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={removeProof}
+                        style={{
+                          position: 'absolute', top: 8, right: 8,
+                          background: 'rgba(0,0,0,0.55)',
+                          color: '#fff', border: 'none',
+                          borderRadius: '50%', width: 28, height: 28,
+                          cursor: 'pointer', fontSize: 14,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                        title="Xóa ảnh"
+                      >
+                        ×
+                      </button>
+                      <p className="text-success small mt-1 mb-0">
+                        <i className="feather-check-circle me-1" />
+                        {proofFile.name}
+                      </p>
+                    </div>
+                  ) : (
+                    <div
+                      className="d-flex flex-column align-items-center justify-content-center rounded p-4"
+                      style={{
+                        border: '2px dashed #d1fae5',
+                        background: '#f0fdf4',
+                        cursor: 'pointer',
+                        minHeight: '120px',
+                      }}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <i className="feather-upload-cloud" style={{ fontSize: 32, color: 'var(--primary-color)', marginBottom: 8 }} />
+                      <p className="mb-1 fw-semibold" style={{ color: 'var(--primary-color)' }}>Nhấn để chọn ảnh</p>
+                      <p className="text-muted small mb-0">JPG, PNG — tối đa 10 MB</p>
+                    </div>
                   )}
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handleFileChange}
+                  />
                 </div>
 
                 <hr />
@@ -282,11 +454,11 @@ export default function BookingPayment() {
                     type="button"
                     className="btn btn-primary"
                     onClick={handleConfirm}
-                    disabled={loading}
+                    disabled={loading || expired}
                   >
                     {loading
                       ? <><span className="spinner-border spinner-border-sm me-2" />Đang xử lý...</>
-                      : `Xác nhận — ${totalPrice.toLocaleString('vi-VN')} VNĐ`
+                      : `Xác nhận đặt sân — ${totalPrice.toLocaleString('vi-VN')} VNĐ`
                     }
                   </button>
                 </div>
