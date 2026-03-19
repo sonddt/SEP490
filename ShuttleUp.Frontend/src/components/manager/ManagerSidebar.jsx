@@ -22,6 +22,12 @@ const NAV_SECTIONS = [
       { to: '/manager/earnings',          icon: 'feather-bar-chart-2',  label: 'Doanh thu' },
     ],
   },
+  {
+    label: 'Cài đặt',
+    items: [
+      { to: '/manager/payment-settings',  icon: 'feather-credit-card',  label: 'Thanh toán' },
+    ],
+  },
 ];
 
 export default function ManagerSidebar({ open, onClose }) {

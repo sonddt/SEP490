@@ -1,210 +1,210 @@
-import { useState } from 'react';
-
-const BANKS = [
-  'Vietcombank', 'BIDV', 'VietinBank', 'Techcombank', 'MB Bank',
-  'ACB', 'Sacombank', 'VP Bank', 'TPBank', 'HD Bank',
-  'SHB', 'OCB', 'SeABank', 'LPBank', 'Eximbank', 'Khác',
-];
+import { useState, useRef } from 'react';
+import { useAuth } from '../../context/AuthContext';
 
 export default function ManagerPaymentSettings() {
-  const [form, setForm] = useState({
-    bankName: 'Vietcombank',
-    accountNumber: '',
-    accountHolder: '',
-    vnpayEnabled: false,
-    vnpayMerchantId: '',
-  });
-  const [qrImage, setQrImage] = useState(null);
-  const [qrPreview, setQrPreview] = useState(null);
-  const [saved, setSaved] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const { user } = useAuth();
+  
+  // State for config
+  const [bankName, setBankName] = useState('Vietcombank');
+  const [accNumber, setAccNumber] = useState('123456789012');
+  const [accName, setAccName] = useState('SHUTTLEUP BADMINTON');
+  const [qrCodeImg, setQrCodeImg] = useState('/assets/img/qr-placeholder.png');
 
-  const setField = (key, val) => {
-    setSaved(false);
-    setForm((p) => ({ ...p, [key]: val }));
-  };
+  // UI state
+  const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef(null);
 
-  const handleQrUpload = (e) => {
+  const handleFileChange = (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    setQrImage(file);
-    setQrPreview(URL.createObjectURL(file));
-    setSaved(false);
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) { // max 10MB
+        alert("Ảnh không được vượt quá 10MB");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        setQrCodeImg(evt.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
-  const removeQr = () => {
-    setQrImage(null);
-    setQrPreview(null);
-    setSaved(false);
-  };
-
-  const handleSubmit = (e) => {
+  const handleSave = (e) => {
     e.preventDefault();
-    setSubmitting(true);
+    setIsSaving(true);
+    
+    // Simulate API call
     setTimeout(() => {
-      console.log('Save payment settings:', { ...form, qrImage });
-      setSaved(true);
-      setSubmitting(false);
-    }, 600);
+      setIsSaving(false);
+      
+      const toast = document.createElement('div');
+      toast.className = 'bk-toast bk-toast--success';
+      toast.innerHTML = `<i class="feather-check-circle"></i> Đã lưu thông tin thanh toán!`;
+      toast.style.position = 'fixed';
+      toast.style.bottom = '24px';
+      toast.style.right = '24px';
+      toast.style.zIndex = '9999';
+      document.body.appendChild(toast);
+      
+      setTimeout(() => toast.remove(), 3000);
+    }, 800);
   };
 
   return (
-    <div style={{ maxWidth: 920, margin: '0 auto' }}>
-      {/* Info notice */}
-      <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: '14px 18px', marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-        <i className="feather-info" style={{ color: '#3b82f6', fontSize: 17, flexShrink: 0, marginTop: 2 }} />
-        <div style={{ fontSize: 14, color: '#1e40af' }}>
-          Cài đặt thanh toán này áp dụng cho <strong>tất cả cụm sân</strong> của bạn.
-          Người chơi sẽ thấy thông tin này khi thanh toán đặt sân.
+    <div className="mgr-page">
+      {/* Top Banner/Header */}
+      <div className="d-flex align-items-center justify-content-between mb-4">
+        <div>
+          <h1 className="mb-1" style={{ fontSize: '24px', fontWeight: '700', color: '#1e293b' }}>
+            Cài đặt thanh toán
+          </h1>
+          <p className="text-muted mb-0">
+            Cập nhật tài khoản ngân hàng và mã QR (VNPay/VietQR) để khách hàng chuyển khoản khi đặt sân.
+          </p>
         </div>
       </div>
 
-      {/* Success banner */}
-      {saved && (
-        <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 12, padding: '14px 18px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10, animation: 'bkToastIn 0.3s ease' }}>
-          <i className="feather-check-circle" style={{ color: '#059669', fontSize: 18 }} />
-          <span style={{ fontSize: 14, color: '#065f46', fontWeight: 500 }}>Đã lưu cài đặt thanh toán thành công!</span>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit}>
-        <div className="row g-4">
-          {/* Bank Transfer */}
-          <div className="col-lg-6">
-            <div className="card border-0 h-100">
-              <div className="card-header">
-                <div className="d-flex align-items-center gap-3">
-                  <div style={{ width: 40, height: 40, borderRadius: 10, background: '#e8f5ee', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <i className="feather-credit-card" style={{ color: '#097E52', fontSize: 18 }} />
-                  </div>
-                  <div>
-                    <h5 style={{ margin: 0 }}>Chuyển khoản ngân hàng</h5>
-                    <span style={{ fontSize: 12, color: '#94a3b8' }}>Thông tin tài khoản cho người chơi</span>
-                  </div>
-                </div>
-              </div>
-              <div className="card-body">
-                <div className="mb-3">
-                  <label className="form-label">Ngân hàng <span className="text-danger">*</span></label>
-                  <select className="form-select" value={form.bankName} onChange={(e) => setField('bankName', e.target.value)} required>
-                    {BANKS.map((b) => <option key={b} value={b}>{b}</option>)}
-                  </select>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Số tài khoản <span className="text-danger">*</span></label>
-                  <input type="text" className="form-control" placeholder="Ví dụ: 0123456789" value={form.accountNumber} onChange={(e) => setField('accountNumber', e.target.value)} required />
-                </div>
-                <div className="mb-0">
-                  <label className="form-label">Chủ tài khoản <span className="text-danger">*</span></label>
-                  <input type="text" className="form-control" placeholder="NGUYEN VAN A" value={form.accountHolder} onChange={(e) => setField('accountHolder', e.target.value.toUpperCase())} required />
-                </div>
-              </div>
+      <div className="row g-4">
+        {/* Settings Form */}
+        <div className="col-xl-8 col-lg-7">
+          <form className="card card-tableset" onSubmit={handleSave}>
+            <div className="card-header pb-0 border-0">
+              <h4 className="mb-0">Thông tin Ngân hàng</h4>
             </div>
-          </div>
-
-          {/* QR Code */}
-          <div className="col-lg-6">
-            <div className="card border-0 h-100">
-              <div className="card-header">
-                <div className="d-flex align-items-center gap-3">
-                  <div style={{ width: 40, height: 40, borderRadius: 10, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <i className="feather-image" style={{ color: '#2563eb', fontSize: 18 }} />
-                  </div>
-                  <div>
-                    <h5 style={{ margin: 0 }}>Mã QR thanh toán</h5>
-                    <span style={{ fontSize: 12, color: '#94a3b8' }}>Quét nhanh từ app ngân hàng</span>
-                  </div>
+            <div className="card-body">
+              <div className="row g-3">
+                <div className="col-md-6">
+                  <label className="form-label">Ngân hàng</label>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    placeholder="VD: Vietcombank, TPBank..." 
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="col-md-6">
+                  <label className="form-label">Chủ tài khoản</label>
+                  <input 
+                    type="text" 
+                    className="form-control text-uppercase" 
+                    placeholder="Tên in trên thẻ" 
+                    value={accName}
+                    onChange={(e) => setAccName(e.target.value.toUpperCase())}
+                    required
+                  />
+                </div>
+                <div className="col-md-12">
+                  <label className="form-label">Số tài khoản</label>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    placeholder="Nhập số tài khoản" 
+                    value={accNumber}
+                    onChange={(e) => setAccNumber(e.target.value)}
+                    required
+                  />
                 </div>
               </div>
-              <div className="card-body">
-                {qrPreview ? (
-                  <div className="text-center">
-                    <div style={{ position: 'relative', display: 'inline-block' }}>
-                      <img src={qrPreview} alt="QR Code" style={{ maxWidth: 220, maxHeight: 220, borderRadius: 12, border: '1px solid #e2e8f0' }} />
-                      <button
-                        type="button"
-                        onClick={removeQr}
-                        style={{ position: 'absolute', top: -8, right: -8, width: 28, height: 28, borderRadius: '50%', background: '#ef4444', border: '2px solid #fff', color: '#fff', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,.15)' }}
-                      >
-                        <i className="feather-x" />
-                      </button>
-                    </div>
-                    <p style={{ fontSize: 13, color: '#94a3b8', marginTop: 10 }}>Nhấn nút đỏ để xoá và upload lại</p>
-                  </div>
-                ) : (
-                  <div className="mgr-qr-upload">
-                    <div className="mgr-qr-upload__icon">
-                      <i className="feather-upload-cloud" />
-                    </div>
-                    <p style={{ fontSize: 14, color: '#475569', marginBottom: 4 }}>Kéo thả hoặc nhấn để chọn ảnh</p>
-                    <small style={{ color: '#94a3b8' }}>PNG, JPG — tối đa 2MB</small>
-                    <input type="file" accept="image/*" onChange={handleQrUpload} />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
 
-          {/* VNPay */}
-          <div className="col-12">
-            <div className="card border-0">
-              <div className="card-header">
-                <div className="d-flex align-items-center justify-content-between">
-                  <div className="d-flex align-items-center gap-3">
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <i className="feather-zap" style={{ color: '#f59e0b', fontSize: 18 }} />
-                    </div>
-                    <div>
-                      <h5 style={{ margin: 0 }}>VNPay (Tùy chọn)</h5>
-                      <span style={{ fontSize: 12, color: '#94a3b8' }}>Thanh toán trực tuyến qua cổng VNPay</span>
-                    </div>
-                  </div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-                    <span style={{ fontSize: 13, color: form.vnpayEnabled ? '#097E52' : '#94a3b8', fontWeight: 500, transition: 'color .15s' }}>
-                      {form.vnpayEnabled ? 'Đang bật' : 'Đang tắt'}
-                    </span>
-                    <div
-                      onClick={() => setField('vnpayEnabled', !form.vnpayEnabled)}
-                      style={{
-                        width: 48, height: 26, borderRadius: 13, position: 'relative', cursor: 'pointer',
-                        background: form.vnpayEnabled ? '#097E52' : '#cbd5e1', transition: 'background .2s',
-                      }}
+              <hr className="my-4" style={{ borderColor: 'var(--mgr-border)' }} />
+
+              <h4 className="mb-3">Mã QR Thanh toán</h4>
+              <p className="text-muted" style={{ fontSize: '13.5px' }}>
+                Tải lên mã QR VNPay hoặc VietQR của bạn. Hệ thống sẽ tự động hiển thị mã này ở bước thanh toán của người chơi.
+              </p>
+
+              <div className="d-flex flex-column align-items-start gap-3 mt-3">
+                <div 
+                  className="rounded-3 border d-flex align-items-center justify-content-center overflow-hidden" 
+                  style={{ width: '200px', height: '200px', background: '#f8fafc', borderColor: '#e2e8f0' }}
+                >
+                  <img 
+                    src={qrCodeImg} 
+                    alt="QR Code" 
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '10px' }} 
+                    onError={(e) => { e.target.src = '/assets/img/qr-placeholder.png'; }}
+                  />
+                </div>
+                
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="d-none" 
+                  accept="image/png, image/jpeg, image/jpg"
+                  onChange={handleFileChange}
+                />
+                
+                <div className="d-flex gap-2">
+                  <button 
+                    type="button" 
+                    className="btn btn-outline-secondary btn-sm"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <i className="feather-upload"></i> Chọn ảnh QR
+                  </button>
+                  {qrCodeImg !== '/assets/img/qr-placeholder.png' && (
+                    <button 
+                      type="button" 
+                      className="btn btn-outline-danger btn-sm"
+                      onClick={() => setQrCodeImg('/assets/img/qr-placeholder.png')}
+                      title="Xoá ảnh"
                     >
-                      <div style={{
-                        width: 20, height: 20, borderRadius: '50%', background: '#fff',
-                        position: 'absolute', top: 3, left: form.vnpayEnabled ? 25 : 3,
-                        transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,.2)',
-                      }} />
-                    </div>
-                  </label>
+                      <i className="feather-trash-2 m-0"></i>
+                    </button>
+                  )}
                 </div>
+                <small className="text-muted">Định dạng hỗ trợ: JPG, PNG. Tối đa 10MB.</small>
               </div>
-              {form.vnpayEnabled && (
-                <div className="card-body">
-                  <div className="row">
-                    <div className="col-md-6">
-                      <label className="form-label">Mã Merchant (VNPay)</label>
-                      <input type="text" className="form-control" placeholder="Nhập mã merchant ID" value={form.vnpayMerchantId} onChange={(e) => setField('vnpayMerchantId', e.target.value)} />
-                      <small className="text-muted" style={{ marginTop: 4, display: 'block' }}>Liên hệ VNPay để được cấp mã</small>
-                    </div>
+            </div>
+
+            <div className="card-footer d-flex justify-content-end gap-2 bg-white pt-0 border-0 mt-2 pb-4 px-4">
+              <button type="button" className="btn btn-outline-secondary" onClick={() => window.location.reload()}>
+                Huỷ
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={isSaving}>
+                {isSaving ? (
+                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                ) : (
+                  <i className="feather-save me-2"></i>
+                )}
+                Lưu thay đổi
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Preview Panel */}
+        <div className="col-xl-4 col-lg-5">
+          <div className="card card-tableset" style={{ position: 'sticky', top: '24px' }}>
+            <div className="card-header pb-0 border-0">
+              <h4 className="mb-0">Xem trước hiển thị</h4>
+            </div>
+            <div className="card-body">
+              <p className="text-muted" style={{ fontSize: '13px' }}>
+                Người dùng sẽ nhìn thấy thông tin này khi thanh toán đặt sân:
+              </p>
+              
+              <div className="p-4 rounded-3" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                <div className="text-center mb-3">
+                  <div className="bg-white p-2 rounded-3 d-inline-block shadow-sm">
+                    <img src={qrCodeImg} alt="QR" style={{ width: '120px', height: '120px', objectFit: 'contain' }} onError={(e) => { e.target.src = '/assets/img/qr-placeholder.png'; }} />
                   </div>
                 </div>
-              )}
+                
+                <div className="mt-3 text-center" style={{ fontSize: '13px', color: '#166534' }}>
+                  <div className="mb-1"><strong>Ngân hàng:</strong> {bankName || '...'}</div>
+                  <div className="mb-1"><strong>Số tài khoản:</strong> {accNumber || '...'}</div>
+                  <div className="mb-1"><strong>Chủ TK:</strong> {accName || '...'}</div>
+                  <div className="mt-2 text-muted" style={{ fontSize: '12px' }}>Số tiền: <strong className="text-dark">250.000 ₫</strong></div>
+                  <div className="text-muted" style={{ fontSize: '12px' }}>Nội dung CK: <strong className="text-dark">[SĐT] - [Tên sân] - [Ngày]</strong></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-
-        {/* Submit */}
-        <div className="d-flex gap-3 mt-4">
-          <button type="submit" className="btn btn-secondary" disabled={submitting}>
-            {submitting ? (
-              <><span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" /> Đang lưu...</>
-            ) : (
-              <><i className="feather-save" /> Lưu cài đặt</>
-            )}
-          </button>
-        </div>
-      </form>
+      </div>
     </div>
   );
 }

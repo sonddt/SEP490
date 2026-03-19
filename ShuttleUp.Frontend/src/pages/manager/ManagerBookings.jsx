@@ -235,8 +235,7 @@ export default function ManagerBookings() {
                   <th>Ngày & Giờ</th>
                   <th>Thanh toán</th>
                   <th>Trạng thái</th>
-                  <th>Chi tiết</th>
-                  <th></th>
+                  <th>Hành động</th>
                 </tr>
               </thead>
               <tbody>
@@ -302,34 +301,28 @@ export default function ManagerBookings() {
                           <i className={st.icon} />{st.label}
                         </span>
                       </td>
-                      {/* View Details */}
-                      <td className="view-detail-green">
-                        <a href="#!" onClick={e => { e.preventDefault(); setDetailModal(b); }}>
-                          <i className="feather-eye" />Xem
-                        </a>
-                      </td>
                       {/* Actions */}
-                      <td className="text-end">
-                        <ActionDropdown>
-                          <button type="button" className="dropdown-item" onClick={() => setDetailModal(b)}>
-                            <i className="feather-eye" />Chi tiết
+                      <td>
+                        <div className="d-flex gap-2 flex-wrap">
+                          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setDetailModal(b)}>
+                            <i className="feather-eye" /> Chi tiết
                           </button>
                           {b.status === 'PENDING' && (
                             <>
-                              <button type="button" className="dropdown-item" onClick={() => handleAccept(b.id)}>
-                                <i className="feather-check-circle" style={{ color: '#097E52' }} />Chấp nhận
+                              <button type="button" className="btn btn-sm btn-outline-success" onClick={() => handleAccept(b.id)}>
+                                <i className="feather-check" /> Duyệt
                               </button>
-                              <button type="button" className="dropdown-item" onClick={() => setRejectModal(b)}>
-                                <i className="feather-x-circle" style={{ color: '#ef4444' }} />Từ chối
+                              <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => setRejectModal(b)}>
+                                <i className="feather-x" /> Từ chối
                               </button>
                             </>
                           )}
                           {b.status === 'UPCOMING' && (
-                            <button type="button" className="dropdown-item" onClick={() => handleCancel(b.id)}>
-                              <i className="feather-slash" style={{ color: '#ef4444' }} />Huỷ lịch
+                            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => handleCancel(b.id)}>
+                              <i className="feather-slash" /> Huỷ lịch
                             </button>
                           )}
-                        </ActionDropdown>
+                        </div>
                       </td>
                     </tr>
                   );
