@@ -24,6 +24,7 @@ const PROVINCES = [
 export default function UserProfileEdit() {
   const fileInputRef = useRef(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
+  const [avatarFile, setAvatarFile] = useState(null);
   const { user: authUser } = useAuth();
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState(null);
 
@@ -53,11 +54,13 @@ export default function UserProfileEdit() {
     const file = e.target.files[0];
     if (!file) return;
     setAvatarPreview(URL.createObjectURL(file));
+    setAvatarFile(file);
   };
 
   const handleReset = () => {
     if (initialForm) setForm(initialForm);
     setAvatarPreview(currentAvatarUrl);
+    setAvatarFile(null);
     setSuccess('');
     setError('');
   };
@@ -90,6 +93,7 @@ export default function UserProfileEdit() {
         setInitialForm(loaded);
         setCurrentAvatarUrl(u.avatarUrl || null);
         setAvatarPreview(u.avatarUrl || null);
+        setAvatarFile(null);
       } catch (e) {
         if (!mounted) return;
         setError(e?.response?.data?.message || 'Không tải được hồ sơ.');
@@ -149,6 +153,23 @@ export default function UserProfileEdit() {
         district: form.district || null,
         province: form.province || null,
       });
+
+      if (avatarFile) {
+        const uploadRes = await profileApi.uploadAvatar(avatarFile);
+        const nextAvatarUrl = uploadRes?.avatarUrl || null;
+        setCurrentAvatarUrl(nextAvatarUrl);
+        setAvatarPreview(nextAvatarUrl);
+
+        // Một số nơi render từ localStorage.user (ví dụ layout manager),
+        // nên cập nhật thêm avatarUrl để UI không bị trễ.
+        try {
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            const u = JSON.parse(storedUser);
+            localStorage.setItem('user', JSON.stringify({ ...u, avatarUrl: nextAvatarUrl }));
+          }
+        } catch {}
+      }
 
       const nextForm = {
         ...form,

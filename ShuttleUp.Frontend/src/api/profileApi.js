@@ -7,5 +7,10 @@ export const profileApi = {
   updateMe(data) {
     return axiosClient.put('/profile/me', data);
   },
+  uploadAvatar(file) {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    return axiosClient.post('/profile/avatar', formData);
+  },
 };
 

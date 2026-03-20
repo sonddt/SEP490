@@ -2,9 +2,13 @@ using System;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using ShuttleUp.DAL.Models;
 
 namespace ShuttleUp.Backend.Controllers;
@@ -15,10 +19,12 @@ namespace ShuttleUp.Backend.Controllers;
 public class ProfileController : ControllerBase
 {
     private readonly ShuttleUpDbContext _db;
+    private readonly IConfiguration _config;
 
-    public ProfileController(ShuttleUpDbContext db)
+    public ProfileController(ShuttleUpDbContext db, IConfiguration config)
     {
         _db = db;
+        _config = config;
     }
 
     private Guid CurrentUserId =>
@@ -204,6 +210,89 @@ public class ProfileController : ControllerBase
         }
 
         return Ok(new { message = "Cập nhật hồ sơ thành công." });
+    }
+
+    /// <summary>
+    /// Upload avatar (multipart/form-data) -> Cloudinary -> lưu bảng files -> update users.avatar_file_id.
+    /// </summary>
+    [HttpPost("avatar")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(10_000_000)]
+    public async Task<IActionResult> UploadAvatar(IFormFile avatar)
+    {
+        var userId = CurrentUserId;
+        if (avatar == null || avatar.Length <= 0)
+            return BadRequest(new { message = "Không tìm thấy file avatar." });
+
+        if (avatar.ContentType == null || !avatar.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { message = "Avatar phải là file ảnh." });
+
+        var cloudName = _config["Cloudinary:CloudName"]?.Trim();
+        var apiKey = _config["Cloudinary:ApiKey"]?.Trim();
+        var apiSecret = _config["Cloudinary:ApiSecret"]?.Trim();
+        var folder = _config["Cloudinary:Folder"]?.Trim();
+
+        if (string.IsNullOrWhiteSpace(cloudName))
+        {
+            return StatusCode(500, new { message = "Chưa cấu hình Cloudinary trên server (CloudName)." });
+        }
+
+        // Fallback: upload có chữ ký (signed upload).
+        if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(apiSecret))
+        {
+            return StatusCode(500, new { message = "Chưa cấu hình Cloudinary trên server (ApiKey/ApiSecret)." });
+        }
+
+        var account = new Account(cloudName, apiKey, apiSecret);
+        var cloudinary = new Cloudinary(account);
+
+        using var signedStream = avatar.OpenReadStream();
+        var uploadParams = new ImageUploadParams
+        {
+            File = new FileDescription(avatar.FileName, signedStream),
+            Folder = string.IsNullOrWhiteSpace(folder) ? "avatars" : folder,
+        };
+
+        dynamic result;
+        try
+        {
+            result = await cloudinary.UploadAsync(uploadParams);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Cloudinary upload exception: " + ex.Message });
+        }
+
+        if (result == null)
+            return StatusCode(500, new { message = "Upload Cloudinary thất bại: result null." });
+
+        if (string.IsNullOrWhiteSpace(result.SecureUrl?.ToString()))
+        {
+            var errMsg = result.Error?.Message ?? result.Error?.ToString() ?? "SecureUrl is null";
+            return StatusCode(500, new { message = "Upload Cloudinary thất bại: " + errMsg });
+        }
+
+        var file = new ShuttleUp.DAL.Models.File
+        {
+            Id = Guid.NewGuid(),
+            FileUrl = result.SecureUrl.ToString(),
+            FileName = avatar.FileName,
+            MimeType = avatar.ContentType,
+            FileSize = (int?)avatar.Length,
+            UploadedByUserId = userId,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.Files.Add(file);
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null) return Unauthorized();
+
+        user.AvatarFileId = file.Id;
+
+        await _db.SaveChangesAsync();
+
+        return Ok(new { avatarUrl = file.FileUrl });
     }
 }
 
