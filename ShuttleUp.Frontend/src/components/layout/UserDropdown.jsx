@@ -28,6 +28,7 @@ export default function UserDropdown({
   iconColor = '#555',
   avatarSize = 33,
 }) {
+  const fallbackAvatar = '/assets/img/profiles/avatar-01.jpg';
   const ref = useRef(null);
   const navigate = useNavigate();
 
@@ -68,8 +69,8 @@ export default function UserDropdown({
         <span className="user-img">
           <img
             className="rounded-circle"
-            src="/assets/img/profiles/avatar-01.jpg"
-            alt={user?.fullName || 'User'}
+            src={user?.avatarUrl || fallbackAvatar}
+            alt={user?.fullName || user?.email || 'User'}
             style={{ width: avatarSize, height: avatarSize, objectFit: 'cover', border: '2px solid rgba(255,255,255,0.55)', borderRadius: '50%' }}
           />
         </span>
@@ -100,8 +101,8 @@ export default function UserDropdown({
         >
           <div className="avatar avatar-sm" style={{ flexShrink: 0 }}>
             <img
-              src="/assets/img/profiles/avatar-01.jpg"
-              alt="User"
+                src={user?.avatarUrl || fallbackAvatar}
+                alt={user?.fullName || user?.email || 'User'}
               className="avatar-img rounded-circle"
               style={{ width: 40, height: 40, objectFit: 'cover', border: '2px solid #e2e8f0', borderRadius: '50%' }}
             />

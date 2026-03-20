@@ -39,6 +39,7 @@ export default function MyProfile() {
   const managerProfile = profile?.managerProfile ?? null;
   const isManager = roles?.includes?.('MANAGER');
   const showManagerInfo = isManager || !!managerProfile;
+  const managerFallbackText = isManager ? 'Chưa cập nhật' : 'Chưa đăng ký';
 
   const u = profile?.user ?? {
     fullName: authUser?.fullName || authUser?.email || '',
@@ -71,7 +72,10 @@ export default function MyProfile() {
     if (s === 'APPROVED') return <span className="badge bg-success">APPROVED</span>;
     if (s === 'REJECTED') return <span className="badge bg-danger">REJECTED</span>;
     if (s === 'PENDING') return <span className="badge bg-warning text-dark">PENDING</span>;
-    if (showManagerInfo) return <span className="badge bg-secondary">CHƯA ĐĂNG KÝ</span>;
+    if (showManagerInfo)
+      return isManager
+        ? <span className="badge bg-success">ĐÃ ĐĂNG KÝ</span>
+        : <span className="badge bg-secondary">CHƯA ĐĂNG KÝ</span>;
     return null;
   })();
 
@@ -219,19 +223,19 @@ export default function MyProfile() {
                     <div className="profile-contact-info mt-3">
                       <div className="contact-information">
                         <h6>CCCD/CMND</h6>
-                        <span>{managerProfile?.idCardNo || 'Chưa đăng ký'}</span>
+                        <span>{managerProfile?.idCardNo || managerFallbackText}</span>
                       </div>
                       <div className="contact-information">
                         <h6>Mã số thuế</h6>
-                        <span>{managerProfile?.taxCode || 'Chưa đăng ký'}</span>
+                        <span>{managerProfile?.taxCode || managerFallbackText}</span>
                       </div>
                       <div className="contact-information">
                         <h6>Giấy phép kinh doanh</h6>
-                        <span>{managerProfile?.businessLicenseNo || 'Chưa đăng ký'}</span>
+                        <span>{managerProfile?.businessLicenseNo || managerFallbackText}</span>
                       </div>
                       <div className="contact-information">
                         <h6>Địa chỉ</h6>
-                        <span>{managerProfile?.address || 'Chưa đăng ký'}</span>
+                        <span>{managerProfile?.address || managerFallbackText}</span>
                       </div>
                     </div>
                   </div>

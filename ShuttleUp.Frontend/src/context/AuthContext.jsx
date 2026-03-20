@@ -19,6 +19,16 @@ export function AuthProvider({ children }) {
     setUser(data.user);
   }, []);
 
+  const updateUser = useCallback((patch) => {
+    setUser((prev) => {
+      const next = { ...(prev || {}), ...(patch || {}) };
+      try {
+        localStorage.setItem('user', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -33,7 +43,7 @@ export function AuthProvider({ children }) {
   );
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, login, logout, hasRole }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, login, updateUser, logout, hasRole }}>
       {children}
     </AuthContext.Provider>
   );

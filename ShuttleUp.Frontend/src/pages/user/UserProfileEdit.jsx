@@ -25,7 +25,7 @@ export default function UserProfileEdit() {
   const fileInputRef = useRef(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [avatarFile, setAvatarFile] = useState(null);
-  const { user: authUser } = useAuth();
+  const { user: authUser, updateUser } = useAuth();
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState(null);
 
   const [loading, setLoading] = useState(true);
@@ -160,14 +160,9 @@ export default function UserProfileEdit() {
         setCurrentAvatarUrl(nextAvatarUrl);
         setAvatarPreview(nextAvatarUrl);
 
-        // Một số nơi render từ localStorage.user (ví dụ layout manager),
-        // nên cập nhật thêm avatarUrl để UI không bị trễ.
+        // Cập nhật AuthContext + localStorage để các nơi render header/dropdown đổi avatar ngay.
         try {
-          const storedUser = localStorage.getItem('user');
-          if (storedUser) {
-            const u = JSON.parse(storedUser);
-            localStorage.setItem('user', JSON.stringify({ ...u, avatarUrl: nextAvatarUrl }));
-          }
+          updateUser({ avatarUrl: nextAvatarUrl });
         } catch {}
       }
 

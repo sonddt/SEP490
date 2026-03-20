@@ -237,20 +237,36 @@ public class ProfileController : ControllerBase
             return StatusCode(500, new { message = "Chưa cấu hình Cloudinary trên server (CloudName)." });
         }
 
-        // Fallback: upload có chữ ký (signed upload).
         if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(apiSecret))
         {
             return StatusCode(500, new { message = "Chưa cấu hình Cloudinary trên server (ApiKey/ApiSecret)." });
         }
 
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null) return Unauthorized();
+
+        // Public ID cố định theo yêu cầu: user_avatar_{userId}
+        var publicId = $"user_avatar_{userId}";
+        var targetFolder = string.IsNullOrWhiteSpace(folder) ? "avatars" : folder;
+
         var account = new Account(cloudName, apiKey, apiSecret);
         var cloudinary = new Cloudinary(account);
 
-        using var signedStream = avatar.OpenReadStream();
+        // Upload + transform trực tiếp để đảm bảo ảnh avatar luôn có kích thước 200x200 và format webp.
+        using var stream = avatar.OpenReadStream();
         var uploadParams = new ImageUploadParams
         {
-            File = new FileDescription(avatar.FileName, signedStream),
-            Folder = string.IsNullOrWhiteSpace(folder) ? "avatars" : folder,
+            File = new FileDescription(avatar.FileName, stream),
+            Folder = targetFolder,
+            PublicId = publicId,
+            Overwrite = true,
+            Invalidate = true,
+            Transformation = new Transformation()
+                .Crop("fill")
+                .Gravity("face")
+                .Width(200)
+                .Height(200)
+                .FetchFormat("webp")
         };
 
         dynamic result;
@@ -266,33 +282,45 @@ public class ProfileController : ControllerBase
         if (result == null)
             return StatusCode(500, new { message = "Upload Cloudinary thất bại: result null." });
 
-        if (string.IsNullOrWhiteSpace(result.SecureUrl?.ToString()))
+        var secureUrl = result.SecureUrl?.ToString();
+        if (string.IsNullOrWhiteSpace(secureUrl))
         {
             var errMsg = result.Error?.Message ?? result.Error?.ToString() ?? "SecureUrl is null";
             return StatusCode(500, new { message = "Upload Cloudinary thất bại: " + errMsg });
         }
 
-        var file = new ShuttleUp.DAL.Models.File
+        // Logic database theo chiến lược: chỉ "ghi nhận" record avatar lần đầu.
+        // (DB hiện tại không có cột Users.AvatarUrl; thay vào đó dùng users.avatar_file_id => files.FileUrl.)
+        if (user.AvatarFileId == null)
         {
-            Id = Guid.NewGuid(),
-            FileUrl = result.SecureUrl.ToString(),
-            FileName = avatar.FileName,
-            MimeType = avatar.ContentType,
-            FileSize = (int?)avatar.Length,
-            UploadedByUserId = userId,
-            CreatedAt = DateTime.UtcNow
-        };
+            var file = new ShuttleUp.DAL.Models.File
+            {
+                Id = Guid.NewGuid(),
+                FileUrl = secureUrl,   // secure_url của phiên bản đã transform
+                FileName = $"avatar_{userId}",
+                MimeType = avatar.ContentType,
+                FileSize = (int?)avatar.Length,
+                UploadedByUserId = userId,
+                CreatedAt = DateTime.UtcNow
+            };
 
-        _db.Files.Add(file);
+            _db.Files.Add(file);
+            user.AvatarFileId = file.Id;
+            await _db.SaveChangesAsync();
+        }
+        else
+        {
+            // URL có thể thay đổi do upload overwrite/versioning; nếu cần đảm bảo avatar "luôn đúng ngay",
+            // có thể update lại FileUrl. Dù không tạo thêm record mới.
+            var existingFile = await _db.Files.FirstOrDefaultAsync(f => f.Id == user.AvatarFileId);
+            if (existingFile != null && existingFile.FileUrl != secureUrl)
+            {
+                existingFile.FileUrl = secureUrl;
+                await _db.SaveChangesAsync();
+            }
+        }
 
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
-        if (user == null) return Unauthorized();
-
-        user.AvatarFileId = file.Id;
-
-        await _db.SaveChangesAsync();
-
-        return Ok(new { avatarUrl = file.FileUrl });
+        return Ok(new { avatarUrl = secureUrl });
     }
 }
 

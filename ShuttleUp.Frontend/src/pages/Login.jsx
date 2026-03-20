@@ -4,6 +4,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import { loginEmail, loginGoogle } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
 import { managerProfileApi } from '../api/managerProfileApi';
+import { profileApi } from '../api/profileApi';
 
 export default function Login() {
   const saved = JSON.parse(localStorage.getItem('shuttleup_remember') || 'null');
@@ -16,10 +17,20 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { login, logout } = useAuth();
+  const { login, logout, updateUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const returnUrl = location.state?.from || null;
+
+  const syncAvatarFromProfile = async () => {
+    try {
+      const me = await profileApi.getMe();
+      const nextAvatarUrl = me?.user?.avatarUrl ?? null;
+      updateUser?.({ avatarUrl: nextAvatarUrl });
+    } catch {
+      // Không ảnh hưởng luồng login; chỉ bỏ qua đồng bộ avatar.
+    }
+  };
 
   // ── Đường dẫn sau khi login xong (ưu tiên returnUrl từ ProtectedRoute) ─────
   const redirectAfterLogin = (roles) => {
@@ -89,6 +100,7 @@ export default function Login() {
         return;
       }
       login(data);
+      await syncAvatarFromProfile();
       if (gate.message) setError(gate.message);
       if (gate.redirect) return navigate(gate.redirect);
       redirectAfterLogin(roles);
@@ -121,6 +133,7 @@ export default function Login() {
         return;
       }
       login(data);
+      await syncAvatarFromProfile();
       if (gate.message) setError(gate.message);
       if (gate.redirect) return navigate(gate.redirect);
       redirectAfterLogin(roles);

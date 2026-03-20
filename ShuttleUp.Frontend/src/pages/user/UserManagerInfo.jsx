@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 
 export default function UserManagerInfo() {
   const { user } = useAuth();
+  const isManager = user?.roles?.includes('MANAGER');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null);
@@ -111,7 +112,9 @@ export default function UserManagerInfo() {
     if (s === 'APPROVED') return <span className="badge bg-success">APPROVED</span>;
     if (s === 'REJECTED') return <span className="badge bg-danger">REJECTED</span>;
     if (s === 'PENDING') return <span className="badge bg-warning text-dark">PENDING</span>;
-    return <span className="badge bg-secondary">CHƯA ĐĂNG KÝ</span>;
+    return isManager
+      ? <span className="badge bg-success">ĐÃ ĐĂNG KÝ</span>
+      : <span className="badge bg-secondary">CHƯA ĐĂNG KÝ</span>;
   })();
 
   return (

@@ -4,6 +4,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import { registerEmail, loginGoogle } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
 import { managerProfileApi } from '../api/managerProfileApi';
+import { profileApi } from '../api/profileApi';
 
 export default function Register() {
   const [activeTab, setActiveTab] = useState('user');
@@ -21,7 +22,7 @@ export default function Register() {
     agreedToTerms: false,
   });
 
-  const { login } = useAuth();
+  const { login, updateUser } = useAuth();
   const navigate = useNavigate();
 
   const isValidGmail = (email) => {
@@ -110,6 +111,11 @@ export default function Register() {
         isManagerRoleRequested: activeTab === 'manager',
       });
       login(data);
+      // Đồng bộ avatar sau khi login để Header không bị quay về ảnh mock.
+      try {
+        const me = await profileApi.getMe();
+        updateUser?.({ avatarUrl: me?.user?.avatarUrl ?? null });
+      } catch {}
       if (activeTab === 'manager') {
         // Manager: chuyển sang trang hoàn thiện hồ sơ quản lý (PENDING)
         navigate('/manager/profile-request');
@@ -144,6 +150,10 @@ export default function Register() {
         roles: getRoles(),
       });
       login(data);
+      try {
+        const me = await profileApi.getMe();
+        updateUser?.({ avatarUrl: me?.user?.avatarUrl ?? null });
+      } catch {}
       // Nếu đang ở tab Manager thì coi như user đang yêu cầu đăng ký làm Manager → chuyển sang trang hồ sơ
       if (activeTab === 'manager') {
         // đảm bảo có hồ sơ PENDING (backend sẽ tạo nếu cần)
