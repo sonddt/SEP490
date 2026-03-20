@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import axiosClient from '../../api/axiosClient';
 
 const COURT_TYPES = ['Đơn', 'Đôi', 'Đơn / Đôi'];
 const SURFACE_TYPES = ['Gỗ PU', 'Thảm nhựa PVC', 'Xi-măng', 'Thảm cao su'];
@@ -25,7 +26,7 @@ function SectionHeader({ icon, iconBg, iconColor, title, subtitle }) {
 }
 
 export default function ManagerAddCourt() {
-  const { venueId } = useParams();
+  const { venueId, courtId } = useParams();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
@@ -38,21 +39,236 @@ export default function ManagerAddCourt() {
     DAYS.map(() => ({ enabled: true, open: '06:00', close: '22:00' }))
   );
   const [imageFiles, setImageFiles] = useState([]);
+  const [existingImageUrls, setExistingImageUrls] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const setField = (key, val) => setForm((p) => ({ ...p, [key]: val }));
   const updateDay = (i, key, val) => setAvailability((prev) => prev.map((d, idx) => idx === i ? { ...d, [key]: val } : d));
-  const handleImageChange = (e) => setImageFiles((prev) => [...prev, ...Array.from(e.target.files)]);
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    // Chọn ảnh mới thì coi như replace gallery => bỏ ảnh cũ để tránh hiểu nhầm.
+    setExistingImageUrls([]);
+    setImageFiles((prev) => [...prev, ...files]);
+  };
   const removeImage = (i) => setImageFiles((prev) => prev.filter((_, idx) => idx !== i));
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      if (!courtId) return;
+      try {
+        setLoading(true);
+        const res = await axiosClient.get(`/manager/venues/${venueId}/courts/${courtId}`);
+        if (!mounted) return;
+
+        const name = res?.name ?? res?.Name ?? '';
+        const sportType = res?.sportType ?? res?.SportType ?? '';
+        const surface = res?.surface ?? res?.Surface ?? '';
+        const maxGuest = res?.maxGuest ?? res?.MaxGuest ?? res?.maxGuests ?? res?.MaxGuests ?? '';
+        const description = res?.description ?? res?.Description ?? '';
+        const priceSlots = res?.priceSlots ?? res?.PriceSlots ?? [];
+        const openHours = res?.openHours ?? res?.OpenHours ?? [];
+        const images = res?.Images ?? res?.images ?? [];
+
+        // Prefill basic
+        setForm((p) => ({
+          ...p,
+          courtName: name,
+          courtType: sportType || p.courtType,
+          surface: surface || p.surface,
+          maxGuests: maxGuest || p.maxGuests,
+          description: description || '',
+        }));
+
+        // Prefill images gallery (edit page)
+        if (Array.isArray(images)) setExistingImageUrls(images);
+
+        // Prefill open hours
+        setAvailability((prev) => {
+          const next = [...prev];
+          for (const oh of openHours || []) {
+            const dayIdx = oh?.dayOfWeek ?? oh?.DayOfWeek;
+            if (typeof dayIdx !== 'number') continue;
+            const enabled = oh?.enabled ?? oh?.Enabled ?? false;
+            const open = oh?.openTime ?? oh?.OpenTime;
+            const close = oh?.closeTime ?? oh?.CloseTime;
+            if (dayIdx >= 0 && dayIdx < next.length) {
+              next[dayIdx] = {
+                enabled,
+                open: open || next[dayIdx].open,
+                close: close || next[dayIdx].close,
+              };
+            }
+          }
+          return next;
+        });
+
+        // Prefill price + peak pricing (heuristic)
+        const getNum = (v) => {
+          const n = typeof v === 'number' ? v : Number(v);
+          return Number.isFinite(n) ? n : null;
+        };
+        const weekday = (priceSlots || []).filter((s) => {
+          const isWeekend = s?.isWeekend ?? s?.IsWeekend ?? false;
+          return isWeekend !== true;
+        });
+        const weekend = (priceSlots || []).filter((s) => {
+          const isWeekend = s?.isWeekend ?? s?.IsWeekend ?? false;
+          return isWeekend === true;
+        });
+
+        const weekdayPrices = weekday.map((s) => getNum(s?.price ?? s?.Price)).filter((n) => n !== null);
+        const weekendPrices = weekend.map((s) => getNum(s?.price ?? s?.Price)).filter((n) => n !== null);
+
+        const uniqueWeekday = [...new Set(weekdayPrices)];
+        uniqueWeekday.sort((a, b) => a - b);
+
+        const minWeekday = uniqueWeekday.length ? uniqueWeekday[0] : null;
+        const maxWeekday = uniqueWeekday.length ? uniqueWeekday[uniqueWeekday.length - 1] : null;
+
+        let enablePeakPricing = false;
+        let pricePeakHour = '';
+        let peakHourStart = '17:00';
+        let peakHourEnd = '21:00';
+
+        if (minWeekday != null && maxWeekday != null && maxWeekday > minWeekday) {
+          enablePeakPricing = true;
+          pricePeakHour = String(maxWeekday);
+
+          const peakSlots = weekday.filter((s) => {
+            const p = getNum(s?.price ?? s?.Price);
+            return p === maxWeekday;
+          });
+
+          const starts = peakSlots.map((s) => s?.startTime ?? s?.StartTime).filter(Boolean);
+          const ends = peakSlots.map((s) => s?.endTime ?? s?.EndTime).filter(Boolean);
+          peakHourStart = starts.length ? starts.reduce((a, b) => a < b ? a : b) : peakHourStart;
+          peakHourEnd = ends.length ? ends.reduce((a, b) => a > b ? a : b) : peakHourEnd;
+        }
+
+        const priceWeekend = weekendPrices.length ? String(Math.min(...weekendPrices)) : '';
+
+        setForm((p) => ({
+          ...p,
+          courtName: name,
+          courtType: sportType || p.courtType,
+          surface: surface || p.surface,
+          maxGuests: maxGuest || p.maxGuests,
+          description: description || '',
+          pricePerHour: minWeekday != null ? String(minWeekday) : p.pricePerHour,
+          priceWeekend: weekendPrices.length ? String(Math.min(...weekendPrices)) : p.priceWeekend,
+          enablePeakPricing,
+          pricePeakHour: enablePeakPricing ? String(maxWeekday) : p.pricePeakHour,
+          peakHourStart,
+          peakHourEnd,
+        }));
+      } catch (e) {
+        console.error('Failed to load court details', e);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    load();
+    return () => { mounted = false; };
+  }, [courtId, venueId]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitting(true);
-    console.log({ venueId, form, availability, imageFiles });
-    setTimeout(() => {
+
+    try {
+      setSubmitting(true);
+
+      const toNum = (v) => {
+        const n = typeof v === 'number' ? v : Number(v);
+        return Number.isFinite(n) ? n : null;
+      };
+
+      const pricePerHour = toNum(form.pricePerHour);
+      const pricePeakHour = toNum(form.pricePeakHour);
+      const priceWeekendCommon = toNum(form.priceWeekend);
+      const priceWeekend = priceWeekendCommon == null || priceWeekendCommon === 0 ? pricePerHour : priceWeekendCommon;
+
+      const timeToMinutes = (t) => {
+        if (!t) return null;
+        const [hh, mm] = t.split(':').map((x) => Number(x));
+        if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+        return hh * 60 + mm;
+      };
+
+      const priceSlots = [];
+      const peakStartMin = timeToMinutes(form.peakHourStart);
+      const peakEndMin = timeToMinutes(form.peakHourEnd);
+
+      const pushSlot = (startTime, endTime, price, isWeekend) => {
+        if (!startTime || !endTime) return;
+        const s = timeToMinutes(startTime);
+        const e = timeToMinutes(endTime);
+        if (s == null || e == null) return;
+        if (s >= e) return;
+        priceSlots.push({ startTime, endTime, price, isWeekend });
+      };
+
+      if (!form.enablePeakPricing || peakStartMin == null || peakEndMin == null || peakStartMin >= peakEndMin) {
+        pushSlot('00:00', '23:59', pricePerHour, false);
+        pushSlot('00:00', '23:59', priceWeekend, true);
+      } else {
+        // Non-peak weekday
+        pushSlot('00:00', form.peakHourStart, pricePerHour, false);
+        pushSlot(form.peakHourEnd, '23:59', pricePerHour, false);
+        // Peak weekday
+        pushSlot(form.peakHourStart, form.peakHourEnd, pricePeakHour, false);
+
+        // Non-peak weekend
+        pushSlot('00:00', form.peakHourStart, priceWeekend, true);
+        pushSlot(form.peakHourEnd, '23:59', priceWeekend, true);
+        // Peak weekend
+        pushSlot(form.peakHourStart, form.peakHourEnd, pricePeakHour, true);
+      }
+
+      const openHours = availability.map((d, i) => ({
+        dayOfWeek: i,
+        enabled: !!d.enabled,
+        openTime: d.enabled ? d.open : null,
+        closeTime: d.enabled ? d.close : null,
+      }));
+
+      const request = {
+        name: form.courtName,
+        sportType: form.courtType,
+        surface: form.surface,
+        maxGuests: toNum(form.maxGuests),
+        description: form.description || null,
+        isActive: true,
+        priceSlots,
+        openHours,
+      };
+
+      let savedCourtId = courtId;
+      if (courtId) {
+        await axiosClient.put(`/manager/venues/${venueId}/courts/${courtId}`, request);
+      } else {
+        const created = await axiosClient.post(`/manager/venues/${venueId}/courts`, request);
+        savedCourtId = created?.id ?? created?.Id ?? savedCourtId;
+      }
+
+      // Upload gallery images (if any). Backend will replace current court files.
+      if (imageFiles?.length > 0 && savedCourtId) {
+        const fd = new FormData();
+        for (const f of imageFiles) {
+          fd.append('imageFiles', f);
+        }
+
+        await axiosClient.post(`/manager/venues/${venueId}/courts/${savedCourtId}/files`, fd);
+      }
+
+      navigate(`/manager/venues/${venueId}/courts`);
+    } catch (err) {
+      console.error('Submit court failed', err);
+    } finally {
       setSubmitting(false);
-      navigate(`/manager/venues/${venueId || 'v1'}/courts`);
-    }, 500);
+    }
   };
 
   return (
@@ -222,7 +438,7 @@ export default function ManagerAddCourt() {
               <small style={{ color: '#94a3b8' }}>PNG, JPG, JPEG – tối đa 5MB/ảnh</small>
               <input type="file" accept="image/*" multiple onChange={handleImageChange} />
             </div>
-            {imageFiles.length > 0 && (
+            {imageFiles.length > 0 ? (
               <div className="d-flex flex-wrap gap-2">
                 {imageFiles.map((file, i) => (
                   <div key={i} style={{ position: 'relative' }}>
@@ -240,6 +456,18 @@ export default function ManagerAddCourt() {
                   </div>
                 ))}
               </div>
+            ) : (
+              <div className="d-flex flex-wrap gap-2">
+                {(existingImageUrls?.length ? existingImageUrls : ['/assets/img/booking/booking-01.jpg']).map((url, i) => (
+                  <div key={i} style={{ position: 'relative' }}>
+                    <img
+                      src={url}
+                      alt=""
+                      style={{ width: 88, height: 88, objectFit: 'cover', borderRadius: 8, border: '1px solid #e2e8f0' }}
+                    />
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
@@ -250,10 +478,10 @@ export default function ManagerAddCourt() {
             {submitting ? (
               <><span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" /> Đang xử lý...</>
             ) : (
-              <><i className="feather-plus-circle" /> Thêm sân</>
+              <>{courtId ? <><i className="feather-edit-2" /> Cập nhật sân</> : <><i className="feather-plus-circle" /> Thêm sân</>}</>
             )}
           </button>
-          <Link to={`/manager/venues/${venueId || 'v1'}/courts`} className="btn btn-outline-secondary">
+          <Link to={`/manager/venues/${venueId}/courts`} className="btn btn-outline-secondary">
             Huỷ
           </Link>
         </div>

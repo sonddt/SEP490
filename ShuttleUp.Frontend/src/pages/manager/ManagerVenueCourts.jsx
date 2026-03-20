@@ -1,13 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
-const MOCK_COURTS = [
-  { id: 1, venueId: 'v1', name: 'Sân 1', type: 'Đơn / Đôi', image: '/assets/img/booking/booking-01.jpg', pricePerHour: 120000, maxGuest: 4, surface: 'Gỗ PU', status: true, addedOn: '01/03/2026' },
-  { id: 2, venueId: 'v1', name: 'Sân 2', type: 'Đơn / Đôi', image: '/assets/img/booking/booking-02.jpg', pricePerHour: 120000, maxGuest: 4, surface: 'Gỗ PU', status: true, addedOn: '01/03/2026' },
-  { id: 3, venueId: 'v1', name: 'Sân 3', type: 'Đôi', image: '/assets/img/booking/booking-03.jpg', pricePerHour: 160000, maxGuest: 6, surface: 'Thảm nhựa', status: true, addedOn: '05/03/2026' },
-  { id: 4, venueId: 'v1', name: 'Sân 4', type: 'Đơn', image: '/assets/img/booking/booking-04.jpg', pricePerHour: 100000, maxGuest: 2, surface: 'Xi-măng', status: false, addedOn: '10/03/2026' },
-  { id: 5, venueId: 'v1', name: 'Sân 5', type: 'Đơn / Đôi', image: '/assets/img/booking/booking-05.jpg', pricePerHour: 120000, maxGuest: 4, surface: 'Gỗ PU', status: false, addedOn: '12/03/2026' },
-];
+import axiosClient from '../../api/axiosClient';
 
 function ActionMenu({ court, venueId, onDelete }) {
   const [open, setOpen] = useState(false);
@@ -45,20 +39,50 @@ const TYPE_COLORS = { 'Đơn': '#2563eb', 'Đôi': '#7c3aed', 'Đơn / Đôi': '
 
 export default function ManagerVenueCourts() {
   const { venueId } = useParams();
-  const [courts, setCourts] = useState(MOCK_COURTS);
+  const [courts, setCourts] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [filterTab, setFilterTab] = useState('all');
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('default');
   const [deleteModal, setDeleteModal] = useState(null);
 
-  const toggleStatus = (id) => {
-    setCourts((prev) => prev.map((c) => c.id === id ? { ...c, status: !c.status } : c));
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        setLoading(true);
+        const res = await axiosClient.get(`/manager/venues/${venueId}/courts?page=1&pageSize=100`);
+        if (!mounted) return;
+        setCourts(res?.items || res?.data?.items || []);
+      } catch (e) {
+        console.error('Failed to load courts', e);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    if (venueId) load();
+    return () => { mounted = false; };
+  }, [venueId]);
+
+  const toggleStatus = async (court) => {
+    try {
+      const nextStatus = !court.status;
+      await axiosClient.patch(`/manager/venues/${venueId}/courts/${court.id}/status`, { isActive: nextStatus });
+      setCourts((prev) => prev.map((c) => c.id === court.id ? { ...c, status: nextStatus } : c));
+    } catch (e) {
+      console.error('Failed to update court status', e);
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteModal) return;
-    setCourts((prev) => prev.filter((c) => c.id !== deleteModal.id));
-    setDeleteModal(null);
+    try {
+      await axiosClient.delete(`/manager/venues/${venueId}/courts/${deleteModal.id}`);
+      setCourts((prev) => prev.filter((c) => c.id !== deleteModal.id));
+      setDeleteModal(null);
+    } catch (e) {
+      console.error('Failed to delete court', e);
+    }
   };
 
   let filtered = courts.filter((c) => {
@@ -94,7 +118,7 @@ export default function ManagerVenueCourts() {
             </button>
           ))}
         </div>
-        <Link to={`/manager/venues/${venueId || 'v1'}/courts/add`} className="btn btn-secondary">
+        <Link to={`/manager/venues/${venueId}/courts/add`} className="btn btn-secondary">
           <i className="feather-plus-circle" />Thêm sân mới
         </Link>
       </div>
@@ -149,11 +173,23 @@ export default function ManagerVenueCourts() {
                     </td>
                   </tr>
                 )}
-                {filtered.map((court) => (
+                {loading && (
+                  <tr>
+                    <td colSpan={8} className="text-center py-5" style={{ color: '#94a3b8' }}>
+                      Đang tải dữ liệu...
+                    </td>
+                  </tr>
+                )}
+                {!loading && filtered.map((court) => (
                   <tr key={court.id}>
                     <td>
                       <div className="d-flex align-items-center gap-3">
-                        <img className="mgr-court-img" src={court.image} alt="" onError={(e) => { e.target.src = '/assets/img/booking/booking-01.jpg'; }} />
+                        <img
+                          className="mgr-court-img"
+                          src={court.image || '/assets/img/booking/booking-01.jpg'}
+                          alt=""
+                          onError={(e) => { e.target.src = '/assets/img/booking/booking-01.jpg'; }}
+                        />
                         <span className="mgr-court-name">{court.name}</span>
                       </div>
                     </td>
@@ -172,13 +208,19 @@ export default function ManagerVenueCourts() {
                     <td>
                       <div className="mgr-toggle">
                         <div className="status-toggle d-inline-flex align-items-center">
-                          <input type="checkbox" id={`cs_${court.id}`} className="check" checked={court.status} onChange={() => toggleStatus(court.id)} />
+                          <input
+                            type="checkbox"
+                            id={`cs_${court.id}`}
+                            className="check"
+                            checked={court.status}
+                            onChange={() => toggleStatus(court)}
+                          />
                           <label htmlFor={`cs_${court.id}`} className="checktoggle">checkbox</label>
                         </div>
                       </div>
                     </td>
                     <td className="text-end">
-                      <ActionMenu court={court} venueId={venueId || 'v1'} onDelete={setDeleteModal} />
+                      <ActionMenu court={court} venueId={venueId} onDelete={setDeleteModal} />
                     </td>
                   </tr>
                 ))}

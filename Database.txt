@@ -8,6 +8,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 
 -- FILE MAPPINGS
 DROP TABLE IF EXISTS report_files;
+DROP TABLE IF EXISTS court_files;
 DROP TABLE IF EXISTS venue_files;
 DROP TABLE IF EXISTS venue_review_files;
 DROP TABLE IF EXISTS chat_message_files;
@@ -38,6 +39,7 @@ DROP TABLE IF EXISTS payments;
 
 -- BOOKING
 DROP TABLE IF EXISTS court_blocks;
+DROP TABLE IF EXISTS court_open_hours;
 DROP TABLE IF EXISTS booking_items;
 DROP TABLE IF EXISTS bookings;
 
@@ -133,6 +135,9 @@ CREATE TABLE courts (
     venue_id CHAR(36),
     name VARCHAR(100),
     sport_type VARCHAR(50),
+    surface VARCHAR(50),
+    max_guest INT,
+    description TEXT,
     is_active BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE
 );
@@ -154,6 +159,16 @@ CREATE TABLE court_prices (
     price DECIMAL(15,2),
     is_weekend BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (court_id) REFERENCES courts(id) ON DELETE CASCADE
+);
+
+CREATE TABLE court_open_hours (
+    id CHAR(36) PRIMARY KEY,
+    court_id CHAR(36),
+    day_of_week INT,
+    open_time TIME NULL,
+    close_time TIME NULL,
+    FOREIGN KEY (court_id) REFERENCES courts(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_court_open_hours (court_id, day_of_week)
 );
 
 -- ======================================================================
@@ -413,6 +428,14 @@ CREATE TABLE venue_files (
     file_id CHAR(36),
     PRIMARY KEY(venue_id,file_id),
     FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE,
+    FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
+);
+
+CREATE TABLE court_files (
+    court_id CHAR(36),
+    file_id CHAR(36),
+    PRIMARY KEY(court_id,file_id),
+    FOREIGN KEY (court_id) REFERENCES courts(id) ON DELETE CASCADE,
     FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
 );
 

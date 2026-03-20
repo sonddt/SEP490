@@ -58,6 +58,8 @@ public partial class ShuttleUpDbContext : DbContext
 
     public virtual DbSet<VenueOpenHour> VenueOpenHours { get; set; }
 
+    public virtual DbSet<CourtOpenHour> CourtOpenHours { get; set; }
+
     public virtual DbSet<VenueReview> VenueReviews { get; set; }
 
     public virtual DbSet<ViolationReport> ViolationReports { get; set; }
@@ -261,12 +263,19 @@ public partial class ShuttleUpDbContext : DbContext
             entity.HasIndex(e => e.VenueId, "venue_id");
 
             entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Description)
+                .HasColumnType("text")
+                .HasColumnName("description");
+            entity.Property(e => e.MaxGuest).HasColumnName("max_guest");
             entity.Property(e => e.IsActive)
                 .HasDefaultValueSql("'1'")
                 .HasColumnName("is_active");
             entity.Property(e => e.Name)
                 .HasMaxLength(100)
                 .HasColumnName("name");
+            entity.Property(e => e.Surface)
+                .HasMaxLength(50)
+                .HasColumnName("surface");
             entity.Property(e => e.SportType)
                 .HasMaxLength(50)
                 .HasColumnName("sport_type");
@@ -276,6 +285,32 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasForeignKey(d => d.VenueId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("courts_ibfk_1");
+
+            entity.HasMany(d => d.CourtOpenHours)
+                .WithOne(p => p.Court)
+                .HasForeignKey(d => d.CourtId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("court_open_hours_ibfk_1");
+
+            entity.HasMany(d => d.Files).WithMany(p => p.Courts)
+                .UsingEntity<Dictionary<string, object>>(
+                    "CourtFile",
+                    r => r.HasOne<File>().WithMany()
+                        .HasForeignKey("FileId")
+                        .HasConstraintName("court_files_ibfk_2"),
+                    l => l.HasOne<Court>().WithMany()
+                        .HasForeignKey("CourtId")
+                        .HasConstraintName("court_files_ibfk_1"),
+                    j =>
+                    {
+                        j.HasKey("CourtId", "FileId")
+                            .HasName("PRIMARY")
+                            .HasAnnotation("MySql:IndexPrefixLength", new[] { 0, 0 });
+                        j.ToTable("court_files");
+                        j.HasIndex(new[] { "FileId" }, "file_id");
+                        j.IndexerProperty<Guid>("CourtId").HasColumnName("court_id");
+                        j.IndexerProperty<Guid>("FileId").HasColumnName("file_id");
+                    });
         });
 
         modelBuilder.Entity<CourtBlock>(entity =>
@@ -335,6 +370,34 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasForeignKey(d => d.CourtId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("court_prices_ibfk_1");
+        });
+
+        modelBuilder.Entity<CourtOpenHour>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("court_open_hours");
+
+            entity.HasIndex(e => e.CourtId, "court_id");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CourtId).HasColumnName("court_id");
+            entity.Property(e => e.DayOfWeek).HasColumnName("day_of_week");
+
+            entity.Property(e => e.OpenTime)
+                .HasColumnType("time")
+                .HasColumnName("open_time");
+
+            entity.Property(e => e.CloseTime)
+                .HasColumnType("time")
+                .HasColumnName("close_time");
+
+            entity.HasOne(d => d.Court).WithMany(p => p.CourtOpenHours)
+                .HasForeignKey(d => d.CourtId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("court_open_hours_ibfk_1");
+
+            entity.HasIndex(e => new { e.CourtId, e.DayOfWeek }, "uq_court_open_hours");
         });
 
         modelBuilder.Entity<FavoriteVenue>(entity =>

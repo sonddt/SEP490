@@ -32,4 +32,6 @@ public partial class File
     public virtual ICollection<VenueReview> Reviews { get; set; } = new List<VenueReview>();
 
     public virtual ICollection<Venue> Venues { get; set; } = new List<Venue>();
+
+    public virtual ICollection<Court> Courts { get; set; } = new List<Court>();
 }

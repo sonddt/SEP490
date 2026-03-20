@@ -28,12 +28,42 @@ public class ManagerCourtPriceSlotDto
     public bool IsWeekend { get; set; }
 }
 
+public class ManagerCourtOpenHourDto
+{
+    /// <summary>
+    /// Thứ trong tuần, mapping theo FE (Thứ 2 -> 0 ... Chủ nhật -> 6).
+    /// </summary>
+    [Required]
+    public int DayOfWeek { get; set; }
+
+    /// <summary>
+    /// Nếu false: bỏ qua OpenTime/CloseTime.
+    /// </summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>
+    /// Định dạng "HH:mm".
+    /// </summary>
+    public string? OpenTime { get; set; }
+
+    /// <summary>
+    /// Định dạng "HH:mm".
+    /// </summary>
+    public string? CloseTime { get; set; }
+}
+
 public class ManagerCourtUpsertDto
 {
     [Required]
     public string Name { get; set; } = null!;
 
     public string? SportType { get; set; }
+
+    public string? Surface { get; set; }
+
+    public int? MaxGuests { get; set; }
+
+    public string? Description { get; set; }
 
     /// <summary>
     /// Trạng thái chung của court (mặc định là hoạt động).
@@ -44,5 +74,10 @@ public class ManagerCourtUpsertDto
     /// Danh sách cấu hình giá theo khung giờ trong ngày.
     /// </summary>
     public List<ManagerCourtPriceSlotDto> PriceSlots { get; set; } = new();
+
+    /// <summary>
+    /// Lịch mở cửa theo ngày trong tuần.
+    /// </summary>
+    public List<ManagerCourtOpenHourDto> OpenHours { get; set; } = new();
 }
 

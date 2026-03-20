@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import axiosClient from '../../api/axiosClient';
 
 const MOCK_VENUES = [
   { id: 'v1', name: 'ShuttleUp Quận 7', address: '12 Nguyễn Thị Thập, Q.7, TP.HCM', image: '/assets/img/venue/venue-01.jpg', courtCount: 3, activeCourts: 3, totalBookingsThisMonth: 42, revenueThisMonth: 12400000, status: 'active', createdAt: '01/01/2026' },
@@ -150,7 +151,8 @@ function Pagination({ page, total, pageSize, onChange }) {
 
 /* ── Main ──────────────────────────────────────────────────────────────── */
 export default function ManagerVenueList() {
-  const [venues, setVenues] = useState(MOCK_VENUES);
+  const [venues, setVenues] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch]           = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [sort, setSort]               = useState('name_asc');
@@ -158,9 +160,48 @@ export default function ManagerVenueList() {
   const [deleteModal, setDeleteModal] = useState(null);
   const [viewMode, setViewMode]       = useState('grid'); // 'grid' | 'list'
 
-  const totalCourts   = venues.reduce((s, v) => s + v.courtCount, 0);
-  const totalBookings = venues.reduce((s, v) => s + v.totalBookingsThisMonth, 0);
-  const totalRevenue  = venues.reduce((s, v) => s + v.revenueThisMonth, 0);
+  const totalCourts   = venues.reduce((s, v) => s + (v.courtCount ?? 0), 0);
+  const totalBookings = venues.reduce((s, v) => s + (v.totalBookingsThisMonth ?? 0), 0);
+  const totalRevenue  = venues.reduce((s, v) => s + (v.revenueThisMonth ?? 0), 0);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        setLoading(true);
+        const res = await axiosClient.get(`/manager/venues?page=1&pageSize=100`);
+        const items = res?.items ?? res?.data?.items ?? [];
+
+        const mapped = (items || []).map((v) => {
+          const approval = (v?.approvalStatus ?? '').toUpperCase();
+          const isPending = approval === 'PENDING';
+          const status = isPending ? 'pending' : (v?.isActive ? 'active' : 'inactive');
+
+          return {
+            id: v?.id,
+            name: v?.name ?? '',
+            address: v?.address ?? '',
+            image: '/assets/img/venue/venue-01.jpg',
+            courtCount: 0,
+            activeCourts: 0,
+            totalBookingsThisMonth: 0,
+            revenueThisMonth: 0,
+            status,
+            createdAt: v?.createdAt ?? '',
+          };
+        });
+
+        if (mounted) setVenues(mapped);
+      } catch (e) {
+        console.error('Failed to load managed venues', e);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    load();
+    return () => { mounted = false; };
+  }, []);
 
   const sorted = useMemo(() => {
     const arr = venues.filter((v) => {
