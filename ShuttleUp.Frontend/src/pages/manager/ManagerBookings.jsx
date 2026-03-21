@@ -11,8 +11,7 @@ const TABS = [
   { key: 'PENDING',   label: 'Chờ duyệt',  icon: 'feather-clock' },
   { key: 'UPCOMING',  label: 'Sắp tới',     icon: 'feather-calendar' },
   { key: 'COMPLETED', label: 'Hoàn thành',  icon: 'feather-check-circle' },
-  { key: 'REJECTED',  label: 'Từ chối',     icon: 'feather-x-circle' },
-  { key: 'CANCELLED', label: 'Đã huỷ',      icon: 'feather-slash' },
+  { key: 'CANCELLED', label: 'Đã huỷ / Từ chối', icon: 'feather-x-circle' },
 ];
 
 const WEEKDAYS = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
@@ -52,11 +51,20 @@ function mapManagerBookingFromApi(b) {
   const created = b.createdAt ? new Date(b.createdAt) : start;
   const createdAt = `${pad2(created.getDate())}/${pad2(created.getMonth() + 1)}/${created.getFullYear()} ${pad2(created.getHours())}:${pad2(created.getMinutes())}`;
 
+  const contact = (b.contactName || '').trim();
+  const account = (b.playerName || '').trim();
+  const player = contact || account || '—';
+  const playerAccountSub =
+    contact && account && contact.localeCompare(account, undefined, { sensitivity: 'accent' }) !== 0
+      ? account
+      : null;
+
   return {
     bookingId: b.bookingId,
     id: b.bookingId,
     bookingCode: b.bookingCode,
-    player: b.playerName || '—',
+    player,
+    playerAccountSub,
     playerImg: b.playerAvatarUrl || '/assets/img/profiles/avatar-01.jpg',
     playerPhone: b.playerPhone || '—',
     court: courtLabel,
@@ -107,10 +115,21 @@ function ActionDropdown({ children }) {
   );
 }
 
+function isHttpProofUrl(url) {
+  return typeof url === 'string' && /^https?:\/\//i.test(url.trim());
+}
+
 /* ── Payment Proof Thumb ────────────────────────────────────────────────── */
 function ProofThumb({ img }) {
   const [show, setShow] = useState(false);
   if (!img) return null;
+  if (!isHttpProofUrl(img)) {
+    return (
+      <span className="text-muted small d-inline-block" style={{ maxWidth: 200 }}>
+        Môi trường dev — chưa có ảnh CK (Cloudinary)
+      </span>
+    );
+  }
   return (
     <>
       <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setShow(true)} style={{ padding: '4px 8px', fontSize: 12 }}>
@@ -141,27 +160,23 @@ export default function ManagerBookings() {
   const [rejectModal, setRejectModal] = useState(null);
   const [toastMsg, setToastMsg]   = useState(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const data = await getManagerBookings();
-        if (!cancelled) {
-          setBookings(Array.isArray(data) ? data.map(mapManagerBookingFromApi) : []);
-        }
-      } catch {
-        if (!cancelled) {
-          setBookings([]);
-          setToastMsg({ msg: 'Không tải được danh sách đặt sân.', type: 'warning' });
-          setTimeout(() => setToastMsg(null), 3000);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
+  const fetchBookings = useCallback(async (showTableLoading = true) => {
+    if (showTableLoading) setLoading(true);
+    try {
+      const data = await getManagerBookings();
+      setBookings(Array.isArray(data) ? data.map(mapManagerBookingFromApi) : []);
+    } catch {
+      setBookings([]);
+      setToastMsg({ msg: 'Không tải được danh sách đặt sân.', type: 'warning' });
+      setTimeout(() => setToastMsg(null), 3000);
+    } finally {
+      if (showTableLoading) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchBookings(true);
+  }, [fetchBookings]);
 
   useEffect(() => { setPage(1); }, [activeTab, search, timeFilter, sortBy]);
 
@@ -176,6 +191,7 @@ export default function ManagerBookings() {
       const q = search.toLowerCase().trim();
       list = list.filter(b =>
         b.player.toLowerCase().includes(q)
+        || (b.playerAccountSub && b.playerAccountSub.toLowerCase().includes(q))
         || b.court.toLowerCase().includes(q)
         || b.venue.toLowerCase().includes(q)
         || String(b.id).toLowerCase().includes(q)
@@ -200,25 +216,36 @@ export default function ManagerBookings() {
   const handleAccept = useCallback(async (bookingId) => {
     try {
       await patchManagerBookingStatus(bookingId, { status: 'CONFIRMED' });
-      setBookings((prev) => prev.map((b) => (b.bookingId === bookingId ? { ...b, status: 'UPCOMING' } : b)));
+      await fetchBookings(false);
       showToast('Đã chấp nhận yêu cầu!');
     } catch {
       showToast('Duyệt đơn thất bại. Vui lòng thử lại.', 'warning');
+      await fetchBookings(false);
       throw new Error('accept failed');
     }
-  }, []);
+  }, [fetchBookings]);
   const handleRejectConfirm = useCallback(async (bookingId, reason) => {
     try {
       await patchManagerBookingStatus(bookingId, { status: 'CANCELLED', reason });
-      setBookings((prev) => prev.map((b) => (b.bookingId === bookingId ? { ...b, status: 'REJECTED', rejectReason: reason } : b)));
       setRejectModal(null);
+      await fetchBookings(false);
       showToast('Đã từ chối yêu cầu.', 'warning');
     } catch {
       showToast('Từ chối thất bại. Vui lòng thử lại.', 'warning');
+      await fetchBookings(false);
       throw new Error('reject failed');
     }
-  }, []);
-  const handleCancel = useCallback((id) => { setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'CANCELLED' } : b)); showToast('Đã huỷ lịch.', 'info'); }, []);
+  }, [fetchBookings]);
+  const handleCancel = useCallback(async (bookingId) => {
+    try {
+      await patchManagerBookingStatus(bookingId, { status: 'CANCELLED' });
+      await fetchBookings(false);
+      showToast('Đã huỷ lịch.', 'info');
+    } catch {
+      showToast('Huỷ lịch thất bại. Vui lòng thử lại.', 'warning');
+      await fetchBookings(false);
+    }
+  }, [fetchBookings]);
 
   const tabRevenue = useMemo(() => bookings.filter(b => b.status === activeTab && b.paymentStatus === 'PAID').reduce((s, b) => s + b.amount, 0), [bookings, activeTab]);
 
@@ -392,6 +419,11 @@ export default function ManagerBookings() {
                           </span>
                           <span className="table-head-name flex-grow-1">
                             <a href="#!" onClick={e => e.preventDefault()}>{b.player}</a>
+                            {b.playerAccountSub && (
+                              <span className="d-block text-muted" style={{ fontSize: 11 }}>
+                                TK: {b.playerAccountSub}
+                              </span>
+                            )}
                             <span>{b.playerPhone}</span>
                           </span>
                         </h2>
@@ -436,7 +468,7 @@ export default function ManagerBookings() {
                             </>
                           )}
                           {b.status === 'UPCOMING' && (
-                            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => handleCancel(b.id)}>
+                            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => handleCancel(b.bookingId)}>
                               <i className="feather-slash" /> Huỷ lịch
                             </button>
                           )}

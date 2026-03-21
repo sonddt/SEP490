@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
@@ -30,14 +31,12 @@ public class BookingsController : ControllerBase
         _env = env;
     }
 
-    private Guid CurrentUserId
+    private bool TryGetCurrentUserId(out Guid userId)
     {
-        get
-        {
-            var id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                     ?? User.FindFirst("sub")?.Value;
-            return id != null ? Guid.Parse(id) : Guid.Empty;
-        }
+        var s = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                ?? User.FindFirst("sub")?.Value;
+        return Guid.TryParse(s, out userId);
     }
 
     private static bool IsWeekendDate(DateTime d) =>
@@ -67,7 +66,7 @@ public class BookingsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateBooking([FromBody] CreateBookingRequestDto dto)
     {
-        if (CurrentUserId == Guid.Empty)
+        if (!TryGetCurrentUserId(out var userId))
             return Unauthorized(new { message = "Không xác định được người dùng." });
 
         if (dto.Items == null || dto.Items.Count == 0)
@@ -168,7 +167,7 @@ public class BookingsController : ControllerBase
         var booking = new Booking
         {
             Id = Guid.NewGuid(),
-            UserId = CurrentUserId,
+            UserId = userId,
             VenueId = dto.VenueId,
             Status = "PENDING",
             TotalAmount = total,
@@ -239,12 +238,12 @@ public class BookingsController : ControllerBase
     [HttpGet("my")]
     public async Task<IActionResult> GetMyBookings()
     {
-        if (CurrentUserId == Guid.Empty)
-            return Unauthorized();
+        if (!TryGetCurrentUserId(out var userId))
+            return Unauthorized(new { message = "Không xác định được người dùng." });
 
         var rows = await _dbContext.Bookings
             .AsNoTracking()
-            .Where(b => b.UserId == CurrentUserId)
+            .Where(b => b.UserId == userId)
             .OrderByDescending(b => b.CreatedAt)
             .Select(b => new
             {
@@ -292,6 +291,49 @@ public class BookingsController : ControllerBase
     }
 
     /// <summary>
+    /// Người chơi tự huỷ đơn (chờ duyệt hoặc đã được xác nhận).
+    /// </summary>
+    [HttpPatch("{id:guid}/cancel")]
+    public async Task<IActionResult> CancelMyBooking([FromRoute] Guid id)
+    {
+        if (!TryGetCurrentUserId(out var userId))
+            return Unauthorized(new { message = "Không xác định được người dùng." });
+
+        var booking = await _dbContext.Bookings
+            .Include(b => b.BookingItems)
+            .Include(b => b.Payments)
+            .FirstOrDefaultAsync(b => b.Id == id && b.UserId == userId);
+
+        if (booking == null)
+            return NotFound(new { message = "Không tìm thấy đơn đặt." });
+
+        if (booking.Status == "CANCELLED")
+            return BadRequest(new { message = "Đơn đã bị huỷ trước đó." });
+
+        if (booking.Status is not ("PENDING" or "CONFIRMED"))
+            return BadRequest(new { message = "Không thể huỷ đơn ở trạng thái này." });
+
+        booking.Status = "CANCELLED";
+        foreach (var item in booking.BookingItems)
+            item.Status = "CANCELLED";
+
+        foreach (var p in booking.Payments.Where(p =>
+                     p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase)))
+            p.Status = "CANCELLED";
+
+        await _dbContext.SaveChangesAsync();
+
+        var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
+        return Ok(new
+        {
+            message = "Đã huỷ đặt sân thành công.",
+            bookingId = booking.Id,
+            bookingCode = code,
+            status = booking.Status
+        });
+    }
+
+    /// <summary>
     /// Gửi minh chứng thanh toán (ảnh) + phương thức; ảnh lưu Cloudinary.
     /// </summary>
     [HttpPost("{id:guid}/payment")]
@@ -301,7 +343,7 @@ public class BookingsController : ControllerBase
         [FromRoute] Guid id,
         [FromForm] SubmitBookingPaymentForm form)
     {
-        if (CurrentUserId == Guid.Empty)
+        if (!TryGetCurrentUserId(out var userId))
             return Unauthorized(new { message = "Không xác định được người dùng." });
 
         if (form?.ProofImage == null || form.ProofImage.Length == 0)
@@ -312,7 +354,7 @@ public class BookingsController : ControllerBase
             return BadRequest(new { message = "File phải là ảnh." });
 
         var booking = await _dbContext.Bookings
-            .FirstOrDefaultAsync(b => b.Id == id && b.UserId == CurrentUserId);
+            .FirstOrDefaultAsync(b => b.Id == id && b.UserId == userId);
 
         if (booking == null)
             return NotFound(new { message = "Không tìm thấy đơn đặt." });

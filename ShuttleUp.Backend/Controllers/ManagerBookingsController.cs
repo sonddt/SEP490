@@ -19,14 +19,12 @@ public class ManagerBookingsController : ControllerBase
         _dbContext = dbContext;
     }
 
-    private Guid CurrentUserId
+    private bool TryGetCurrentUserId(out Guid userId)
     {
-        get
-        {
-            var id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                     ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-            return id != null ? Guid.Parse(id) : Guid.Empty;
-        }
+        var s = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                ?? User.FindFirst("sub")?.Value;
+        return Guid.TryParse(s, out userId);
     }
 
     public class ManagerBookingStatusPatchDto
@@ -42,7 +40,7 @@ public class ManagerBookingsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetBookings([FromQuery] string? status)
     {
-        if (CurrentUserId == Guid.Empty)
+        if (!TryGetCurrentUserId(out var userId))
             return Unauthorized(new { message = "Không xác định được người dùng." });
 
         var query = _dbContext.Bookings
@@ -51,7 +49,7 @@ public class ManagerBookingsController : ControllerBase
             .Include(b => b.User)!.ThenInclude(u => u!.AvatarFile)
             .Include(b => b.BookingItems).ThenInclude(bi => bi.Court)!.ThenInclude(c => c!.Files)
             .Include(b => b.Payments)
-            .Where(b => b.Venue != null && b.Venue.OwnerUserId == CurrentUserId);
+            .Where(b => b.Venue != null && b.Venue.OwnerUserId == userId);
 
         if (!string.IsNullOrWhiteSpace(status))
         {
@@ -119,7 +117,7 @@ public class ManagerBookingsController : ControllerBase
     [HttpPatch("{id:guid}/status")]
     public async Task<IActionResult> PatchStatus([FromRoute] Guid id, [FromBody] ManagerBookingStatusPatchDto dto)
     {
-        if (CurrentUserId == Guid.Empty)
+        if (!TryGetCurrentUserId(out var userId))
             return Unauthorized(new { message = "Không xác định được người dùng." });
 
         if (dto == null || string.IsNullOrWhiteSpace(dto.Status))
@@ -138,7 +136,7 @@ public class ManagerBookingsController : ControllerBase
         if (booking == null)
             return NotFound(new { message = "Không tìm thấy đơn đặt." });
 
-        if (booking.Venue?.OwnerUserId != CurrentUserId)
+        if (booking.Venue?.OwnerUserId != userId)
             return Forbid();
 
         if (booking.Status == "CANCELLED")
@@ -157,7 +155,7 @@ public class ManagerBookingsController : ControllerBase
                          p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase)))
             {
                 p.Status = "COMPLETED";
-                p.ConfirmedBy = CurrentUserId;
+                p.ConfirmedBy = userId;
                 p.ConfirmedAt = DateTime.UtcNow;
             }
         }

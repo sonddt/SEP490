@@ -20,3 +20,8 @@ export function submitPayment(bookingId, formData) {
 export function getMyBookings() {
   return axiosClient.get('/bookings/my');
 }
+
+/** @param {string} bookingId */
+export function cancelBooking(bookingId) {
+  return axiosClient.patch(`/bookings/${bookingId}/cancel`);
+}

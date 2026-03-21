@@ -170,6 +170,7 @@ export default function BookingPayment() {
           bookingId,
           paymentMethod: method === 'qr' ? 'Quét mã QR' : 'Chuyển khoản ngân hàng',
           bookingCode,
+          bookingStatus: created.status ?? created.Status ?? 'PENDING',
         },
       });
     } catch (e) {

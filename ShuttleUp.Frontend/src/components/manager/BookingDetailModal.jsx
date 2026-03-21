@@ -10,10 +10,27 @@ function InfoRow({ label, value, valueClass = '' }) {
   );
 }
 
+function isHttpProofUrl(url) {
+  return typeof url === 'string' && /^https?:\/\//i.test(url.trim());
+}
+
 /* ── Payment proof lightbox ──────────────────────────────────────────── */
 function PaymentProofSection({ proofImg }) {
   const [showFull, setShowFull] = useState(false);
   if (!proofImg) return null;
+
+  if (!isHttpProofUrl(proofImg)) {
+    return (
+      <div className="bk-detail-section mt-3">
+        <h6 className="bk-detail-section-title">
+          <i className="feather-image me-1" />Ảnh minh chứng chuyển khoản
+        </h6>
+        <p className="mb-0 text-muted small" style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+          Môi trường dev — chưa có ảnh minh chứng thật (cần cấu hình Cloudinary trên server).
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="bk-detail-section mt-3">
@@ -156,6 +173,11 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
                   onError={(e) => { e.target.src = '/assets/img/profiles/avatar-01.jpg'; }} />
                 <div className="bk-detail-card__body">
                   <div className="bk-detail-card__title">{booking.player}</div>
+                  {booking.playerAccountSub && (
+                    <div className="bk-detail-card__sub text-muted" style={{ fontSize: 12 }}>
+                      <i className="feather-user" /> TK: {booking.playerAccountSub}
+                    </div>
+                  )}
                   <div className="bk-detail-card__sub">
                     <i className="feather-phone" />
                     {booking.playerPhone}

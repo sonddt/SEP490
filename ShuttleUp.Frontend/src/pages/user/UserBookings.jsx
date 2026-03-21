@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import UserDashboardMenu from '../../components/user/UserDashboardMenu';
-import { getMyBookings } from '../../api/bookingApi';
+import { getMyBookings, cancelBooking } from '../../api/bookingApi';
 
 function pad2(n) {
   return String(n).padStart(2, '0');
@@ -17,7 +17,7 @@ function formatPaymentMethodLabel(method) {
 
 function mapUserBookingTabStatus(apiStatus, items) {
   if (apiStatus === 'CANCELLED') return 'CANCELLED';
-  if (apiStatus === 'PENDING') return 'UPCOMING';
+  if (apiStatus === 'PENDING') return 'PENDING';
   if (apiStatus === 'CONFIRMED') {
     const ends = (items || []).map((i) => new Date(i.endTime).getTime()).filter(Number.isFinite);
     if (ends.length === 0) return 'UPCOMING';
@@ -25,6 +25,30 @@ function mapUserBookingTabStatus(apiStatus, items) {
     return maxEnd >= Date.now() ? 'UPCOMING' : 'COMPLETED';
   }
   return 'UPCOMING';
+}
+
+function isThisWeek(d) {
+  const n = new Date();
+  const s = new Date(n);
+  s.setDate(n.getDate() - n.getDay());
+  s.setHours(0, 0, 0, 0);
+  const e = new Date(s);
+  e.setDate(s.getDate() + 6);
+  e.setHours(23, 59, 59, 999);
+  return d >= s && d <= e;
+}
+
+function isThisMonth(d) {
+  const n = new Date();
+  return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth();
+}
+
+function matchesTimeFilter(filterDate, timeFilter) {
+  if (timeFilter === 'all') return true;
+  if (!filterDate || Number.isNaN(filterDate.getTime())) return true;
+  if (timeFilter === 'week') return isThisWeek(filterDate);
+  if (timeFilter === 'month') return isThisMonth(filterDate);
+  return true;
 }
 
 function mapApiRowToBooking(api) {
@@ -55,29 +79,34 @@ function mapApiRowToBooking(api) {
     paymentMethod: formatPaymentMethodLabel(api.lastPaymentMethod),
     status: mapUserBookingTabStatus(api.status, items),
     sortTime: new Date(api.createdAt).getTime(),
+    filterDate: start,
   };
 }
 
 const TABS = [
+  { key: 'PENDING',   label: 'Chờ duyệt',  color: 'warning' },
   { key: 'UPCOMING',  label: 'Sắp tới',    color: 'primary' },
   { key: 'COMPLETED', label: 'Hoàn thành', color: 'success' },
   { key: 'CANCELLED', label: 'Đã huỷ',     color: 'danger'  },
 ];
 
 const STATUS_BADGE = {
+  PENDING:   <span className="badge bg-warning text-dark">Chờ duyệt</span>,
   UPCOMING:  <span className="badge bg-primary">Sắp tới</span>,
   COMPLETED: <span className="badge bg-success">Hoàn thành</span>,
   CANCELLED: <span className="badge bg-danger">Đã huỷ</span>,
 };
 
 export default function UserBookings() {
-  const [activeTab,     setActiveTab]     = useState('UPCOMING');
+  const [activeTab,     setActiveTab]     = useState('PENDING');
   const [timeFilter,    setTimeFilter]    = useState('all');
   const [sortBy,        setSortBy]        = useState('newest');
   const [detailBooking, setDetailBooking] = useState(null);
   const [cancelTarget,  setCancelTarget]  = useState(null);
   const [bookings,      setBookings]      = useState([]);
   const [loading,       setLoading]       = useState(true);
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
+  const [toastMsg, setToastMsg] = useState(null);
 
   const loadBookings = useCallback(async () => {
     setLoading(true);
@@ -98,6 +127,7 @@ export default function UserBookings() {
 
   const filtered = bookings
     .filter(b => b.status === activeTab)
+    .filter(b => matchesTimeFilter(b.filterDate, timeFilter))
     .sort((a, b) => {
       if (sortBy === 'newest') return b.sortTime - a.sortTime;
       if (sortBy === 'oldest') return a.sortTime - b.sortTime;
@@ -105,17 +135,46 @@ export default function UserBookings() {
       return 0;
     });
 
-  const confirmCancel = () => {
-    if (!cancelTarget) return;
-    setBookings(prev =>
-      prev.map(b => b.id === cancelTarget.id ? { ...b, status: 'CANCELLED' } : b)
-    );
-    setCancelTarget(null);
-    setActiveTab('CANCELLED');
+  const showToast = (msg, isError = false) => {
+    setToastMsg({ msg, isError });
+    setTimeout(() => setToastMsg(null), 4000);
   };
+
+  const confirmCancel = async () => {
+    if (!cancelTarget) return;
+    setCancelSubmitting(true);
+    try {
+      await cancelBooking(cancelTarget.id);
+      setCancelTarget(null);
+      setDetailBooking(null);
+      showToast('Đã huỷ lịch đặt sân.');
+      setActiveTab('CANCELLED');
+      await loadBookings();
+    } catch (e) {
+      const body = e?.response?.data;
+      const message =
+        (typeof body?.message === 'string' && body.message)
+        || body?.title
+        || 'Huỷ lịch thất bại. Vui lòng thử lại.';
+      showToast(message, true);
+    } finally {
+      setCancelSubmitting(false);
+    }
+  };
+
+  const canUserCancel = (b) => b.status === 'PENDING' || b.status === 'UPCOMING';
 
   return (
     <div className="main-wrapper content-below-header">
+      {toastMsg && (
+        <div
+          className={`alert ${toastMsg.isError ? 'alert-danger' : 'alert-success'} shadow-sm`}
+          style={{ position: 'fixed', top: 88, right: 16, zIndex: 9999, minWidth: 260, margin: 0 }}
+          role="alert"
+        >
+          {toastMsg.msg}
+        </div>
+      )}
       {/* Breadcrumb */}
       <section className="breadcrumb breadcrumb-list mb-0">
         <span className="primary-right-round" />
@@ -307,7 +366,7 @@ export default function UserBookings() {
                                         <i className="feather-eye me-2" />Xem chi tiết
                                       </button>
                                     </li>
-                                    {b.status === 'UPCOMING' && (
+                                    {canUserCancel(b) && (
                                       <li>
                                         <button
                                           type="button"
@@ -392,7 +451,7 @@ export default function UserBookings() {
                 </div>
               </div>
               <div className="modal-footer">
-                {detailBooking.status === 'UPCOMING' && (
+                {detailBooking && canUserCancel(detailBooking) && (
                   <button
                     type="button"
                     className="btn btn-outline-danger me-auto"
@@ -437,9 +496,10 @@ export default function UserBookings() {
                 <button
                   type="button"
                   className="btn btn-danger"
+                  disabled={cancelSubmitting}
                   onClick={confirmCancel}
                 >
-                  Huỷ lịch
+                  {cancelSubmitting ? 'Đang xử lý…' : 'Huỷ lịch'}
                 </button>
               </div>
             </div>
