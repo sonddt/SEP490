@@ -57,14 +57,18 @@ export default function BookingConfirm() {
       .catch(() => null)
       .then(data => {
         if (!data) return;
+        // GET /api/profile/me trả về { user: { fullName, phoneNumber, ... }, roles, ... }
+        const u = data.user ?? data;
+        const apiFullName = (u.fullName ?? '').trim();
+        const apiPhone = (u.phoneNumber ?? '').trim();
         setForm(prev => ({
           ...prev,
-          name:  prev.name  || data.fullName  || '',
-          phone: prev.phone || data.phoneNumber || '',
+          name:  prev.name || apiFullName || '',
+          phone: prev.phone || apiPhone || '',
         }));
         setAutoFilled(prev => ({
-          name:  prev.name  || !!data.fullName,
-          phone: !!data.phoneNumber,
+          name:  prev.name || !!apiFullName,
+          phone: prev.phone || !!apiPhone,
         }));
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
