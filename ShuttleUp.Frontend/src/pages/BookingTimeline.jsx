@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import BookingSteps from '../components/booking/BookingSteps';
+import { getVenueCourts, getVenueAvailability } from '../api/bookingApi';
 
 // ── Mini Calendar Popup ────────────────────────────────────────────────────
 function CalendarPopup({ value, onChange, onClose }) {
@@ -105,6 +106,85 @@ function formatDateVN(isoDate) {
   return `${d}/${m}/${y}`;
 }
 
+const START_HOUR = 5;
+const END_HOUR = 24;
+/** Số ô 30 phút từ 5:00 đến trước 24:00 */
+const SLOT_COUNT = (END_HOUR - START_HOUR) * 2;
+
+function slotLocalBounds(dateStr, slotIndex) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const mins = START_HOUR * 60 + slotIndex * 30;
+  const hh = Math.floor(mins / 60);
+  const mm = mins % 60;
+  const start = new Date(y, m - 1, d, hh, mm, 0, 0);
+  const end = new Date(start.getTime() + 30 * 60 * 1000);
+  return { start, end };
+}
+
+function parseApiTimeToMinutes(v) {
+  if (v == null) return 0;
+  const s = String(v);
+  const parts = s.split(':');
+  const h = parseInt(parts[0], 10) || 0;
+  const min = parseInt(parts[1], 10) || 0;
+  return h * 60 + min;
+}
+
+function getPriceForSlot(court, slotIndex, dateStr, fallbackPerSlot) {
+  const { start } = slotLocalBounds(dateStr, slotIndex);
+  const minutes = start.getHours() * 60 + start.getMinutes();
+  const weekend = start.getDay() === 0 || start.getDay() === 6;
+  const prices = court.prices || [];
+  for (const p of prices) {
+    if (!!p.isWeekend !== weekend) continue;
+    const ps = parseApiTimeToMinutes(p.startTime);
+    const pe = parseApiTimeToMinutes(p.endTime);
+    if (minutes >= ps && minutes < pe) return Number(p.price) || 0;
+  }
+  if (prices.length) return Number(prices[0].price) || 0;
+  return fallbackPerSlot ?? 0;
+}
+
+function ivOverlapsSlot(ivStartMs, ivEndMs, slotStartMs, slotEndMs) {
+  return ivStartMs < slotEndMs && ivEndMs > slotStartMs;
+}
+
+/** @param {string} courtId */
+/** ISO local (không Z) để backend/DB khớp ngày theo giờ máy người dùng */
+function toLocalDateTimeString(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  const sec = String(d.getSeconds()).padStart(2, '0');
+  return `${y}-${m}-${day}T${h}:${min}:${sec}`;
+}
+
+function intervalsToGridBlocks(courtId, intervals, dateStr) {
+  if (!intervals?.length) return [];
+  const blocks = [];
+  for (const iv of intervals) {
+    const ivStart = new Date(iv.start).getTime();
+    const ivEnd = new Date(iv.end).getTime();
+    if (Number.isNaN(ivStart) || Number.isNaN(ivEnd)) continue;
+    let startIndex = -1;
+    let endIndex = -1;
+    for (let i = 0; i < SLOT_COUNT; i++) {
+      const { start, end } = slotLocalBounds(dateStr, i);
+      if (ivOverlapsSlot(ivStart, ivEnd, start.getTime(), end.getTime())) {
+        if (startIndex < 0) startIndex = i;
+        endIndex = i + 1;
+      }
+    }
+    if (startIndex >= 0) {
+      const kind = iv.kind === 'blocked' ? 'locked' : 'booked';
+      blocks.push({ courtId, startIndex, endIndex, type: kind });
+    }
+  }
+  return blocks;
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function BookingTimeline() {
   const navigate = useNavigate();
@@ -131,6 +211,11 @@ export default function BookingTimeline() {
   // selections: { [courtId]: Set<slotIndex> }
   const [selections, setSelections] = useState({});
 
+  const [courts, setCourts] = useState([]);
+  const [availabilityRows, setAvailabilityRows] = useState([]);
+  const [loadCourts, setLoadCourts] = useState({ loading: false, error: '' });
+  const [loadAvail, setLoadAvail] = useState({ loading: false, error: '' });
+
   // Drag refs — distinguish click vs drag
   const isDraggingRef  = useRef(false);
   const hasDraggedRef  = useRef(false);
@@ -148,8 +233,7 @@ export default function BookingTimeline() {
     const el = gridContainerRef.current;
     if (!el) return;
     const measure = (width) => {
-      // numTimeSlots = (24-5)*2 = 38
-      const slots = 38;
+      const slots = SLOT_COUNT;
       const minW = Math.max(10, Math.floor((width - COURT_LABEL_W) / slots));
       setContainerWidth(width);
       setCellWidth(prev => {
@@ -168,22 +252,71 @@ export default function BookingTimeline() {
 
   // Minimum cell width derived from current container width
   const minCellWidth = containerWidth > 0
-    ? Math.max(10, Math.floor((containerWidth - COURT_LABEL_W) / 38))
+    ? Math.max(10, Math.floor((containerWidth - COURT_LABEL_W) / SLOT_COUNT))
     : 10;
 
   // Effective cell width — never less than what fits the container
   const effectiveCellW = Math.max(cellWidth || minCellWidth, minCellWidth);
 
-  // ── Static data ──────────────────────────────────────────────────────────
-  const courts = useMemo(() => [
-    { id: 1, name: 'Sân 1', pricePerSlot },
-    { id: 2, name: 'Sân 2', pricePerSlot },
-    { id: 3, name: 'Sân 3', pricePerSlot },
-    { id: 4, name: 'Sân 4', pricePerSlot: Math.round(pricePerSlot * 1.2) },
-  ], [pricePerSlot]);
+  useEffect(() => {
+    if (!venueId) {
+      setCourts([]);
+      setLoadCourts({ loading: false, error: '' });
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoadCourts({ loading: true, error: '' });
+      try {
+        const data = await getVenueCourts(venueId);
+        if (!cancelled) {
+          setCourts(Array.isArray(data) ? data : []);
+          setLoadCourts({ loading: false, error: '' });
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setCourts([]);
+          setLoadCourts({
+            loading: false,
+            error: e.response?.data?.message || e.message || 'Không tải được danh sách sân.',
+          });
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [venueId]);
 
-  const START_HOUR = 5;
-  const END_HOUR   = 24;
+  useEffect(() => {
+    setSelections({});
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (!venueId) {
+      setAvailabilityRows([]);
+      setLoadAvail({ loading: false, error: '' });
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoadAvail({ loading: true, error: '' });
+      try {
+        const data = await getVenueAvailability(venueId, selectedDate);
+        if (!cancelled) {
+          setAvailabilityRows(Array.isArray(data) ? data : []);
+          setLoadAvail({ loading: false, error: '' });
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setAvailabilityRows([]);
+          setLoadAvail({
+            loading: false,
+            error: e.response?.data?.message || e.message || 'Không tải được lịch trống.',
+          });
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [venueId, selectedDate]);
 
   const timeSlots = useMemo(() => {
     const slots = [];
@@ -195,15 +328,11 @@ export default function BookingTimeline() {
     return slots;
   }, []);
 
-  const existingBookings = useMemo(() => [
-    { courtId: 1, startIndex: 2,  endIndex: 6,  type: 'booked' },
-    { courtId: 1, startIndex: 8,  endIndex: 11, type: 'booked' },
-    { courtId: 2, startIndex: 24, endIndex: 34, type: 'booked' },
-    { courtId: 3, startIndex: 30, endIndex: 36, type: 'booked' },
-    { courtId: 4, startIndex: 9,  endIndex: 14, type: 'booked' },
-    { courtId: 4, startIndex: 16, endIndex: 25, type: 'locked', label: '[Xé vé] - xé vé ngày trình 6t-1 năm: 0/8' },
-    { courtId: 4, startIndex: 25, endIndex: 31, type: 'booked' },
-  ], []);
+  const existingBookings = useMemo(() => {
+    if (!availabilityRows.length) return [];
+    return availabilityRows.flatMap(row =>
+      intervalsToGridBlocks(String(row.courtId), row.intervals || [], selectedDate));
+  }, [availabilityRows, selectedDate]);
 
   // ── Cell status ──────────────────────────────────────────────────────────
   const getBookingAt = (courtId, slotIndex) =>
@@ -298,15 +427,18 @@ export default function BookingTimeline() {
     let slots = 0;
     let price = 0;
     courts.forEach(c => {
-      const count = selections[c.id]?.size ?? 0;
-      slots += count;
-      price += count * c.pricePerSlot;
+      const set = selections[c.id];
+      if (!set?.size) return;
+      set.forEach(slotIdx => {
+        slots += 1;
+        price += getPriceForSlot(c, slotIdx, selectedDate, pricePerSlot);
+      });
     });
     const hours = slots * 0.5;
     const h = Math.floor(hours);
     const m = (hours - h) * 60;
     return { totalSlots: slots, totalPrice: price, totalHours: m > 0 ? `${h}h${m}` : `${h}h` };
-  }, [selections, courts]);
+  }, [selections, courts, selectedDate, pricePerSlot]);
 
   // ── Cell colour ──────────────────────────────────────────────────────────
   const getCellColor = status => {
@@ -320,15 +452,21 @@ export default function BookingTimeline() {
 
   const handleNext = () => {
     if (totalSlots === 0) return;
-    // Build flat list of selected slots for passing to next step
     const selectedSlots = courts.flatMap(c =>
-      Array.from(selections[c.id] ?? []).map(slotIdx => ({
-        courtId:   c.id,
-        courtName: c.name,
-        slotIndex: slotIdx,
-        timeLabel: timeSlots[slotIdx],
-        price:     c.pricePerSlot,
-      }))
+      Array.from(selections[c.id] ?? [])
+        .sort((a, b) => a - b)
+        .map(slotIdx => {
+          const { start, end } = slotLocalBounds(selectedDate, slotIdx);
+          return {
+            courtId:   c.id,
+            courtName: c.name,
+            slotIndex: slotIdx,
+            timeLabel: timeSlots[slotIdx],
+            price:     getPriceForSlot(c, slotIdx, selectedDate, pricePerSlot),
+            startTime: toLocalDateTimeString(start),
+            endTime:   toLocalDateTimeString(end),
+          };
+        })
     );
     navigate('/booking/confirm', {
       state: {
@@ -398,10 +536,29 @@ export default function BookingTimeline() {
         </span>
       </div>
 
-      {/* ── Notice ─────────────────────────────────────────────────────── */}
-      <div className="text-center py-2" style={{ backgroundColor: '#fffbeb', color: '#92400e', fontSize: '13px' }}>
-        Lưu ý: Cụm 4 sân đầy đủ hệ thống mái che bạt rút (nắng mưa đều chơi được)
-      </div>
+      {!venueId && (
+        <div className="text-center py-4 px-3 bg-white m-3 rounded shadow-sm">
+          <p className="mb-2">Bạn chưa chọn cơ sở để đặt.</p>
+          <Link to="/courts" className="btn btn-primary btn-sm">Tìm sân</Link>
+        </div>
+      )}
+
+      {venueId && loadCourts.loading && (
+        <div className="text-center py-4 text-muted">Đang tải danh sách sân…</div>
+      )}
+      {loadCourts.error && (
+        <div className="alert alert-danger m-3 mb-0" role="alert">{loadCourts.error}</div>
+      )}
+      {venueId && !loadCourts.loading && !loadCourts.error && courts.length === 0 && (
+        <div className="text-center py-4 text-muted">Chưa có sân hoạt động tại cơ sở này.</div>
+      )}
+
+      {venueId && loadAvail.loading && !loadAvail.error && (
+        <div className="text-center py-2 small text-muted">Đang cập nhật lịch trống…</div>
+      )}
+      {loadAvail.error && (
+        <div className="alert alert-warning m-3 mb-0" role="alert">{loadAvail.error}</div>
+      )}
 
       {/* ── Timeline Grid ──────────────────────────────────────────────── */}
       <div

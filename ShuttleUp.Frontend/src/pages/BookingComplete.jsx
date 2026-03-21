@@ -24,6 +24,7 @@ export default function BookingComplete() {
     customerPhone = '',
     paymentMethod = 'Chuyển khoản ngân hàng',
     bookingCode   = `SU${Date.now().toString().slice(-6)}`,
+    bookingId     = null,
   } = state;
 
   // Group by court
@@ -61,9 +62,14 @@ export default function BookingComplete() {
             <p className="sub-title text-muted mb-1">
               Lịch đặt của bạn đã được xác nhận. Chúc bạn có buổi tập luyện vui vẻ!
             </p>
-            <p className="text-muted">
+            <p className="text-muted mb-1">
               Mã đặt sân: <strong className="primary-text fs-5">{bookingCode}</strong>
             </p>
+            {bookingId && (
+              <p className="text-muted small mb-0">
+                Mã tham chiếu: <code>{bookingId}</code>
+              </p>
+            )}
           </div>
 
           {/* Booking detail card */}

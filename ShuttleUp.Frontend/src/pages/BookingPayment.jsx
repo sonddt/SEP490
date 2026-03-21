@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import BookingSteps from '../components/booking/BookingSteps';
+import { createBooking, submitPayment } from '../api/bookingApi';
 
 const BANK_INFO = {
   bank:    'Vietcombank',
@@ -109,26 +110,80 @@ export default function BookingPayment() {
     if (!proofFile)  { setError('Vui lòng upload ảnh minh chứng chuyển khoản.'); return; }
     if (!agreed)     { setError('Vui lòng đồng ý với điều khoản dịch vụ.'); return; }
     if (expired)     { setError('Thời gian giữ chỗ đã hết. Vui lòng đặt lại.'); return; }
+    if (!venueId)    { setError('Thiếu thông tin cơ sở. Vui lòng chọn sân lại.'); return; }
+
+    const items = (selectedSlots || [])
+      .filter(s => s.courtId && s.startTime && s.endTime)
+      .map(s => ({
+        courtId: s.courtId,
+        startTime: s.startTime,
+        endTime: s.endTime,
+      }));
+
+    if (items.length === 0) {
+      setError('Không có khung giờ hợp lệ. Vui lòng quay lại chọn giờ.');
+      return;
+    }
 
     setError('');
     setLoading(true);
 
-    // Upload proof image + create booking — wired to real API later
-    await new Promise(r => setTimeout(r, 1200));
+    try {
+      const created = await createBooking({
+        venueId,
+        items,
+        contactName: customerName,
+        contactPhone: customerPhone,
+        note: note || undefined,
+      });
 
-    setLoading(false);
-    clearInterval(intervalRef.current);
+      const bookingId = created.bookingId ?? created.BookingId;
+      const bookingCodeFromApi = created.bookingCode ?? created.BookingCode;
+      if (!bookingId) {
+        setError('Phản hồi từ server không hợp lệ (thiếu mã đơn).');
+        setLoading(false);
+        return;
+      }
 
-    const bookingCode = `SU${Date.now().toString().slice(-6)}`;
-    navigate('/booking/complete', {
-      state: {
-        venueId, venueName, venueAddress, date,
-        selectedSlots, totalPrice, totalHours,
-        customerName, customerPhone, note,
-        paymentMethod: method === 'qr' ? 'Quét mã QR' : 'Chuyển khoản ngân hàng',
-        bookingCode,
-      },
-    });
+      const formData = new FormData();
+      formData.append('method', method === 'qr' ? 'QR' : 'BANK');
+      formData.append('proofImage', proofFile);
+
+      const pay = await submitPayment(bookingId, formData);
+      const bookingCode = pay.bookingCode ?? bookingCodeFromApi ?? `SU${String(bookingId).slice(-6)}`;
+
+      setLoading(false);
+      clearInterval(intervalRef.current);
+
+      navigate('/booking/complete', {
+        state: {
+          venueId,
+          venueName,
+          venueAddress,
+          date,
+          selectedSlots,
+          totalPrice,
+          totalHours,
+          customerName,
+          customerPhone,
+          note,
+          bookingId,
+          paymentMethod: method === 'qr' ? 'Quét mã QR' : 'Chuyển khoản ngân hàng',
+          bookingCode,
+        },
+      });
+    } catch (e) {
+      setLoading(false);
+      const status = e.response?.status;
+      const msg = e.response?.data?.message || e.message || 'Đã có lỗi xảy ra.';
+      if (status === 409) {
+        setError(`${msg} Bạn có thể quay lại bước chọn giờ.`);
+      } else if (status === 401) {
+        setError('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại rồi thử thanh toán.');
+      } else {
+        setError(msg);
+      }
+    }
   };
 
   return (

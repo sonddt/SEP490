@@ -183,6 +183,9 @@ CREATE TABLE bookings (
     total_amount DECIMAL(15,2),
     discount_amount DECIMAL(15,2) DEFAULT 0,
     final_amount DECIMAL(15,2),
+    contact_name VARCHAR(255) NULL,
+    contact_phone VARCHAR(50) NULL,
+    guest_note TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (venue_id) REFERENCES venues(id)
@@ -664,3 +667,10 @@ SELECT 'Courts',              COUNT(*)          FROM courts     UNION ALL
 SELECT 'Files',               COUNT(*)          FROM files      UNION ALL
 SELECT 'VenueFiles',          COUNT(*)          FROM venue_files UNION ALL
 SELECT 'Reviews',             COUNT(*)          FROM venue_reviews;
+
+-- ======================================================================
+-- Migration (DB đã tạo trước khi có cột liên hệ đặt sân): chạy thủ công 1 lần
+-- ======================================================================
+-- ALTER TABLE bookings ADD COLUMN contact_name VARCHAR(255) NULL;
+-- ALTER TABLE bookings ADD COLUMN contact_phone VARCHAR(50) NULL;
+-- ALTER TABLE bookings ADD COLUMN guest_note TEXT NULL;

@@ -89,6 +89,15 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime")
                 .HasColumnName("created_at");
+            entity.Property(e => e.ContactName)
+                .HasMaxLength(255)
+                .HasColumnName("contact_name");
+            entity.Property(e => e.ContactPhone)
+                .HasMaxLength(50)
+                .HasColumnName("contact_phone");
+            entity.Property(e => e.GuestNote)
+                .HasColumnType("text")
+                .HasColumnName("guest_note");
             entity.Property(e => e.DiscountAmount)
                 .HasPrecision(15, 2)
                 .HasDefaultValueSql("'0.00'")

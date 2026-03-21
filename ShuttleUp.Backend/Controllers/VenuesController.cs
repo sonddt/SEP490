@@ -113,5 +113,114 @@ public class VenuesController : ControllerBase
 
         return Ok(items);
     }
+
+    /// <summary>
+    /// Danh sách sân đang hoạt động + bảng giá (đặt lịch).
+    /// </summary>
+    [HttpGet("{id:guid}/courts")]
+    public async Task<IActionResult> GetVenueCourts([FromRoute] Guid id)
+    {
+        var exists = await _dbContext.Venues.AnyAsync(v =>
+            v.Id == id && v.ApprovalStatus == "APPROVED" && v.IsActive == true);
+
+        if (!exists)
+            return NotFound();
+
+        var courts = await _dbContext.Courts
+            .AsNoTracking()
+            .Where(c => c.VenueId == id && c.IsActive == true)
+            .OrderBy(c => c.Name)
+            .Select(c => new
+            {
+                c.Id,
+                c.Name,
+                Prices = c.CourtPrices
+                    .OrderBy(p => p.StartTime)
+                    .Select(p => new
+                    {
+                        p.StartTime,
+                        p.EndTime,
+                        p.Price,
+                        p.IsWeekend
+                    })
+            })
+            .ToListAsync();
+
+        return Ok(courts);
+    }
+
+    /// <summary>
+    /// Khung giờ đã đặt / bị khóa trong một ngày (YYYY-MM-DD), theo từng sân.
+    /// </summary>
+    [HttpGet("{id:guid}/availability")]
+    public async Task<IActionResult> GetVenueAvailability([FromRoute] Guid id, [FromQuery] string date)
+    {
+        var exists = await _dbContext.Venues.AnyAsync(v =>
+            v.Id == id && v.ApprovalStatus == "APPROVED" && v.IsActive == true);
+
+        if (!exists)
+            return NotFound();
+
+        if (!DateOnly.TryParse(date, out var day))
+            return BadRequest(new { message = "Tham số date phải là YYYY-MM-DD." });
+
+        var dayStart = day.ToDateTime(TimeOnly.MinValue);
+        var dayEnd = dayStart.AddDays(1);
+
+        var booked = await _dbContext.BookingItems
+            .AsNoTracking()
+            .Where(bi => bi.Court != null && bi.Court.VenueId == id
+                                              && bi.StartTime < dayEnd && bi.EndTime > dayStart
+                                              && bi.Booking != null && bi.Booking.Status != "CANCELLED")
+            .Select(bi => new
+            {
+                CourtId = bi.CourtId!.Value,
+                bi.StartTime,
+                bi.EndTime,
+                Kind = "booked"
+            })
+            .ToListAsync();
+
+        var blocked = await _dbContext.CourtBlocks
+            .AsNoTracking()
+            .Where(b => b.Court != null && b.Court.VenueId == id
+                                         && b.StartTime < dayEnd && b.EndTime > dayStart)
+            .Select(b => new
+            {
+                CourtId = b.CourtId!.Value,
+                b.StartTime,
+                b.EndTime,
+                Kind = "blocked"
+            })
+            .ToListAsync();
+
+        var courtIds = await _dbContext.Courts
+            .AsNoTracking()
+            .Where(c => c.VenueId == id && c.IsActive == true)
+            .Select(c => c.Id)
+            .ToListAsync();
+
+        var intervalsByCourt = courtIds.ToDictionary(cid => cid, _ => new List<object>());
+
+        foreach (var row in booked)
+        {
+            if (intervalsByCourt.TryGetValue(row.CourtId, out var list))
+                list.Add(new { start = row.StartTime, end = row.EndTime, kind = row.Kind });
+        }
+
+        foreach (var row in blocked)
+        {
+            if (intervalsByCourt.TryGetValue(row.CourtId, out var list))
+                list.Add(new { start = row.StartTime, end = row.EndTime, kind = row.Kind });
+        }
+
+        var payload = intervalsByCourt.Select(kv => new
+        {
+            courtId = kv.Key,
+            intervals = kv.Value
+        });
+
+        return Ok(payload);
+    }
 }
 
