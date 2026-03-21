@@ -27,9 +27,11 @@ export default function RejectModal({ booking, onConfirm, onClose }) {
   const handleConfirm = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 400)); // simulate async
-    onConfirm(booking.id, finalReason);
-    setSubmitting(false);
+    try {
+      await onConfirm(booking.id, finalReason);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!booking) return null;

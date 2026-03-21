@@ -122,7 +122,7 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
             </div>
             <div>
               <h5 className="bk-modal-title mb-0">Chi tiết đặt sân</h5>
-              <p className="bk-modal-sub mb-0">Mã đặt sân: <strong>{booking.id}</strong></p>
+              <p className="bk-modal-sub mb-0">Mã đặt sân: <strong>{booking.bookingCode ?? booking.id}</strong></p>
             </div>
           </div>
           <button type="button" className="bk-modal-close" onClick={onClose}>
@@ -236,7 +236,14 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
               <button
                 type="button"
                 className="btn btn-secondary btn-sm d-flex align-items-center gap-2"
-                onClick={() => { onAccept(booking.id); onClose(); }}
+                onClick={async () => {
+                  try {
+                    await onAccept(booking.id);
+                    onClose();
+                  } catch {
+                    /* lỗi đã toast ở parent */
+                  }
+                }}
               >
                 <i className="feather-check-circle" />Chấp nhận
               </button>

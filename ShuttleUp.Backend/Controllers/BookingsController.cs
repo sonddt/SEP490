@@ -250,7 +250,12 @@ public class BookingsController : ControllerBase
                 b.FinalAmount,
                 b.CreatedAt,
                 VenueName = b.Venue != null ? b.Venue.Name : null,
+                VenueAddress = b.Venue != null ? b.Venue.Address : null,
                 b.VenueId,
+                LastPaymentMethod = b.Payments
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Select(p => p.Method)
+                    .FirstOrDefault(),
                 Items = b.BookingItems.Select(bi => new
                 {
                     bi.Id,
@@ -273,7 +278,9 @@ public class BookingsController : ControllerBase
             b.FinalAmount,
             b.CreatedAt,
             b.VenueName,
+            b.VenueAddress,
             b.VenueId,
+            lastPaymentMethod = b.LastPaymentMethod,
             b.Items
         });
 

@@ -10,6 +10,7 @@ export const PAYMENT_METHODS = {
   BANK:   { label: 'Chuyển khoản', icon: 'feather-credit-card' },
   CASH:   { label: 'Tiền mặt',     icon: 'feather-dollar-sign' },
   VNPAY:  { label: 'VNPay',        icon: 'feather-zap' },
+  QR:     { label: 'Quét mã QR',   icon: 'feather-smartphone' },
 };
 
 export const MOCK_BOOKINGS = [

@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { MOCK_BOOKINGS, BOOKING_STATUSES, PAYMENT_METHODS } from '../../data/bookingsMock';
+import { BOOKING_STATUSES, PAYMENT_METHODS } from '../../data/bookingsMock';
+import { getManagerBookings, patchManagerBookingStatus } from '../../api/managerBookingsApi';
 import BookingDetailModal from '../../components/manager/BookingDetailModal';
 import RejectModal from '../../components/manager/RejectModal';
 
@@ -13,6 +14,68 @@ const TABS = [
   { key: 'REJECTED',  label: 'Từ chối',     icon: 'feather-x-circle' },
   { key: 'CANCELLED', label: 'Đã huỷ',      icon: 'feather-slash' },
 ];
+
+const WEEKDAYS = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
+
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+function mapManagerBookingFromApi(b) {
+  const items = [...(b.items || [])].sort(
+    (a, x) => new Date(a.startTime) - new Date(x.startTime),
+  );
+  const first = items[0];
+  const last = items[items.length - 1];
+  const start = first?.startTime ? new Date(first.startTime) : new Date(b.createdAt);
+  const end = last?.endTime ? new Date(last.endTime) : start;
+
+  const dateStr = `${start.getFullYear()}-${pad2(start.getMonth() + 1)}-${pad2(start.getDate())}`;
+  const dateDisplay = `${WEEKDAYS[start.getDay()]}, ${pad2(start.getDate())}/${pad2(start.getMonth() + 1)}/${start.getFullYear()}`;
+
+  const raw = (b.status || '').toUpperCase();
+  let uiStatus;
+  if (raw === 'PENDING') uiStatus = 'PENDING';
+  else if (raw === 'CANCELLED') uiStatus = 'CANCELLED';
+  else if (raw === 'CONFIRMED') {
+    uiStatus = end.getTime() >= Date.now() ? 'UPCOMING' : 'COMPLETED';
+  } else uiStatus = 'PENDING';
+
+  const methodRaw = (b.paymentMethod || '').toUpperCase();
+  let paymentMethod = 'CASH';
+  if (methodRaw.includes('BANK')) paymentMethod = 'BANK';
+  else if (methodRaw.includes('QR')) paymentMethod = 'QR';
+  else if (methodRaw.includes('VNPAY')) paymentMethod = 'VNPAY';
+
+  const courtLabel = items.length > 1 ? `${items.length} khung` : (first?.courtName || 'Sân');
+
+  const created = b.createdAt ? new Date(b.createdAt) : start;
+  const createdAt = `${pad2(created.getDate())}/${pad2(created.getMonth() + 1)}/${created.getFullYear()} ${pad2(created.getHours())}:${pad2(created.getMinutes())}`;
+
+  return {
+    bookingId: b.bookingId,
+    id: b.bookingId,
+    bookingCode: b.bookingCode,
+    player: b.playerName || '—',
+    playerImg: b.playerAvatarUrl || '/assets/img/profiles/avatar-01.jpg',
+    playerPhone: b.playerPhone || '—',
+    court: courtLabel,
+    courtImg: first?.courtImageUrl || '/assets/img/booking/booking-01.jpg',
+    venue: b.venueName || '',
+    date: dateStr,
+    dateDisplay,
+    timeStart: `${pad2(start.getHours())}:${pad2(start.getMinutes())}`,
+    timeEnd: `${pad2(end.getHours())}:${pad2(end.getMinutes())}`,
+    guests: 2,
+    amount: Number(b.totalAmount) || 0,
+    paymentMethod,
+    paymentStatus: b.paymentStatus,
+    paymentProofImg: b.proofUrl || null,
+    status: uiStatus,
+    note: b.guestNote || '',
+    createdAt,
+  };
+}
 
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 function isToday(d) { const n = new Date(); return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate(); }
@@ -67,7 +130,8 @@ function ProofThumb({ img }) {
 
 /* ═══ MAIN ═══════════════════════════════════════════════════════════════ */
 export default function ManagerBookings() {
-  const [bookings, setBookings]   = useState(MOCK_BOOKINGS);
+  const [bookings, setBookings]   = useState([]);
+  const [loading, setLoading]     = useState(true);
   const [activeTab, setActiveTab] = useState('PENDING');
   const [search, setSearch]       = useState('');
   const [timeFilter, setTimeFilter] = useState('all');
@@ -76,6 +140,28 @@ export default function ManagerBookings() {
   const [detailModal, setDetailModal] = useState(null);
   const [rejectModal, setRejectModal] = useState(null);
   const [toastMsg, setToastMsg]   = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const data = await getManagerBookings();
+        if (!cancelled) {
+          setBookings(Array.isArray(data) ? data.map(mapManagerBookingFromApi) : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setBookings([]);
+          setToastMsg({ msg: 'Không tải được danh sách đặt sân.', type: 'warning' });
+          setTimeout(() => setToastMsg(null), 3000);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => { setPage(1); }, [activeTab, search, timeFilter, sortBy]);
 
@@ -88,7 +174,13 @@ export default function ManagerBookings() {
     if (timeFilter === 'month') list = list.filter(b => isThisMonth(new Date(b.date)));
     if (search.trim()) {
       const q = search.toLowerCase().trim();
-      list = list.filter(b => b.player.toLowerCase().includes(q) || b.court.toLowerCase().includes(q) || b.venue.toLowerCase().includes(q) || b.id.toLowerCase().includes(q));
+      list = list.filter(b =>
+        b.player.toLowerCase().includes(q)
+        || b.court.toLowerCase().includes(q)
+        || b.venue.toLowerCase().includes(q)
+        || String(b.id).toLowerCase().includes(q)
+        || (b.bookingCode && b.bookingCode.toLowerCase().includes(q)),
+      );
     }
     list = [...list].sort((a, b) => {
       if (sortBy === 'newest') return new Date(b.date) - new Date(a.date);
@@ -105,8 +197,27 @@ export default function ManagerBookings() {
   const pageItems = processed.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const showToast = (msg, type = 'success') => { setToastMsg({ msg, type }); setTimeout(() => setToastMsg(null), 3000); };
-  const handleAccept = useCallback((id) => { setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'UPCOMING' } : b)); showToast('Đã chấp nhận yêu cầu!'); }, []);
-  const handleRejectConfirm = useCallback((id, reason) => { setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'REJECTED', rejectReason: reason } : b)); setRejectModal(null); showToast('Đã từ chối yêu cầu.', 'warning'); }, []);
+  const handleAccept = useCallback(async (bookingId) => {
+    try {
+      await patchManagerBookingStatus(bookingId, { status: 'CONFIRMED' });
+      setBookings((prev) => prev.map((b) => (b.bookingId === bookingId ? { ...b, status: 'UPCOMING' } : b)));
+      showToast('Đã chấp nhận yêu cầu!');
+    } catch {
+      showToast('Duyệt đơn thất bại. Vui lòng thử lại.', 'warning');
+      throw new Error('accept failed');
+    }
+  }, []);
+  const handleRejectConfirm = useCallback(async (bookingId, reason) => {
+    try {
+      await patchManagerBookingStatus(bookingId, { status: 'CANCELLED', reason });
+      setBookings((prev) => prev.map((b) => (b.bookingId === bookingId ? { ...b, status: 'REJECTED', rejectReason: reason } : b)));
+      setRejectModal(null);
+      showToast('Đã từ chối yêu cầu.', 'warning');
+    } catch {
+      showToast('Từ chối thất bại. Vui lòng thử lại.', 'warning');
+      throw new Error('reject failed');
+    }
+  }, []);
   const handleCancel = useCallback((id) => { setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'CANCELLED' } : b)); showToast('Đã huỷ lịch.', 'info'); }, []);
 
   const tabRevenue = useMemo(() => bookings.filter(b => b.status === activeTab && b.paymentStatus === 'PAID').reduce((s, b) => s + b.amount, 0), [bookings, activeTab]);
@@ -239,9 +350,16 @@ export default function ManagerBookings() {
                 </tr>
               </thead>
               <tbody>
-                {pageItems.length === 0 ? (
+                {loading ? (
                   <tr>
-                    <td colSpan={7}>
+                    <td colSpan={6} className="text-center py-5 text-muted">
+                      <div className="spinner-border spinner-border-sm text-secondary mb-2" role="status" />
+                      <div>Đang tải danh sách đặt sân…</div>
+                    </td>
+                  </tr>
+                ) : pageItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={6}>
                       <div className="bk-empty">
                         <div className="bk-empty-icon"><i className={search ? 'feather-search' : 'feather-inbox'} /></div>
                         <p className="bk-empty-title">{search ? `Không tìm thấy "${search}"` : 'Không có dữ liệu'}</p>

@@ -1,69 +1,62 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import UserDashboardMenu from '../../components/user/UserDashboardMenu';
+import { getMyBookings } from '../../api/bookingApi';
 
-const MOCK_BOOKINGS = [
-  {
-    id: 1,
-    code: 'SU291045',
-    court: 'Sân 1 – ShuttleUp Q7',
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+function formatPaymentMethodLabel(method) {
+  if (!method) return 'Chuyển khoản';
+  const u = String(method).toUpperCase();
+  if (u.includes('QR')) return 'Quét mã QR';
+  if (u.includes('BANK')) return 'Chuyển khoản';
+  return 'Chuyển khoản';
+}
+
+function mapUserBookingTabStatus(apiStatus, items) {
+  if (apiStatus === 'CANCELLED') return 'CANCELLED';
+  if (apiStatus === 'PENDING') return 'UPCOMING';
+  if (apiStatus === 'CONFIRMED') {
+    const ends = (items || []).map((i) => new Date(i.endTime).getTime()).filter(Number.isFinite);
+    if (ends.length === 0) return 'UPCOMING';
+    const maxEnd = Math.max(...ends);
+    return maxEnd >= Date.now() ? 'UPCOMING' : 'COMPLETED';
+  }
+  return 'UPCOMING';
+}
+
+function mapApiRowToBooking(api) {
+  const items = [...(api.items || [])].sort(
+    (a, b) => new Date(a.startTime) - new Date(b.startTime),
+  );
+  const first = items[0];
+  const last = items[items.length - 1];
+  const start = first?.startTime ? new Date(first.startTime) : new Date(api.createdAt);
+  const end = last?.endTime ? new Date(last.endTime) : start;
+  const courtLabel =
+    items.length <= 1
+      ? `${first?.courtName || 'Sân'} – ${api.venueName || ''}`.replace(/ – $/, '').trim()
+      : `${items.length} khung – ${api.venueName || ''}`.replace(/ – $/, '').trim();
+
+  const dateStr = `${pad2(start.getDate())}/${pad2(start.getMonth() + 1)}/${start.getFullYear()}`;
+  const timeStr = `${pad2(start.getHours())}:${pad2(start.getMinutes())} – ${pad2(end.getHours())}:${pad2(end.getMinutes())}`;
+
+  return {
+    id: api.id,
+    code: api.bookingCode,
+    court: courtLabel || api.venueName || 'Đặt sân',
     courtImg: '/assets/img/booking/booking-01.jpg',
-    venueAddress: '88 Quang Trung, Q.Gò Vấp, TP.HCM',
-    date: '15/03/2026',
-    time: '08:00 – 10:00',
-    amount: 240000,
-    paymentMethod: 'Chuyển khoản',
-    status: 'UPCOMING',
-  },
-  {
-    id: 2,
-    code: 'SU291102',
-    court: 'Sân 2 – ShuttleUp Q7',
-    courtImg: '/assets/img/booking/booking-02.jpg',
-    venueAddress: '88 Quang Trung, Q.Gò Vấp, TP.HCM',
-    date: '20/03/2026',
-    time: '10:00 – 12:00',
-    amount: 360000,
-    paymentMethod: 'Quét mã QR',
-    status: 'UPCOMING',
-  },
-  {
-    id: 3,
-    code: 'SU281887',
-    court: 'Sân 1 – ShuttleUp Bình Thạnh',
-    courtImg: '/assets/img/booking/booking-03.jpg',
-    venueAddress: '45 Đinh Tiên Hoàng, Q.Bình Thạnh, TP.HCM',
-    date: '12/03/2026',
-    time: '14:00 – 16:00',
-    amount: 300000,
-    paymentMethod: 'Chuyển khoản',
-    status: 'COMPLETED',
-  },
-  {
-    id: 4,
-    code: 'SU271234',
-    court: 'Sân 3 – ShuttleUp Q7',
-    courtImg: '/assets/img/booking/booking-04.jpg',
-    venueAddress: '88 Quang Trung, Q.Gò Vấp, TP.HCM',
-    date: '10/03/2026',
-    time: '16:00 – 18:00',
-    amount: 480000,
-    paymentMethod: 'Chuyển khoản',
-    status: 'COMPLETED',
-  },
-  {
-    id: 5,
-    code: 'SU260999',
-    court: 'Sân 2 – ShuttleUp Bình Thạnh',
-    courtImg: '/assets/img/booking/booking-02.jpg',
-    venueAddress: '45 Đinh Tiên Hoàng, Q.Bình Thạnh, TP.HCM',
-    date: '08/03/2026',
-    time: '06:00 – 08:00',
-    amount: 240000,
-    paymentMethod: 'Quét mã QR',
-    status: 'CANCELLED',
-  },
-];
+    venueAddress: api.venueAddress || api.venueName || '',
+    date: dateStr,
+    time: timeStr,
+    amount: Number(api.finalAmount ?? api.totalAmount ?? 0),
+    paymentMethod: formatPaymentMethodLabel(api.lastPaymentMethod),
+    status: mapUserBookingTabStatus(api.status, items),
+    sortTime: new Date(api.createdAt).getTime(),
+  };
+}
 
 const TABS = [
   { key: 'UPCOMING',  label: 'Sắp tới',    color: 'primary' },
@@ -83,13 +76,31 @@ export default function UserBookings() {
   const [sortBy,        setSortBy]        = useState('newest');
   const [detailBooking, setDetailBooking] = useState(null);
   const [cancelTarget,  setCancelTarget]  = useState(null);
-  const [bookings,      setBookings]      = useState(MOCK_BOOKINGS);
+  const [bookings,      setBookings]      = useState([]);
+  const [loading,       setLoading]       = useState(true);
+
+  const loadBookings = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getMyBookings();
+      const list = Array.isArray(data) ? data : [];
+      setBookings(list.map(mapApiRowToBooking));
+    } catch {
+      setBookings([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadBookings();
+  }, [loadBookings]);
 
   const filtered = bookings
     .filter(b => b.status === activeTab)
     .sort((a, b) => {
-      if (sortBy === 'newest') return b.id - a.id;
-      if (sortBy === 'oldest') return a.id - b.id;
+      if (sortBy === 'newest') return b.sortTime - a.sortTime;
+      if (sortBy === 'oldest') return a.sortTime - b.sortTime;
       if (sortBy === 'amount') return b.amount - a.amount;
       return 0;
     });
@@ -223,7 +234,15 @@ export default function UserBookings() {
                           </tr>
                         </thead>
                         <tbody>
-                          {filtered.length === 0 && (
+                          {loading && (
+                            <tr>
+                              <td colSpan={9} className="text-center text-muted py-5">
+                                <div className="spinner-border spinner-border-sm text-secondary mb-2" role="status" />
+                                <div>Đang tải lịch đặt sân…</div>
+                              </td>
+                            </tr>
+                          )}
+                          {!loading && filtered.length === 0 && (
                             <tr>
                               <td colSpan={9} className="text-center text-muted py-5">
                                 <i className="feather-calendar" style={{ fontSize: 32, display: 'block', marginBottom: 8, opacity: 0.4 }} />
@@ -231,7 +250,7 @@ export default function UserBookings() {
                               </td>
                             </tr>
                           )}
-                          {filtered.map(b => (
+                          {!loading && filtered.map(b => (
                             <tr key={b.id}>
                               {/* Court */}
                               <td>

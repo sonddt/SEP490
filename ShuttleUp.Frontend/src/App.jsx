@@ -31,6 +31,7 @@ import UserProfileEdit from './pages/user/UserProfileEdit';
 import UserProfileChangePassword from './pages/user/UserProfileChangePassword';
 import UserProfileOtherSetting from './pages/user/UserProfileOtherSetting';
 import UserManagerInfo from './pages/user/UserManagerInfo';
+import UserBookings from './pages/user/UserBookings';
 
 // Manager — Layout + Pages
 import ManagerLayout from './layouts/ManagerLayout';
@@ -119,7 +120,7 @@ function App() {
           <Route path="/user/profile/other-settings" element={<Navigate to="/profile/settings" replace />} />
 
           {/* Player misc */}
-          <Route path="/user/bookings" element={<ProtectedRoute><PlaceholderPage title="Lịch đặt sân" /></ProtectedRoute>} />
+          <Route path="/user/bookings" element={<ProtectedRoute><UserBookings /></ProtectedRoute>} />
           <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
 
           {/* ═══════════════════════════════════════════════════════════
