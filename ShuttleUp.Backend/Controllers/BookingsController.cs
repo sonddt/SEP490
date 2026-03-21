@@ -1,11 +1,13 @@
 using System.Security.Claims;
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using ShuttleUp.BLL.DTOs.Booking;
 using ShuttleUp.Backend.BookingForms;
 using ShuttleUp.DAL.Models;
@@ -19,11 +21,13 @@ public class BookingsController : ControllerBase
 {
     private readonly ShuttleUpDbContext _dbContext;
     private readonly IConfiguration _config;
+    private readonly IWebHostEnvironment _env;
 
-    public BookingsController(ShuttleUpDbContext dbContext, IConfiguration config)
+    public BookingsController(ShuttleUpDbContext dbContext, IConfiguration config, IWebHostEnvironment env)
     {
         _dbContext = dbContext;
         _config = config;
+        _env = env;
     }
 
     private Guid CurrentUserId
@@ -323,46 +327,59 @@ public class BookingsController : ControllerBase
         var apiKey = _config["Cloudinary:ApiKey"]?.Trim();
         var apiSecret = _config["Cloudinary:ApiSecret"]?.Trim();
 
-        if (string.IsNullOrWhiteSpace(cloudName) ||
-            string.IsNullOrWhiteSpace(apiKey) ||
-            string.IsNullOrWhiteSpace(apiSecret))
-            return StatusCode(500, new { message = "Chưa cấu hình Cloudinary trên server (CloudName/ApiKey/ApiSecret)." });
-
-        var account = new Account(cloudName, apiKey, apiSecret);
-        var cloudinary = new Cloudinary(account);
-        var publicId = $"payment_{id}_{Guid.NewGuid():N}";
+        var cloudMissing = string.IsNullOrWhiteSpace(cloudName)
+                           || string.IsNullOrWhiteSpace(apiKey)
+                           || string.IsNullOrWhiteSpace(apiSecret);
 
         string secureUrl;
-        await using (var stream = proofImage.OpenReadStream())
+        if (cloudMissing)
         {
-            var uploadParams = new ImageUploadParams
+            if (!_env.IsDevelopment())
             {
-                File = new FileDescription(proofImage.FileName, stream),
-                Folder = "payment_proofs",
-                PublicId = publicId,
-                Overwrite = false,
-                Transformation = new Transformation()
-                    .Crop("limit")
-                    .Width(1600)
-                    .Height(1600)
-                    .FetchFormat("webp")
-            };
-
-            dynamic result;
-            try
-            {
-                result = await cloudinary.UploadAsync(uploadParams);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "Cloudinary upload exception: " + ex.Message });
+                return StatusCode(500,
+                    new { message = "Chưa cấu hình Cloudinary trên server (CloudName/ApiKey/ApiSecret)." });
             }
 
-            secureUrl = result?.SecureUrl?.ToString() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(secureUrl))
+            // Development: cho phép hoàn tất luồng đặt sân khi chưa có Cloudinary (ảnh không upload).
+            secureUrl = $"dev-local://payment-proof/{id}/{Guid.NewGuid():N}";
+        }
+        else
+        {
+            var account = new Account(cloudName!, apiKey!, apiSecret!);
+            var cloudinary = new Cloudinary(account);
+            var publicId = $"payment_{id}_{Guid.NewGuid():N}";
+
+            await using (var stream = proofImage.OpenReadStream())
             {
-                var errMsg = result?.Error?.Message?.ToString() ?? result?.Error?.ToString() ?? "SecureUrl is null";
-                return StatusCode(500, new { message = "Upload Cloudinary thất bại: " + errMsg });
+                var uploadParams = new ImageUploadParams
+                {
+                    File = new FileDescription(proofImage.FileName, stream),
+                    Folder = "payment_proofs",
+                    PublicId = publicId,
+                    Overwrite = false,
+                    Transformation = new Transformation()
+                        .Crop("limit")
+                        .Width(1600)
+                        .Height(1600)
+                        .FetchFormat("webp")
+                };
+
+                dynamic result;
+                try
+                {
+                    result = await cloudinary.UploadAsync(uploadParams);
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { message = "Cloudinary upload exception: " + ex.Message });
+                }
+
+                secureUrl = result?.SecureUrl?.ToString() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(secureUrl))
+                {
+                    var errMsg = result?.Error?.Message?.ToString() ?? result?.Error?.ToString() ?? "SecureUrl is null";
+                    return StatusCode(500, new { message = "Upload Cloudinary thất bại: " + errMsg });
+                }
             }
         }
 

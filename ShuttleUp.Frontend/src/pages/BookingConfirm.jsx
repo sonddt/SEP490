@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import BookingSteps from '../components/booking/BookingSteps';
 import { useAuth } from '../context/AuthContext';
+import { profileApi } from '../api/profileApi';
 
 function formatDateVN(isoDate) {
   if (!isoDate) return '';
@@ -27,59 +28,64 @@ export default function BookingConfirm() {
     totalHours   = '0h',
   } = state;
 
-  // Group slots by court for display
+  // Group slots by court (giữ object để lấy đúng khoảng bắt đầu–kết thúc)
   const slotsByCourt = useMemo(() => {
     const map = {};
-    selectedSlots.forEach(s => {
+    selectedSlots.forEach((s) => {
       if (!map[s.courtName]) map[s.courtName] = [];
-      map[s.courtName].push(s.timeLabel);
+      map[s.courtName].push(s);
+    });
+    Object.keys(map).forEach((court) => {
+      map[court].sort((a, b) => (a.slotIndex ?? 0) - (b.slotIndex ?? 0));
     });
     return map;
   }, [selectedSlots]);
 
-  // Pre-fill from logged-in user; phone fetched from profile API
+  // Pre-fill từ AuthContext + GET /profile/me (axios baseURL đã có /api — không gọi /api/api/...)
   const [form, setForm] = useState({
-    name:  user?.fullName  ?? '',
-    phone: '',
+    name:  user?.fullName ?? '',
+    phone: (user?.phoneNumber ?? '').trim(),
     note:  '',
   });
-  const [autoFilled, setAutoFilled] = useState({ name: !!user?.fullName, phone: false });
+  const [autoFilled, setAutoFilled] = useState({
+    name: !!user?.fullName,
+    phone: !!(user?.phoneNumber && String(user.phoneNumber).trim()),
+  });
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    const apiBase = import.meta.env.VITE_API_URL ?? '';
-    fetch(`${apiBase}/api/profile/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(r => r.ok ? r.json() : null)
-      .catch(() => null)
-      .then(data => {
-        if (!data) return;
-        // GET /api/profile/me trả về { user: { fullName, phoneNumber, ... }, roles, ... }
-        const u = data.user ?? data;
+    if (!localStorage.getItem('token')) return;
+    profileApi
+      .getMe()
+      .then((data) => {
+        const u = data?.user ?? data;
+        if (!u) return;
         const apiFullName = (u.fullName ?? '').trim();
         const apiPhone = (u.phoneNumber ?? '').trim();
-        setForm(prev => ({
+        setForm((prev) => ({
           ...prev,
-          name:  prev.name || apiFullName || '',
+          name: prev.name || apiFullName || '',
           phone: prev.phone || apiPhone || '',
         }));
-        setAutoFilled(prev => ({
-          name:  prev.name || !!apiFullName,
+        setAutoFilled((prev) => ({
+          name: prev.name || !!apiFullName,
           phone: prev.phone || !!apiPhone,
         }));
-      });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+      })
+      .catch(() => {});
   }, []);
 
   const validate = () => {
     const e = {};
     if (!form.name.trim())  e.name  = 'Vui lòng nhập họ tên';
-    if (!form.phone.trim()) e.phone = 'Vui lòng nhập số điện thoại';
-    else if (!/^[0-9]{9,11}$/.test(form.phone.replace(/\s/g, '')))
-      e.phone = 'Số điện thoại không hợp lệ';
+    const rawPhone = (form.phone || '').trim();
+    if (!rawPhone) e.phone = 'Vui lòng nhập số điện thoại';
+    else {
+      const withoutSpaces = rawPhone.replace(/\s+/g, '');
+      const vnLocal = /^(0[35789][0-9]{8})$/;
+      const ok = vnLocal.test(withoutSpaces) || /^\+84\d{9,10}$/.test(withoutSpaces);
+      if (!ok) e.phone = 'Số điện thoại không hợp lệ';
+    }
     return e;
   };
 
@@ -251,7 +257,7 @@ export default function BookingConfirm() {
                       {selectedSlots.map((s, i) => (
                         <tr key={i}>
                           <td>{s.courtName}</td>
-                          <td>{s.timeLabel}</td>
+                          <td>{s.timeEndLabel ? `${s.timeLabel} – ${s.timeEndLabel}` : s.timeLabel}</td>
                           <td className="text-end">{(s.price ?? 0).toLocaleString('vi-VN')} VNĐ</td>
                         </tr>
                       ))}
@@ -274,14 +280,19 @@ export default function BookingConfirm() {
                     <i className="feather-calendar me-2 text-primary" />
                     {formatDateVN(date)}
                   </li>
-                  {Object.entries(slotsByCourt).map(([court, slots]) => (
-                    <li key={court} className="mb-2">
-                      <i className="feather-clock me-2 text-primary" />
-                      <strong>{court}:</strong>{' '}
-                      {slots[0]} – {slots[slots.length - 1]}
-                      <span className="text-muted ms-1">({slots.length} ô × 30 phút)</span>
-                    </li>
-                  ))}
+                  {Object.entries(slotsByCourt).map(([court, slotObjs]) => {
+                    const first = slotObjs[0];
+                    const last = slotObjs[slotObjs.length - 1];
+                    const endLabel = last?.timeEndLabel ?? last?.timeLabel;
+                    return (
+                      <li key={court} className="mb-2">
+                        <i className="feather-clock me-2 text-primary" />
+                        <strong>{court}:</strong>{' '}
+                        {first?.timeLabel} – {endLabel}
+                        <span className="text-muted ms-1">({slotObjs.length} ô × 30 phút)</span>
+                      </li>
+                    );
+                  })}
                 </ul>
                 <hr />
                 <div className="d-flex justify-content-between align-items-center mb-2">

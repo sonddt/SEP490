@@ -175,7 +175,14 @@ export default function BookingPayment() {
     } catch (e) {
       setLoading(false);
       const status = e.response?.status;
-      const msg = e.response?.data?.message || e.message || 'Đã có lỗi xảy ra.';
+      const body = e.response?.data;
+      const msg =
+        (typeof body === 'string' ? body : null)
+        || body?.message
+        || body?.title
+        || (Array.isArray(body?.errors) ? body.errors.join(' ') : null)
+        || e.message
+        || 'Đã có lỗi xảy ra.';
       if (status === 409) {
         setError(`${msg} Bạn có thể quay lại bước chọn giờ.`);
       } else if (status === 401) {

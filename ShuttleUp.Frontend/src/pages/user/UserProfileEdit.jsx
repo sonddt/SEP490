@@ -154,6 +154,15 @@ export default function UserProfileEdit() {
         province: form.province || null,
       });
 
+      try {
+        updateUser({
+          fullName,
+          phoneNumber: cleanedPhone || undefined,
+        });
+      } catch {
+        /* ignore */
+      }
+
       if (avatarFile) {
         const uploadRes = await profileApi.uploadAvatar(avatarFile);
         const nextAvatarUrl = uploadRes?.avatarUrl || null;

@@ -462,6 +462,7 @@ export default function BookingTimeline() {
             courtName: c.name,
             slotIndex: slotIdx,
             timeLabel: timeSlots[slotIdx],
+            timeEndLabel: timeSlots[slotIdx + 1] ?? '',
             price:     getPriceForSlot(c, slotIdx, selectedDate, pricePerSlot),
             startTime: toLocalDateTimeString(start),
             endTime:   toLocalDateTimeString(end),
