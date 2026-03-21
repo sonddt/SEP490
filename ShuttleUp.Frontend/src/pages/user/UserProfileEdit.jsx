@@ -21,6 +21,19 @@ const PROVINCES = [
   'Vĩnh Long', 'Vĩnh Phúc', 'Yên Bái',
 ];
 
+function formatApiError(e, fallback) {
+  const d = e?.response?.data;
+  if (!d) return fallback;
+  if (typeof d.message === 'string' && d.message.trim()) return d.message;
+  if (d.errors && typeof d.errors === 'object') {
+    const parts = Object.values(d.errors).flat().filter(Boolean);
+    if (parts.length) return parts.join(' ');
+  }
+  if (typeof d.title === 'string' && d.title.trim()) return d.title;
+  if (typeof d.detail === 'string' && d.detail.trim()) return d.detail;
+  return fallback;
+}
+
 export default function UserProfileEdit() {
   const fileInputRef = useRef(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
@@ -65,7 +78,7 @@ export default function UserProfileEdit() {
     setError('');
   };
 
-  const VN_PHONE_REGEX = /^(0[3|5|7|8|9][0-9]{8})$/;
+  const VN_PHONE_REGEX = /^0[35789][0-9]{8}$/;
 
   useEffect(() => {
     let mounted = true;
@@ -96,7 +109,7 @@ export default function UserProfileEdit() {
         setAvatarFile(null);
       } catch (e) {
         if (!mounted) return;
-        setError(e?.response?.data?.message || 'Không tải được hồ sơ.');
+        setError(formatApiError(e, 'Không tải được hồ sơ.'));
         const fallback = {
           fullName: authUser?.fullName || '',
           phoneNumber: authUser?.phoneNumber || '',
@@ -182,7 +195,7 @@ export default function UserProfileEdit() {
       setInitialForm(nextForm);
       setSuccess('Cập nhật hồ sơ thành công.');
     } catch (e2) {
-      setError(e2?.response?.data?.message || 'Cập nhật hồ sơ thất bại, vui lòng thử lại.');
+      setError(formatApiError(e2, 'Cập nhật hồ sơ thất bại, vui lòng thử lại.'));
     } finally {
       setSaving(false);
     }
