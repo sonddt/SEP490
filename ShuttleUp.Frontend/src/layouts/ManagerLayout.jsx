@@ -9,7 +9,6 @@ const PAGE_TITLES = {
   '/manager/bookings':         { title: 'Quản lý đặt sân', crumbs: [] },
   '/manager/notifications':    { title: 'Thông báo', crumbs: [] },
   '/manager/earnings':         { title: 'Doanh thu', crumbs: [] },
-  '/manager/wallet':           { title: 'Ví tiền', crumbs: [] },
   '/manager/payment-settings': { title: 'Cài đặt thanh toán', crumbs: [] },
 };
 
