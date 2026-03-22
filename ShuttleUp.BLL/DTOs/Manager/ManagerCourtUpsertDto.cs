@@ -57,7 +57,7 @@ public class ManagerCourtUpsertDto
     [Required]
     public string Name { get; set; } = null!;
 
-    public string? SportType { get; set; }
+    public string Status { get; set; } = "ACTIVE";
 
     public string? Surface { get; set; }
 

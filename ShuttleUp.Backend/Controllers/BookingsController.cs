@@ -81,7 +81,6 @@ public class BookingsController : ControllerBase
         var venue = await _dbContext.Venues
             .AsNoTracking()
             .FirstOrDefaultAsync(v => v.Id == dto.VenueId
-                                       && v.ApprovalStatus == "APPROVED"
                                        && v.IsActive == true);
 
         if (venue == null)
@@ -91,7 +90,7 @@ public class BookingsController : ControllerBase
 
         var courts = await _dbContext.Courts
             .Include(c => c.CourtPrices)
-            .Where(c => courtIds.Contains(c.Id) && c.VenueId == dto.VenueId && c.IsActive == true)
+            .Where(c => courtIds.Contains(c.Id) && c.VenueId == dto.VenueId && c.IsActive == true && c.Status == "ACTIVE")
             .ToListAsync();
 
         if (courts.Count != courtIds.Count)

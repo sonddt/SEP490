@@ -6,5 +6,7 @@ public class ManagerVenueUpsertDto
     public string Address { get; set; } = null!;
     public decimal? Lat { get; set; }
     public decimal? Lng { get; set; }
+    public string? ContactName { get; set; }
+    public string? ContactPhone { get; set; }
 }
 

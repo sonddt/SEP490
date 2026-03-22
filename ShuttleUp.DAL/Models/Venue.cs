@@ -17,7 +17,11 @@ public partial class Venue
 
     public decimal? Lng { get; set; }
 
-    public string? ApprovalStatus { get; set; }
+    public string? ContactName { get; set; }
+
+    public string? ContactPhone { get; set; }
+
+    public string? Description { get; set; }
 
     public bool? IsActive { get; set; }
 
@@ -31,7 +35,7 @@ public partial class Venue
 
     public virtual User? OwnerUser { get; set; }
 
-    public virtual ICollection<VenueApprovalRequest> VenueApprovalRequests { get; set; } = new List<VenueApprovalRequest>();
+
 
     public virtual ICollection<VenueOpenHour> VenueOpenHours { get; set; } = new List<VenueOpenHour>();
 

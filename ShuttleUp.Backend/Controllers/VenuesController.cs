@@ -27,7 +27,7 @@ public class VenuesController : ControllerBase
     public async Task<IActionResult> GetVenueById([FromRoute] Guid id)
     {
         var venue = await _dbContext.Venues
-            .Where(v => v.Id == id && v.ApprovalStatus == "APPROVED" && v.IsActive == true)
+            .Where(v => v.Id == id && v.IsActive == true)
             .Select(v => new
             {
                 v.Id,
@@ -71,9 +71,9 @@ public class VenuesController : ControllerBase
         sortBy = string.IsNullOrWhiteSpace(sortBy) ? "price" : sortBy.Trim().ToLowerInvariant();
         sortDir = string.IsNullOrWhiteSpace(sortDir) ? "asc" : sortDir.Trim().ToLowerInvariant();
 
-        // Lấy venues đã APPROVED + đang hoạt động cùng với min/max price (nếu có)
+        // Lấy venues đang hoạt động cùng với min/max price (nếu có)
         var baseQuery = _dbContext.Venues
-            .Where(v => v.ApprovalStatus == "APPROVED" && v.IsActive == true)
+            .Where(v => v.IsActive == true)
             .Select(v => new
             {
                 v.Id,
@@ -121,14 +121,14 @@ public class VenuesController : ControllerBase
     public async Task<IActionResult> GetVenueCourts([FromRoute] Guid id)
     {
         var exists = await _dbContext.Venues.AnyAsync(v =>
-            v.Id == id && v.ApprovalStatus == "APPROVED" && v.IsActive == true);
+            v.Id == id && v.IsActive == true);
 
         if (!exists)
             return NotFound();
 
         var courts = await _dbContext.Courts
             .AsNoTracking()
-            .Where(c => c.VenueId == id && c.IsActive == true)
+            .Where(c => c.VenueId == id && c.IsActive == true && c.Status == "ACTIVE")
             .OrderBy(c => c.Name)
             .Select(c => new
             {
@@ -156,7 +156,7 @@ public class VenuesController : ControllerBase
     public async Task<IActionResult> GetVenueAvailability([FromRoute] Guid id, [FromQuery] string date)
     {
         var exists = await _dbContext.Venues.AnyAsync(v =>
-            v.Id == id && v.ApprovalStatus == "APPROVED" && v.IsActive == true);
+            v.Id == id && v.IsActive == true);
 
         if (!exists)
             return NotFound();
@@ -196,7 +196,7 @@ public class VenuesController : ControllerBase
 
         var courtIds = await _dbContext.Courts
             .AsNoTracking()
-            .Where(c => c.VenueId == id && c.IsActive == true)
+            .Where(c => c.VenueId == id && c.IsActive == true && c.Status == "ACTIVE")
             .Select(c => c.Id)
             .ToListAsync();
 

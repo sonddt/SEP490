@@ -63,7 +63,9 @@ public class ManagerVenuesController : ControllerBase
             Name = request.Name,
             Address = request.Address,
             Lat = request.Lat,
-            Lng = request.Lng
+            Lng = request.Lng,
+            ContactName = request.ContactName,
+            ContactPhone = request.ContactPhone
         };
 
         await _venueService.CreateAsync(venue);
@@ -73,7 +75,8 @@ public class ManagerVenuesController : ControllerBase
             venue.Id,
             venue.Name,
             venue.Address,
-            venue.ApprovalStatus,
+            venue.ContactName,
+            venue.ContactPhone,
             venue.IsActive,
             venue.CreatedAt
         });
@@ -103,6 +106,8 @@ public class ManagerVenuesController : ControllerBase
         venue.Address = request.Address;
         venue.Lat = request.Lat;
         venue.Lng = request.Lng;
+        venue.ContactName = request.ContactName;
+        venue.ContactPhone = request.ContactPhone;
 
         await _venueService.UpdateAsync(venue);
 
@@ -111,7 +116,8 @@ public class ManagerVenuesController : ControllerBase
             venue.Id,
             venue.Name,
             venue.Address,
-            venue.ApprovalStatus,
+            venue.ContactName,
+            venue.ContactPhone,
             venue.IsActive,
             venue.CreatedAt
         });
@@ -200,7 +206,6 @@ public class ManagerVenuesController : ControllerBase
                 v.Id,
                 v.Name,
                 v.Address,
-                v.ApprovalStatus,
                 v.IsActive,
                 v.CreatedAt
             })
@@ -247,7 +252,7 @@ public class ManagerVenuesController : ControllerBase
         {
             VenueId = venueId,
             Name = request.Name,
-            SportType = request.SportType,
+            Status = request.Status,
             Surface = request.Surface,
             MaxGuest = request.MaxGuests,
             Description = request.Description,
@@ -342,7 +347,7 @@ public class ManagerVenuesController : ControllerBase
         {
             court.Id,
             court.Name,
-            court.SportType,
+            court.Status,
             court.Surface,
             court.MaxGuest,
             court.Description,
@@ -379,7 +384,7 @@ public class ManagerVenuesController : ControllerBase
             return NotFound(new { message = "Court không tồn tại trong venue này." });
 
         court.Name = request.Name;
-        court.SportType = request.SportType;
+        court.Status = request.Status;
         court.Surface = request.Surface;
         court.MaxGuest = request.MaxGuests;
         court.Description = request.Description;
@@ -475,7 +480,7 @@ public class ManagerVenuesController : ControllerBase
         {
             court.Id,
             court.Name,
-            court.SportType,
+            court.Status,
             court.Surface,
             court.MaxGuest,
             court.Description,
@@ -687,7 +692,7 @@ public class ManagerVenuesController : ControllerBase
         {
             court.Id,
             court.Name,
-            court.SportType,
+            court.Status,
             court.Surface,
             court.MaxGuest,
             court.Description,
@@ -785,8 +790,8 @@ public class ManagerVenuesController : ControllerBase
             courts = courts.Where(c =>
                 (!string.IsNullOrEmpty(c.Name) &&
                  c.Name.Contains(keyword, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrEmpty(c.SportType) &&
-                 c.SportType.Contains(keyword, StringComparison.OrdinalIgnoreCase)));
+                (!string.IsNullOrEmpty(c.Status) &&
+                 c.Status.Contains(keyword, StringComparison.OrdinalIgnoreCase)));
         }
 
         // Sort
@@ -797,8 +802,8 @@ public class ManagerVenuesController : ControllerBase
         {
             ("name", "asc") => courts.OrderBy(c => c.Name),
             ("name", "desc") => courts.OrderByDescending(c => c.Name),
-            ("sporttype", "asc") => courts.OrderBy(c => c.SportType),
-            ("sporttype", "desc") => courts.OrderByDescending(c => c.SportType),
+            ("status", "asc") => courts.OrderBy(c => c.Status),
+            ("status", "desc") => courts.OrderByDescending(c => c.Status),
             ("isactive", "asc") => courts.OrderBy(c => c.IsActive),
             ("isactive", "desc") => courts.OrderByDescending(c => c.IsActive),
             _ => courts.OrderBy(c => c.Name)
@@ -815,7 +820,7 @@ public class ManagerVenuesController : ControllerBase
                 id = c.Id,
                 venueId = c.VenueId,
                 name = c.Name,
-                type = c.SportType,
+                type = c.Status,
                 surface = c.Surface,
                 pricePerHour = (c.CourtPrices
                     .Where(cp => cp.IsWeekend != true && cp.Price.HasValue)
