@@ -17,7 +17,6 @@ DROP TABLE IF EXISTS files;
 
 -- ADMIN
 DROP TABLE IF EXISTS violation_reports;
-DROP TABLE IF EXISTS venue_approval_requests;
 DROP TABLE IF EXISTS manager_profiles;
 
 -- REVIEWS
@@ -53,8 +52,6 @@ DROP TABLE IF EXISTS venues;
 DROP TABLE IF EXISTS user_roles;
 DROP TABLE IF EXISTS roles;
 DROP TABLE IF EXISTS users;
-
-SET FOREIGN_KEY_CHECKS = 1;
 
 -- ======================================================================
 -- USERS
@@ -124,21 +121,27 @@ CREATE TABLE venues (
     address TEXT NOT NULL,
     lat DECIMAL(10,8),
     lng DECIMAL(11,8),
-    approval_status VARCHAR(50) DEFAULT 'PENDING',
-    is_active BOOLEAN DEFAULT FALSE,
+    description TEXT,
+    thumbnail_file_id CHAR(36),
+    contact_name VARCHAR(255),
+    contact_phone VARCHAR(50),
+    is_active BOOLEAN DEFAULT TRUE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (owner_user_id) REFERENCES users(id)
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (owner_user_id) REFERENCES users(id),
+    FOREIGN KEY (thumbnail_file_id) REFERENCES files(id)
 );
 
 CREATE TABLE courts (
     id CHAR(36) PRIMARY KEY,
     venue_id CHAR(36),
     name VARCHAR(100),
-    sport_type VARCHAR(50),
     surface VARCHAR(50),
     max_guest INT,
     description TEXT,
+    status VARCHAR(50) DEFAULT 'ACTIVE',
     is_active BOOLEAN DEFAULT TRUE,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE
 );
 
@@ -358,16 +361,6 @@ CREATE TABLE favorite_venues (
 -- ADMIN
 -- ======================================================================
 
-CREATE TABLE venue_approval_requests (
-    id CHAR(36) PRIMARY KEY,
-    venue_id CHAR(36),
-    status VARCHAR(50),
-    admin_user_id CHAR(36),
-    decision_at DATETIME,
-    decision_note TEXT,
-    FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE,
-    FOREIGN KEY (admin_user_id) REFERENCES users(id)
-);
 
 CREATE TABLE violation_reports (
     id CHAR(36) PRIMARY KEY,
@@ -516,32 +509,31 @@ INSERT IGNORE INTO user_roles (user_id, role_id) VALUES
 -- VENUES MẪU
 -- ======================================================================
 
-INSERT IGNORE INTO venues (id, owner_user_id, name, address, lat, lng, approval_status, is_active, created_at) VALUES
--- Đã duyệt (APPROVED + active)
-('c0000001-0000-0000-0000-000000000001', 'a0000002-0000-0000-0000-000000000002', 'ShuttleUp Quận 7',       '12 Nguyễn Thị Thập, Q.7, TP.HCM',       10.7286, 106.7217, 'APPROVED', TRUE,  NOW() - INTERVAL 60 DAY),
-('c0000002-0000-0000-0000-000000000002', 'b0000005-0000-0000-0000-000000000005', 'ShuttleUp Bình Thạnh',   '45 Đinh Tiên Hoàng, Q.Bình Thạnh, TP.HCM', 10.8036, 106.7200, 'APPROVED', TRUE,  NOW() - INTERVAL 45 DAY),
-('c0000003-0000-0000-0000-000000000003', 'b0000005-0000-0000-0000-000000000005', 'Cầu lông Gò Vấp',       '88 Quang Trung, Q.Gò Vấp, TP.HCM',        10.8309, 106.6700, 'APPROVED', TRUE,  NOW() - INTERVAL 30 DAY),
--- Chờ duyệt (PENDING)
-('c0000004-0000-0000-0000-000000000004', 'b0000006-0000-0000-0000-000000000006', 'Arena Badminton Q.3',    '20 Võ Văn Tần, Q.3, TP.HCM',               10.7756, 106.6861, 'PENDING',  FALSE, NOW() - INTERVAL 3 DAY),
-('c0000005-0000-0000-0000-000000000005', 'a0000002-0000-0000-0000-000000000002', 'ShuttleUp Tân Bình',     '55 Hoàng Văn Thụ, Q.Tân Bình, TP.HCM',    10.8000, 106.6500, 'PENDING',  FALSE, NOW() - INTERVAL 1 DAY),
--- Đã từ chối (REJECTED)
-('c0000006-0000-0000-0000-000000000006', 'b0000006-0000-0000-0000-000000000006', 'Cầu lông Thủ Đức',      '30 Kha Vạn Cân, TP.Thủ Đức, TP.HCM',      10.8500, 106.7700, 'REJECTED', FALSE, NOW() - INTERVAL 20 DAY),
-('c0000007-0000-0000-0000-000000000007', 'b0000010-0000-0000-0000-000000000010', 'Cầu lông Quận 10',     '120 Thành Thái, Q.10, TP.HCM',           10.7700, 106.6600, 'APPROVED', TRUE, NOW() - INTERVAL 5 DAY),
-('c0000008-0000-0000-0000-000000000008', 'b0000011-0000-0000-0000-000000000011', 'Sân thể thao Quận 1',   '1 Tôn Đức Thắng, Q.1, TP.HCM',           10.7800, 106.7000, 'APPROVED', TRUE, NOW() - INTERVAL 5 DAY);
+INSERT IGNORE INTO venues (id, owner_user_id, name, address, lat, lng, is_active, created_at) VALUES
+-- Active Venues
+('c0000001-0000-0000-0000-000000000001', 'a0000002-0000-0000-0000-000000000002', 'ShuttleUp Quận 7',       '12 Nguyễn Thị Thập, Q.7, TP.HCM',       10.7286, 106.7217, TRUE,  NOW() - INTERVAL 60 DAY),
+('c0000002-0000-0000-0000-000000000002', 'b0000005-0000-0000-0000-000000000005', 'ShuttleUp Bình Thạnh',   '45 Đinh Tiên Hoàng, Q.Bình Thạnh, TP.HCM', 10.8036, 106.7200, TRUE,  NOW() - INTERVAL 45 DAY),
+('c0000003-0000-0000-0000-000000000003', 'b0000005-0000-0000-0000-000000000005', 'Cầu lông Gò Vấp',       '88 Quang Trung, Q.Gò Vấp, TP.HCM',        10.8309, 106.6700, TRUE,  NOW() - INTERVAL 30 DAY),
+('c0000007-0000-0000-0000-000000000007', 'b0000010-0000-0000-0000-000000000010', 'Cầu lông Quận 10',     '120 Thành Thái, Q.10, TP.HCM',           10.7700, 106.6600, TRUE, NOW() - INTERVAL 5 DAY),
+('c0000008-0000-0000-0000-000000000008', 'b0000011-0000-0000-0000-000000000011', 'Sân thể thao Quận 1',   '1 Tôn Đức Thắng, Q.1, TP.HCM',           10.7800, 106.7000, TRUE, NOW() - INTERVAL 5 DAY),
+-- Inactive Venues
+('c0000004-0000-0000-0000-000000000004', 'b0000006-0000-0000-0000-000000000006', 'Arena Badminton Q.3',    '20 Võ Văn Tần, Q.3, TP.HCM',               10.7756, 106.6861, FALSE, NOW() - INTERVAL 3 DAY),
+('c0000005-0000-0000-0000-000000000005', 'a0000002-0000-0000-0000-000000000002', 'ShuttleUp Tân Bình',     '55 Hoàng Văn Thụ, Q.Tân Bình, TP.HCM',    10.8000, 106.6500, FALSE, NOW() - INTERVAL 1 DAY),
+('c0000006-0000-0000-0000-000000000006', 'b0000006-0000-0000-0000-000000000006', 'Cầu lông Thủ Đức',      '30 Kha Vạn Cân, TP.Thủ Đức, TP.HCM',      10.8500, 106.7700, FALSE, NOW() - INTERVAL 20 DAY);
 
 -- ======================================================================
 -- COURTS MẪU
 -- ======================================================================
 
-INSERT IGNORE INTO courts (id, venue_id, name, sport_type, is_active) VALUES
-('d0000001-0000-0000-0000-000000000001', 'c0000001-0000-0000-0000-000000000001', 'Sân 1', 'Cầu lông', TRUE),
-('d0000002-0000-0000-0000-000000000002', 'c0000001-0000-0000-0000-000000000001', 'Sân 2', 'Cầu lông', TRUE),
-('d0000003-0000-0000-0000-000000000003', 'c0000002-0000-0000-0000-000000000002', 'Sân 1', 'Cầu lông', TRUE),
-('d0000004-0000-0000-0000-000000000004', 'c0000002-0000-0000-0000-000000000002', 'Sân 2', 'Cầu lông', TRUE),
-('d0000005-0000-0000-0000-000000000005', 'c0000003-0000-0000-0000-000000000003', 'Sân 1', 'Cầu lông', TRUE),
-('d0000006-0000-0000-0000-000000000006', 'c0000003-0000-0000-0000-000000000003', 'Sân 2', 'Cầu lông', TRUE),
-('d0000007-0000-0000-0000-000000000007', 'c0000007-0000-0000-0000-000000000007', 'Sân VIP 1 (Q10)', 'Cầu lông', TRUE),
-('d0000008-0000-0000-0000-000000000008', 'c0000008-0000-0000-0000-000000000008', 'Sân VIP 1 (Q1)', 'Cầu lông', TRUE);
+INSERT IGNORE INTO courts (id, venue_id, name, status, is_active) VALUES
+('d0000001-0000-0000-0000-000000000001', 'c0000001-0000-0000-0000-000000000001', 'Sân 1', 'ACTIVE', TRUE),
+('d0000002-0000-0000-0000-000000000002', 'c0000001-0000-0000-0000-000000000001', 'Sân 2', 'ACTIVE', TRUE),
+('d0000003-0000-0000-0000-000000000003', 'c0000002-0000-0000-0000-000000000002', 'Sân 1', 'ACTIVE', TRUE),
+('d0000004-0000-0000-0000-000000000004', 'c0000002-0000-0000-0000-000000000002', 'Sân 2', 'ACTIVE', TRUE),
+('d0000005-0000-0000-0000-000000000005', 'c0000003-0000-0000-0000-000000000003', 'Sân 1', 'ACTIVE', TRUE),
+('d0000006-0000-0000-0000-000000000006', 'c0000003-0000-0000-0000-000000000003', 'Sân 2', 'MAINTENANCE', TRUE),
+('d0000007-0000-0000-0000-000000000007', 'c0000007-0000-0000-0000-000000000007', 'Sân VIP 1 (Q10)', 'ACTIVE', TRUE),
+('d0000008-0000-0000-0000-000000000008', 'c0000008-0000-0000-0000-000000000008', 'Sân VIP 1 (Q1)', 'CLOSED', FALSE);
 
 -- ======================================================================
 -- COURT PRICES MẪU (weekday + weekend, 05:00–24:00 — dùng cho đặt sân & hiển thị giá)
@@ -606,24 +598,6 @@ INSERT IGNORE INTO payments (id, booking_id, method, status, amount, gateway_ref
 ('g0000006-0000-0000-0000-000000000006', 'e0000008-0000-0000-0000-000000000008', 'CASH',          'COMPLETED',  80000, NULL,           NOW() - INTERVAL 5 DAY),
 ('g0000007-0000-0000-0000-000000000007', 'e0000009-0000-0000-0000-000000000009', 'BANK_TRANSFER', 'COMPLETED', 100000, 'VNP_TXN_005', NOW() - INTERVAL 7 DAY);
 
--- ======================================================================
--- VENUE APPROVAL REQUESTS MẪU
--- ======================================================================
-
-INSERT IGNORE INTO venue_approval_requests (id, venue_id, status, admin_user_id, decision_at, decision_note) VALUES
--- Approved
-('f0000001-0000-0000-0000-000000000001', 'c0000001-0000-0000-0000-000000000001', 'APPROVED',
- 'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 55 DAY, 'Đủ điều kiện, duyệt sân.'),
-('f0000002-0000-0000-0000-000000000002', 'c0000002-0000-0000-0000-000000000002', 'APPROVED',
- 'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 40 DAY, 'Đã xác minh giấy phép.'),
--- Pending (chưa có admin xử lý)
-('f0000003-0000-0000-0000-000000000003', 'c0000004-0000-0000-0000-000000000004', 'PENDING',
- NULL, NULL, NULL),
-('f0000004-0000-0000-0000-000000000004', 'c0000005-0000-0000-0000-000000000005', 'PENDING',
- NULL, NULL, NULL),
--- Rejected
-('f0000005-0000-0000-0000-000000000005', 'c0000006-0000-0000-0000-000000000006', 'REJECTED',
- 'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 15 DAY, 'Địa chỉ không hợp lệ, hồ sơ thiếu.');
 
 -- ======================================================================
 -- MANAGER PROFILES MẪU (DÙNG CHO DUYỆT CHỦ SÂN)
@@ -696,3 +670,5 @@ SELECT 'Courts',              COUNT(*)          FROM courts     UNION ALL
 SELECT 'Files',               COUNT(*)          FROM files      UNION ALL
 SELECT 'VenueFiles',          COUNT(*)          FROM venue_files UNION ALL
 SELECT 'Reviews',             COUNT(*)          FROM venue_reviews;
+
+SET FOREIGN_KEY_CHECKS = 1;

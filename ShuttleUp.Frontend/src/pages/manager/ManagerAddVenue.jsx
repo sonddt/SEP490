@@ -4,12 +4,12 @@ import axiosClient from '../../api/axiosClient';
 
 function SectionHeader({ icon, iconBg, iconColor, title, subtitle }) {
   return (
-    <div className="d-flex align-items-center gap-3">
-      <div style={{ width: 40, height: 40, borderRadius: 10, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <i className={icon} style={{ color: iconColor, fontSize: 18 }} />
+    <div className="d-flex align-items-center gap-3 mb-4">
+      <div style={{ width: 42, height: 42, borderRadius: 10, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <i className={icon} style={{ color: iconColor, fontSize: 20 }} />
       </div>
       <div>
-        <h5 style={{ margin: 0, fontWeight: 600 }}>{title}</h5>
+        <h5 style={{ margin: 0, fontWeight: 600, color: '#1e293b' }}>{title}</h5>
         {subtitle && <span style={{ fontSize: 13, color: '#64748b', marginTop: 2, display: 'block' }}>{subtitle}</span>}
       </div>
     </div>
@@ -23,15 +23,22 @@ export default function ManagerAddVenue() {
   const [form, setForm] = useState({
     name: '',
     address: '',
+    contactName: '',
+    contactPhone: '',
     lat: '',
     lng: ''
   });
   
-  // Fake states preserved for UI consistency on frontend
-  const DAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
+  const DAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
+  const TIME_SLOTS = [];
+  for (let h = 5; h <= 23; h++) {
+    TIME_SLOTS.push(`${String(h).padStart(2, '0')}:00`);
+    TIME_SLOTS.push(`${String(h).padStart(2, '0')}:30`);
+  }
   const [dayHours, setDayHours] = useState(DAYS.map(() => ({ open: '06:00', close: '22:00', enabled: true })));
-  const [description, setDescription] = useState('');
-  const [images, setImages] = useState([]);
+  
+  const [thumbnailFiles, setThumbnailFiles] = useState([]);
+  const [galleryFiles, setGalleryFiles] = useState([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -45,15 +52,17 @@ export default function ManagerAddVenue() {
     const fetchVenue = async () => {
       try {
         setLoading(true);
-        // Using public endpoint because manager venue details endpoint might not exist
         const res = await axiosClient.get(`/venues/${venueId}`);
         if (!mounted) return;
-        setForm({
+        setForm(p => ({
+          ...p,
           name: res?.name || res?.Name || '',
           address: res?.address || res?.Address || '',
+          contactName: res?.contactName || res?.ContactName || '',
+          contactPhone: res?.contactPhone || res?.ContactPhone || '',
           lat: res?.lat || res?.Lat || '',
           lng: res?.lng || res?.Lng || ''
-        });
+        }));
       } catch (err) {
         console.error('Failed to load venue', err);
       } finally {
@@ -68,12 +77,13 @@ export default function ManagerAddVenue() {
     e.preventDefault();
     try {
       setSubmitting(true);
-      
       const request = {
         name: form.name,
         address: form.address,
         lat: form.lat ? Number(form.lat) : null,
-        lng: form.lng ? Number(form.lng) : null
+        lng: form.lng ? Number(form.lng) : null,
+        contactName: form.contactName,
+        contactPhone: form.contactPhone
       };
 
       if (venueId) {
@@ -81,10 +91,6 @@ export default function ManagerAddVenue() {
       } else {
         await axiosClient.post('/manager/venues', request);
       }
-
-      // Notes: Currently only Name, Address, Lat, Lng are persisted in ManagerVenueUpsertDto. 
-      // Hours and Images are mocked here for the venue level. (Handled at Court level usually).
-
       navigate('/manager/venues');
     } catch (err) {
       console.error('Submit venue failed', err);
@@ -95,90 +101,147 @@ export default function ManagerAddVenue() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '40vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="spinner-border text-secondary" role="status"><span className="visually-hidden">Loading...</span></div>
+      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '60vh' }}>
+        <div className="spinner-border text-primary" role="status"><span className="visually-hidden">Loading...</span></div>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: 860, margin: '0 auto', paddingBottom: 60 }}>
-      {/* Back button & Title */}
-      <div className="d-flex align-items-center gap-3 mb-4">
-        <button onClick={() => navigate('/manager/venues')} className="btn btn-icon btn-outline-secondary" style={{ width: 40, height: 40, borderRadius: '50%' }}>
-          <i className="feather-arrow-left" />
+    <div className="container-fluid px-0 px-md-3 pb-5">
+      {/* Header */}
+      <div className="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+        <button onClick={() => navigate('/manager/venues')} className="btn btn-light shadow-sm d-flex align-items-center justify-content-center" style={{ width: 44, height: 44, borderRadius: 12 }}>
+          <i className="feather-arrow-left fs-5" />
         </button>
-        <h4 className="mb-0 fw-bold">{venueId ? 'Cập nhật cụm sân' : 'Thêm cụm sân mới'}</h4>
+        <div>
+          <h3 className="mb-0 fw-bold text-dark">{venueId ? 'Cập nhật Cụm sân' : 'Tạo mới Cụm sân'}</h3>
+          <p className="text-secondary mb-0 mt-1" style={{ fontSize: 14 }}>Thiết lập thông tin chung cho cơ sở của bạn</p>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit}>
-        {/* Basic Info */}
-        <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: 12 }}>
-          <div className="card-header bg-white border-bottom-0 pt-4 pb-0">
-            <SectionHeader icon="feather-map" iconBg="#e8f5ee" iconColor="#097E52" title="Thông tin cơ bản" subtitle="Tên và địa chỉ cụm sân" />
-          </div>
-          <div className="card-body pt-3 pb-4">
-            <div className="row g-4">
-              <div className="col-12">
-                <label className="form-label fw-medium text-dark">Tên cụm sân <span className="text-danger">*</span></label>
-                <input type="text" className="form-control" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }} placeholder="Ví dụ: ShuttleUp Quận 7" value={form.name} onChange={(e) => setField('name', e.target.value)} required />
-              </div>
-              <div className="col-12">
-                <label className="form-label fw-medium text-dark">Địa chỉ chi tiết <span className="text-danger">*</span></label>
-                <input type="text" className="form-control" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }} placeholder="Số nhà, đường, quận/huyện, tỉnh/thành phố..." value={form.address} onChange={(e) => setField('address', e.target.value)} required />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Location (Lat, Lng) */}
-        <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: 12 }}>
-          <div className="card-header bg-white border-bottom-0 pt-4 pb-0">
-            <SectionHeader icon="feather-map-pin" iconBg="#eff6ff" iconColor="#2563eb" title="Vị trí bản đồ" subtitle="Tọa độ hiển thị Google Maps" />
-          </div>
-          <div className="card-body pt-3 pb-4">
-            <div className="row g-4">
-              <div className="col-md-6">
-                <label className="form-label fw-medium text-dark">Vĩ độ (Latitude)</label>
-                <input type="number" step="any" className="form-control" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }} placeholder="Ví dụ: 10.7769" value={form.lat} onChange={(e) => setField('lat', e.target.value)} />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label fw-medium text-dark">Kinh độ (Longitude)</label>
-                <input type="number" step="any" className="form-control" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }} placeholder="Ví dụ: 106.7009" value={form.lng} onChange={(e) => setField('lng', e.target.value)} />
-              </div>
-              <div className="col-12">
-                <div className="rounded-3" style={{ background: '#f1f5f9', height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed #cbd5e1' }}>
-                  <p className="text-muted mb-0 fw-medium d-flex align-items-center"><i className="feather-map-pin me-2" style={{ fontSize: 20 }}></i> Bản đồ sẽ hiển thị tại đây</p>
+        <div className="row g-4">
+          
+          {/* ================= LEFT COLUMN ================= */}
+          <div className="col-12 col-lg-6 d-flex flex-column gap-4">
+            
+            {/* Basic Info Card */}
+            <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
+              <div className="card-body p-4 p-md-5">
+                <SectionHeader icon="feather-map" iconBg="#e8f5ee" iconColor="#097E52" title="1. Thông tin cơ bản" subtitle="Tên, địa chỉ và thông báo liên hệ" />
+                
+                <div className="row g-4">
+                  <div className="col-12">
+                    <label className="form-label fw-semibold text-dark mb-2">Tên cụm sân <span className="text-danger">*</span></label>
+                    <input type="text" className="form-control form-control-lg bg-light border-0" placeholder="Ví dụ: ShuttleUp Quận 7" value={form.name} onChange={(e) => setField('name', e.target.value)} required />
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label fw-semibold text-dark mb-2">Địa chỉ cụ thể <span className="text-danger">*</span></label>
+                    <textarea className="form-control form-control-lg bg-light border-0" rows="3" placeholder="Số nhà, đường, phường, quận..." value={form.address} onChange={(e) => setField('address', e.target.value)} required />
+                  </div>
+                  <div className="col-12 col-md-6">
+                    <label className="form-label fw-semibold text-dark mb-2">Người đại diện</label>
+                    <input type="text" className="form-control form-control-lg bg-light border-0" placeholder="Nguyễn Văn A" value={form.contactName} onChange={(e) => setField('contactName', e.target.value)} />
+                  </div>
+                  <div className="col-12 col-md-6">
+                    <label className="form-label fw-semibold text-dark mb-2">Số điện thoại</label>
+                    <input type="tel" className="form-control form-control-lg bg-light border-0" placeholder="0901234567" value={form.contactPhone} onChange={(e) => setField('contactPhone', e.target.value)} />
+                  </div>
                 </div>
               </div>
             </div>
+
+            {/* Location / Meta Card */}
+            <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
+              <div className="card-body p-4 p-md-5">
+                <SectionHeader icon="feather-map-pin" iconBg="#eff6ff" iconColor="#2563eb" title="2. Tọa độ bản đồ" subtitle="Lấy từ Google Maps (Tùy chọn)" />
+                <div className="row g-4">
+                  <div className="col-12 col-md-6">
+                    <label className="form-label fw-semibold text-dark mb-2">Vĩ độ (Latitude)</label>
+                    <input type="number" step="any" className="form-control form-control-lg bg-light border-0" placeholder="10.7769" value={form.lat} onChange={(e) => setField('lat', e.target.value)} />
+                  </div>
+                  <div className="col-12 col-md-6">
+                    <label className="form-label fw-semibold text-dark mb-2">Kinh độ (Longitude)</label>
+                    <input type="number" step="any" className="form-control form-control-lg bg-light border-0" placeholder="106.7009" value={form.lng} onChange={(e) => setField('lng', e.target.value)} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* ================= RIGHT COLUMN ================= */}
+          <div className="col-12 col-lg-6 d-flex flex-column gap-4">
+            
+             {/* Media Card */}
+             <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
+              <div className="card-body p-4 p-md-5">
+                <SectionHeader icon="feather-image" iconBg="#fce7f3" iconColor="#db2777" title="3. Hình ảnh đại diện" subtitle="Tải lên ảnh đẹp nhất để thu hút khách" />
+                
+                <div className="position-relative bg-light rounded-4 d-flex align-items-center justify-content-center border" style={{ height: 260, borderStyle: 'dashed !important' }}>
+                  <input type="file" className="position-absolute top-0 start-0 w-100 h-100 opacity-0 cursor-pointer" accept="image/*" onChange={(e) => setThumbnailFiles(Array.from(e.target.files || []))} />
+                  {thumbnailFiles.length > 0 ? (
+                    <img src={URL.createObjectURL(thumbnailFiles[0])} alt="thumb" className="w-100 h-100 rounded-4" style={{ objectFit: 'cover' }} />
+                  ) : (
+                    <div className="text-center text-muted">
+                      <div className="bg-white shadow-sm d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style={{ width: 64, height: 64 }}>
+                         <i className="feather-upload-cloud text-primary" style={{ fontSize: 28 }} />
+                      </div>
+                      <h6 className="fw-semibold text-dark">Nhấn hoặc Kéo thả ảnh vào đây</h6>
+                      <span className="small text-secondary">Hỗ trợ JPG, PNG (Tối đa 5MB)</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Schedule Card */}
+            <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
+              <div className="card-body p-4 p-md-5">
+                <SectionHeader icon="feather-clock" iconBg="#fef3c7" iconColor="#d97706" title="4. Lịch hoạt động chung" subtitle="Cài đặt khung giờ làm việc tiêu chuẩn" />
+                
+                <div className="px-2">
+                  {DAYS.map((day, i) => (
+                    <div key={day} className="row align-items-center py-3 border-bottom" style={{ opacity: dayHours[i].enabled ? 1 : 0.6, transition: '0.2s' }}>
+                      <div className="col-3 col-sm-2 fw-bold text-dark">{day}</div>
+                      
+                      <div className="col-3 col-sm-4 px-1">
+                        <select className="form-select form-select-sm bg-light border-0" value={dayHours[i].open} disabled={!dayHours[i].enabled} onChange={(e) => toggleDay(i, 'open', e.target.value)}>
+                          {TIME_SLOTS.map((ts) => <option key={ts} value={ts}>{ts}</option>)}
+                        </select>
+                      </div>
+                      
+                      <div className="col-3 col-sm-4 px-1">
+                        <select className="form-select form-select-sm bg-light border-0" value={dayHours[i].close} disabled={!dayHours[i].enabled} onChange={(e) => toggleDay(i, 'close', e.target.value)}>
+                          {TIME_SLOTS.map((ts) => <option key={ts} value={ts}>{ts}</option>)}
+                        </select>
+                      </div>
+
+                      <div className="col-3 col-sm-2 text-end">
+                        <div className="form-check form-switch d-inline-block m-0" style={{ transform: 'scale(1.1)' }}>
+                          <input className="form-check-input m-0 cursor-pointer" type="checkbox" checked={dayHours[i].enabled} onChange={(e) => toggleDay(i, 'enabled', e.target.checked)} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
-        {/* Mock Description (UI only) */}
-        <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: 12 }}>
-          <div className="card-header bg-white border-bottom-0 pt-4 pb-0">
-            <SectionHeader icon="feather-align-left" iconBg="#fef3c7" iconColor="#d97706" title="Giới thiệu chung" subtitle="Mô tả bao quát cụm sân" />
-          </div>
-          <div className="card-body pt-3 pb-4">
-            <textarea className="form-control" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }} rows={4} placeholder="Mô tả cụm sân, đường đi, thông tin hữu ích..." value={description} onChange={e => setDescription(e.target.value)} />
-            <small className="text-muted mt-2 d-block fst-italic">* Chú ý: Backend hiện chỉ hỗ trợ Tên, Địa chỉ và Vị trí tọa độ ở cấp độ Venue. Các trường này chờ cập nhật API.</small>
-          </div>
-        </div>
-
-        {/* Submit */}
-        <div className="d-flex gap-3 mt-4 pt-2">
-          <button type="submit" className="btn btn-primary d-inline-flex align-items-center" disabled={submitting} style={{ background: '#097E52', borderColor: '#097E52', fontWeight: 500, padding: '10px 24px' }}>
-            {submitting ? (
-              <><span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" /> Đang lưu...</>
-            ) : (
-              <><i className={venueId ? "feather-save me-2" : "feather-plus-circle me-2"} /> {venueId ? 'Cập nhật cụm sân' : 'Thêm cụm sân'}</>
-            )}
-          </button>
-          <Link to="/manager/venues" className="btn btn-outline-secondary fw-medium" style={{ padding: '10px 24px' }}>
-            Huỷ bỏ
+        {/* Action Buttons */}
+        <div className="d-flex justify-content-end gap-3 mt-4 mb-4">
+          <Link to="/manager/venues" className="btn btn-light fw-bold px-4 py-3 shadow-sm" style={{ borderRadius: 12 }}>
+            Hủy bỏ
           </Link>
+          <button type="submit" className="btn btn-primary fw-bold px-5 py-3 shadow" disabled={submitting} style={{ borderRadius: 12, background: '#097E52', borderColor: '#097E52' }}>
+             {submitting ? 'ĐANG LƯU...' : 'LƯU VÀ XUẤT BẢN'}
+          </button>
         </div>
+
       </form>
     </div>
   );
