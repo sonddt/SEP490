@@ -165,10 +165,23 @@ export default function ManagerBookings() {
     try {
       const data = await getManagerBookings();
       setBookings(Array.isArray(data) ? data.map(mapManagerBookingFromApi) : []);
-    } catch {
+    } catch (e) {
       setBookings([]);
-      setToastMsg({ msg: 'Không tải được danh sách đặt sân.', type: 'warning' });
-      setTimeout(() => setToastMsg(null), 3000);
+      const status = e?.response?.status;
+      const body = e?.response?.data;
+      const serverMsg = typeof body?.message === 'string' ? body.message : '';
+      let msg = 'Không tải được danh sách đặt sân.';
+      if (status === 403) {
+        msg = 'API từ chối quyền (403). Token có thể thiếu role MANAGER — đăng xuất và đăng nhập lại. Với DB mẫu, chủ sân Gò Vấp là manager2@shuttleup.vn.';
+      } else if (status === 401) {
+        msg = 'Phiên hết hạn (401). Vui lòng đăng nhập lại.';
+      } else if (status >= 500) {
+        msg = serverMsg || 'Lỗi server khi tải đặt sân. Kiểm tra log API.';
+      } else if (serverMsg) {
+        msg = serverMsg;
+      }
+      setToastMsg({ msg, type: 'warning' });
+      setTimeout(() => setToastMsg(null), 6000);
     } finally {
       if (showTableLoading) setLoading(false);
     }

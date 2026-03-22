@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { loginEmail, loginGoogle } from '../api/authApi';
@@ -21,6 +21,11 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const returnUrl = location.state?.from || null;
+
+  useEffect(() => {
+    const hint = location.state?.authHint;
+    if (hint) setError(hint);
+  }, [location.state?.authHint]);
 
   const syncAvatarFromProfile = async () => {
     try {
