@@ -1,5 +1,6 @@
 namespace ShuttleUp.Backend
 {
+    using System.Security.Claims;
     using System.Text;
     using Microsoft.AspNetCore.Authentication.JwtBearer;
     using Microsoft.EntityFrameworkCore;
@@ -64,6 +65,8 @@ namespace ShuttleUp.Backend
                         ValidIssuer = builder.Configuration["Jwt:Issuer"],
                         ValidAudience = builder.Configuration["Jwt:Audience"],
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+                        RoleClaimType = ClaimTypes.Role,
+                        NameClaimType = ClaimTypes.NameIdentifier,
                     };
 
                     // SignalR gửi token qua query string, không phải Authorization header

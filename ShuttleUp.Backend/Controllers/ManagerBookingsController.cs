@@ -45,6 +45,7 @@ public class ManagerBookingsController : ControllerBase
 
         var query = _dbContext.Bookings
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(b => b.Venue)
             .Include(b => b.User)!.ThenInclude(u => u!.AvatarFile)
             .Include(b => b.BookingItems).ThenInclude(bi => bi.Court)!.ThenInclude(c => c!.Files)
