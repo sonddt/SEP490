@@ -146,6 +146,86 @@ public class ManagerVenuesController : ControllerBase
     }
 
     /// <summary>
+    /// Publish (Công khai) venue cho người dùng đặt lịch.
+    /// </summary>
+    [HttpPut("{venueId}/publish")]
+    public async Task<IActionResult> PublishVenue([FromRoute] Guid venueId)
+    {
+        var managerId = GetCurrentUserId();
+        if (managerId == Guid.Empty)
+            return Unauthorized(new { message = "Không xác định được người dùng hiện tại." });
+
+        var venue = await _venueService.GetByIdAsync(venueId);
+        if (venue == null)
+            return NotFound(new { message = "Venue không tồn tại." });
+
+        if (venue.OwnerUserId != managerId)
+            return Forbid("Bạn không có quyền thao tác trên venue này.");
+
+        // Validation 1: Có ít nhất 1 sân active
+        var hasActiveCourt = await _dbContext.Courts
+            .AnyAsync(c => c.VenueId == venueId && c.IsActive == true && c.Status == "ACTIVE");
+        if (!hasActiveCourt)
+            return BadRequest(new { message = "Venue phải có ít nhất 1 sân đang hoạt động (ACTIVE) trước khi publish." });
+
+        // Validation 2: Có cấu hình giá (Fix query for lazy loading nulls)
+        var hasPricing = await _dbContext.CourtPrices
+            .Include(cp => cp.Court)
+            .AnyAsync(cp => cp.Court != null && cp.Court.VenueId == venueId);
+        if (!hasPricing)
+            return BadRequest(new { message = "Venue phải cấu hình giá sân (CourtPrices) trước khi publish." });
+
+        // Validation 3: Có cấu hình giờ mở cửa (VenueOpenHours hoặc CourtOpenHours)
+        var hasVenueHours = await _dbContext.VenueOpenHours.AnyAsync(voh => voh.VenueId == venueId);
+        var hasCourtHours = await _dbContext.CourtOpenHours
+            .Include(coh => coh.Court)
+            .AnyAsync(coh => coh.Court != null && coh.Court.VenueId == venueId);
+        
+        if (!hasVenueHours && !hasCourtHours)
+            return BadRequest(new { message = "Venue phải cấu hình giờ mở cửa trước khi publish." });
+
+        venue.IsActive = true;
+        await _venueService.UpdateAsync(venue);
+
+        return Ok(new { message = "Publish trạng thái thành công.", isActive = true });
+    }
+
+    /// <summary>
+    /// Unpublish (Ẩn) venue tạm thời. Option A: Không cho phép nếu đang có booking future.
+    /// </summary>
+    [HttpPut("{venueId}/unpublish")]
+    public async Task<IActionResult> UnpublishVenue([FromRoute] Guid venueId)
+    {
+        var managerId = GetCurrentUserId();
+        if (managerId == Guid.Empty)
+            return Unauthorized(new { message = "Không xác định được người dùng hiện tại." });
+
+        var venue = await _venueService.GetByIdAsync(venueId);
+        if (venue == null)
+            return NotFound(new { message = "Venue không tồn tại." });
+
+        if (venue.OwnerUserId != managerId)
+            return Forbid("Bạn không có quyền thao tác trên venue này.");
+
+        // Validate: Không cho unpublish nếu có booking trong tương lai chưa hoàn thành
+        var now = DateTime.UtcNow;
+        var hasFutureBookings = await _dbContext.Bookings
+            .Include(b => b.BookingItems)
+            .AnyAsync(b => b.VenueId == venueId 
+                           && b.Status != "CANCELLED" 
+                           && b.Status != "COMPLETED"
+                           && b.BookingItems.Any(bi => bi.StartTime > now));
+
+        if (hasFutureBookings)
+            return BadRequest(new { message = "Không thể unpublish. Cụm sân đang có lịch đặt ở tương lai." });
+
+        venue.IsActive = false;
+        await _venueService.UpdateAsync(venue);
+
+        return Ok(new { message = "Unpublish trạng thái thành công.", isActive = false });
+    }
+
+    /// <summary>
     /// Danh sách venue mà manager hiện tại quản lý, hỗ trợ search + sort + phân trang.
     /// </summary>
     /// <param name="search">Từ khóa tìm kiếm theo tên hoặc địa chỉ.</param>

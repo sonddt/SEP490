@@ -11,9 +11,8 @@ const MOCK_VENUES = [
 ];
 
 const STATUS_STYLES = {
-  active:   { label: 'Hoạt động', bg: '#dcfce7', color: '#15803d' },
-  inactive: { label: 'Tạm ngưng', bg: '#f1f5f9', color: '#64748b' },
-  pending:  { label: 'Chờ duyệt', bg: '#fef3c7', color: '#d97706' },
+  public: { label: 'Public', bg: '#dcfce7', color: '#15803d' },
+  draft:  { label: 'Draft', bg: '#f1f5f9', color: '#64748b' },
 };
 
 const SORT_OPTIONS = [
@@ -21,7 +20,7 @@ const SORT_OPTIONS = [
   { value: 'name_desc',     label: 'Tên sân (Z → A)' },
   { value: 'revenue_desc',  label: 'Doanh thu (Cao → Thấp)' },
   { value: 'revenue_asc',   label: 'Doanh thu (Thấp → Cao)' },
-  { value: 'status_active', label: 'Trạng thái (Hoạt động trước)' },
+  { value: 'status_active', label: 'Trạng thái (Public trước)' },
 ];
 
 const PAGE_SIZE = 4;
@@ -173,9 +172,7 @@ export default function ManagerVenueList() {
         const items = res?.items ?? res?.data?.items ?? [];
 
         const mapped = (items || []).map((v) => {
-          const approval = (v?.approvalStatus ?? '').toUpperCase();
-          const isPending = approval === 'PENDING';
-          const status = isPending ? 'pending' : (v?.isActive ? 'active' : 'inactive');
+          const status = v?.isActive ? 'public' : 'draft';
 
           return {
             id: v?.id,
@@ -214,7 +211,7 @@ export default function ManagerVenueList() {
       case 'name_desc':     return [...arr].sort((a, b) => b.name.localeCompare(a.name, 'vi'));
       case 'revenue_desc':  return [...arr].sort((a, b) => b.revenueThisMonth - a.revenueThisMonth);
       case 'revenue_asc':   return [...arr].sort((a, b) => a.revenueThisMonth - b.revenueThisMonth);
-      case 'status_active': return [...arr].sort((a) => (a.status === 'active' ? -1 : 1));
+      case 'status_active': return [...arr].sort((a) => (a.status === 'public' ? -1 : 1));
       default:              return arr;
     }
   }, [venues, search, filterStatus, sort]);
@@ -229,6 +226,26 @@ export default function ManagerVenueList() {
     if (!deleteModal) return;
     setVenues((prev) => prev.filter((v) => v.id !== deleteModal.id));
     setDeleteModal(null);
+  };
+
+  const handlePublish = async (venue) => {
+    try {
+      await axiosClient.put(`/manager/venues/${venue.id}/publish`);
+      setVenues((prev) => prev.map((v) => v.id === venue.id ? { ...v, status: 'public' } : v));
+      alert('Đã publish cụm sân thành công!');
+    } catch (e) {
+      alert(e.response?.data?.message || 'Lỗi khi publish cụm sân');
+    }
+  };
+
+  const handleUnpublish = async (venue) => {
+    try {
+      await axiosClient.put(`/manager/venues/${venue.id}/unpublish`);
+      setVenues((prev) => prev.map((v) => v.id === venue.id ? { ...v, status: 'draft' } : v));
+      alert('Đã unpublish cụm sân thành công. Sân đã bị ẩn.');
+    } catch (e) {
+      alert(e.response?.data?.message || 'Lỗi khi unpublish cụm sân');
+    }
   };
 
   return (
@@ -401,6 +418,15 @@ export default function ManagerVenueList() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 20px', flexShrink: 0 }}>
+                    {venue.status === 'draft' ? (
+                      <button type="button" className="btn btn-sm btn-primary" onClick={() => handlePublish(venue)}>
+                        <i className="feather-upload" /> Publish
+                      </button>
+                    ) : (
+                      <button type="button" className="btn btn-sm btn-warning" onClick={() => handleUnpublish(venue)}>
+                        <i className="feather-eye-off" /> Unpublish
+                      </button>
+                    )}
                     <Link to={`/manager/venues/${venue.id}/courts`} className="btn btn-sm btn-outline-secondary">
                       <i className="feather-grid" /> Xem sân
                     </Link>
@@ -466,8 +492,17 @@ export default function ManagerVenueList() {
                     </div>
                   </div>
                   <div className="mgr-venue-card__footer">
+                    {venue.status === 'draft' ? (
+                      <button type="button" className="btn btn-sm btn-primary" style={{ flex: 1 }} onClick={() => handlePublish(venue)}>
+                        <i className="feather-upload" /> Publish
+                      </button>
+                    ) : (
+                      <button type="button" className="btn btn-sm btn-warning" style={{ flex: 1 }} onClick={() => handleUnpublish(venue)}>
+                        <i className="feather-eye-off" /> Unpublish
+                      </button>
+                    )}
                     <Link to={`/manager/venues/${venue.id}/courts`} className="btn btn-sm btn-outline-secondary" style={{ flex: 1 }}>
-                      <i className="feather-grid" /> Xem sân
+                      <i className="feather-grid" />
                     </Link>
                     <Link to={`/manager/venues/${venue.id}/edit`} className="btn btn-sm btn-secondary" style={{ flex: 1 }}>
                       <i className="feather-edit-2" /> Sửa

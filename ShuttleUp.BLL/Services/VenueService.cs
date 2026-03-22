@@ -31,7 +31,7 @@ public class VenueService : IVenueService
     {
         venue.Id = Guid.NewGuid();
         venue.CreatedAt = DateTime.UtcNow;
-        venue.IsActive = true;
+        venue.IsActive = false;
         await _venueRepository.AddAsync(venue);
     }
 
