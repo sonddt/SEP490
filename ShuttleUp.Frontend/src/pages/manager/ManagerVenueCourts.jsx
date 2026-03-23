@@ -101,6 +101,17 @@ export default function ManagerVenueCourts() {
 
   return (
     <>
+      {/* Header */}
+      <div className="d-flex align-items-center gap-3 mb-4 border-bottom pb-4">
+        <Link to="/manager/venues" className="btn btn-light shadow-sm d-flex align-items-center justify-content-center" style={{ width: 44, height: 44, borderRadius: 12 }}>
+          <i className="feather-arrow-left fs-5" />
+        </Link>
+        <div>
+          <h3 className="mb-0 fw-bold text-dark">Quản lý Sân con</h3>
+          <p className="text-secondary mb-0 mt-1" style={{ fontSize: 14 }}>Xem và thao tác trên danh sách các sân thuộc cụm sân hiện tại</p>
+        </div>
+      </div>
+
       {/* Filter tabs */}
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
         <div className="mgr-filter-tabs">
