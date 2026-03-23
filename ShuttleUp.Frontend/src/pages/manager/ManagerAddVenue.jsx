@@ -94,6 +94,7 @@ export default function ManagerAddVenue() {
       navigate('/manager/venues');
     } catch (err) {
       console.error('Submit venue failed', err);
+      alert(err.response?.data?.message || err.response?.data?.title || 'Đã xảy ra lỗi khi lưu Cụm sân. Vui lòng thử lại!');
     } finally {
       setSubmitting(false);
     }

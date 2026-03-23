@@ -153,7 +153,7 @@ export default function ManagerAddCourt() {
       navigate(`/manager/venues/${venueId}/courts`);
     } catch (err) {
       console.error('Submit court failed', err);
-      alert('Đã xảy ra lỗi khi lưu Sân. Vui lòng thử lại!');
+      alert(err.response?.data?.message || err.response?.data?.title || 'Đã xảy ra lỗi khi lưu Sân. Vui lòng thử lại!');
     } finally {
       setSubmitting(false);
     }
