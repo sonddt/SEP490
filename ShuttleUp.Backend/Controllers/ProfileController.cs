@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using ShuttleUp.DAL.Models;
+using DalFile = ShuttleUp.DAL.Models.File;
 
 namespace ShuttleUp.Backend.Controllers;
 
@@ -85,6 +86,31 @@ public class ProfileController : ControllerBase
                 .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.UserId == userId);
 
+            var fileIds = new List<Guid>();
+            if (managerProfile?.CccdFrontFileId != null) fileIds.Add(managerProfile.CccdFrontFileId.Value);
+            if (managerProfile?.CccdBackFileId != null) fileIds.Add(managerProfile.CccdBackFileId.Value);
+            if (managerProfile?.BusinessLicenseFileId1 != null) fileIds.Add(managerProfile.BusinessLicenseFileId1.Value);
+            if (managerProfile?.BusinessLicenseFileId2 != null) fileIds.Add(managerProfile.BusinessLicenseFileId2.Value);
+            if (managerProfile?.BusinessLicenseFileId3 != null) fileIds.Add(managerProfile.BusinessLicenseFileId3.Value);
+
+            var files = fileIds.Count == 0
+                ? new List<DalFile>()
+                : await _db.Files.AsNoTracking().Where(f => fileIds.Contains(f.Id)).ToListAsync();
+            var fileDict = files.ToDictionary(f => f.Id, f => f);
+
+            DalFile? GetFile(Guid? id) => id != null && fileDict.TryGetValue(id.Value, out var f) ? f : null;
+
+            var cccdFront = GetFile(managerProfile?.CccdFrontFileId);
+            var cccdBack = GetFile(managerProfile?.CccdBackFileId);
+            var bl1 = GetFile(managerProfile?.BusinessLicenseFileId1);
+            var bl2 = GetFile(managerProfile?.BusinessLicenseFileId2);
+            var bl3 = GetFile(managerProfile?.BusinessLicenseFileId3);
+
+            var businessLicenseFiles = new[] { bl1, bl2, bl3 }
+                .Where(x => x != null)
+                .Select(x => new { url = x!.FileUrl, mimeType = x!.MimeType, id = x.Id })
+                .ToList();
+
             return Ok(new
             {
                 user = new
@@ -108,13 +134,15 @@ public class ProfileController : ControllerBase
                     : new
                     {
                         managerProfile.UserId,
-                        managerProfile.IdCardNo,
                         managerProfile.TaxCode,
-                        managerProfile.BusinessLicenseNo,
                         managerProfile.Address,
                         managerProfile.Status,
                         managerProfile.DecisionAt,
-                        managerProfile.DecisionNote
+                        managerProfile.DecisionNote,
+
+                        cccdFrontUrl = cccdFront?.FileUrl,
+                        cccdBackUrl = cccdBack?.FileUrl,
+                        businessLicenseFiles
                     }
             });
         }
@@ -138,10 +166,6 @@ public class ProfileController : ControllerBase
 
             if (user == null) return Unauthorized();
 
-            var managerProfile = await _db.ManagerProfiles
-                .AsNoTracking()
-                .FirstOrDefaultAsync(m => m.UserId == userId);
-
             return Ok(new
             {
                 user = new
@@ -160,19 +184,8 @@ public class ProfileController : ControllerBase
                     createdAt = user.createdAt
                 },
                 roles = user.Roles,
-                managerProfile = managerProfile == null
-                    ? null
-                    : new
-                    {
-                        managerProfile.UserId,
-                        managerProfile.IdCardNo,
-                        managerProfile.TaxCode,
-                        managerProfile.BusinessLicenseNo,
-                        managerProfile.Address,
-                        managerProfile.Status,
-                        managerProfile.DecisionAt,
-                        managerProfile.DecisionNote
-                    }
+                // DB cũ không có các cột manager docs theo schema mới nên không thể map đầy đủ.
+                managerProfile = (object?)null
             });
         }
     }

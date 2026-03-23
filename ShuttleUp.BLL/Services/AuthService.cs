@@ -16,20 +16,20 @@ public class AuthService : IAuthService
     private readonly IUserRepository _userRepository;
     private readonly IRoleRepository _roleRepository;
     private readonly IEmailService _emailService;
-    private readonly IManagerProfileRepository _managerProfileRepository;
+    private readonly IManagerProfileRequestRepository _managerProfileRequestRepository;
     private readonly IConfiguration _configuration;
 
     public AuthService(
         IUserRepository userRepository,
         IRoleRepository roleRepository,
         IEmailService emailService,
-        IManagerProfileRepository managerProfileRepository,
+        IManagerProfileRequestRepository managerProfileRequestRepository,
         IConfiguration configuration)
     {
         _userRepository = userRepository;
         _roleRepository = roleRepository;
         _emailService = emailService;
-        _managerProfileRepository = managerProfileRepository;
+        _managerProfileRequestRepository = managerProfileRequestRepository;
         _configuration = configuration;
     }
 
@@ -83,19 +83,17 @@ public class AuthService : IAuthService
         // Lưu ý: KHÔNG gán role MANAGER tại thời điểm đăng ký
         if (request.IsManagerRoleRequested)
         {
-            var existingProfile = await _managerProfileRepository.GetByUserIdAsync(user.Id);
-            if (existingProfile == null)
+            var existingPending = await _managerProfileRequestRepository.GetPendingByUserIdAsync(user.Id);
+            if (existingPending == null)
             {
-                var profile = new ManagerProfile
+                await _managerProfileRequestRepository.AddAsync(new ManagerProfileRequest
                 {
+                    Id = Guid.NewGuid(),
                     UserId = user.Id,
-                    IdCardNo = request.IdCardNo,
-                    TaxCode = request.TaxCode,
-                    BusinessLicenseNo = request.BusinessLicenseNo,
-                    Address = request.Address,
-                    Status = "PENDING"
-                };
-                await _managerProfileRepository.AddAsync(profile);
+                    RequestType = "DANG_KY",
+                    Status = "PENDING",
+                    RequestedAt = DateTime.UtcNow
+                });
             }
         }
 
@@ -151,13 +149,16 @@ public class AuthService : IAuthService
 
         if (wantsManager)
         {
-            var existingProfile = await _managerProfileRepository.GetByUserIdAsync(newUser.Id);
-            if (existingProfile == null)
+            var existingPending = await _managerProfileRequestRepository.GetPendingByUserIdAsync(newUser.Id);
+            if (existingPending == null)
             {
-                await _managerProfileRepository.AddAsync(new ManagerProfile
+                await _managerProfileRequestRepository.AddAsync(new ManagerProfileRequest
                 {
+                    Id = Guid.NewGuid(),
                     UserId = newUser.Id,
-                    Status = "PENDING"
+                    RequestType = "DANG_KY",
+                    Status = "PENDING",
+                    RequestedAt = DateTime.UtcNow
                 });
             }
         }

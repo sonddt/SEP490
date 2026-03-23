@@ -32,6 +32,7 @@ namespace ShuttleUp.Backend
             builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
             builder.Services.AddScoped<IMatchingRepository, MatchingRepository>();
             builder.Services.AddScoped<IManagerProfileRepository, ManagerProfileRepository>();
+            builder.Services.AddScoped<IManagerProfileRequestRepository, ManagerProfileRequestRepository>();
 
             // ── BLL — Services ────────────────────────────────────────────────────
             builder.Services.AddScoped<IEmailService, EmailService>();

@@ -11,6 +11,11 @@ const statusMap = {
   REJECTED: { label: 'Đã từ chối', cls: 'bg-danger' },
 };
 
+const requestTypeMap = {
+  DANG_KY: 'Đăng ký',
+  CAP_NHAT: 'Cập nhật'
+};
+
 export default function AdminManagerRequests() {
   const [requests, setRequests] = useState([]);
   const [filterStatus, setFilterStatus] = useState('');
@@ -144,7 +149,7 @@ export default function AdminManagerRequests() {
                       <th>#</th>
                       <th>Họ tên</th>
                       <th>Email</th>
-                      <th>CCCD/CMND</th>
+                      <th>Loại đơn</th>
                       <th>Mã số thuế</th>
                       <th>Ngày gửi</th>
                       <th>Trạng thái</th>
@@ -178,7 +183,7 @@ export default function AdminManagerRequests() {
                             <td className="text-muted">{rowNum}</td>
                             <td><strong>{r.ownerName || 'N/A'}</strong></td>
                             <td className="text-muted">{r.ownerEmail || 'N/A'}</td>
-                            <td>{r.idCardNo || 'N/A'}</td>
+                            <td>{requestTypeMap[r.requestType] || r.requestType || 'N/A'}</td>
                             <td>{r.taxCode || 'N/A'}</td>
                             <td>{dateStr}</td>
                             <td>
@@ -272,7 +277,26 @@ export default function AdminManagerRequests() {
                   </div>
                   <div className="col-12 mt-3">
                     <label className="text-muted" style={{ fontSize: '0.82rem' }}>CCCD / CMND</label>
-                    <div className="text-break"><strong>{selected.idCardNo || 'N/A'}</strong></div>
+                    {selected.cccdFrontUrl || selected.cccdBackUrl ? (
+                      <div className="d-flex gap-2">
+                        {selected.cccdFrontUrl && (
+                          <img
+                            src={selected.cccdFrontUrl}
+                            alt="CCCD mặt trước"
+                            style={{ width: 140, height: 100, objectFit: 'cover', borderRadius: 8 }}
+                          />
+                        )}
+                        {selected.cccdBackUrl && (
+                          <img
+                            src={selected.cccdBackUrl}
+                            alt="CCCD mặt sau"
+                            style={{ width: 140, height: 100, objectFit: 'cover', borderRadius: 8 }}
+                          />
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-break"><strong>N/A</strong></div>
+                    )}
                   </div>
                   <div className="col-6">
                     <label className="text-muted" style={{ fontSize: '0.82rem' }}>Mã số thuế</label>
@@ -280,7 +304,24 @@ export default function AdminManagerRequests() {
                   </div>
                   <div className="col-6">
                     <label className="text-muted" style={{ fontSize: '0.82rem' }}>Giấy phép KD</label>
-                    <div className="text-break"><strong>{selected.businessLicenseNo || 'N/A'}</strong></div>
+                    <div className="d-flex flex-column gap-2">
+                      {selected.businessLicenseFiles && selected.businessLicenseFiles.length > 0 ? (
+                        selected.businessLicenseFiles.map((f, idx) => {
+                          const isImage = (f.mimeType || '').startsWith('image/');
+                          return (
+                            <div key={f.id ?? idx}>
+                              {isImage ? (
+                                <img src={f.url} alt={`Giấy phép ${idx + 1}`} style={{ width: 160, height: 110, objectFit: 'cover', borderRadius: 8 }} />
+                              ) : (
+                                <a href={f.url} target="_blank" rel="noreferrer">Xem PDF {idx + 1}</a>
+                              )}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="text-break"><strong>N/A</strong></div>
+                      )}
+                    </div>
                   </div>
                   <div className="col-12">
                     <label className="text-muted" style={{ fontSize: '0.82rem' }}>Địa chỉ DOANH NGHIỆP / CÁ NHÂN</label>
@@ -347,7 +388,7 @@ export default function AdminManagerRequests() {
                 <p>
                   Bạn đang thao tác với yêu cầu của <strong>{confirmAction.request.ownerName}</strong> 
                   <br/>
-                  (Mã số thuế: {confirmAction.request.taxCode || 'N/A'} | CCCD: {confirmAction.request.idCardNo || 'N/A'}).
+                  (Mã số thuế: {confirmAction.request.taxCode || 'N/A'} | CCCD: {confirmAction.request.cccdFrontUrl || confirmAction.request.cccdBackUrl ? 'Đã upload' : 'N/A'}).
                 </p>
                 <div className="mb-0">
                   <label className="form-label mb-1">

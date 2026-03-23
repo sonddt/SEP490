@@ -18,6 +18,7 @@ DROP TABLE IF EXISTS files;
 -- ADMIN
 DROP TABLE IF EXISTS violation_reports;
 DROP TABLE IF EXISTS manager_profiles;
+DROP TABLE IF EXISTS manager_profile_requests;
 
 -- REVIEWS
 DROP TABLE IF EXISTS favorite_venues;
@@ -98,16 +99,44 @@ CREATE TABLE user_roles (
 
 CREATE TABLE manager_profiles (
     user_id CHAR(36) PRIMARY KEY,
-    id_card_no VARCHAR(50),
     tax_code VARCHAR(50),
-    business_license_no VARCHAR(100),
     address TEXT,
+    cccd_front_file_id CHAR(36) NULL,
+    cccd_back_file_id CHAR(36) NULL,
+    business_license_file_id_1 CHAR(36) NULL,
+    business_license_file_id_2 CHAR(36) NULL,
+    business_license_file_id_3 CHAR(36) NULL,
     status VARCHAR(50) DEFAULT 'PENDING',
     admin_user_id CHAR(36),
     decision_at DATETIME,
     decision_note TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (admin_user_id) REFERENCES users(id)
+);
+
+-- ======================================================================
+-- MANAGER PROFILE REQUESTS (LỊCH SỬ DUYỆT)
+-- ======================================================================
+
+CREATE TABLE manager_profile_requests (
+    id CHAR(36) PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    request_type VARCHAR(20) NOT NULL, -- DANG_KY | CAP_NHAT
+    status VARCHAR(50) DEFAULT 'PENDING' NOT NULL,
+    requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    tax_code VARCHAR(50),
+    address TEXT,
+    cccd_front_file_id CHAR(36) NULL,
+    cccd_back_file_id CHAR(36) NULL,
+    business_license_file_id_1 CHAR(36) NULL,
+    business_license_file_id_2 CHAR(36) NULL,
+    business_license_file_id_3 CHAR(36) NULL,
+    admin_user_id CHAR(36) NULL,
+    decision_at DATETIME NULL,
+    decision_note TEXT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (admin_user_id) REFERENCES users(id),
+    INDEX idx_manager_profile_requests_user_status_requested (user_id, status, requested_at)
 );
 
 -- ======================================================================
@@ -395,6 +424,31 @@ ALTER TABLE users
 ADD CONSTRAINT fk_user_avatar
 FOREIGN KEY (avatar_file_id) REFERENCES files(id) ON DELETE SET NULL;
 
+-- FK tới files (thêm sau khi CREATE TABLE files để tránh lỗi thứ tự)
+ALTER TABLE manager_profiles
+  ADD CONSTRAINT fk_manager_profiles_cccd_front
+    FOREIGN KEY (cccd_front_file_id) REFERENCES files(id) ON DELETE SET NULL,
+  ADD CONSTRAINT fk_manager_profiles_cccd_back
+    FOREIGN KEY (cccd_back_file_id) REFERENCES files(id) ON DELETE SET NULL,
+  ADD CONSTRAINT fk_manager_profiles_business_license_1
+    FOREIGN KEY (business_license_file_id_1) REFERENCES files(id) ON DELETE SET NULL,
+  ADD CONSTRAINT fk_manager_profiles_business_license_2
+    FOREIGN KEY (business_license_file_id_2) REFERENCES files(id) ON DELETE SET NULL,
+  ADD CONSTRAINT fk_manager_profiles_business_license_3
+    FOREIGN KEY (business_license_file_id_3) REFERENCES files(id) ON DELETE SET NULL;
+
+ALTER TABLE manager_profile_requests
+  ADD CONSTRAINT fk_mpr_cccd_front
+    FOREIGN KEY (cccd_front_file_id) REFERENCES files(id) ON DELETE SET NULL,
+  ADD CONSTRAINT fk_mpr_cccd_back
+    FOREIGN KEY (cccd_back_file_id) REFERENCES files(id) ON DELETE SET NULL,
+  ADD CONSTRAINT fk_mpr_business_license_1
+    FOREIGN KEY (business_license_file_id_1) REFERENCES files(id) ON DELETE SET NULL,
+  ADD CONSTRAINT fk_mpr_business_license_2
+    FOREIGN KEY (business_license_file_id_2) REFERENCES files(id) ON DELETE SET NULL,
+  ADD CONSTRAINT fk_mpr_business_license_3
+    FOREIGN KEY (business_license_file_id_3) REFERENCES files(id) ON DELETE SET NULL;
+
 CREATE TABLE refund_request_files (
     refund_request_id CHAR(36),
     file_id CHAR(36),
@@ -603,17 +657,40 @@ INSERT IGNORE INTO payments (id, booking_id, method, status, amount, gateway_ref
 -- MANAGER PROFILES MẪU (DÙNG CHO DUYỆT CHỦ SÂN)
 -- ======================================================================
 
-INSERT IGNORE INTO manager_profiles (user_id, id_card_no, tax_code, business_license_no, address, status, admin_user_id, decision_at, decision_note) VALUES
+INSERT IGNORE INTO manager_profiles (user_id, tax_code, address, cccd_front_file_id, cccd_back_file_id, business_license_file_id_1, business_license_file_id_2, business_license_file_id_3, status, admin_user_id, decision_at, decision_note) VALUES
 -- Approved (manager2, manager3) - đã được duyệt và cấp role MANAGER ở bảng roles
-('b0000005-0000-0000-0000-000000000005', '001099011222', '0312123123', 'DKKD-00123', 'Quận 1, TP.HCM', 'APPROVED', 'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 10 DAY, 'Hợp lệ'),
-('b0000006-0000-0000-0000-000000000006', '001099011333', '0312123444', 'DKKD-00444', 'Quận 3, TP.HCM', 'APPROVED', 'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 8 DAY, 'Đã xác minh'),
+-- file_id CCCD / Giấy phép mẫu (để FE/admin preview)
+('b0000005-0000-0000-0000-000000000005', '0312123123', 'Quận 1, TP.HCM', 'e0000001-0000-0000-0000-000000000001', 'e0000002-0000-0000-0000-000000000002', 'e0000003-0000-0000-0000-000000000003', 'e0000004-0000-0000-0000-000000000004', NULL, 'APPROVED', 'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 10 DAY, 'Hợp lệ'),
+('b0000006-0000-0000-0000-000000000006', '0312123444', 'Quận 3, TP.HCM', 'e0000005-0000-0000-0000-000000000005', 'e0000006-0000-0000-0000-000000000006', 'e0000007-0000-0000-0000-000000000007', NULL, NULL, 'APPROVED', 'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 8 DAY, 'Đã xác minh'),
 -- Pending (player2, player3) - xin làm chủ sân nhưng đang chờ duyệt
-('b0000001-0000-0000-0000-000000000001', '001099011555', '0312123555', 'DKKD-00555', 'Quận 7, TP.HCM', 'PENDING', NULL, NULL, NULL),
-('b0000002-0000-0000-0000-000000000002', '001099011666', '0312123666', 'DKKD-00666', 'Tân Bình, TP.HCM', 'PENDING', NULL, NULL, NULL),
+('b0000001-0000-0000-0000-000000000001', '0312123555', 'Quận 7, TP.HCM', NULL, NULL, NULL, NULL, NULL, 'PENDING', NULL, NULL, NULL),
+('b0000002-0000-0000-0000-000000000002', '0312123666', 'Tân Bình, TP.HCM', NULL, NULL, NULL, NULL, NULL, 'PENDING', NULL, NULL, NULL),
 -- Rejected (player4) - bị từ chối
-('b0000003-0000-0000-0000-000000000003', '001099011777', '0312123777', 'DKKD-00777', 'Thủ Đức, TP.HCM', 'REJECTED', 'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 2 DAY, 'Thiếu thông tin chứng minh nhân dân'),
-('b0000010-0000-0000-0000-000000000010', '001099011888', '0312123888', 'DKKD-00888', 'Quận 10, TP.HCM', 'APPROVED', 'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 5 DAY, 'Đủ điều kiện'),
-('b0000011-0000-0000-0000-000000000011', '001099011999', '0312123999', 'DKKD-00999', 'Quận 1, TP.HCM', 'APPROVED', 'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 5 DAY, 'Đủ điều kiện');
+('b0000003-0000-0000-0000-000000000003', '0312123777', 'Thủ Đức, TP.HCM', NULL, NULL, NULL, NULL, NULL, 'REJECTED', 'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 2 DAY, 'Không đủ điều kiện hồ sơ'),
+('b0000010-0000-0000-0000-000000000010', '0312123888', 'Quận 10, TP.HCM', 'e0000008-0000-0000-0000-000000000008', 'e0000009-0000-0000-0000-000000000009', 'e0000010-0000-0000-0000-000000000010', NULL, NULL, 'APPROVED', 'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 5 DAY, 'Đủ điều kiện'),
+('b0000011-0000-0000-0000-000000000011', '0312123999', 'Quận 1, TP.HCM', 'e0000011-0000-0000-0000-000000000011', 'e0000012-0000-0000-0000-000000000012', 'e0000013-0000-0000-0000-000000000013', 'e0000014-0000-0000-0000-000000000014', 'e0000015-0000-0000-0000-000000000015', 'APPROVED', 'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 5 DAY, 'Đủ điều kiện');
+
+-- ======================================================================
+-- MANAGER PROFILE REQUESTS MẪU
+-- ======================================================================
+
+INSERT IGNORE INTO manager_profile_requests
+    (id, user_id, request_type, status, requested_at, tax_code, address,
+     cccd_front_file_id, cccd_back_file_id,
+     business_license_file_id_1, business_license_file_id_2, business_license_file_id_3,
+     admin_user_id, decision_at, decision_note)
+VALUES
+('d0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'DANG_KY', 'PENDING',  NOW() - INTERVAL 1 DAY, '0312123555', 'Quận 7, TP.HCM', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+('d0000002-0000-0000-0000-000000000002', 'b0000002-0000-0000-0000-000000000002', 'CAP_NHAT', 'PENDING', NOW() - INTERVAL 2 DAY, '0312123666', 'Tân Bình, TP.HCM', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+('d0000003-0000-0000-0000-000000000003', 'b0000003-0000-0000-0000-000000000003', 'DANG_KY', 'REJECTED', NOW() - INTERVAL 2 DAY, '0312123777', 'Thủ Đức, TP.HCM', NULL, NULL, NULL, NULL, NULL, 'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 2 DAY, 'Không đủ hồ sơ'),
+('d0000004-0000-0000-0000-000000000004', 'b0000005-0000-0000-0000-000000000005', 'DANG_KY', 'APPROVED', NOW() - INTERVAL 10 DAY, '0312123123', 'Quận 1, TP.HCM',
+ 'e0000001-0000-0000-0000-000000000001', 'e0000002-0000-0000-0000-000000000002',
+ 'e0000003-0000-0000-0000-000000000003', 'e0000004-0000-0000-0000-000000000004', NULL,
+ 'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 10 DAY, 'Hợp lệ'),
+('d0000005-0000-0000-0000-000000000005', 'b0000006-0000-0000-0000-000000000006', 'DANG_KY', 'APPROVED', NOW() - INTERVAL 8 DAY, '0312123444', 'Quận 3, TP.HCM',
+ 'e0000005-0000-0000-0000-000000000005', 'e0000006-0000-0000-0000-000000000006',
+ 'e0000007-0000-0000-0000-000000000007', NULL, NULL,
+ 'a0000003-0000-0000-0000-000000000003', NOW() - INTERVAL 8 DAY, 'Đã xác minh');
 
 -- ======================================================================
 -- Kiểm tra kết quả
@@ -629,6 +706,24 @@ INSERT IGNORE INTO files (id, file_url, file_name, mime_type, file_size, created
 ('h0000003-0000-0000-0000-000000000003', 'https://dream-theme.com/html/venus/assets/img/gallery/gallery-03.jpg', 'gallery-03.jpg', 'image/jpeg', 102400, NOW()),
 ('h0000004-0000-0000-0000-000000000004', 'https://dream-theme.com/html/venus/assets/img/gallery/gallery-04.jpg', 'gallery-04.jpg', 'image/jpeg', 102400, NOW()),
 ('h0000005-0000-0000-0000-000000000005', 'https://dream-theme.com/html/venus/assets/img/gallery/gallery-05.jpg', 'gallery-05.jpg', 'image/jpeg', 102400, NOW());
+
+-- FILE MẪU CHO CCCD / GIẤY PHÉP CHỦ SÂN (DÙNG CHO MANAGER REQUEST)
+INSERT IGNORE INTO files (id, file_url, file_name, mime_type, file_size, created_at) VALUES
+('e0000001-0000-0000-0000-000000000001', 'https://example.com/cccd/front_1.jpg', 'cccd_front_1.jpg', 'image/jpeg', 204800, NOW()),
+('e0000002-0000-0000-0000-000000000002', 'https://example.com/cccd/back_1.jpg',  'cccd_back_1.jpg',  'image/jpeg', 204800, NOW()),
+('e0000003-0000-0000-0000-000000000003', 'https://example.com/license/license_1.jpg', 'license_1.jpg', 'image/jpeg', 307200, NOW()),
+('e0000004-0000-0000-0000-000000000004', 'https://example.com/license/license_2.jpg', 'license_2.jpg', 'image/jpeg', 307200, NOW()),
+('e0000005-0000-0000-0000-000000000005', 'https://example.com/cccd/front_2.jpg', 'cccd_front_2.jpg', 'image/jpeg', 204800, NOW()),
+('e0000006-0000-0000-0000-000000000006', 'https://example.com/cccd/back_2.jpg',  'cccd_back_2.jpg',  'image/jpeg', 204800, NOW()),
+('e0000007-0000-0000-0000-000000000007', 'https://example.com/license/license_3.pdf', 'license_3.pdf', 'application/pdf', 512000, NOW()),
+('e0000008-0000-0000-0000-000000000008', 'https://example.com/cccd/front_3.jpg', 'cccd_front_3.jpg', 'image/jpeg', 204800, NOW()),
+('e0000009-0000-0000-0000-000000000009', 'https://example.com/cccd/back_3.jpg',  'cccd_back_3.jpg',  'image/jpeg', 204800, NOW()),
+('e0000010-0000-0000-0000-000000000010', 'https://example.com/license/license_4.pdf', 'license_4.pdf', 'application/pdf', 512000, NOW()),
+('e0000011-0000-0000-0000-000000000011', 'https://example.com/cccd/front_4.jpg', 'cccd_front_4.jpg', 'image/jpeg', 204800, NOW()),
+('e0000012-0000-0000-0000-000000000012', 'https://example.com/cccd/back_4.jpg',  'cccd_back_4.jpg',  'image/jpeg', 204800, NOW()),
+('e0000013-0000-0000-0000-000000000013', 'https://example.com/license/license_5.pdf', 'license_5.pdf', 'application/pdf', 512000, NOW()),
+('e0000014-0000-0000-0000-000000000014', 'https://example.com/license/license_6.jpg', 'license_6.jpg', 'image/jpeg', 307200, NOW()),
+('e0000015-0000-0000-0000-000000000015', 'https://example.com/license/license_7.jpg', 'license_7.jpg', 'image/jpeg', 307200, NOW());
 
 -- Mapping files to venues
 INSERT IGNORE INTO venue_files (venue_id, file_id) VALUES
