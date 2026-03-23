@@ -3,13 +3,11 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using System.IdentityModel.Tokens.Jwt;
-using CloudinaryDotNet;
-using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using ShuttleUp.Backend.Services.Interfaces;
 using ShuttleUp.DAL.Models;
 
 namespace ShuttleUp.Backend.Controllers;
@@ -20,12 +18,12 @@ namespace ShuttleUp.Backend.Controllers;
 public class ProfileController : ControllerBase
 {
     private readonly ShuttleUpDbContext _db;
-    private readonly IConfiguration _config;
+    private readonly IFileService _fileService;
 
-    public ProfileController(ShuttleUpDbContext db, IConfiguration config)
+    public ProfileController(ShuttleUpDbContext db, IFileService fileService)
     {
         _db = db;
-        _config = config;
+        _fileService = fileService;
     }
 
     private bool TryGetCurrentUserId(out Guid userId)
@@ -270,66 +268,18 @@ public class ProfileController : ControllerBase
         if (avatar.ContentType == null || !avatar.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
             return BadRequest(new { message = "Avatar phải là file ảnh." });
 
-        var cloudName = _config["Cloudinary:CloudName"]?.Trim();
-        var apiKey = _config["Cloudinary:ApiKey"]?.Trim();
-        var apiSecret = _config["Cloudinary:ApiSecret"]?.Trim();
-        var folder = _config["Cloudinary:Folder"]?.Trim();
-
-        if (string.IsNullOrWhiteSpace(cloudName))
-        {
-            return StatusCode(500, new { message = "Chưa cấu hình Cloudinary trên server (CloudName)." });
-        }
-
-        if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(apiSecret))
-        {
-            return StatusCode(500, new { message = "Chưa cấu hình Cloudinary trên server (ApiKey/ApiSecret)." });
-        }
-
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null) return Unauthorized();
 
-        // Public ID cố định theo yêu cầu: user_avatar_{userId}
-        var publicId = $"user_avatar_{userId}";
-        var targetFolder = string.IsNullOrWhiteSpace(folder) ? "avatars" : folder;
-
-        var account = new Account(cloudName, apiKey, apiSecret);
-        var cloudinary = new Cloudinary(account);
-
-        // Upload + transform trực tiếp để đảm bảo ảnh avatar luôn có kích thước 200x200 và format webp.
-        using var stream = avatar.OpenReadStream();
-        var uploadParams = new ImageUploadParams
-        {
-            File = new FileDescription(avatar.FileName, stream),
-            Folder = targetFolder,
-            PublicId = publicId,
-            Overwrite = true,
-            Invalidate = true,
-            Transformation = new Transformation()
-                .Crop("fill")
-                .Gravity("face")
-                .Width(200)
-                .Height(200)
-                .FetchFormat("webp")
-        };
-
-        dynamic result;
+        string secureUrl;
         try
         {
-            result = await cloudinary.UploadAsync(uploadParams);
+            var upload = await _fileService.UploadAvatarAsync(avatar, userId, HttpContext.RequestAborted);
+            secureUrl = upload.SecureUrl;
         }
         catch (Exception ex)
         {
             return StatusCode(500, new { message = "Cloudinary upload exception: " + ex.Message });
-        }
-
-        if (result == null)
-            return StatusCode(500, new { message = "Upload Cloudinary thất bại: result null." });
-
-        var secureUrl = result.SecureUrl?.ToString();
-        if (string.IsNullOrWhiteSpace(secureUrl))
-        {
-            var errMsg = result.Error?.Message ?? result.Error?.ToString() ?? "SecureUrl is null";
-            return StatusCode(500, new { message = "Upload Cloudinary thất bại: " + errMsg });
         }
 
         // Logic database theo chiến lược: chỉ "ghi nhận" record avatar lần đầu.
