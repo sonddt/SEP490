@@ -21,6 +21,13 @@ public partial class Booking
 
     public DateTime? CreatedAt { get; set; }
 
+    /// <summary>Liên hệ tại thời điểm đặt (có thể khác hồ sơ tài khoản).</summary>
+    public string? ContactName { get; set; }
+
+    public string? ContactPhone { get; set; }
+
+    public string? GuestNote { get; set; }
+
     public virtual ICollection<BookingItem> BookingItems { get; set; } = new List<BookingItem>();
 
     public virtual ICollection<MatchingPost> MatchingPosts { get; set; } = new List<MatchingPost>();

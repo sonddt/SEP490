@@ -54,7 +54,6 @@ public partial class ShuttleUpDbContext : DbContext
 
     public virtual DbSet<Venue> Venues { get; set; }
 
-    public virtual DbSet<VenueApprovalRequest> VenueApprovalRequests { get; set; }
 
     public virtual DbSet<VenueOpenHour> VenueOpenHours { get; set; }
 
@@ -91,6 +90,15 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime")
                 .HasColumnName("created_at");
+            entity.Property(e => e.ContactName)
+                .HasMaxLength(255)
+                .HasColumnName("contact_name");
+            entity.Property(e => e.ContactPhone)
+                .HasMaxLength(50)
+                .HasColumnName("contact_phone");
+            entity.Property(e => e.GuestNote)
+                .HasColumnType("text")
+                .HasColumnName("guest_note");
             entity.Property(e => e.DiscountAmount)
                 .HasPrecision(15, 2)
                 .HasDefaultValueSql("'0.00'")
@@ -278,9 +286,10 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.Surface)
                 .HasMaxLength(50)
                 .HasColumnName("surface");
-            entity.Property(e => e.SportType)
+            entity.Property(e => e.Status)
                 .HasMaxLength(50)
-                .HasColumnName("sport_type");
+                .HasDefaultValueSql("'ACTIVE'")
+                .HasColumnName("status");
             entity.Property(e => e.VenueId).HasColumnName("venue_id");
 
             entity.HasOne(d => d.Venue).WithMany(p => p.Courts)
@@ -814,10 +823,15 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.Address)
                 .HasColumnType("text")
                 .HasColumnName("address");
-            entity.Property(e => e.ApprovalStatus)
-                .HasMaxLength(50)
-                .HasDefaultValueSql("'PENDING'")
-                .HasColumnName("approval_status");
+            entity.Property(e => e.ContactName)
+                .HasMaxLength(150)
+                .HasColumnName("contact_name");
+            entity.Property(e => e.ContactPhone)
+                .HasMaxLength(20)
+                .HasColumnName("contact_phone");
+            entity.Property(e => e.Description)
+                .HasColumnType("text")
+                .HasColumnName("description");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime")
@@ -861,38 +875,7 @@ public partial class ShuttleUpDbContext : DbContext
                     });
         });
 
-        modelBuilder.Entity<VenueApprovalRequest>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PRIMARY");
 
-            entity.ToTable("venue_approval_requests");
-
-            entity.HasIndex(e => e.AdminUserId, "admin_user_id");
-
-            entity.HasIndex(e => e.VenueId, "venue_id");
-
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.AdminUserId).HasColumnName("admin_user_id");
-            entity.Property(e => e.DecisionAt)
-                .HasColumnType("datetime")
-                .HasColumnName("decision_at");
-            entity.Property(e => e.DecisionNote)
-                .HasColumnType("text")
-                .HasColumnName("decision_note");
-            entity.Property(e => e.Status)
-                .HasMaxLength(50)
-                .HasColumnName("status");
-            entity.Property(e => e.VenueId).HasColumnName("venue_id");
-
-            entity.HasOne(d => d.AdminUser).WithMany(p => p.VenueApprovalRequests)
-                .HasForeignKey(d => d.AdminUserId)
-                .HasConstraintName("venue_approval_requests_ibfk_2");
-
-            entity.HasOne(d => d.Venue).WithMany(p => p.VenueApprovalRequests)
-                .HasForeignKey(d => d.VenueId)
-                .OnDelete(DeleteBehavior.Cascade)
-                .HasConstraintName("venue_approval_requests_ibfk_1");
-        });
 
         modelBuilder.Entity<VenueOpenHour>(entity =>
         {

@@ -24,7 +24,11 @@ export default function BookingComplete() {
     customerPhone = '',
     paymentMethod = 'Chuyển khoản ngân hàng',
     bookingCode   = `SU${Date.now().toString().slice(-6)}`,
+    bookingId     = null,
+    bookingStatus = 'PENDING',
   } = state;
+
+  const statusUpper = String(bookingStatus || 'PENDING').toUpperCase();
 
   // Group by court
   const courts = [...new Set(selectedSlots.map(s => s.courtName))];
@@ -57,13 +61,20 @@ export default function BookingComplete() {
             >
               <i className="feather-check-circle" style={{ fontSize: '48px', color: '#16a34a' }} />
             </div>
-            <h2 className="mb-2" style={{ color: '#16a34a' }}>Đặt sân thành công!</h2>
+            <h2 className="mb-2" style={{ color: '#16a34a' }}>Đã gửi yêu cầu đặt sân!</h2>
             <p className="sub-title text-muted mb-1">
-              Lịch đặt của bạn đã được xác nhận. Chúc bạn có buổi tập luyện vui vẻ!
+              {statusUpper === 'CONFIRMED'
+                ? 'Lịch đặt của bạn đã được xác nhận. Chúc bạn có buổi tập luyện vui vẻ!'
+                : 'Chúng tôi đã nhận thanh toán và thông tin của bạn. Vui lòng chờ chủ sân xác nhận — bạn có thể theo dõi trạng thái trong mục Lịch sử đặt sân.'}
             </p>
-            <p className="text-muted">
+            <p className="text-muted mb-1">
               Mã đặt sân: <strong className="primary-text fs-5">{bookingCode}</strong>
             </p>
+            {bookingId && (
+              <p className="text-muted small mb-0">
+                Mã tham chiếu: <code>{bookingId}</code>
+              </p>
+            )}
           </div>
 
           {/* Booking detail card */}

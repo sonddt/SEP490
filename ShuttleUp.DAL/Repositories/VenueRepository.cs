@@ -17,11 +17,8 @@ public class VenueRepository : Repository<Venue>, IVenueRepository
 
     public async Task<IEnumerable<Venue>> GetApprovedVenuesAsync()
     {
-        return await _dbSet.Where(v => v.ApprovalStatus == "APPROVED" && v.IsActive == true).ToListAsync();
+        return await _dbSet.Where(v => v.IsActive == true).ToListAsync();
     }
 
-    public async Task<IEnumerable<Venue>> GetPendingApprovalAsync()
-    {
-        return await _dbSet.Where(v => v.ApprovalStatus == "PENDING").ToListAsync();
-    }
+
 }

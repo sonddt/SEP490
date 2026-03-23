@@ -31,13 +31,13 @@ import UserProfileEdit from './pages/user/UserProfileEdit';
 import UserProfileChangePassword from './pages/user/UserProfileChangePassword';
 import UserProfileOtherSetting from './pages/user/UserProfileOtherSetting';
 import UserManagerInfo from './pages/user/UserManagerInfo';
+import UserBookings from './pages/user/UserBookings';
 
 // Manager — Layout + Pages
 import ManagerLayout from './layouts/ManagerLayout';
 import ManagerDashboard from './pages/manager/ManagerDashboard';
 import ManagerVenueList from './pages/manager/ManagerVenueList';
 import ManagerAddVenue from './pages/manager/ManagerAddVenue';
-import ManagerEditVenue from './pages/manager/ManagerEditVenue';
 import ManagerVenueCourts from './pages/manager/ManagerVenueCourts';
 import ManagerAddCourt from './pages/manager/ManagerAddCourt';
 import ManagerBookings from './pages/manager/ManagerBookings';
@@ -119,7 +119,7 @@ function App() {
           <Route path="/user/profile/other-settings" element={<Navigate to="/profile/settings" replace />} />
 
           {/* Player misc */}
-          <Route path="/user/bookings" element={<ProtectedRoute><PlaceholderPage title="Lịch đặt sân" /></ProtectedRoute>} />
+          <Route path="/user/bookings" element={<ProtectedRoute><UserBookings /></ProtectedRoute>} />
           <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
 
           {/* ═══════════════════════════════════════════════════════════
@@ -141,7 +141,7 @@ function App() {
             {/* Venue CRUD */}
             <Route path="venues" element={<ManagerVenueList />} />
             <Route path="venues/add" element={<ManagerAddVenue />} />
-            <Route path="venues/:venueId/edit" element={<ManagerEditVenue />} />
+            <Route path="venues/:venueId/edit" element={<ManagerAddVenue />} />
             <Route path="venues/:venueId/availability" element={<ManagerAvailability />} />
 
             {/* Court CRUD (within venue) */}

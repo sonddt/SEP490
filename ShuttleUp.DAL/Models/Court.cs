@@ -17,7 +17,7 @@ public partial class Court
 
     public string? Description { get; set; }
 
-    public string? SportType { get; set; }
+    public string? Status { get; set; }
 
     public bool? IsActive { get; set; }
 

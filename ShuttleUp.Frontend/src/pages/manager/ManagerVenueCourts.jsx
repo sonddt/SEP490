@@ -3,34 +3,62 @@ import { Link, useParams } from 'react-router-dom';
 
 import axiosClient from '../../api/axiosClient';
 
-function ActionMenu({ court, venueId, onDelete }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+// Pagination Component
+function Pagination({ page, totalPages, onChange }) {
+  if (totalPages <= 1) return null;
 
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
+  const pages = [];
+  for (let i = 1; i <= totalPages; i++) {
+    pages.push(i);
+  }
 
   return (
-    <div className="mgr-action-dropdown" ref={ref}>
-      <button type="button" className="mgr-action-dropdown__trigger" onClick={() => setOpen((v) => !v)} title="Tuỳ chọn">
-        <i className="feather-more-horizontal" />
+    <div className="d-flex align-items-center justify-content-center gap-2 mt-4">
+      <button
+        type="button"
+        disabled={page <= 1}
+        onClick={() => onChange(page - 1)}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px',
+          border: '1.5px solid #e2e8f0', borderRadius: 8, background: '#fff', fontSize: 13,
+          fontWeight: 600, color: page <= 1 ? '#cbd5e1' : '#334155',
+          cursor: page <= 1 ? 'default' : 'pointer', transition: 'all .15s',
+        }}
+      >
+        <i className="feather-chevron-left" style={{ fontSize: 15 }} /> Trước
       </button>
-      {open && (
-        <div className="mgr-action-dropdown__menu">
-          <Link to={`/manager/venues/${venueId}/courts/${court.id}/edit`} className="mgr-action-dropdown__item" onClick={() => setOpen(false)}>
-            <i className="feather-edit-2" />Chỉnh sửa
-          </Link>
-          <button type="button" className="mgr-action-dropdown__item mgr-action-dropdown__item--danger" onClick={() => { setOpen(false); onDelete(court); }}>
-            <i className="feather-trash-2" />Xoá sân
-          </button>
-        </div>
-      )}
+
+      {pages.map((p) => (
+        <button
+          key={p}
+          type="button"
+          onClick={() => onChange(p)}
+          style={{
+            width: 38, height: 38, borderRadius: 8, border: 'none',
+            background: page === p ? 'var(--mgr-accent)' : '#f1f5f9',
+            color: page === p ? '#fff' : '#334155',
+            fontWeight: page === p ? 800 : 500, fontSize: 14,
+            cursor: 'pointer', transition: 'all .15s',
+            boxShadow: page === p ? '0 2px 8px rgba(9,126,82,.35)' : 'none',
+          }}
+        >
+          {p}
+        </button>
+      ))}
+
+      <button
+        type="button"
+        disabled={page >= totalPages}
+        onClick={() => onChange(page + 1)}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px',
+          border: '1.5px solid #e2e8f0', borderRadius: 8, background: '#fff', fontSize: 13,
+          fontWeight: 600, color: page >= totalPages ? '#cbd5e1' : '#334155',
+          cursor: page >= totalPages ? 'default' : 'pointer', transition: 'all .15s',
+        }}
+      >
+        Sau <i className="feather-chevron-right" style={{ fontSize: 15 }} />
+      </button>
     </div>
   );
 }
@@ -45,6 +73,8 @@ export default function ManagerVenueCourts() {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('default');
   const [deleteModal, setDeleteModal] = useState(null);
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     let mounted = true;
@@ -99,8 +129,25 @@ export default function ManagerVenueCourts() {
   if (sortBy === 'price') filtered = [...filtered].sort((a, b) => a.pricePerHour - b.pricePerHour);
   if (sortBy === 'name') filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
 
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const currentItems = filtered.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+
+  // Reset page when search or filter changes
+  useEffect(() => { setPage(1); }, [search, filterTab, sortBy]);
+
   return (
     <>
+      {/* Header */}
+      <div className="d-flex align-items-center gap-3 mb-4 border-bottom pb-4">
+        <Link to="/manager/venues" className="btn btn-light shadow-sm d-flex align-items-center justify-content-center" style={{ width: 44, height: 44, borderRadius: 12 }}>
+          <i className="feather-arrow-left fs-5" />
+        </Link>
+        <div>
+          <h3 className="mb-0 fw-bold text-dark">Quản lý Sân con</h3>
+          <p className="text-secondary mb-0 mt-1" style={{ fontSize: 14 }}>Xem và thao tác trên danh sách các sân thuộc cụm sân hiện tại</p>
+        </div>
+      </div>
+
       {/* Filter tabs */}
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
         <div className="mgr-filter-tabs">
@@ -161,7 +208,7 @@ export default function ManagerVenueCourts() {
                   <th>Tối đa</th>
                   <th>Ngày thêm</th>
                   <th>Trạng thái</th>
-                  <th style={{ width: 50 }} />
+                  <th style={{ width: 100 }} />
                 </tr>
               </thead>
               <tbody>
@@ -180,7 +227,7 @@ export default function ManagerVenueCourts() {
                     </td>
                   </tr>
                 )}
-                {!loading && filtered.map((court) => (
+                {!loading && currentItems.map((court) => (
                   <tr key={court.id}>
                     <td>
                       <div className="d-flex align-items-center gap-3">
@@ -220,7 +267,14 @@ export default function ManagerVenueCourts() {
                       </div>
                     </td>
                     <td className="text-end">
-                      <ActionMenu court={court} venueId={venueId} onDelete={setDeleteModal} />
+                      <div className="d-flex align-items-center justify-content-end gap-2">
+                        <Link to={`/manager/venues/${venueId}/courts/${court.id}/edit`} className="btn btn-sm btn-light d-inline-flex align-items-center justify-content-center border" style={{ width: 32, height: 32, borderRadius: 8, color: '#334155' }} title="Chỉnh sửa">
+                          <i className="feather-edit-2" style={{ fontSize: 14 }} />
+                        </Link>
+                        <button type="button" onClick={() => setDeleteModal(court)} className="btn btn-sm btn-light d-inline-flex align-items-center justify-content-center border" style={{ width: 32, height: 32, borderRadius: 8, color: '#ef4444' }} title="Xoá sân">
+                          <i className="feather-trash-2" style={{ fontSize: 14 }} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -228,6 +282,11 @@ export default function ManagerVenueCourts() {
             </table>
           </div>
         </div>
+        {!loading && totalPages > 1 && (
+          <div className="card-footer bg-white border-0 pb-4 pt-2">
+            <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+          </div>
+        )}
       </div>
 
       {/* Delete modal */}

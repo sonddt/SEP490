@@ -57,13 +57,21 @@ public class ManagerVenuesController : ControllerBase
         if (managerId == Guid.Empty)
             return Unauthorized(new { message = "Không xác định được người dùng hiện tại." });
 
+        if (request.Lat.HasValue && (request.Lat.Value < -90 || request.Lat.Value > 90))
+            return BadRequest(new { message = "Vĩ độ (Latitude) phải nằm trong khoảng -90 đến 90." });
+
+        if (request.Lng.HasValue && (request.Lng.Value < -180 || request.Lng.Value > 180))
+            return BadRequest(new { message = "Kinh độ (Longitude) phải nằm trong khoảng -180 đến 180." });
+
         var venue = new Venue
         {
             OwnerUserId = managerId,
             Name = request.Name,
             Address = request.Address,
             Lat = request.Lat,
-            Lng = request.Lng
+            Lng = request.Lng,
+            ContactName = request.ContactName,
+            ContactPhone = request.ContactPhone
         };
 
         await _venueService.CreateAsync(venue);
@@ -73,7 +81,8 @@ public class ManagerVenuesController : ControllerBase
             venue.Id,
             venue.Name,
             venue.Address,
-            venue.ApprovalStatus,
+            venue.ContactName,
+            venue.ContactPhone,
             venue.IsActive,
             venue.CreatedAt
         });
@@ -92,6 +101,12 @@ public class ManagerVenuesController : ControllerBase
         if (managerId == Guid.Empty)
             return Unauthorized(new { message = "Không xác định được người dùng hiện tại." });
 
+        if (request.Lat.HasValue && (request.Lat.Value < -90 || request.Lat.Value > 90))
+            return BadRequest(new { message = "Vĩ độ (Latitude) phải nằm trong khoảng -90 đến 90." });
+
+        if (request.Lng.HasValue && (request.Lng.Value < -180 || request.Lng.Value > 180))
+            return BadRequest(new { message = "Kinh độ (Longitude) phải nằm trong khoảng -180 đến 180." });
+
         var venue = await _venueService.GetByIdAsync(venueId);
         if (venue == null)
             return NotFound(new { message = "Venue không tồn tại." });
@@ -103,6 +118,8 @@ public class ManagerVenuesController : ControllerBase
         venue.Address = request.Address;
         venue.Lat = request.Lat;
         venue.Lng = request.Lng;
+        venue.ContactName = request.ContactName;
+        venue.ContactPhone = request.ContactPhone;
 
         await _venueService.UpdateAsync(venue);
 
@@ -111,7 +128,8 @@ public class ManagerVenuesController : ControllerBase
             venue.Id,
             venue.Name,
             venue.Address,
-            venue.ApprovalStatus,
+            venue.ContactName,
+            venue.ContactPhone,
             venue.IsActive,
             venue.CreatedAt
         });
@@ -137,6 +155,86 @@ public class ManagerVenuesController : ControllerBase
 
         await _venueService.DeleteAsync(venueId);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Publish (Công khai) venue cho người dùng đặt lịch.
+    /// </summary>
+    [HttpPut("{venueId}/publish")]
+    public async Task<IActionResult> PublishVenue([FromRoute] Guid venueId)
+    {
+        var managerId = GetCurrentUserId();
+        if (managerId == Guid.Empty)
+            return Unauthorized(new { message = "Không xác định được người dùng hiện tại." });
+
+        var venue = await _venueService.GetByIdAsync(venueId);
+        if (venue == null)
+            return NotFound(new { message = "Venue không tồn tại." });
+
+        if (venue.OwnerUserId != managerId)
+            return Forbid("Bạn không có quyền thao tác trên venue này.");
+
+        // Validation 1: Có ít nhất 1 sân active
+        var hasActiveCourt = await _dbContext.Courts
+            .AnyAsync(c => c.VenueId == venueId && c.IsActive == true && c.Status == "ACTIVE");
+        if (!hasActiveCourt)
+            return BadRequest(new { message = "Venue phải có ít nhất 1 sân đang hoạt động (ACTIVE) trước khi publish." });
+
+        // Validation 2: Có cấu hình giá (Fix query for lazy loading nulls)
+        var hasPricing = await _dbContext.CourtPrices
+            .Include(cp => cp.Court)
+            .AnyAsync(cp => cp.Court != null && cp.Court.VenueId == venueId);
+        if (!hasPricing)
+            return BadRequest(new { message = "Venue phải cấu hình giá sân (CourtPrices) trước khi publish." });
+
+        // Validation 3: Có cấu hình giờ mở cửa (VenueOpenHours hoặc CourtOpenHours)
+        var hasVenueHours = await _dbContext.VenueOpenHours.AnyAsync(voh => voh.VenueId == venueId);
+        var hasCourtHours = await _dbContext.CourtOpenHours
+            .Include(coh => coh.Court)
+            .AnyAsync(coh => coh.Court != null && coh.Court.VenueId == venueId);
+        
+        if (!hasVenueHours && !hasCourtHours)
+            return BadRequest(new { message = "Venue phải cấu hình giờ mở cửa trước khi publish." });
+
+        venue.IsActive = true;
+        await _venueService.UpdateAsync(venue);
+
+        return Ok(new { message = "Publish trạng thái thành công.", isActive = true });
+    }
+
+    /// <summary>
+    /// Unpublish (Ẩn) venue tạm thời. Option A: Không cho phép nếu đang có booking future.
+    /// </summary>
+    [HttpPut("{venueId}/unpublish")]
+    public async Task<IActionResult> UnpublishVenue([FromRoute] Guid venueId)
+    {
+        var managerId = GetCurrentUserId();
+        if (managerId == Guid.Empty)
+            return Unauthorized(new { message = "Không xác định được người dùng hiện tại." });
+
+        var venue = await _venueService.GetByIdAsync(venueId);
+        if (venue == null)
+            return NotFound(new { message = "Venue không tồn tại." });
+
+        if (venue.OwnerUserId != managerId)
+            return Forbid("Bạn không có quyền thao tác trên venue này.");
+
+        // Validate: Không cho unpublish nếu có booking trong tương lai chưa hoàn thành
+        var now = DateTime.UtcNow;
+        var hasFutureBookings = await _dbContext.Bookings
+            .Include(b => b.BookingItems)
+            .AnyAsync(b => b.VenueId == venueId 
+                           && b.Status != "CANCELLED" 
+                           && b.Status != "COMPLETED"
+                           && b.BookingItems.Any(bi => bi.StartTime > now));
+
+        if (hasFutureBookings)
+            return BadRequest(new { message = "Không thể unpublish. Cụm sân đang có lịch đặt ở tương lai." });
+
+        venue.IsActive = false;
+        await _venueService.UpdateAsync(venue);
+
+        return Ok(new { message = "Unpublish trạng thái thành công.", isActive = false });
     }
 
     /// <summary>
@@ -200,7 +298,6 @@ public class ManagerVenuesController : ControllerBase
                 v.Id,
                 v.Name,
                 v.Address,
-                v.ApprovalStatus,
                 v.IsActive,
                 v.CreatedAt
             })
@@ -247,7 +344,7 @@ public class ManagerVenuesController : ControllerBase
         {
             VenueId = venueId,
             Name = request.Name,
-            SportType = request.SportType,
+            Status = request.Status,
             Surface = request.Surface,
             MaxGuest = request.MaxGuests,
             Description = request.Description,
@@ -342,7 +439,7 @@ public class ManagerVenuesController : ControllerBase
         {
             court.Id,
             court.Name,
-            court.SportType,
+            court.Status,
             court.Surface,
             court.MaxGuest,
             court.Description,
@@ -379,7 +476,7 @@ public class ManagerVenuesController : ControllerBase
             return NotFound(new { message = "Court không tồn tại trong venue này." });
 
         court.Name = request.Name;
-        court.SportType = request.SportType;
+        court.Status = request.Status;
         court.Surface = request.Surface;
         court.MaxGuest = request.MaxGuests;
         court.Description = request.Description;
@@ -475,7 +572,7 @@ public class ManagerVenuesController : ControllerBase
         {
             court.Id,
             court.Name,
-            court.SportType,
+            court.Status,
             court.Surface,
             court.MaxGuest,
             court.Description,
@@ -687,7 +784,7 @@ public class ManagerVenuesController : ControllerBase
         {
             court.Id,
             court.Name,
-            court.SportType,
+            court.Status,
             court.Surface,
             court.MaxGuest,
             court.Description,
@@ -785,8 +882,8 @@ public class ManagerVenuesController : ControllerBase
             courts = courts.Where(c =>
                 (!string.IsNullOrEmpty(c.Name) &&
                  c.Name.Contains(keyword, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrEmpty(c.SportType) &&
-                 c.SportType.Contains(keyword, StringComparison.OrdinalIgnoreCase)));
+                (!string.IsNullOrEmpty(c.Status) &&
+                 c.Status.Contains(keyword, StringComparison.OrdinalIgnoreCase)));
         }
 
         // Sort
@@ -797,8 +894,8 @@ public class ManagerVenuesController : ControllerBase
         {
             ("name", "asc") => courts.OrderBy(c => c.Name),
             ("name", "desc") => courts.OrderByDescending(c => c.Name),
-            ("sporttype", "asc") => courts.OrderBy(c => c.SportType),
-            ("sporttype", "desc") => courts.OrderByDescending(c => c.SportType),
+            ("status", "asc") => courts.OrderBy(c => c.Status),
+            ("status", "desc") => courts.OrderByDescending(c => c.Status),
             ("isactive", "asc") => courts.OrderBy(c => c.IsActive),
             ("isactive", "desc") => courts.OrderByDescending(c => c.IsActive),
             _ => courts.OrderBy(c => c.Name)
@@ -815,7 +912,7 @@ public class ManagerVenuesController : ControllerBase
                 id = c.Id,
                 venueId = c.VenueId,
                 name = c.Name,
-                type = c.SportType,
+                type = c.Status,
                 surface = c.Surface,
                 pricePerHour = (c.CourtPrices
                     .Where(cp => cp.IsWeekend != true && cp.Price.HasValue)

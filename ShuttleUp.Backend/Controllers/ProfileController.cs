@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using System.IdentityModel.Tokens.Jwt;
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Authorization;
@@ -28,9 +29,24 @@ public class ProfileController : ControllerBase
         _config = config;
     }
 
-    private Guid CurrentUserId =>
-        Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                   ?? User.FindFirst("sub")!.Value);
+    private bool TryGetCurrentUserId(out Guid userId)
+    {
+        var s = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                ?? User.FindFirst("sub")?.Value;
+        return Guid.TryParse(s, out userId);
+    }
+
+    private static bool IsUnknownColumnException(Exception ex)
+    {
+        for (var e = ex; e != null; e = e.InnerException)
+        {
+            if (e.Message.Contains("Unknown column", StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
+    }
 
     /// <summary>
     /// Lấy profile người dùng + thông tin hồ sơ quản lý (nếu có) trong 1 lần gọi.
@@ -38,7 +54,8 @@ public class ProfileController : ControllerBase
     [HttpGet("me")]
     public async Task<IActionResult> GetMyProfile()
     {
-        var userId = CurrentUserId;
+        if (!TryGetCurrentUserId(out var userId))
+            return Unauthorized(new { message = "Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại." });
         // Một số cột (about/address/district/province) có thể chưa tồn tại trong DB hiện tại.
         // Ta try lấy đầy đủ trước, nếu lỗi "Unknown column" thì fallback để FE vẫn hoạt động.
         try
@@ -178,7 +195,8 @@ public class ProfileController : ControllerBase
         public string FullName { get; set; } = null!;
         public string? PhoneNumber { get; set; }
         public string? Gender { get; set; }
-        public DateOnly? DateOfBirth { get; set; }
+        /// <summary>Định dạng yyyy-MM-dd hoặc để trống — tránh lỗi bind JSON với DateOnly.</summary>
+        public string? DateOfBirth { get; set; }
         public string? About { get; set; }
         public string? Address { get; set; }
         public string? District { get; set; }
@@ -191,21 +209,46 @@ public class ProfileController : ControllerBase
     [HttpPut("me")]
     public async Task<IActionResult> UpdateMyProfile([FromBody] UpdateProfileDto dto)
     {
-        var userId = CurrentUserId;
+        if (!TryGetCurrentUserId(out var userId))
+            return Unauthorized(new { message = "Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại." });
 
-        if (dto == null) return BadRequest();
+        if (dto == null) return BadRequest(new { message = "Thiếu dữ liệu cập nhật." });
         var fullName = (dto.FullName ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(fullName)) return BadRequest(new { message = "Họ và tên là bắt buộc." });
 
+        DateOnly? parsedDob = null;
+        if (!string.IsNullOrWhiteSpace(dto.DateOfBirth))
+        {
+            if (!DateOnly.TryParse(dto.DateOfBirth.Trim(), out var dob))
+                return BadRequest(new { message = "Ngày sinh không hợp lệ (dùng định dạng yyyy-MM-dd)." });
+            parsedDob = dob;
+        }
+
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
-        if (user == null) return Unauthorized();
+        if (user == null) return Unauthorized(new { message = "Không tìm thấy tài khoản." });
+
+        var phone = string.IsNullOrWhiteSpace(dto.PhoneNumber) ? null : dto.PhoneNumber.Trim();
 
         user.FullName = fullName;
-        user.PhoneNumber = string.IsNullOrWhiteSpace(dto.PhoneNumber) ? null : dto.PhoneNumber.Trim();
+        user.PhoneNumber = phone;
         user.Gender = string.IsNullOrWhiteSpace(dto.Gender) ? null : dto.Gender.Trim();
-        user.DateOfBirth = dto.DateOfBirth;
-        // Lưu base fields trước để tránh trường hợp một số cột (about/address/...) chưa có.
-        await _db.SaveChangesAsync();
+        user.DateOfBirth = parsedDob;
+
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (Exception ex) when (IsUnknownColumnException(ex))
+        {
+            // DB cũ thiếu gender / date_of_birth / ... — vẫn lưu được họ tên + SĐT.
+            await _db.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE users SET full_name = {fullName}, phone_number = {phone} WHERE id = {userId}");
+            return Ok(new
+            {
+                message =
+                    "Cập nhật họ tên và số điện thoại thành công. (Một số cột khác trên DB có thể chưa đồng bộ — chạy script Database.txt mới nhất.)"
+            });
+        }
 
         try
         {
@@ -216,9 +259,8 @@ public class ProfileController : ControllerBase
 
             await _db.SaveChangesAsync();
         }
-        catch (Exception ex) when (ex.Message.Contains("Unknown column", StringComparison.OrdinalIgnoreCase))
+        catch (Exception ex) when (IsUnknownColumnException(ex))
         {
-            // Nếu DB chưa có cột about/address/..., ít nhất base profile vẫn được cập nhật.
             return Ok(new { message = "Cập nhật hồ sơ thành công (một số trường phụ có thể chưa cập nhật do DB thiếu cột)." });
         }
 
@@ -233,7 +275,8 @@ public class ProfileController : ControllerBase
     [RequestSizeLimit(10_000_000)]
     public async Task<IActionResult> UploadAvatar(IFormFile avatar)
     {
-        var userId = CurrentUserId;
+        if (!TryGetCurrentUserId(out var userId))
+            return Unauthorized(new { message = "Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại." });
         if (avatar == null || avatar.Length <= 0)
             return BadRequest(new { message = "Không tìm thấy file avatar." });
 

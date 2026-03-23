@@ -3,13 +3,14 @@ export const BOOKING_STATUSES = {
   UPCOMING:  { label: 'Sắp tới',     color: '#097E52', bg: '#e8f5ee', border: '#6ee7b7', icon: 'feather-calendar' },
   COMPLETED: { label: 'Hoàn thành',  color: '#10b981', bg: '#ecfdf5', border: '#6ee7b7', icon: 'feather-check-circle' },
   REJECTED:  { label: 'Đã từ chối',  color: '#ef4444', bg: '#fef2f2', border: '#fca5a5', icon: 'feather-x-circle' },
-  CANCELLED: { label: 'Đã huỷ',      color: '#94a3b8', bg: '#f8fafc', border: '#e2e8f0', icon: 'feather-slash' },
+  CANCELLED: { label: 'Đã huỷ / Từ chối', color: '#94a3b8', bg: '#f8fafc', border: '#e2e8f0', icon: 'feather-slash' },
 };
 
 export const PAYMENT_METHODS = {
   BANK:   { label: 'Chuyển khoản', icon: 'feather-credit-card' },
   CASH:   { label: 'Tiền mặt',     icon: 'feather-dollar-sign' },
   VNPAY:  { label: 'VNPay',        icon: 'feather-zap' },
+  QR:     { label: 'Quét mã QR',   icon: 'feather-smartphone' },
 };
 
 export const MOCK_BOOKINGS = [
