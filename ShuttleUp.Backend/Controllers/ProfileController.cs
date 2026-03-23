@@ -229,6 +229,27 @@ public class ProfileController : ControllerBase
 
         var phone = string.IsNullOrWhiteSpace(dto.PhoneNumber) ? null : dto.PhoneNumber.Trim();
 
+        // Validate uniqueness: số điện thoại phải không trùng với user khác
+        // (email có UNIQUE index nhưng phone_number thì hiện chưa có, nên check ở backend)
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(phone))
+            {
+                var phoneInUse = await _db.Users.AnyAsync(u =>
+                    u.Id != userId &&
+                    u.PhoneNumber != null &&
+                    u.PhoneNumber == phone);
+
+                if (phoneInUse)
+                    return BadRequest(new { message = "Số điện thoại đã được sử dụng." });
+            }
+        }
+        catch (Exception ex) when (IsUnknownColumnException(ex))
+        {
+            // DB cũ thiếu cột phone_number thì bỏ qua validate trùng,
+            // phần update vẫn nằm trong luồng SaveChanges/raw SQL phía dưới.
+        }
+
         user.FullName = fullName;
         user.PhoneNumber = phone;
         user.Gender = string.IsNullOrWhiteSpace(dto.Gender) ? null : dto.Gender.Trim();
