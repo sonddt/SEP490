@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.DAL.Models;
+using DalFile = ShuttleUp.DAL.Models.File;
 
 namespace ShuttleUp.Backend.Controllers;
 
@@ -51,8 +52,8 @@ public class AdminController : ControllerBase
         var todayEnd         = todayStart.AddDays(1);
         var todayBookings    = await _db.Bookings
             .CountAsync(b => b.CreatedAt >= todayStart && b.CreatedAt < todayEnd);
-        var pendingRequests  = await _db.ManagerProfiles
-            .CountAsync(m => m.Status == "PENDING");
+        var pendingRequests  = await _db.ManagerProfileRequests
+            .CountAsync(r => r.Status == "PENDING");
 
         // 5 người dùng mới nhất
         var recentUsers = await _db.Users
@@ -70,20 +71,20 @@ public class AdminController : ControllerBase
             })
             .ToListAsync();
 
-        // 5 yêu cầu chờ duyệt mới nhất (ManagerProfile PENDING)
-        var pendingVenues = await _db.ManagerProfiles
-            .Where(m => m.Status == "PENDING")
-            .Include(m => m.User)
-            .OrderByDescending(m => m.User.CreatedAt)
+        // 5 yêu cầu chờ duyệt mới nhất
+        var pendingVenues = await _db.ManagerProfileRequests
+            .Where(r => r.Status == "PENDING")
+            .Include(r => r.User)
+            .OrderByDescending(r => r.RequestedAt)
             .Take(5)
-            .Select(m => new
+            .Select(r => new
             {
-                Id = m.UserId,
-                Name = string.IsNullOrEmpty(m.BusinessLicenseNo) ? "Cá nhân" : $"GPKD: {m.BusinessLicenseNo}",
-                Address = m.Address,
-                CreatedAt = m.User.CreatedAt,
-                OwnerName  = m.User.FullName,
-                OwnerEmail = m.User.Email
+                Id = r.Id,
+                Name = string.IsNullOrWhiteSpace(r.TaxCode) ? "Cá nhân" : $"MST: {r.TaxCode}",
+                Address = r.Address,
+                CreatedAt = r.RequestedAt ?? r.User.CreatedAt,
+                OwnerName = r.User.FullName,
+                OwnerEmail = r.User.Email
             })
             .ToListAsync();
 
@@ -267,9 +268,9 @@ public class AdminController : ControllerBase
         if (page <= 0) page = 1;
         if (pageSize <= 0 || pageSize > 100) pageSize = 20;
 
-        var query = _db.ManagerProfiles
-            .Include(m => m.User)
-            .Include(m => m.AdminUser)
+        var query = _db.ManagerProfileRequests
+            .Include(r => r.User)
+            .Include(r => r.AdminUser)
             .AsQueryable();
 
         // Filter status
@@ -279,16 +280,15 @@ public class AdminController : ControllerBase
             query = query.Where(r => r.Status == statusUpper);
         }
 
-        // Search by name, email, tax code, id card,...
+        // Search by name, email, tax code, address...
         if (!string.IsNullOrWhiteSpace(search))
         {
             var kw = search.Trim();
             query = query.Where(r => 
                 (r.User != null && r.User.FullName.Contains(kw)) ||
                 (r.User != null && r.User.Email.Contains(kw)) ||
-                (r.IdCardNo != null && r.IdCardNo.Contains(kw)) ||
                 (r.TaxCode != null && r.TaxCode.Contains(kw)) ||
-                (r.BusinessLicenseNo != null && r.BusinessLicenseNo.Contains(kw))
+                (r.Address != null && r.Address.Contains(kw))
             );
         }
 
@@ -298,24 +298,64 @@ public class AdminController : ControllerBase
         // Fetch data
         var rawItems = await query
             .OrderBy(r => r.Status == "PENDING" ? 0 : 1)
+            .ThenByDescending(r => r.RequestedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
+        var fileIds = rawItems
+            .SelectMany(r => new Guid?[]
+            {
+                r.CccdFrontFileId,
+                r.CccdBackFileId,
+                r.BusinessLicenseFileId1,
+                r.BusinessLicenseFileId2,
+                r.BusinessLicenseFileId3
+            })
+            .Where(id => id != null)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+
+        var files = fileIds.Count == 0
+            ? new List<DalFile>()
+            : await _db.Files.AsNoTracking().Where(f => fileIds.Contains(f.Id)).ToListAsync();
+        var fileDict = files.ToDictionary(f => f.Id, f => f);
+
+        string? UrlOf(Guid? fileId) =>
+            fileId != null && fileDict.TryGetValue(fileId.Value, out var f) ? f.FileUrl : null;
+
+        string? MimeOf(Guid? fileId) =>
+            fileId != null && fileDict.TryGetValue(fileId.Value, out var f) ? f.MimeType : null;
+
         var items = rawItems.Select(r => new
         {
-            Id = r.UserId, // Sử dụng user_id làm ID của Request
+            Id = r.Id,
             r.Status,
-            r.IdCardNo,
+            RequestType = r.RequestType,
             r.TaxCode,
-            r.BusinessLicenseNo,
             r.Address,
-            OwnerName  = r.User?.FullName,
+
+            cccdFrontUrl = UrlOf(r.CccdFrontFileId),
+            cccdBackUrl = UrlOf(r.CccdBackFileId),
+
+            businessLicenseFiles = new[]
+            {
+                new { id = r.BusinessLicenseFileId1, url = UrlOf(r.BusinessLicenseFileId1), mimeType = MimeOf(r.BusinessLicenseFileId1) },
+                new { id = r.BusinessLicenseFileId2, url = UrlOf(r.BusinessLicenseFileId2), mimeType = MimeOf(r.BusinessLicenseFileId2) },
+                new { id = r.BusinessLicenseFileId3, url = UrlOf(r.BusinessLicenseFileId3), mimeType = MimeOf(r.BusinessLicenseFileId3) }
+            }
+            .Where(x => x.url != null)
+            .Select(x => new { url = x.url, mimeType = x.mimeType, id = x.id })
+            .ToList(),
+
+            OwnerName = r.User?.FullName,
             OwnerEmail = r.User?.Email,
-            RequestedAt= r.User?.CreatedAt,
+            RequestedAt = r.RequestedAt,
+
             r.DecisionAt,
             r.DecisionNote,
-            AdminName  = r.AdminUser?.FullName
+            AdminName = r.AdminUser?.FullName
         }).ToList();
 
         return Ok(new { totalItems, totalPages, page, pageSize, items });
@@ -324,38 +364,88 @@ public class AdminController : ControllerBase
     /// <summary>
     /// Duyệt chủ sân. Body: { "note": "..." }
     /// </summary>
-    [HttpPost("manager-requests/{userId:guid}/approve")]
+    [HttpPost("manager-requests/{requestId:guid}/approve")]
     public async Task<IActionResult> ApproveRequest(
-        [FromRoute] Guid userId,
+        [FromRoute] Guid requestId,
         [FromBody] ApprovalDecisionRequest body)
     {
         var adminId = GetCurrentUserId();
         if (adminId == Guid.Empty) return Unauthorized();
 
-        var profile = await _db.ManagerProfiles
-            .Include(p => p.User)
+        var request = await _db.ManagerProfileRequests
+            .Include(r => r.User)
             .ThenInclude(u => u.Roles)
-            .FirstOrDefaultAsync(p => p.UserId == userId);
+            .FirstOrDefaultAsync(r => r.Id == requestId);
 
-        if (profile == null)
+        if (request == null)
             return NotFound(new { message = "Không tìm thấy hồ sơ yêu cầu này." });
 
-        if (profile.Status != "PENDING")
-            return BadRequest(new { message = $"Hồ sơ đã được xử lý ({profile.Status})." });
+        if (request.Status != "PENDING")
+            return BadRequest(new { message = $"Hồ sơ đã được xử lý ({request.Status})." });
 
-        // Update Request
-        profile.Status = "APPROVED";
-        profile.AdminUserId = adminId;
-        profile.DecisionAt = DateTime.UtcNow;
-        profile.DecisionNote = body.Note;
+        var now = DateTime.UtcNow;
 
-        // Add MANAGER role
-        var managerRole = await _db.Roles.FirstOrDefaultAsync(r => r.Name == "MANAGER");
-        if (managerRole != null && !profile.User.Roles.Any(r => r.Name == "MANAGER"))
+        // Chặn duyệt theo loại đơn
+        // - Đăng ký (DANG_KY): bắt buộc CCCD 2 mặt + ít nhất 1 giấy phép + tax code + address
+        // - Cập nhật (CAP_NHAT): cho phép thiếu giấy tờ (chỉ cập nhật phần user gửi)
+        var reqType = request.RequestType?.Trim().ToUpperInvariant();
+        if (reqType == "DANG_KY")
         {
-            profile.User.Roles.Add(managerRole);
+            var hasCccd = request.CccdFrontFileId != null && request.CccdBackFileId != null;
+            var hasLicense =
+                request.BusinessLicenseFileId1 != null ||
+                request.BusinessLicenseFileId2 != null ||
+                request.BusinessLicenseFileId3 != null;
+
+            if (!hasCccd ||
+                !hasLicense ||
+                string.IsNullOrWhiteSpace(request.TaxCode) ||
+                string.IsNullOrWhiteSpace(request.Address))
+                return BadRequest(new { message = "Hồ sơ chưa đủ giấy tờ để duyệt." });
         }
-        
+
+        // Update Request (history)
+        request.Status = "APPROVED";
+        request.AdminUserId = adminId;
+        request.DecisionAt = now;
+        request.DecisionNote = body.Note;
+
+        // Update Snapshot (manager_profiles)
+        var snapshot = await _db.ManagerProfiles.FirstOrDefaultAsync(p => p.UserId == request.UserId);
+        if (snapshot == null)
+        {
+            snapshot = new ManagerProfile { UserId = request.UserId };
+            _db.ManagerProfiles.Add(snapshot);
+        }
+
+        // Chỉ ghi đè snapshot nếu request có field tương ứng (để CAP_NHAT không bị xóa ảnh cũ).
+        if (!string.IsNullOrWhiteSpace(request.TaxCode))
+            snapshot.TaxCode = request.TaxCode;
+        if (!string.IsNullOrWhiteSpace(request.Address))
+            snapshot.Address = request.Address;
+
+        if (request.CccdFrontFileId != null)
+            snapshot.CccdFrontFileId = request.CccdFrontFileId;
+        if (request.CccdBackFileId != null)
+            snapshot.CccdBackFileId = request.CccdBackFileId;
+
+        if (request.BusinessLicenseFileId1 != null)
+            snapshot.BusinessLicenseFileId1 = request.BusinessLicenseFileId1;
+        if (request.BusinessLicenseFileId2 != null)
+            snapshot.BusinessLicenseFileId2 = request.BusinessLicenseFileId2;
+        if (request.BusinessLicenseFileId3 != null)
+            snapshot.BusinessLicenseFileId3 = request.BusinessLicenseFileId3;
+
+        snapshot.Status = "APPROVED";
+        snapshot.AdminUserId = adminId;
+        snapshot.DecisionAt = now;
+        snapshot.DecisionNote = body.Note;
+
+        // Add MANAGER role (giữ role cho tới khi người dùng bị khoá/bị xoá role ở nơi khác)
+        var managerRole = await _db.Roles.FirstOrDefaultAsync(r => r.Name == "MANAGER");
+        if (managerRole != null && !request.User.Roles.Any(r => r.Name == "MANAGER"))
+            request.User.Roles.Add(managerRole);
+
         await _db.SaveChangesAsync();
 
         return Ok(new { message = "Đã duyệt Cấp quyền Chủ sân thành công." });
@@ -364,31 +454,31 @@ public class AdminController : ControllerBase
     /// <summary>
     /// Từ chối chủ sân. Body: { "note": "..." }
     /// </summary>
-    [HttpPost("manager-requests/{userId:guid}/reject")]
+    [HttpPost("manager-requests/{requestId:guid}/reject")]
     public async Task<IActionResult> RejectRequest(
-        [FromRoute] Guid userId,
+        [FromRoute] Guid requestId,
         [FromBody] ApprovalDecisionRequest body)
     {
         var adminId = GetCurrentUserId();
         if (adminId == Guid.Empty) return Unauthorized();
 
-        var profile = await _db.ManagerProfiles
-            .FirstOrDefaultAsync(p => p.UserId == userId);
+        var request = await _db.ManagerProfileRequests
+            .FirstOrDefaultAsync(r => r.Id == requestId);
 
-        if (profile == null)
+        if (request == null)
             return NotFound(new { message = "Không tìm thấy hồ sơ yêu cầu này." });
 
-        if (profile.Status != "PENDING")
-            return BadRequest(new { message = $"Hồ sơ đã được xử lý ({profile.Status})." });
+        if (request.Status != "PENDING")
+            return BadRequest(new { message = $"Hồ sơ đã được xử lý ({request.Status})." });
 
         if (string.IsNullOrWhiteSpace(body.Note))
             return BadRequest(new { message = "Vui lòng nhập lý do từ chối." });
 
-        // Update Request
-        profile.Status = "REJECTED";
-        profile.AdminUserId = adminId;
-        profile.DecisionAt = DateTime.UtcNow;
-        profile.DecisionNote = body.Note;
+        // Update Request (history only). Snapshot giữ nguyên để role MANAGER không mất khi user update bị reject.
+        request.Status = "REJECTED";
+        request.AdminUserId = adminId;
+        request.DecisionAt = DateTime.UtcNow;
+        request.DecisionNote = body.Note;
         
         await _db.SaveChangesAsync();
 

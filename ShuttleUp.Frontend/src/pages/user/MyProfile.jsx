@@ -223,7 +223,26 @@ export default function MyProfile() {
                     <div className="profile-contact-info mt-3">
                       <div className="contact-information">
                         <h6>CCCD/CMND</h6>
-                        <span>{managerProfile?.idCardNo || managerFallbackText}</span>
+                        {managerProfile?.cccdFrontUrl || managerProfile?.cccdBackUrl ? (
+                          <div className="d-flex gap-2">
+                            {managerProfile?.cccdFrontUrl && (
+                              <img
+                                src={managerProfile.cccdFrontUrl}
+                                alt="CCCD mặt trước"
+                                style={{ width: 80, height: 60, objectFit: 'cover', borderRadius: 6 }}
+                              />
+                            )}
+                            {managerProfile?.cccdBackUrl && (
+                              <img
+                                src={managerProfile.cccdBackUrl}
+                                alt="CCCD mặt sau"
+                                style={{ width: 80, height: 60, objectFit: 'cover', borderRadius: 6 }}
+                              />
+                            )}
+                          </div>
+                        ) : (
+                          <span>{managerFallbackText}</span>
+                        )}
                       </div>
                       <div className="contact-information">
                         <h6>Mã số thuế</h6>
@@ -231,7 +250,30 @@ export default function MyProfile() {
                       </div>
                       <div className="contact-information">
                         <h6>Giấy phép kinh doanh</h6>
-                        <span>{managerProfile?.businessLicenseNo || managerFallbackText}</span>
+                        {managerProfile?.businessLicenseFiles && managerProfile.businessLicenseFiles.length > 0 ? (
+                          <div className="d-flex flex-column gap-2">
+                            {managerProfile.businessLicenseFiles.map((f, idx) => {
+                              const isImage = (f.mimeType || '').startsWith('image/');
+                              return (
+                                <div key={f.id ?? idx}>
+                                  {isImage ? (
+                                    <img
+                                      src={f.url}
+                                      alt={`Giấy phép ${idx + 1}`}
+                                      style={{ width: 120, height: 80, objectFit: 'cover', borderRadius: 6 }}
+                                    />
+                                  ) : (
+                                    <a href={f.url} target="_blank" rel="noreferrer">
+                                      Xem PDF giấy phép {idx + 1}
+                                    </a>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <span>{managerFallbackText}</span>
+                        )}
                       </div>
                       <div className="contact-information">
                         <h6>Địa chỉ</h6>

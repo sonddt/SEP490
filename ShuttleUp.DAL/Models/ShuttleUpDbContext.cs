@@ -66,6 +66,8 @@ public partial class ShuttleUpDbContext : DbContext
 
     public virtual DbSet<ManagerProfile> ManagerProfiles { get; set; }
 
+    public virtual DbSet<ManagerProfileRequest> ManagerProfileRequests { get; set; }
+
     // OnConfiguring removed because connection is provided via Dependency Injection in Program.cs
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -1045,18 +1047,19 @@ public partial class ShuttleUpDbContext : DbContext
 
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.AdminUserId).HasColumnName("admin_user_id");
-            entity.Property(e => e.IdCardNo)
-                .HasMaxLength(50)
-                .HasColumnName("id_card_no");
             entity.Property(e => e.TaxCode)
                 .HasMaxLength(50)
                 .HasColumnName("tax_code");
-            entity.Property(e => e.BusinessLicenseNo)
-                .HasMaxLength(100)
-                .HasColumnName("business_license_no");
             entity.Property(e => e.Address)
                 .HasColumnType("text")
                 .HasColumnName("address");
+
+            entity.Property(e => e.CccdFrontFileId).HasColumnName("cccd_front_file_id");
+            entity.Property(e => e.CccdBackFileId).HasColumnName("cccd_back_file_id");
+            entity.Property(e => e.BusinessLicenseFileId1).HasColumnName("business_license_file_id_1");
+            entity.Property(e => e.BusinessLicenseFileId2).HasColumnName("business_license_file_id_2");
+            entity.Property(e => e.BusinessLicenseFileId3).HasColumnName("business_license_file_id_3");
+
             entity.Property(e => e.DecisionAt)
                 .HasColumnType("datetime")
                 .HasColumnName("decision_at");
@@ -1075,6 +1078,59 @@ public partial class ShuttleUpDbContext : DbContext
             entity.HasOne(d => d.User).WithOne(p => p.ManagerProfileManager)
                 .HasForeignKey<ManagerProfile>(d => d.UserId)
                 .HasConstraintName("manager_profiles_ibfk_1");
+        });
+
+        modelBuilder.Entity<ManagerProfileRequest>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("manager_profile_requests");
+
+            entity.HasIndex(e => e.AdminUserId, "admin_user_id");
+            entity.HasIndex(e => new { e.UserId, e.Status, e.RequestedAt }, "idx_manager_profile_requests_user_status_requested");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.RequestType)
+                .HasMaxLength(20)
+                .HasColumnName("request_type");
+            entity.Property(e => e.Status)
+                .HasMaxLength(50)
+                .HasDefaultValueSql("'PENDING'")
+                .HasColumnName("status");
+            entity.Property(e => e.RequestedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("requested_at");
+            entity.Property(e => e.TaxCode)
+                .HasMaxLength(50)
+                .HasColumnName("tax_code");
+            entity.Property(e => e.Address)
+                .HasColumnType("text")
+                .HasColumnName("address");
+
+            entity.Property(e => e.CccdFrontFileId).HasColumnName("cccd_front_file_id");
+            entity.Property(e => e.CccdBackFileId).HasColumnName("cccd_back_file_id");
+            entity.Property(e => e.BusinessLicenseFileId1).HasColumnName("business_license_file_id_1");
+            entity.Property(e => e.BusinessLicenseFileId2).HasColumnName("business_license_file_id_2");
+            entity.Property(e => e.BusinessLicenseFileId3).HasColumnName("business_license_file_id_3");
+
+            entity.Property(e => e.AdminUserId).HasColumnName("admin_user_id");
+            entity.Property(e => e.DecisionAt)
+                .HasColumnType("datetime")
+                .HasColumnName("decision_at");
+            entity.Property(e => e.DecisionNote)
+                .HasColumnType("text")
+                .HasColumnName("decision_note");
+
+            entity.HasOne(d => d.AdminUser)
+                .WithMany()
+                .HasForeignKey(d => d.AdminUserId)
+                .HasConstraintName("manager_profile_requests_ibfk_2");
+
+            entity.HasOne(d => d.User)
+                .WithMany()
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("manager_profile_requests_ibfk_1");
         });
 
         OnModelCreatingPartial(modelBuilder);

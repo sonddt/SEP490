@@ -1,20 +1,6 @@
-# ShuttleUp – Backend package diagram (Mermaid)
+%% ShuttleUp – Backend package diagram (Mermaid)
+%% Dán vào https://mermaid.live hoặc dùng extension Mermaid trong VS Code
 
-File **chỉ code Mermaid**: [`backend-package-diagram.mmd`](./backend-package-diagram.mmd) — mở [mermaid.live](https://mermaid.live) và dán nội dung file.
-
-## Project references
-
-| Project | References |
-|---------|------------|
-| `ShuttleUp.DAL` | — |
-| `ShuttleUp.BLL` | `ShuttleUp.DAL` |
-| `ShuttleUp.Backend` | `ShuttleUp.BLL`, `ShuttleUp.DAL` |
-
-> Backend tham chiếu DAL vì một số controller dùng trực tiếp `ShuttleUpDbContext` / entity.
-
-## Mermaid (render trên GitHub)
-
-```mermaid
 flowchart TB
   subgraph DAL["ShuttleUp.DAL"]
     DAL_Models["Models\n(Entities, ShuttleUpDbContext)"]
@@ -43,4 +29,3 @@ flowchart TB
   BE_Ctrl --> BLL_Int
   BE_Ctrl --> BLL_DTO
   BE_Ctrl --> DAL_Models
-```
