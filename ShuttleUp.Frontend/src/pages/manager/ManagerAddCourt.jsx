@@ -46,6 +46,7 @@ export default function ManagerAddCourt() {
 
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const setField = (key, val) => setForm((p) => ({ ...p, [key]: val }));
   const toggleDay = (i, key, val) => setDayHours((p) => p.map((d, idx) => idx === i ? { ...d, [key]: val } : d));
@@ -107,6 +108,7 @@ export default function ManagerAddCourt() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      setErrorMsg('');
       setSubmitting(true);
       
       const priceSlots = [];
@@ -153,7 +155,8 @@ export default function ManagerAddCourt() {
       navigate(`/manager/venues/${venueId}/courts`);
     } catch (err) {
       console.error('Submit court failed', err);
-      alert(err.response?.data?.message || err.response?.data?.title || 'Đã xảy ra lỗi khi lưu Sân. Vui lòng thử lại!');
+      setErrorMsg(err.response?.data?.message || err.response?.data?.title || 'Đã xảy ra lỗi khi lưu Sân. Vui lòng kiểm tra lại!');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSubmitting(false);
     }
@@ -181,6 +184,12 @@ export default function ManagerAddCourt() {
       </div>
 
       <form onSubmit={handleSubmit}>
+        {errorMsg && (
+          <div className="alert alert-danger d-flex align-items-center mb-4" style={{ borderRadius: 10, border: 'none', background: '#fef2f2', color: '#991b1b', padding: '14px 20px' }}>
+            <i className="feather-alert-circle fs-5 me-2" />
+            <span className="fw-medium">{errorMsg}</span>
+          </div>
+        )}
         <div className="row g-4">
 
           {/* ================= LEFT COLUMN ================= */}
@@ -194,11 +203,13 @@ export default function ManagerAddCourt() {
                 <div className="row g-4">
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-semibold text-dark mb-2">Tên hiển thị <span className="text-danger">*</span></label>
-                    <input type="text" className="form-control form-control-lg bg-light border-0" placeholder="Ví dụ: Sân số 1" value={form.name} onChange={(e) => setField('name', e.target.value)} required />
+                    <input type="text" className={`form-control form-control-lg bg-light border-0 ${getFieldError('name') ? 'is-invalid' : ''}`} placeholder="Ví dụ: Sân số 1" value={form.name} onChange={(e) => setField('name', e.target.value)} required />
+                    {getFieldError('name') && <div className="invalid-feedback">{getFieldError('name')}</div>}
                   </div>
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-semibold text-dark mb-2">Mã quản lý nội bộ</label>
-                    <input type="text" className="form-control form-control-lg bg-light border-0" placeholder="Ví dụ: B1" value={form.code} onChange={(e) => setField('code', e.target.value)} />
+                    <input type="text" className={`form-control form-control-lg bg-light border-0 ${getFieldError('code') ? 'is-invalid' : ''}`} placeholder="Ví dụ: B1" value={form.code} onChange={(e) => setField('code', e.target.value)} />
+                    {getFieldError('code') && <div className="invalid-feedback">{getFieldError('code')}</div>}
                   </div>
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-semibold text-dark mb-2">Loại mặt thảm</label>
@@ -208,7 +219,8 @@ export default function ManagerAddCourt() {
                   </div>
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-semibold text-dark mb-2">Khuyến cáo số người tối đa</label>
-                    <input type="number" min={1} max={20} className="form-control form-control-lg bg-light border-0" placeholder="4" value={form.maxGuests} onChange={(e) => setField('maxGuests', e.target.value)} />
+                    <input type="number" min={1} max={20} className={`form-control form-control-lg bg-light border-0 ${getFieldError('maxGuests') ? 'is-invalid' : ''}`} placeholder="4" value={form.maxGuests} onChange={(e) => setField('maxGuests', e.target.value)} />
+                    {getFieldError('maxGuests') && <div className="invalid-feedback">{getFieldError('maxGuests')}</div>}
                   </div>
                 </div>
               </div>
@@ -223,15 +235,17 @@ export default function ManagerAddCourt() {
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-semibold text-dark mb-2">Giá ngày thường <span className="text-danger">*</span></label>
                     <div className="input-group input-group-lg">
-                      <input type="number" min={0} className="form-control bg-light border-0" placeholder="100000" value={form.priceWeekday} onChange={(e) => setField('priceWeekday', e.target.value)} required />
+                      <input type="number" min={0} className={`form-control bg-light border-0 ${getFieldError('priceWeekday') ? 'is-invalid' : ''}`} placeholder="100000" value={form.priceWeekday} onChange={(e) => setField('priceWeekday', e.target.value)} required />
                       <span className="input-group-text bg-light border-0 text-muted">đ/giờ</span>
+                      {getFieldError('priceWeekday') && <div className="invalid-feedback">{getFieldError('priceWeekday')}</div>}
                     </div>
                   </div>
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-semibold text-dark mb-2">Giá cuối tuần (T7, CN)</label>
                     <div className="input-group input-group-lg">
-                      <input type="number" min={0} className="form-control bg-light border-0" placeholder="120000" value={form.priceWeekend} onChange={(e) => setField('priceWeekend', e.target.value)} />
+                      <input type="number" min={0} className={`form-control bg-light border-0 ${getFieldError('priceWeekend') ? 'is-invalid' : ''}`} placeholder="120000" value={form.priceWeekend} onChange={(e) => setField('priceWeekend', e.target.value)} />
                       <span className="input-group-text bg-light border-0 text-muted">đ/giờ</span>
+                      {getFieldError('priceWeekend') && <div className="invalid-feedback">{getFieldError('priceWeekend')}</div>}
                     </div>
                   </div>
                   <div className="col-12">

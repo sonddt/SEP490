@@ -1,4 +1,64 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+// Pagination Component
+function Pagination({ page, totalPages, onChange }) {
+  if (totalPages <= 1) return null;
+
+  const pages = [];
+  for (let i = 1; i <= totalPages; i++) {
+    pages.push(i);
+  }
+
+  return (
+    <div className="d-flex align-items-center justify-content-center gap-2 mt-4">
+      <button
+        type="button"
+        disabled={page <= 1}
+        onClick={() => onChange(page - 1)}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px',
+          border: '1.5px solid #e2e8f0', borderRadius: 8, background: '#fff', fontSize: 13,
+          fontWeight: 600, color: page <= 1 ? '#cbd5e1' : '#334155',
+          cursor: page <= 1 ? 'default' : 'pointer', transition: 'all .15s',
+        }}
+      >
+        <i className="feather-chevron-left" style={{ fontSize: 15 }} /> Trước
+      </button>
+
+      {pages.map((p) => (
+        <button
+          key={p}
+          type="button"
+          onClick={() => onChange(p)}
+          style={{
+            width: 38, height: 38, borderRadius: 8, border: 'none',
+            background: page === p ? 'var(--mgr-accent)' : '#f1f5f9',
+            color: page === p ? '#fff' : '#334155',
+            fontWeight: page === p ? 800 : 500, fontSize: 14,
+            cursor: 'pointer', transition: 'all .15s',
+            boxShadow: page === p ? '0 2px 8px rgba(9,126,82,.35)' : 'none',
+          }}
+        >
+          {p}
+        </button>
+      ))}
+
+      <button
+        type="button"
+        disabled={page >= totalPages}
+        onClick={() => onChange(page + 1)}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px',
+          border: '1.5px solid #e2e8f0', borderRadius: 8, background: '#fff', fontSize: 13,
+          fontWeight: 600, color: page >= totalPages ? '#cbd5e1' : '#334155',
+          cursor: page >= totalPages ? 'default' : 'pointer', transition: 'all .15s',
+        }}
+      >
+        Sau <i className="feather-chevron-right" style={{ fontSize: 15 }} />
+      </button>
+    </div>
+  );
+}
 
 const INITIAL_REQUESTS = [
   { id: 1, court: 'Sân 1 – ShuttleUp Q7', courtImg: '/assets/img/booking/booking-01.jpg', player: 'Nguyễn Văn A', playerImg: '/assets/img/profiles/avatar-01.jpg', date: '17/03/2026', time: '08:00 – 10:00', guests: 2, amount: 240000, status: 'PENDING' },
@@ -21,8 +81,15 @@ export default function ManagerRequests() {
   const [rejectModal, setRejectModal] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [detailModal, setDetailModal] = useState(null);
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 8;
 
   const filtered = requests.filter((r) => r.status === filterTab);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
+  const currentPage = Math.min(page, totalPages) || 1;
+  const currentItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  useEffect(() => { setPage(1); }, [filterTab, timeFilter]);
 
   const handleAccept = (id) => {
     setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: 'ACCEPTED' } : r));
@@ -122,7 +189,7 @@ export default function ManagerRequests() {
                           {filtered.length === 0 && (
                             <tr><td colSpan={8} className="text-center text-muted py-4">Không có yêu cầu nào</td></tr>
                           )}
-                          {filtered.map((r) => (
+                          {currentItems.map((r) => (
                             <tr key={r.id}>
                               <td>
                                 <h2 className="table-avatar">
@@ -179,6 +246,12 @@ export default function ManagerRequests() {
                         </tbody>
                       </table>
                     </div>
+                    
+                    {totalPages > 1 && (
+                      <div className="card-footer bg-white border-0 pb-4 pt-2">
+                        <Pagination page={currentPage} totalPages={totalPages} onChange={setPage} />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
