@@ -42,6 +42,7 @@ export default function ManagerAddVenue() {
 
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const setField = (key, val) => setForm((p) => ({ ...p, [key]: val }));
   const toggleDay = (i, key, val) => setDayHours((p) => p.map((d, idx) => idx === i ? { ...d, [key]: val } : d));
@@ -76,6 +77,7 @@ export default function ManagerAddVenue() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      setErrorMsg('');
       setSubmitting(true);
       const request = {
         name: form.name,
@@ -94,7 +96,8 @@ export default function ManagerAddVenue() {
       navigate('/manager/venues');
     } catch (err) {
       console.error('Submit venue failed', err);
-      alert(err.response?.data?.message || err.response?.data?.title || 'Đã xảy ra lỗi khi lưu Cụm sân. Vui lòng thử lại!');
+      setErrorMsg(err.response?.data?.message || err.response?.data?.title || 'Đã xảy ra lỗi khi lưu Cụm sân. Vui lòng kiểm tra lại dữ liệu!');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSubmitting(false);
     }
@@ -122,6 +125,12 @@ export default function ManagerAddVenue() {
       </div>
 
       <form onSubmit={handleSubmit}>
+        {errorMsg && (
+          <div className="alert alert-danger d-flex align-items-center mb-4" style={{ borderRadius: 10, border: 'none', background: '#fef2f2', color: '#991b1b', padding: '14px 20px' }}>
+            <i className="feather-alert-circle fs-5 me-2" />
+            <span className="fw-medium">{errorMsg}</span>
+          </div>
+        )}
         <div className="row g-4">
           
           {/* ================= LEFT COLUMN ================= */}

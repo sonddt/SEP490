@@ -57,6 +57,12 @@ public class ManagerVenuesController : ControllerBase
         if (managerId == Guid.Empty)
             return Unauthorized(new { message = "Không xác định được người dùng hiện tại." });
 
+        if (request.Lat.HasValue && (request.Lat.Value < -90 || request.Lat.Value > 90))
+            return BadRequest(new { message = "Vĩ độ (Latitude) phải nằm trong khoảng -90 đến 90." });
+
+        if (request.Lng.HasValue && (request.Lng.Value < -180 || request.Lng.Value > 180))
+            return BadRequest(new { message = "Kinh độ (Longitude) phải nằm trong khoảng -180 đến 180." });
+
         var venue = new Venue
         {
             OwnerUserId = managerId,
@@ -94,6 +100,12 @@ public class ManagerVenuesController : ControllerBase
         var managerId = GetCurrentUserId();
         if (managerId == Guid.Empty)
             return Unauthorized(new { message = "Không xác định được người dùng hiện tại." });
+
+        if (request.Lat.HasValue && (request.Lat.Value < -90 || request.Lat.Value > 90))
+            return BadRequest(new { message = "Vĩ độ (Latitude) phải nằm trong khoảng -90 đến 90." });
+
+        if (request.Lng.HasValue && (request.Lng.Value < -180 || request.Lng.Value > 180))
+            return BadRequest(new { message = "Kinh độ (Longitude) phải nằm trong khoảng -180 đến 180." });
 
         var venue = await _venueService.GetByIdAsync(venueId);
         if (venue == null)
