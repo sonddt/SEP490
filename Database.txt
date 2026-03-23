@@ -189,6 +189,7 @@ CREATE TABLE bookings (
     contact_name VARCHAR(255) NULL,
     contact_phone VARCHAR(50) NULL,
     guest_note TEXT NULL,
+    manager_status_note VARCHAR(1000) NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (venue_id) REFERENCES venues(id)
@@ -590,13 +591,14 @@ INSERT IGNORE INTO booking_items (id, booking_id, court_id, start_time, end_time
 -- ======================================================================
 
 INSERT IGNORE INTO payments (id, booking_id, method, status, amount, gateway_reference, created_at) VALUES
-('g0000001-0000-0000-0000-000000000001', 'e0000001-0000-0000-0000-000000000001', 'BANK_TRANSFER', 'COMPLETED', 160000, 'VNP_TXN_001', NOW()),
-('g0000002-0000-0000-0000-000000000002', 'e0000003-0000-0000-0000-000000000003', 'BANK_TRANSFER', 'COMPLETED',  80000, 'VNP_TXN_002', NOW()),
-('g0000003-0000-0000-0000-000000000003', 'e0000004-0000-0000-0000-000000000004', 'CASH',          'COMPLETED', 200000, NULL,           NOW() - INTERVAL 1 DAY),
-('g0000004-0000-0000-0000-000000000004', 'e0000006-0000-0000-0000-000000000006', 'BANK_TRANSFER', 'COMPLETED', 160000, 'VNP_TXN_003', NOW() - INTERVAL 2 DAY),
-('g0000005-0000-0000-0000-000000000005', 'e0000007-0000-0000-0000-000000000007', 'BANK_TRANSFER', 'COMPLETED', 200000, 'VNP_TXN_004', NOW() - INTERVAL 2 DAY),
-('g0000006-0000-0000-0000-000000000006', 'e0000008-0000-0000-0000-000000000008', 'CASH',          'COMPLETED',  80000, NULL,           NOW() - INTERVAL 5 DAY),
-('g0000007-0000-0000-0000-000000000007', 'e0000009-0000-0000-0000-000000000009', 'BANK_TRANSFER', 'COMPLETED', 100000, 'VNP_TXN_005', NOW() - INTERVAL 7 DAY);
+-- payment id phải là GUID hợp lệ (chỉ 0-9a-f); chữ "g" khiến EF/MySqlConnector lỗi khi đọc
+('ba000001-0000-0000-0000-000000000001', 'e0000001-0000-0000-0000-000000000001', 'BANK_TRANSFER', 'COMPLETED', 160000, 'VNP_TXN_001', NOW()),
+('ba000002-0000-0000-0000-000000000002', 'e0000003-0000-0000-0000-000000000003', 'BANK_TRANSFER', 'COMPLETED',  80000, 'VNP_TXN_002', NOW()),
+('ba000003-0000-0000-0000-000000000003', 'e0000004-0000-0000-0000-000000000004', 'CASH',          'COMPLETED', 200000, NULL,           NOW() - INTERVAL 1 DAY),
+('ba000004-0000-0000-0000-000000000004', 'e0000006-0000-0000-0000-000000000006', 'BANK_TRANSFER', 'COMPLETED', 160000, 'VNP_TXN_003', NOW() - INTERVAL 2 DAY),
+('ba000005-0000-0000-0000-000000000005', 'e0000007-0000-0000-0000-000000000007', 'BANK_TRANSFER', 'COMPLETED', 200000, 'VNP_TXN_004', NOW() - INTERVAL 2 DAY),
+('ba000006-0000-0000-0000-000000000006', 'e0000008-0000-0000-0000-000000000008', 'CASH',          'COMPLETED',  80000, NULL,           NOW() - INTERVAL 5 DAY),
+('ba000007-0000-0000-0000-000000000007', 'e0000009-0000-0000-0000-000000000009', 'BANK_TRANSFER', 'COMPLETED', 100000, 'VNP_TXN_005', NOW() - INTERVAL 7 DAY);
 
 
 -- ======================================================================
@@ -659,6 +661,37 @@ INSERT IGNORE INTO venue_reviews (id, venue_id, user_id, stars, comment, created
 (UUID(), 'c0000001-0000-0000-0000-000000000001', 'a0000001-0000-0000-0000-000000000001', 5, 'Sân rất đẹp, sạch sẽ, ánh sáng tốt!', NOW()),
 (UUID(), 'c0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 4, 'Nhân viên nhiệt tình, giá hợp lý.', NOW() - INTERVAL 1 DAY),
 (UUID(), 'c0000002-0000-0000-0000-000000000002', 'b0000002-0000-0000-0000-000000000002', 5, 'Sân hơi đông nhưng phục vụ chuyên nghiệp.', NOW() - INTERVAL 2 DAY);
+
+-- ======================================================================
+-- Migration: DB đã tồn tại (không chạy full script từ đầu) — bỏ comment và chạy một lần nếu thiếu cột
+-- ======================================================================
+-- Thêm cột manager_status_note nếu chưa có (an toàn để chạy 1 lần hoặc chạy lại)
+SET @col_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'bookings'
+    AND column_name = 'manager_status_note'
+);
+
+SET @sql := IF(
+  @col_exists = 0,
+  'ALTER TABLE bookings ADD COLUMN manager_status_note VARCHAR(1000) NULL',
+  'SELECT 1'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Sửa id payments mẫu cũ: prefix "g" không phải hex → EF đọc Guid lỗi 500 trên /api/manager/bookings
+UPDATE payments SET id = 'ba000001-0000-0000-0000-000000000001' WHERE id = 'g0000001-0000-0000-0000-000000000001';
+UPDATE payments SET id = 'ba000002-0000-0000-0000-000000000002' WHERE id = 'g0000002-0000-0000-0000-000000000002';
+UPDATE payments SET id = 'ba000003-0000-0000-0000-000000000003' WHERE id = 'g0000003-0000-0000-0000-000000000003';
+UPDATE payments SET id = 'ba000004-0000-0000-0000-000000000004' WHERE id = 'g0000004-0000-0000-0000-000000000004';
+UPDATE payments SET id = 'ba000005-0000-0000-0000-000000000005' WHERE id = 'g0000005-0000-0000-0000-000000000005';
+UPDATE payments SET id = 'ba000006-0000-0000-0000-000000000006' WHERE id = 'g0000006-0000-0000-0000-000000000006';
+UPDATE payments SET id = 'ba000007-0000-0000-0000-000000000007' WHERE id = 'g0000007-0000-0000-0000-000000000007';
 
 -- ======================================================================
 -- Kiểm tra kết quả

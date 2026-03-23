@@ -242,6 +242,7 @@ public class BookingsController : ControllerBase
             {
                 b.Id,
                 b.Status,
+                b.ManagerStatusNote,
                 b.TotalAmount,
                 b.FinalAmount,
                 b.CreatedAt,
@@ -270,6 +271,7 @@ public class BookingsController : ControllerBase
             b.Id,
             bookingCode = "SU" + b.Id.ToString("N")[^6..].ToUpperInvariant(),
             b.Status,
+            b.ManagerStatusNote,
             b.TotalAmount,
             b.FinalAmount,
             b.CreatedAt,

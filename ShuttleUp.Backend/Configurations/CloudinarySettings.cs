@@ -1,5 +1,8 @@
 namespace ShuttleUp.Backend.Configurations;
 
+/// <summary>
+/// Bắt buộc cấu hình đầy đủ (CloudName, ApiKey, ApiSecret) — API không khởi động nếu thiếu; upload chứng từ CK dùng Cloudinary.
+/// </summary>
 public class CloudinarySettings
 {
     public string CloudName { get; set; } = string.Empty;
