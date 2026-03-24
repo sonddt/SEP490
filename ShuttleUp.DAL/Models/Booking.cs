@@ -28,6 +28,9 @@ public partial class Booking
 
     public string? GuestNote { get; set; }
 
+    /// <summary>Ghi chú từ sân khi từ chối / huỷ (manager), hiển thị cho người chơi.</summary>
+    public string? ManagerStatusNote { get; set; }
+
     public virtual ICollection<BookingItem> BookingItems { get; set; } = new List<BookingItem>();
 
     public virtual ICollection<MatchingPost> MatchingPosts { get; set; } = new List<MatchingPost>();

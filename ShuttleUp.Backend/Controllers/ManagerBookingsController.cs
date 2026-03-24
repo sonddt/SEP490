@@ -95,6 +95,7 @@ public class ManagerBookingsController : ControllerBase
                 contactName = b.ContactName,
                 contactPhone = b.ContactPhone,
                 guestNote = b.GuestNote,
+                managerStatusNote = b.ManagerStatusNote,
                 totalAmount = b.FinalAmount ?? b.TotalAmount,
                 venueName = b.Venue?.Name,
                 venueAddress = b.Venue?.Address,
@@ -148,7 +149,14 @@ public class ManagerBookingsController : ControllerBase
             if (booking.Status != "PENDING")
                 return BadRequest(new { message = "Chỉ có thể duyệt đơn đang chờ." });
 
+            if (!BookingApprovalRules.HasHttpsPaymentProof(booking.Payments))
+                return BadRequest(new
+                {
+                    message = "Chưa có chứng từ chuyển khoản hợp lệ (URL https). Người chơi cần tải ảnh CK lên trước khi duyệt."
+                });
+
             booking.Status = "CONFIRMED";
+            booking.ManagerStatusNote = null;
             foreach (var item in booking.BookingItems)
                 item.Status = "CONFIRMED";
 
@@ -166,6 +174,9 @@ public class ManagerBookingsController : ControllerBase
                 return BadRequest(new { message = "Không thể huỷ đơn ở trạng thái này." });
 
             booking.Status = "CANCELLED";
+            booking.ManagerStatusNote = string.IsNullOrWhiteSpace(dto.Reason)
+                ? null
+                : dto.Reason.Trim();
             foreach (var item in booking.BookingItems)
                 item.Status = "CANCELLED";
 
@@ -184,7 +195,8 @@ public class ManagerBookingsController : ControllerBase
             bookingId = booking.Id,
             bookingCode = code,
             booking.Status,
-            reason = dto.Reason
+            reason = dto.Reason,
+            managerStatusNote = booking.ManagerStatusNote
         });
     }
 }

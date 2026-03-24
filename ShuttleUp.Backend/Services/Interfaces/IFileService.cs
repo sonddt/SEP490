@@ -1,0 +1,10 @@
+using Microsoft.AspNetCore.Http;
+
+namespace ShuttleUp.Backend.Services.Interfaces;
+
+public interface IFileService
+{
+    Task<FileUploadResult> UploadAvatarAsync(IFormFile file, Guid userId, CancellationToken cancellationToken = default);
+
+    Task<FileUploadResult> UploadPaymentProofAsync(IFormFile file, Guid bookingId, CancellationToken cancellationToken = default);
+}

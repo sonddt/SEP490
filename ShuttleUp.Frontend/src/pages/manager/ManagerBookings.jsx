@@ -81,6 +81,7 @@ function mapManagerBookingFromApi(b) {
     paymentProofImg: b.proofUrl || null,
     status: uiStatus,
     note: b.guestNote || '',
+    rejectReason: (b.managerStatusNote || '').trim() || null,
     createdAt,
   };
 }

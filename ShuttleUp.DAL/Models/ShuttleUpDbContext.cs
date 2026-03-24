@@ -99,6 +99,9 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.GuestNote)
                 .HasColumnType("text")
                 .HasColumnName("guest_note");
+            entity.Property(e => e.ManagerStatusNote)
+                .HasMaxLength(1000)
+                .HasColumnName("manager_status_note");
             entity.Property(e => e.DiscountAmount)
                 .HasPrecision(15, 2)
                 .HasDefaultValueSql("'0.00'")
