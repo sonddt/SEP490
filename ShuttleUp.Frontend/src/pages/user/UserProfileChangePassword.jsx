@@ -22,18 +22,21 @@ export default function UserProfileChangePassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     setError('');
     setSuccess('');
+    if (fieldErrors[name]) setFieldErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const handleReset = () => {
     setForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
     setError('');
     setSuccess('');
+    setFieldErrors({});
   };
 
   const handleSubmit = async (e) => {
@@ -41,19 +44,33 @@ export default function UserProfileChangePassword() {
     setError('');
     setSuccess('');
 
-    if (form.newPassword !== form.confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp.');
+    const newErrors = {};
+
+    if (!form.currentPassword) {
+      newErrors.currentPassword = 'Bạn chưa nhập mật khẩu hiện tại.';
+    }
+    if (!form.newPassword) {
+      newErrors.newPassword = 'Bạn chưa nhập mật khẩu mới.';
+    } else if (form.newPassword.length < 6) {
+      newErrors.newPassword = 'Mật khẩu mới cần từ 6 ký tự trở lên bạn nhé.';
+    }
+    
+    if (!form.confirmPassword) {
+      newErrors.confirmPassword = 'Bạn chưa xác nhận mật khẩu.';
+    } else if (form.newPassword !== form.confirmPassword) {
+      newErrors.confirmPassword = 'Oops... Mật khẩu xác nhận chưa khớp nhau rồi!';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setFieldErrors(newErrors);
       return;
     }
-    if (form.newPassword.length < 6) {
-      setError('Mật khẩu mới phải có ít nhất 6 ký tự.');
-      return;
-    }
+    setFieldErrors({});
 
     setLoading(true);
     try {
       await changePassword(form);
-      setSuccess('Đổi mật khẩu thành công! Vui lòng đăng nhập lại.');
+      setSuccess('Tuyệt vời! Đổi mật khẩu thành công rồi nha. Bạn đăng nhập lại nhé!');
       handleReset();
       setTimeout(() => {
         logout();
@@ -63,7 +80,7 @@ export default function UserProfileChangePassword() {
       setError(
         err.response?.data?.message
         ?? err.response?.data?.title
-        ?? 'Đổi mật khẩu thất bại. Vui lòng thử lại.'
+        ?? 'Oops... Có sự cố khi đổi mật khẩu, bạn thử lại nha.'
       );
     } finally {
       setLoading(false);
@@ -129,14 +146,14 @@ export default function UserProfileChangePassword() {
                             />
                             <input
                               type={show.current ? 'text' : 'password'}
-                              className="form-control pass-input"
+                              className={`form-control pass-input ${fieldErrors.currentPassword ? 'is-invalid' : ''}`}
                               name="currentPassword"
                               placeholder="Mật khẩu hiện tại"
                               value={form.currentPassword}
                               onChange={handleChange}
-                              required
                             />
                           </div>
+                          {fieldErrors.currentPassword && <div className="invalid-feedback d-block mt-1">{fieldErrors.currentPassword}</div>}
                         </div>
                       </div>
 
@@ -155,14 +172,14 @@ export default function UserProfileChangePassword() {
                             />
                             <input
                               type={show.newPw ? 'text' : 'password'}
-                              className="form-control pass-input"
+                              className={`form-control pass-input ${fieldErrors.newPassword ? 'is-invalid' : ''}`}
                               name="newPassword"
                               placeholder="Mật khẩu mới"
                               value={form.newPassword}
                               onChange={handleChange}
-                              required
                             />
                           </div>
+                          {fieldErrors.newPassword && <div className="invalid-feedback d-block mt-1">{fieldErrors.newPassword}</div>}
                         </div>
                       </div>
 
@@ -181,14 +198,14 @@ export default function UserProfileChangePassword() {
                             />
                             <input
                               type={show.confirm ? 'text' : 'password'}
-                              className="form-control pass-confirm"
+                              className={`form-control pass-confirm ${fieldErrors.confirmPassword ? 'is-invalid' : ''}`}
                               name="confirmPassword"
                               placeholder="Xác nhận mật khẩu mới"
                               value={form.confirmPassword}
                               onChange={handleChange}
-                              required
                             />
                           </div>
+                          {fieldErrors.confirmPassword && <div className="invalid-feedback d-block mt-1">{fieldErrors.confirmPassword}</div>}
                         </div>
                       </div>
 

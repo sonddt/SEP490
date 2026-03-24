@@ -14,6 +14,7 @@ export default function UserManagerInfo() {
   const [requestType, setRequestType] = useState(null);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const [form, setForm] = useState({
     taxCode: '',
@@ -39,6 +40,7 @@ export default function UserManagerInfo() {
     (async () => {
       setLoading(true);
       setErr('');
+      setFieldErrors({});
       try {
         const data = await managerProfileApi.getMe();
         if (!mounted) return;
@@ -98,12 +100,13 @@ export default function UserManagerInfo() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    if (fieldErrors[name]) setFieldErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const requireFullName = () => {
     const fullName = (user?.fullName || '').trim();
     if (!fullName) {
-      setErr('Vui lòng cập nhật Họ và tên ở tab Hồ sơ trước khi gửi đơn cho Admin duyệt.');
+      setErr('Bạn nhớ cập nhật Họ và tên ở tab Hồ sơ trước khi gửi đơn cho Admin duyệt nhé!');
       return false;
     }
     return true;
@@ -120,27 +123,30 @@ export default function UserManagerInfo() {
         ? businessLicenseFiles.length
         : (existingBusinessLicenseFiles?.length ?? 0);
 
-    const missing = [];
+    const newErrors = {};
+
     if (isRegistration) {
-      if (!form.taxCode?.trim()) missing.push('Mã số thuế');
-      if (!form.address?.trim()) missing.push('Địa chỉ');
-      if (!effectiveCccdFront) missing.push('Ảnh CCCD mặt trước');
-      if (!effectiveCccdBack) missing.push('Ảnh CCCD mặt sau');
-      if (licenseCountEffective <= 0) missing.push('Giấy phép kinh doanh (1-3 file)');
+      if (!form.taxCode?.trim()) newErrors.taxCode = 'Bạn chưa nhập Mã số thuế.';
+      if (!form.address?.trim()) newErrors.address = 'Bạn chưa nhập Địa chỉ.';
+      if (!effectiveCccdFront) newErrors.cccdFrontFile = 'Bạn chưa tải lên CCCD mặt trước.';
+      if (!effectiveCccdBack) newErrors.cccdBackFile = 'Bạn chưa tải lên CCCD mặt sau.';
+      if (licenseCountEffective <= 0) newErrors.businessLicenseFiles = 'Bạn cần tải lên ít nhất 1 Giấy phép kinh doanh.';
     } else {
       // CAP_NHAT: cho phép không bắt buộc CCCD/giấy phép
       const hasTaxOrAddress = !!(form.taxCode?.trim() || form.address?.trim());
       const hasAnyNewFile = !!(cccdFrontFile || cccdBackFile || (businessLicenseFiles?.length ?? 0) > 0);
-      if (!hasTaxOrAddress && !hasAnyNewFile)
-        missing.push('Thông tin cập nhật (Mã số thuế/Địa chỉ hoặc upload giấy tờ)');
+      if (!hasTaxOrAddress && !hasAnyNewFile) {
+        setErr('Bạn điền thêm vài thông tin cập nhật (Mã số thuế/Địa chỉ hoặc upload giấy tờ) nha.');
+        return false;
+      }
 
       // Nếu user chọn 1 mặt CCCD thì cần chọn đủ 2 mặt
-      if (cccdFrontFile && !cccdBackFile) missing.push('Thiếu CCCD mặt sau');
-      if (cccdBackFile && !cccdFrontFile) missing.push('Thiếu CCCD mặt trước');
+      if (cccdFrontFile && !cccdBackFile) newErrors.cccdBackFile = 'Bạn cần chọn thêm CCCD mặt sau.';
+      if (cccdBackFile && !cccdFrontFile) newErrors.cccdFrontFile = 'Bạn cần chọn thêm CCCD mặt trước.';
     }
 
-    if (missing.length > 0) {
-      setErr(`Vui lòng nhập đầy đủ: ${missing.join(', ')}.`);
+    if (Object.keys(newErrors).length > 0) {
+      setFieldErrors(newErrors);
       return false;
     }
     return true;
@@ -198,6 +204,7 @@ export default function UserManagerInfo() {
     e.preventDefault();
     setMsg('');
     setErr('');
+    setFieldErrors({});
     if (!requireFullName()) return;
     if (!validateManagerFields()) return;
 
@@ -222,9 +229,9 @@ export default function UserManagerInfo() {
       setExistingCccdBackUrl(data.cccdBackUrl ?? null);
       setExistingBusinessLicenseFiles(data.businessLicenseFiles ?? []);
 
-      setMsg('Đã gửi/cập nhật thông tin Quản lý. Vui lòng chờ Admin duyệt.');
+      setMsg('Tuyệt vời! Đã gửi thông tin Quản lý. Vui lòng chờ Admin duyệt nha.');
     } catch (e2) {
-      setErr(e2.response?.data?.message || 'Gửi đơn thất bại, vui lòng thử lại.');
+      setErr(e2.response?.data?.message || 'Oops... Gửi đơn thất bại, bạn thử lại nhé!');
     } finally {
       setSaving(false);
     }
@@ -284,10 +291,14 @@ export default function UserManagerInfo() {
                               <label className="form-label">CCCD mặt trước</label>
                               <input
                                 type="file"
-                                className="form-control"
+                                className={`form-control ${fieldErrors.cccdFrontFile ? 'is-invalid' : ''}`}
                                 accept="image/png,image/jpeg"
-                                onChange={(e) => setCccdFrontFile(e.target.files?.[0] ?? null)}
+                                onChange={(e) => {
+                                  setCccdFrontFile(e.target.files?.[0] ?? null);
+                                  if (fieldErrors.cccdFrontFile) setFieldErrors(prev => ({ ...prev, cccdFrontFile: '' }));
+                                }}
                               />
+                              {fieldErrors.cccdFrontFile && <div className="invalid-feedback d-block mt-1">{fieldErrors.cccdFrontFile}</div>}
                               {(cccdFrontObjectUrl || existingCccdFrontUrl) && (
                                 <div className="mt-2">
                                   <img
@@ -305,10 +316,14 @@ export default function UserManagerInfo() {
                               <label className="form-label">CCCD mặt sau</label>
                               <input
                                 type="file"
-                                className="form-control"
+                                className={`form-control ${fieldErrors.cccdBackFile ? 'is-invalid' : ''}`}
                                 accept="image/png,image/jpeg"
-                                onChange={(e) => setCccdBackFile(e.target.files?.[0] ?? null)}
+                                onChange={(e) => {
+                                  setCccdBackFile(e.target.files?.[0] ?? null);
+                                  if (fieldErrors.cccdBackFile) setFieldErrors(prev => ({ ...prev, cccdBackFile: '' }));
+                                }}
                               />
+                              {fieldErrors.cccdBackFile && <div className="invalid-feedback d-block mt-1">{fieldErrors.cccdBackFile}</div>}
                               {(cccdBackObjectUrl || existingCccdBackUrl) && (
                                 <div className="mt-2">
                                   <img
@@ -326,12 +341,13 @@ export default function UserManagerInfo() {
                               <label className="form-label">Mã số thuế</label>
                               <input
                                 type="text"
-                                className="form-control"
+                                className={`form-control ${fieldErrors.taxCode ? 'is-invalid' : ''}`}
                                 name="taxCode"
                                 value={form.taxCode}
                                 onChange={handleChange}
                                 placeholder="Nhập mã số thuế"
                               />
+                              {fieldErrors.taxCode && <div className="invalid-feedback d-block mt-1">{fieldErrors.taxCode}</div>}
                             </div>
                           </div>
 
@@ -340,20 +356,24 @@ export default function UserManagerInfo() {
                               <label className="form-label">Giấy phép kinh doanh</label>
                               <input
                                 type="file"
-                                className="form-control"
+                                className={`form-control ${fieldErrors.businessLicenseFiles ? 'is-invalid' : ''}`}
                                 accept="image/png,image/jpeg,application/pdf"
                                 multiple
                                 onChange={(e) => {
                                   const files = Array.from(e.target.files ?? []);
                                   if (files.length > 3) {
-                                    setErr('Tối đa 3 file giấy phép kinh doanh.');
+                                    setErr('Lưu ý nhỏ: Chỉ được tải lên tối đa 3 file giấy phép kinh doanh thôi nha.');
                                     setBusinessLicenseFiles(files.slice(0, 3));
                                     return;
                                   }
                                   setBusinessLicenseFiles(files);
+                                  if (fieldErrors.businessLicenseFiles && files.length > 0) {
+                                    setFieldErrors(prev => ({ ...prev, businessLicenseFiles: '' }));
+                                  }
                                   setErr('');
                                 }}
                               />
+                              {fieldErrors.businessLicenseFiles && <div className="invalid-feedback d-block mt-1">{fieldErrors.businessLicenseFiles}</div>}
 
                               {((businessLicenseObjectPreviews && businessLicenseObjectPreviews.length > 0) ||
                                 (existingBusinessLicenseFiles && existingBusinessLicenseFiles.length > 0)) && (
@@ -405,12 +425,13 @@ export default function UserManagerInfo() {
                               <label className="form-label">Địa chỉ DOANH NGHIỆP / CÁ NHÂN</label>
                               <input
                                 type="text"
-                                className="form-control"
+                                className={`form-control ${fieldErrors.address ? 'is-invalid' : ''}`}
                                 name="address"
                                 value={form.address}
                                 onChange={handleChange}
                                 placeholder="Nhập địa chỉ"
                               />
+                              {fieldErrors.address && <div className="invalid-feedback d-block mt-1">{fieldErrors.address}</div>}
                             </div>
                           </div>
                         </div>
