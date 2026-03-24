@@ -9,9 +9,12 @@ export default function ManagerProfileRequest() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [success, setSuccess] = useState('');
   const [status, setStatus] = useState(null);
   const [requestType, setRequestType] = useState(null);
+
+  const getFieldError = (field) => fieldErrors[field] || '';
 
   const [form, setForm] = useState({
     taxCode: '',
@@ -50,7 +53,7 @@ export default function ManagerProfileRequest() {
         setExistingBusinessLicenseFiles(data.businessLicenseFiles ?? []);
       } catch (e) {
         if (!mounted) return;
-        setError(e.response?.data?.message || 'Không tải được hồ sơ quản lý.');
+        setError(e.response?.data?.message || 'Oops... Không tải được hồ sơ của bạn!');
       } finally {
         if (mounted) setLoading(false);
       }
@@ -103,6 +106,8 @@ export default function ManagerProfileRequest() {
   const validateManagerFields = () => {
     const req = (requestType || '').toString().toUpperCase();
     const isRegistration = !req || req === 'DANG_KY';
+    const errors = {};
+    let isValid = true;
 
     const effectiveCccdFront = cccdFrontFile || existingCccdFrontUrl;
     const effectiveCccdBack = cccdBackFile || existingCccdBackUrl;
@@ -112,30 +117,32 @@ export default function ManagerProfileRequest() {
         : (existingBusinessLicenseFiles?.length ?? 0);
 
     if (isRegistration) {
-      if (!form.taxCode?.trim()) return setError('Vui lòng nhập mã số thuế.') || false;
-      if (!form.address?.trim()) return setError('Vui lòng nhập địa chỉ.') || false;
-      if (!effectiveCccdFront) return setError('Vui lòng cung cấp CCCD mặt trước.') || false;
-      if (!effectiveCccdBack) return setError('Vui lòng cung cấp CCCD mặt sau.') || false;
-      if (licenseCountEffective <= 0) return setError('Vui lòng cung cấp giấy phép kinh doanh (1-3 file).') || false;
-      return true;
-    }
+      if (!form.taxCode?.trim()) { errors.taxCode = 'Bạn quên nhập phần mã số thuế rồi!'; isValid = false; }
+      if (!form.address?.trim()) { errors.address = 'Vui lòng cung cấp địa chỉ nhé.'; isValid = false; }
+      if (!effectiveCccdFront) { errors.cccdFront = 'Vui lòng tải lên ảnh CCCD mặt trước.'; isValid = false; }
+      if (!effectiveCccdBack) { errors.cccdBack = 'Vui lòng tải lên ảnh CCCD mặt sau.'; isValid = false; }
+      if (licenseCountEffective <= 0) { errors.businessLicense = 'Vui lòng tải lên 1 đến 3 ảnh giấy phép kinh doanh.'; isValid = false; }
+    } else {
+      // CAP_NHAT: CCCD/giấy phép không bắt buộc
+      if (cccdFrontFile && !cccdBackFile) { errors.cccdBack = 'Thiếu ảnh CCCD mặt sau.'; isValid = false; }
+      if (cccdBackFile && !cccdFrontFile) { errors.cccdFront = 'Thiếu ảnh CCCD mặt trước.'; isValid = false; }
 
-    // CAP_NHAT: CCCD/giấy phép không bắt buộc
-    if (cccdFrontFile && !cccdBackFile) return setError('Thiếu CCCD mặt sau.') || false;
-    if (cccdBackFile && !cccdFrontFile) return setError('Thiếu CCCD mặt trước.') || false;
-
-    const hasTaxOrAddress = !!(form.taxCode?.trim() || form.address?.trim());
-    const hasAnyNewFile = !!(cccdFrontFile || cccdBackFile || (businessLicenseFiles?.length ?? 0) > 0);
-    if (!hasTaxOrAddress && !hasAnyNewFile) {
-      setError('Bạn chưa cập nhật thông tin nào.');
-      return false;
+      const hasTaxOrAddress = !!(form.taxCode?.trim() || form.address?.trim());
+      const hasAnyNewFile = !!(cccdFrontFile || cccdBackFile || (businessLicenseFiles?.length ?? 0) > 0);
+      if (!hasTaxOrAddress && !hasAnyNewFile) {
+        setError('Hmm... Hình như bạn chưa thay đổi thông tin nào cả.');
+        isValid = false;
+      }
     }
-    return true;
+    
+    setFieldErrors(errors);
+    return isValid;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setFieldErrors({});
     setSuccess('');
     if (!validateManagerFields()) return;
     setSaving(true);
@@ -159,9 +166,9 @@ export default function ManagerProfileRequest() {
       setExistingCccdBackUrl(data.cccdBackUrl ?? null);
       setExistingBusinessLicenseFiles(data.businessLicenseFiles ?? []);
 
-      setSuccess('Đã gửi/cập nhật hồ sơ. Vui lòng chờ Admin duyệt.');
+      setSuccess('Bạn đã gửi hồ sơ thành công! Chờ Admin xíu để kiểm tra nhé.');
     } catch (e2) {
-      setError(e2.response?.data?.message || 'Lưu hồ sơ thất bại, vui lòng thử lại.');
+      setError(e2.response?.data?.message || 'Rất tiếc... Lưu hồ sơ thất bại, bạn thử lại sau nhé!');
     } finally {
       setSaving(false);
     }
@@ -213,10 +220,14 @@ export default function ManagerProfileRequest() {
                   <label className="form-label">CCCD mặt trước</label>
                   <input
                     type="file"
-                    className="form-control"
+                    className={`form-control ${getFieldError('cccdFront') ? 'is-invalid' : ''}`}
                     accept="image/png,image/jpeg"
-                    onChange={(e) => setCccdFrontFile(e.target.files?.[0] ?? null)}
+                    onChange={(e) => {
+                      setCccdFrontFile(e.target.files?.[0] ?? null);
+                      setFieldErrors(prev => ({ ...prev, cccdFront: '' }));
+                    }}
                   />
+                  {getFieldError('cccdFront') && <div className="invalid-feedback">{getFieldError('cccdFront')}</div>}
                   {(cccdFrontObjectUrl || existingCccdFrontUrl) && (
                     <div className="mt-2">
                       <img
@@ -232,10 +243,14 @@ export default function ManagerProfileRequest() {
                   <label className="form-label">CCCD mặt sau</label>
                   <input
                     type="file"
-                    className="form-control"
+                    className={`form-control ${getFieldError('cccdBack') ? 'is-invalid' : ''}`}
                     accept="image/png,image/jpeg"
-                    onChange={(e) => setCccdBackFile(e.target.files?.[0] ?? null)}
+                    onChange={(e) => {
+                      setCccdBackFile(e.target.files?.[0] ?? null);
+                      setFieldErrors(prev => ({ ...prev, cccdBack: '' }));
+                    }}
                   />
+                  {getFieldError('cccdBack') && <div className="invalid-feedback">{getFieldError('cccdBack')}</div>}
                   {(cccdBackObjectUrl || existingCccdBackUrl) && (
                     <div className="mt-2">
                       <img
@@ -250,34 +265,39 @@ export default function ManagerProfileRequest() {
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Mã số thuế</label>
                   <input
-                    className="form-control"
+                    className={`form-control ${getFieldError('taxCode') ? 'is-invalid' : ''}`}
                     name="taxCode"
                     value={form.taxCode}
-                    onChange={handleChange}
+                    onChange={(e) => {
+                      handleChange(e);
+                      setFieldErrors(prev => ({ ...prev, taxCode: '' }));
+                    }}
                     placeholder="Nhập mã số thuế"
                   />
+                  {getFieldError('taxCode') && <div className="invalid-feedback">{getFieldError('taxCode')}</div>}
                 </div>
 
                 <div className="col-md-12 mb-3">
                   <label className="form-label">Giấy phép kinh doanh</label>
                   <input
                     type="file"
-                    className="form-control"
+                    className={`form-control ${getFieldError('businessLicense') ? 'is-invalid' : ''}`}
                     accept="image/png,image/jpeg,application/pdf"
                     multiple
                     onChange={(e) => {
                       const files = Array.from(e.target.files ?? []);
+                      setFieldErrors(prev => ({ ...prev, businessLicense: '' }));
                       if (files.length > 3) {
-                        setError('Tối đa 3 file giấy phép kinh doanh.');
+                        setFieldErrors(prev => ({ ...prev, businessLicense: 'Oops! Tối đa 3 file giấy phép kinh doanh thôi bạn nhé.' }));
                         setBusinessLicenseFiles(files.slice(0, 3));
                         return;
                       }
                       setBusinessLicenseFiles(files);
-                      setError('');
                     }}
                   />
+                  {getFieldError('businessLicense') && <div className="invalid-feedback">{getFieldError('businessLicense')}</div>}
                   <div className="text-muted mt-2" style={{ fontSize: 13 }}>
-                    Vui lòng tải lên ảnh chụp Giấy phép kinh doanh (Rõ nét, không mất góc). Chấp nhận file JPG, PNG hoặc PDF. Tối đa 3 file, mỗi file không quá 5MB.
+                    Vui lòng tải lên ảnh chụp Giấy phép kinh doanh (Rõ nét, không mất góc). Chấp nhận file JPG, PNG hoặc PDF. Chỉ tối đa 3 file, mỗi file không quá 5MB.
                   </div>
 
                   {((businessLicenseObjectPreviews && businessLicenseObjectPreviews.length > 0) ||
@@ -326,12 +346,16 @@ export default function ManagerProfileRequest() {
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Địa chỉ</label>
                   <input
-                    className="form-control"
+                    className={`form-control ${getFieldError('address') ? 'is-invalid' : ''}`}
                     name="address"
                     value={form.address}
-                    onChange={handleChange}
+                    onChange={(e) => {
+                      handleChange(e);
+                      setFieldErrors(prev => ({ ...prev, address: '' }));
+                    }}
                     placeholder="Nhập địa chỉ"
                   />
+                  {getFieldError('address') && <div className="invalid-feedback">{getFieldError('address')}</div>}
                 </div>
               </div>
 
