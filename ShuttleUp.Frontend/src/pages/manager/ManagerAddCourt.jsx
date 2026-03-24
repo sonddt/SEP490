@@ -47,8 +47,14 @@ export default function ManagerAddCourt() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
-  const setField = (key, val) => setForm((p) => ({ ...p, [key]: val }));
+  const getFieldError = (field) => fieldErrors[field] || '';
+
+  const setField = (key, val) => {
+    setForm((p) => ({ ...p, [key]: val }));
+    setFieldErrors(p => ({ ...p, [key]: null }));
+  };
   const toggleDay = (i, key, val) => setDayHours((p) => p.map((d, idx) => idx === i ? { ...d, [key]: val } : d));
 
   useEffect(() => {
@@ -108,7 +114,19 @@ export default function ManagerAddCourt() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const errors = {};
+      if (!form.name?.trim()) errors.name = 'Bạn chưa đặt tên cho sân này!';
+      if (!form.priceWeekday) errors.priceWeekday = 'Bạn quên thiết lập giá ngày thường rồi!';
+      
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        setErrorMsg('Oops... Có vẻ vài thông tin chưa ổn, bạn kiểm tra lại bên dưới nhé!');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
       setErrorMsg('');
+      setFieldErrors({});
       setSubmitting(true);
       
       const priceSlots = [];
@@ -155,7 +173,13 @@ export default function ManagerAddCourt() {
       navigate(`/manager/venues/${venueId}/courts`);
     } catch (err) {
       console.error('Submit court failed', err);
-      setErrorMsg(err.response?.data?.message || err.response?.data?.title || 'Đã xảy ra lỗi khi lưu Sân. Vui lòng kiểm tra lại!');
+      if (err.response?.data?.errors) {
+        setFieldErrors(err.response.data.errors);
+        setErrorMsg('Oops... Hệ thống phát hiện vài phần nhập chưa chuẩn xác.');
+      } else {
+        setFieldErrors({});
+        setErrorMsg(err.response?.data?.message || err.response?.data?.title || 'Rất tiếc! Đã xảy ra sự cố khi lưu Sân. Bạn thử lại nha!');
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSubmitting(false);
@@ -183,7 +207,7 @@ export default function ManagerAddCourt() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         {errorMsg && (
           <div className="alert alert-danger d-flex align-items-center mb-4" style={{ borderRadius: 10, border: 'none', background: '#fef2f2', color: '#991b1b', padding: '14px 20px' }}>
             <i className="feather-alert-circle fs-5 me-2" />
@@ -203,7 +227,7 @@ export default function ManagerAddCourt() {
                 <div className="row g-4">
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-semibold text-dark mb-2">Tên hiển thị <span className="text-danger">*</span></label>
-                    <input type="text" className={`form-control form-control-lg bg-light border-0 ${getFieldError('name') ? 'is-invalid' : ''}`} placeholder="Ví dụ: Sân số 1" value={form.name} onChange={(e) => setField('name', e.target.value)} required />
+                    <input type="text" className={`form-control form-control-lg bg-light border-0 ${getFieldError('name') ? 'is-invalid' : ''}`} placeholder="Ví dụ: Sân số 1" value={form.name} onChange={(e) => setField('name', e.target.value)} />
                     {getFieldError('name') && <div className="invalid-feedback">{getFieldError('name')}</div>}
                   </div>
                   <div className="col-12 col-md-6">
@@ -235,7 +259,7 @@ export default function ManagerAddCourt() {
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-semibold text-dark mb-2">Giá ngày thường <span className="text-danger">*</span></label>
                     <div className="input-group input-group-lg">
-                      <input type="number" min={0} className={`form-control bg-light border-0 ${getFieldError('priceWeekday') ? 'is-invalid' : ''}`} placeholder="100000" value={form.priceWeekday} onChange={(e) => setField('priceWeekday', e.target.value)} required />
+                      <input type="number" min={0} className={`form-control bg-light border-0 ${getFieldError('priceWeekday') ? 'is-invalid' : ''}`} placeholder="100000" value={form.priceWeekday} onChange={(e) => setField('priceWeekday', e.target.value)} />
                       <span className="input-group-text bg-light border-0 text-muted">đ/giờ</span>
                       {getFieldError('priceWeekday') && <div className="invalid-feedback">{getFieldError('priceWeekday')}</div>}
                     </div>
