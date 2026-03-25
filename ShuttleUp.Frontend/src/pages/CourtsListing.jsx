@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import VenueCard from '../components/courts/VenueCard';
+import favoritesApi from '../api/favoritesApi';
 
 /**
  * Danh sách sân - Grid (listing-grid) và List (listing-list) view.
@@ -13,6 +14,7 @@ export default function CourtsListing() {
   const [sortBy, setSortBy] = useState('price_asc');
   const [displayCount, setDisplayCount] = useState(9);
   const [venues, setVenues] = useState([]);
+  const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -48,6 +50,19 @@ export default function CourtsListing() {
         }));
 
         setVenues(mapped);
+        
+        // Load favorites (nếu đã đăng nhập). Nếu chưa đăng nhập thì bỏ qua.
+        const token = localStorage.getItem('token');
+        if (token) {
+          try {
+            const favs = await favoritesApi.getMyFavorites();
+                setFavoriteIds(new Set(favs.map((f) => f.id ?? f.Id)));
+          } catch {
+            setFavoriteIds(new Set());
+          }
+        } else {
+          setFavoriteIds(new Set());
+        }
       } catch (err) {
         setError(err.message || 'Đã xảy ra lỗi khi tải danh sách sân.');
       } finally {
@@ -181,6 +196,24 @@ export default function CourtsListing() {
                 key={venue.id}
                 venue={venue}
                 viewMode={isListView ? 'list' : 'grid'}
+                isFavorited={favoriteIds.has(venue.id)}
+                onToggleFavorite={async (venueId, shouldFavorite) => {
+                  if (shouldFavorite) {
+                    await favoritesApi.addFavorite(venueId);
+                    setFavoriteIds((prev) => {
+                      const next = new Set(prev);
+                      next.add(venueId);
+                      return next;
+                    });
+                  } else {
+                    await favoritesApi.removeFavorite(venueId);
+                    setFavoriteIds((prev) => {
+                      const next = new Set(prev);
+                      next.delete(venueId);
+                      return next;
+                    });
+                  }
+                }}
               />
             ))}
             <div className="col-12 text-center">

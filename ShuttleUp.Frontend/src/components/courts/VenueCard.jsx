@@ -1,14 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 /**
  * Thẻ hiển thị thông tin một sân (grid hoặc list),
  * chuyển thể từ listing-grid.html / listing-list.html.
  */
-export default function VenueCard({ venue, viewMode = 'grid' }) {
-  const [faved, setFaved] = useState(false);
+export default function VenueCard({
+  venue,
+  viewMode = 'grid',
+  isFavorited = false,
+  onToggleFavorite,
+}) {
+  // Sync tim với trạng thái thật từ props.
+  const [faved, setFaved] = useState(!!isFavorited);
 
   const isList = viewMode === 'list';
+
+  useEffect(() => {
+    setFaved(!!isFavorited);
+  }, [isFavorited]);
 
   const formatPriceK = (value) => {
     if (value == null) return null;
@@ -58,7 +68,21 @@ export default function VenueCard({ venue, viewMode = 'grid' }) {
               <button
                 type="button"
                 className={`fav-icon ${faved ? 'selected' : ''}`}
-                onClick={() => setFaved(!faved)}
+                onClick={async (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+
+                  const next = !faved;
+                  setFaved(next); // optimistic UI
+                  try {
+                    if (onToggleFavorite) {
+                      await onToggleFavorite(venue.id, next);
+                    }
+                  } catch {
+                    // Nếu API lỗi (vd chưa login), revert.
+                    setFaved(!next);
+                  }
+                }}
                 aria-label="Thêm vào yêu thích"
               >
                 <i className="feather-heart"></i>

@@ -32,6 +32,7 @@ import UserProfileChangePassword from './pages/user/UserProfileChangePassword';
 import UserProfileOtherSetting from './pages/user/UserProfileOtherSetting';
 import UserManagerInfo from './pages/user/UserManagerInfo';
 import UserBookings from './pages/user/UserBookings';
+import UserFavorites from './pages/user/UserFavorites';
 
 // Manager — Layout + Pages
 import ManagerLayout from './layouts/ManagerLayout';
@@ -120,6 +121,7 @@ function App() {
 
           {/* Player misc */}
           <Route path="/user/bookings" element={<ProtectedRoute><UserBookings /></ProtectedRoute>} />
+          <Route path="/user/favorites" element={<ProtectedRoute><UserFavorites /></ProtectedRoute>} />
           <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
 
           {/* ═══════════════════════════════════════════════════════════
