@@ -16,6 +16,7 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(!!saved);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const { login, logout, updateUser } = useAuth();
   const navigate = useNavigate();
@@ -66,14 +67,14 @@ export default function Login() {
       const prof = await managerProfileApi.getMe();
       const status = (prof.status ?? prof.Status ?? '').toUpperCase();
       if (status === 'PENDING') {
-        return { allow: true, redirect: '/manager/profile-request', message: 'Hồ sơ quản lý của bạn đang chờ Admin duyệt.' };
+        return { allow: true, redirect: '/manager/profile-request', message: 'Hồ sơ quản lý của bạn đang chờ Admin duyệt nha!' };
       }
       if (status === 'REJECTED') {
-        return { allow: true, redirect: '/manager/profile-request', message: 'Hồ sơ quản lý của bạn đã bị từ chối. Vui lòng cập nhật lại hồ sơ.' };
+        return { allow: true, redirect: '/manager/profile-request', message: 'Rất tiếc, hồ sơ quản lý của bạn đã bị từ chối. Bạn xem và cập nhật lại nhé!' };
       }
-      return { allow: false, message: 'Tài khoản bạn chưa đăng ký làm quản lý.' };
+      return { allow: false, message: 'Oops... Tài khoản của bạn chưa đăng ký làm quản lý rồi.' };
     } catch {
-      return { allow: false, message: 'Tài khoản bạn chưa đăng ký làm quản lý.' };
+      return { allow: false, message: 'Oops... Tài khoản của bạn chưa đăng ký làm quản lý rồi.' };
     }
   };
 
@@ -85,6 +86,18 @@ export default function Login() {
     try {
       // đảm bảo không bị dính session cũ khi test chuyển tab
       logout();
+      setFieldErrors({});
+
+      const newErrors = {};
+      if (!emailOrPhone.trim()) newErrors.emailOrPhone = 'Bạn chưa nhập Email hoặc SĐT kìa.';
+      if (!password) newErrors.password = 'Đừng quên nhập mật khẩu nhé!';
+      
+      if (Object.keys(newErrors).length > 0) {
+        setFieldErrors(newErrors);
+        setLoading(false);
+        return;
+      }
+
       const isPhone = /^[0-9]{9,11}$/.test(emailOrPhone.trim());
       const payload = isPhone
         ? { phoneNumber: emailOrPhone.trim(), password }
@@ -110,7 +123,7 @@ export default function Login() {
       if (gate.redirect) return navigate(gate.redirect);
       redirectAfterLogin(roles);
     } catch (err) {
-      setError(err.response?.data?.message || 'Email/SĐT hoặc mật khẩu không đúng.');
+      setError(err.response?.data?.message || 'Oops... Thông tin đăng nhập chưa chính xác rồi bạn nhé.');
     } finally {
       setLoading(false);
     }
@@ -143,7 +156,7 @@ export default function Login() {
       if (gate.redirect) return navigate(gate.redirect);
       redirectAfterLogin(roles);
     } catch (err) {
-      setError(err.response?.data?.message || 'Đăng nhập Google thất bại.');
+      setError(err.response?.data?.message || 'Oops... Đăng nhập bằng Google có chút trục trặc.');
     } finally {
       setLoading(false);
     }
@@ -221,22 +234,28 @@ export default function Login() {
                         </div>
                       )}
 
-                      {/* Form */}
                       <div className="tab-content" id="myTabContent">
                         <div className="tab-pane fade show active">
-                          <form onSubmit={handleLogin}>
+                          <form onSubmit={handleLogin} noValidate>
                             <div className="form-group">
                               <div className="group-img">
                                 <i className="feather-user"></i>
                                 <input
                                   type="text"
-                                  className="form-control"
+                                  className={`form-control ${fieldErrors.emailOrPhone ? 'is-invalid' : ''}`}
                                   placeholder="Email hoặc Số điện thoại"
                                   value={emailOrPhone}
-                                  onChange={(e) => setEmailOrPhone(e.target.value)}
-                                  required
+                                  onChange={(e) => {
+                                      setEmailOrPhone(e.target.value);
+                                      if (fieldErrors.emailOrPhone) setFieldErrors(prev => ({ ...prev, emailOrPhone: '' }));
+                                  }}
                                 />
                               </div>
+                              {fieldErrors.emailOrPhone && (
+                                <div className="invalid-feedback d-block mt-1">
+                                  {fieldErrors.emailOrPhone}
+                                </div>
+                              )}
                             </div>
                             <div className="form-group">
                               <div className="pass-group group-img">
@@ -247,13 +266,20 @@ export default function Login() {
                                 ></i>
                                 <input
                                   type={showPassword ? 'text' : 'password'}
-                                  className="form-control pass-input"
+                                  className={`form-control pass-input ${fieldErrors.password ? 'is-invalid' : ''}`}
                                   placeholder="Mật khẩu"
                                   value={password}
-                                  onChange={(e) => setPassword(e.target.value)}
-                                  required
+                                  onChange={(e) => {
+                                      setPassword(e.target.value);
+                                      if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: '' }));
+                                  }}
                                 />
                               </div>
+                              {fieldErrors.password && (
+                                <div className="invalid-feedback d-block mt-1">
+                                  {fieldErrors.password}
+                                </div>
+                              )}
                             </div>
                             <div className="form-group d-sm-flex align-items-center justify-content-between">
                               <div className="form-check form-switch d-flex align-items-center justify-content-start">
@@ -290,7 +316,7 @@ export default function Login() {
                               <div className="d-flex justify-content-center">
                                 <GoogleLogin
                                   onSuccess={handleGoogleSuccess}
-                                  onError={() => setError('Đăng nhập Google thất bại.')}
+                                  onError={() => setError('Oops... Đăng nhập bằng Google có chút trục trặc.')}
                                   text="signin_with"
                                   locale="vi"
                                   shape="rectangular"

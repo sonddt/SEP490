@@ -84,6 +84,16 @@ export default function ManagerAddVenue() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const errors = {};
+      if (!form.name?.trim()) errors.name = ['Bạn chưa định danh tên cụm sân kìa!'];
+      if (!form.address?.trim()) errors.address = ['Bạn quên điền địa chỉ rồi!'];
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        setErrorMsg('Oops... Có vài chỗ chưa ổn, bạn kiểm tra lại bên dưới nhé!');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
       setErrorMsg('');
       setFieldErrors({});
       setSubmitting(true);
@@ -106,10 +116,10 @@ export default function ManagerAddVenue() {
       console.error('Submit venue failed', err);
       if (err.response?.data?.errors) {
         setFieldErrors(err.response.data.errors);
-        setErrorMsg('Vui lòng kiểm tra lại các trường bị lỗi bên dưới.');
+        setErrorMsg('Oops... Hệ thống phát hiện vài phần nhập chưa chuẩn xác.');
       } else {
         setFieldErrors({});
-        setErrorMsg(err.response?.data?.message || err.response?.data?.title || 'Đã xảy ra lỗi khi lưu Cụm sân. Vui lòng kiểm tra lại dữ liệu!');
+        setErrorMsg(err.response?.data?.message || err.response?.data?.title || 'Rất tiếc! Đã xảy ra sự cố khi lưu Cụm sân. Bạn thử lại nha!');
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
@@ -138,7 +148,7 @@ export default function ManagerAddVenue() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         {errorMsg && (
           <div className="alert alert-danger d-flex align-items-center mb-4" style={{ borderRadius: 10, border: 'none', background: '#fef2f2', color: '#991b1b', padding: '14px 20px' }}>
             <i className="feather-alert-circle fs-5 me-2" />
@@ -158,12 +168,12 @@ export default function ManagerAddVenue() {
                 <div className="row g-4">
                   <div className="col-12">
                     <label className="form-label fw-semibold text-dark mb-2">Tên cụm sân <span className="text-danger">*</span></label>
-                    <input type="text" className={`form-control form-control-lg bg-light border-0 ${getFieldError('name') ? 'is-invalid' : ''}`} placeholder="Ví dụ: ShuttleUp Quận 7" value={form.name} onChange={(e) => setField('name', e.target.value)} required />
+                    <input type="text" className={`form-control form-control-lg bg-light border-0 ${getFieldError('name') ? 'is-invalid' : ''}`} placeholder="Ví dụ: ShuttleUp Quận 7" value={form.name} onChange={(e) => { setField('name', e.target.value); setFieldErrors(p => ({...p, name: null})); }} />
                     {getFieldError('name') && <div className="invalid-feedback">{getFieldError('name')}</div>}
                   </div>
                   <div className="col-12">
                     <label className="form-label fw-semibold text-dark mb-2">Địa chỉ cụ thể <span className="text-danger">*</span></label>
-                    <textarea className={`form-control form-control-lg bg-light border-0 ${getFieldError('address') ? 'is-invalid' : ''}`} rows="3" placeholder="Số nhà, đường, phường, quận..." value={form.address} onChange={(e) => setField('address', e.target.value)} required />
+                    <textarea className={`form-control form-control-lg bg-light border-0 ${getFieldError('address') ? 'is-invalid' : ''}`} rows="3" placeholder="Số nhà, đường, phường, quận..." value={form.address} onChange={(e) => { setField('address', e.target.value); setFieldErrors(p => ({...p, address: null})); }} />
                     {getFieldError('address') && <div className="invalid-feedback">{getFieldError('address')}</div>}
                   </div>
                   <div className="col-12 col-md-6">

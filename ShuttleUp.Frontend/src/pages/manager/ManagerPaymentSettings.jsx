@@ -19,6 +19,9 @@ export default function ManagerPaymentSettings() {
     vnpayMerchantId: '',
   });
   
+  const [fieldErrors, setFieldErrors] = useState({});
+  const getFieldError = (name) => fieldErrors[name] || '';
+
   const [qrCodeImg, setQrCodeImg] = useState(null);
   const [qrPreview, setQrPreview] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -26,6 +29,7 @@ export default function ManagerPaymentSettings() {
 
   const setField = (key, val) => {
     setForm((p) => ({ ...p, [key]: val }));
+    setFieldErrors((p) => ({ ...p, [key]: '' }));
   };
 
   const handleFileChange = (e) => {
@@ -52,6 +56,20 @@ export default function ManagerPaymentSettings() {
 
   const handleSave = (e) => {
     e.preventDefault();
+    
+    // Custom Validation with friendly UX
+    const errors = {};
+    if (!form.bankName) errors.bankName = 'Oops... Bạn chưa chọn ngân hàng rồi!';
+    if (!form.accountNumber?.trim()) errors.accountNumber = 'Bạn quên nhập số tài khoản kìa!';
+    if (!form.accountHolder?.trim()) errors.accountHolder = 'Bạn quên nhập tên chủ tài khoản rồi!';
+    if (form.vnpayEnabled && !form.vnpayMerchantId?.trim()) errors.vnpayMerchantId = 'Bạn chưa điền mã Merchant VNPay!';
+    
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+    
+    setFieldErrors({});
     setSubmitting(true);
     
     // Simulate API call
@@ -72,13 +90,13 @@ export default function ManagerPaymentSettings() {
   };
 
   // Custom input style to match screenshot
-  const inputStyle = {
+  const getInputStyle = (fieldName) => ({
     background: '#f8fafc', 
-    border: 'none', 
+    border: getFieldError(fieldName) ? '1px solid #dc3545' : '1px solid transparent', 
     borderRadius: '8px', 
     padding: '12px 16px',
     boxShadow: 'none'
-  };
+  });
 
   return (
     <div className="mgr-page">
@@ -93,7 +111,7 @@ export default function ManagerPaymentSettings() {
         </div>
       </div>
 
-      <form onSubmit={handleSave}>
+      <form onSubmit={handleSave} noValidate>
         <div className="row g-4 d-flex align-items-stretch">
           {/* Settings Form Column */}
           <div className="col-xl-8 col-lg-7 d-flex flex-column gap-4">
@@ -127,21 +145,25 @@ export default function ManagerPaymentSettings() {
                       <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 8 }}>
                         Ngân hàng <span className="text-danger">*</span>
                       </label>
-                      <select className="form-select" style={inputStyle} value={form.bankName} onChange={(e) => setField('bankName', e.target.value)} required>
+                      <select className={`form-select ${getFieldError('bankName') ? 'is-invalid' : ''}`} style={getInputStyle('bankName')} value={form.bankName} onChange={(e) => setField('bankName', e.target.value)}>
+                        <option value="">-- Chọn ngân hàng --</option>
                         {BANKS.map((b) => <option key={b} value={b}>{b}</option>)}
                       </select>
+                      {getFieldError('bankName') && <div className="invalid-feedback">{getFieldError('bankName')}</div>}
                     </div>
                     <div className="mb-4">
                       <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 8 }}>
                         Số tài khoản <span className="text-danger">*</span>
                       </label>
-                      <input type="text" className="form-control" style={inputStyle} placeholder="Ví dụ: 0123456789" value={form.accountNumber} onChange={(e) => setField('accountNumber', e.target.value)} required />
+                      <input type="text" className={`form-control ${getFieldError('accountNumber') ? 'is-invalid' : ''}`} style={getInputStyle('accountNumber')} placeholder="Ví dụ: 0123456789" value={form.accountNumber} onChange={(e) => setField('accountNumber', e.target.value)} />
+                      {getFieldError('accountNumber') && <div className="invalid-feedback">{getFieldError('accountNumber')}</div>}
                     </div>
                     <div className="mb-2">
                       <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 8 }}>
                         Chủ tài khoản <span className="text-danger">*</span>
                       </label>
-                      <input type="text" className="form-control text-uppercase" style={inputStyle} placeholder="NGUYEN VAN A" value={form.accountHolder} onChange={(e) => setField('accountHolder', e.target.value.toUpperCase())} required />
+                      <input type="text" className={`form-control text-uppercase ${getFieldError('accountHolder') ? 'is-invalid' : ''}`} style={getInputStyle('accountHolder')} placeholder="NGUYEN VAN A" value={form.accountHolder} onChange={(e) => setField('accountHolder', e.target.value.toUpperCase())} />
+                      {getFieldError('accountHolder') && <div className="invalid-feedback">{getFieldError('accountHolder')}</div>}
                     </div>
                   </div>
                 </div>
@@ -238,7 +260,8 @@ export default function ManagerPaymentSettings() {
                        <div className="row">
                           <div className="col-md-6">
                             <label style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>Mã Merchant (VNPay)</label>
-                            <input type="text" className="form-control" style={inputStyle} placeholder="Nhập mã merchant ID" value={form.vnpayMerchantId} onChange={(e) => setField('vnpayMerchantId', e.target.value)} />
+                            <input type="text" className={`form-control ${getFieldError('vnpayMerchantId') ? 'is-invalid' : ''}`} style={getInputStyle('vnpayMerchantId')} placeholder="Nhập mã merchant ID" value={form.vnpayMerchantId} onChange={(e) => setField('vnpayMerchantId', e.target.value)} />
+                            {getFieldError('vnpayMerchantId') && <div className="invalid-feedback">{getFieldError('vnpayMerchantId')}</div>}
                             <small className="text-muted" style={{ marginTop: 6, display: 'block', fontSize: 12 }}>Liên hệ VNPay để được cấp mã</small>
                           </div>
                        </div>

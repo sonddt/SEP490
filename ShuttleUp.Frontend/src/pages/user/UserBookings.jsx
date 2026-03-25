@@ -156,7 +156,7 @@ export default function UserBookings() {
       await cancelBooking(cancelTarget.id);
       setCancelTarget(null);
       setDetailBooking(null);
-      showToast('Đã huỷ lịch đặt sân.');
+      showToast('Đã huỷ lịch đặt sân thành công nha.');
       setActiveTab('CANCELLED');
       await loadBookings();
     } catch (e) {
@@ -164,7 +164,7 @@ export default function UserBookings() {
       const message =
         (typeof body?.message === 'string' && body.message)
         || body?.title
-        || 'Huỷ lịch thất bại. Vui lòng thử lại.';
+        || 'Oops... Huỷ lịch thất bại rồi. Bạn thử lại nhé!';
       showToast(message, true);
     } finally {
       setCancelSubmitting(false);

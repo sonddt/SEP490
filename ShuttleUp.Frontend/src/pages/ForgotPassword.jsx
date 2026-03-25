@@ -16,7 +16,7 @@ export default function ForgotPassword() {
       await forgotPassword(email);
       setSuccess(true);
     } catch (err) {
-      setError(err.response?.data?.message ?? 'Không thể kết nối đến máy chủ. Vui lòng thử lại.');
+      setError(err.response?.data?.message ?? 'Oops... Không thể kết nối đến máy chủ. Bạn thử lại nha.');
     } finally {
       setLoading(false);
     }
@@ -40,8 +40,8 @@ export default function ForgotPassword() {
 
                   {success ? (
                     <div className="alert alert-success">
-                      Chúng tôi đã gửi link đặt lại mật khẩu đến <strong>{email}</strong>.
-                      Vui lòng kiểm tra hộp thư (kể cả thư mục Spam).
+                      Tụi mình đã gửi link đổi mật khẩu đến <strong>{email}</strong> rồi đó.
+                      Bạn nhớ kiểm tra hộp thư (cả thư mục Spam) nhé.
                     </div>
                   ) : (
                     <form onSubmit={handleSubmit}>

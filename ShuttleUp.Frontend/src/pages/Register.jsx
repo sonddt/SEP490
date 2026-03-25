@@ -12,6 +12,7 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -64,42 +65,55 @@ export default function Register() {
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
     }));
+    if (fieldErrors[name]) setFieldErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
-  // ── Đăng ký bằng email + mật khẩu ────────────────────────────────────────
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
-
-    if (formData.password !== formData.confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp!');
-      return;
+    
+    const newErrors = {};
+    if (!formData.fullName?.trim()) {
+      newErrors.fullName = 'Bạn chưa nhập họ và tên kìa.';
     }
 
     const email = (formData.email || '').trim();
+    if (!email) {
+      newErrors.email = 'Bạn chưa nhập email.';
+    } else if (!isValidGmail(email)) {
+      newErrors.email = 'Bạn nhớ nhập đúng định dạng Gmail nhé (ví dụ: yourname@gmail.com).';
+    }
+
     const phoneNumber = normalizePhone(formData.phoneNumber);
+    if (!phoneNumber) {
+      newErrors.phoneNumber = 'Đừng quên nhập số điện thoại nha.';
+    } else if (!isValidPhone(phoneNumber)) {
+      newErrors.phoneNumber = 'Số điện thoại phải có 9 đến 11 chữ số bạn nha.';
+    }
+
     const password = formData.password || '';
-
-    if (!isValidGmail(email)) {
-      setError('Email phải đúng định dạng Gmail (ví dụ: yourname@gmail.com).');
-      return;
+    if (!password) {
+      newErrors.password = 'Bạn chưa nhập mật khẩu.';
+    } else {
+      const pwCheck = validatePassword(password);
+      if (!pwCheck.ok) {
+        newErrors.password = 'Mật khẩu cần từ 8 đến 32 chữ số và thoả mãn 3/4 điều kiện: Chữ HOA, thường, số, ký tự đặc biệt.';
+      }
     }
 
-    if (!isValidPhone(phoneNumber)) {
-      setError('Số điện thoại phải gồm 9-11 chữ số (chỉ nhập số).');
-      return;
-    }
-
-    const pwCheck = validatePassword(password);
-    if (!pwCheck.ok) {
-      setError('Mật khẩu phải dài 8-32 ký tự và thỏa ít nhất 3/4 điều kiện còn lại: HOA, thường, số, ký tự đặc biệt.');
-      return;
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Oops... Mật khẩu xác nhận chưa khớp nhau rồi!';
     }
 
     if (!formData.agreedToTerms) {
-      setError('Bạn cần đồng ý với Điều khoản sử dụng.');
+      newErrors.agreedToTerms = 'Bạn quên tick chọn đồng ý với Điều khoản sử dụng rồi kìa!';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setFieldErrors(newErrors);
       return;
     }
+    setFieldErrors({});
 
     setLoading(true);
     try {
@@ -125,15 +139,14 @@ export default function Register() {
     } catch (err) {
       const res = err.response;
       if (!res) {
-        setError('Không thể kết nối tới máy chủ. Kiểm tra backend đã chạy chưa.');
+        setError('Oops... Không thể kết nối tới máy chủ. Bạn thử lại sau nhé!');
       } else if (res.data?.message) {
         setError(res.data.message);
       } else if (res.data?.title) {
-        // ASP.NET validation error format
         const firstErrors = Object.values(res.data.errors ?? {}).flat();
         setError(firstErrors[0] ?? res.data.title);
       } else {
-        setError(`Lỗi ${res.status}: Đăng ký thất bại.`);
+        setError(`Rất tiếc! Đăng ký thất bại (Mã: ${res.status}).`);
       }
     } finally {
       setLoading(false);
@@ -163,7 +176,7 @@ export default function Register() {
         navigate('/venues');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Đăng ký Google thất bại.');
+      setError(err.response?.data?.message || 'Oops... Đăng ký bằng Google có chút trục trặc.');
     } finally {
       setLoading(false);
     }
@@ -238,52 +251,48 @@ export default function Register() {
                       {/* Form */}
                       <div className="tab-content" id="myTabContent">
                         <div className="tab-pane fade show active">
-                          <form onSubmit={handleRegister}>
+                          <form onSubmit={handleRegister} noValidate>
                             <div className="form-group">
                               <div className="group-img">
                                 <i className="feather-user"></i>
                                 <input
                                   type="text"
-                                  className="form-control"
+                                  className={`form-control ${fieldErrors.fullName ? 'is-invalid' : ''}`}
                                   placeholder="Họ và tên"
                                   name="fullName"
                                   value={formData.fullName}
                                   onChange={handleInputChange}
-                                  required
                                 />
                               </div>
+                              {fieldErrors.fullName && <div className="invalid-feedback d-block mt-1">{fieldErrors.fullName}</div>}
                             </div>
                             <div className="form-group">
                               <div className="group-img">
                                 <i className="feather-mail"></i>
                                 <input
                                   type="email"
-                                  className="form-control"
+                                  className={`form-control ${fieldErrors.email ? 'is-invalid' : ''}`}
                                   placeholder="Email"
                                   name="email"
                                   value={formData.email}
                                   onChange={handleInputChange}
-                                  required
-                                  pattern="^[A-Za-z0-9._%+-]+@gmail\.com$"
-                                  title="Email phải thuộc định dạng @gmail.com"
                                 />
                               </div>
+                              {fieldErrors.email && <div className="invalid-feedback d-block mt-1">{fieldErrors.email}</div>}
                             </div>
                             <div className="form-group">
                               <div className="group-img">
                                 <i className="feather-phone"></i>
                                 <input
                                   type="tel"
-                                  className="form-control"
+                                  className={`form-control ${fieldErrors.phoneNumber ? 'is-invalid' : ''}`}
                                   placeholder="Số điện thoại"
                                   name="phoneNumber"
                                   value={formData.phoneNumber}
                                   onChange={handleInputChange}
-                                  required
-                                  pattern="[0-9]{9,11}"
-                                  title="Số điện thoại gồm 9-11 chữ số (chỉ nhập số)"
                                 />
                               </div>
+                              {fieldErrors.phoneNumber && <div className="invalid-feedback d-block mt-1">{fieldErrors.phoneNumber}</div>}
                             </div>
 
                             {activeTab === 'manager' && (
@@ -300,16 +309,14 @@ export default function Register() {
                                 ></i>
                                 <input
                                   type={showPassword ? 'text' : 'password'}
-                                  className="form-control pass-input"
+                                  className={`form-control pass-input ${fieldErrors.password ? 'is-invalid' : ''}`}
                                   placeholder="Mật khẩu (8-32 ký tự)"
                                   name="password"
                                   value={formData.password}
                                   onChange={handleInputChange}
-                                  required
-                                  minLength={8}
-                                  maxLength={32}
                                 />
                               </div>
+                              {fieldErrors.password && <div className="invalid-feedback d-block mt-1">{fieldErrors.password}</div>}
                             </div>
                             <div className="form-group">
                               <div className="pass-group group-img">
@@ -320,32 +327,31 @@ export default function Register() {
                                 ></i>
                                 <input
                                   type={showConfirmPassword ? 'text' : 'password'}
-                                  className="form-control pass-confirm"
+                                  className={`form-control pass-confirm ${fieldErrors.confirmPassword ? 'is-invalid' : ''}`}
                                   placeholder="Xác nhận mật khẩu"
                                   name="confirmPassword"
                                   value={formData.confirmPassword}
                                   onChange={handleInputChange}
-                                  required
-                                  minLength={8}
-                                  maxLength={32}
                                 />
                               </div>
+                              {fieldErrors.confirmPassword && <div className="invalid-feedback d-block mt-1">{fieldErrors.confirmPassword}</div>}
                             </div>
-                            <div className="form-check d-flex justify-content-start align-items-center policy">
-                              <div className="d-inline-block">
+                            <div className="form-check d-flex justify-content-start align-items-start flex-column policy">
+                              <div className="d-flex align-items-center">
                                 <input
-                                  className="form-check-input"
+                                  className={`form-check-input ${fieldErrors.agreedToTerms ? 'is-invalid' : ''} me-2`}
                                   type="checkbox"
                                   id="policy"
                                   name="agreedToTerms"
                                   checked={formData.agreedToTerms}
                                   onChange={handleInputChange}
                                 />
+                                <label className="form-check-label mb-0" htmlFor="policy">
+                                  Bằng cách tiếp tục, bạn đồng ý rằng bạn đã đọc và chấp nhận{' '}
+                                  <Link to="/terms">Điều khoản sử dụng</Link>
+                                </label>
                               </div>
-                              <label className="form-check-label" htmlFor="policy">
-                                Bằng cách tiếp tục, bạn đồng ý rằng bạn đã đọc và chấp nhận{' '}
-                                <Link to="/terms">Điều khoản sử dụng</Link>
-                              </label>
+                              {fieldErrors.agreedToTerms && <div className="invalid-feedback d-block mt-1">{fieldErrors.agreedToTerms}</div>}
                             </div>
                             <button
                               className="btn btn-secondary register-btn d-inline-flex justify-content-center align-items-center w-100 btn-block"
@@ -364,7 +370,7 @@ export default function Register() {
                               <div className="d-flex justify-content-center">
                                 <GoogleLogin
                                   onSuccess={handleGoogleSuccess}
-                                  onError={() => setError('Đăng ký Google thất bại.')}
+                                  onError={() => setError('Oops... Đăng ký bằng Google có chút trục trặc.')}
                                   text="signup_with"
                                   locale="vi"
                                   shape="rectangular"
