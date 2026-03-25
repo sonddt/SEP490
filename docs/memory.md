@@ -19,3 +19,8 @@
    - `user/UserManagerInfo.jsx`: Rà soát validation form gửi duyệt, hiển thị lỗi chuẩn Inline Validation dưới từng field.
    - `user/UserBookings.jsx`: Cải thiện UI Toast báo huỷ sân chuẩn UX mới.
    - `VenueDetails.jsx`: Handle error fetching êm ái hơn.
+
+3. Sửa lỗi giao diện (CSS/Layout) trang `UserFavorites.jsx`:
+   - Lỗi Scroll bị che khuất: Fix bằng cách bổ sung cấu trúc chuẩn lưới (`content-below-header` và `<section className="breadcrumb">`) giúp container tránh bị Header dạng Fixed đè lên phần Menu.
+   - Lỗi Highlight Text hòa vào nền: Xóa các class `text-white` ép cố định màu trắng trên container lót nền trắng, thay bằng thẻ chuẩn màu dark (`#1e293b` và `text-muted`).
+
