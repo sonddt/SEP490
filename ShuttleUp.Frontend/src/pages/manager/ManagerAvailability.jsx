@@ -40,7 +40,7 @@ export default function ManagerAvailability() {
 
               {saved && (
                 <div className="alert alert-success">
-                  <i className="feather-check-circle me-2"></i>Đã lưu giờ hoạt động thành công!
+                  <i className="feather-check-circle me-2"></i>Tuyệt vời! Bạn đã lưu giờ hoạt động thành công rồi nhé.
                 </div>
               )}
 

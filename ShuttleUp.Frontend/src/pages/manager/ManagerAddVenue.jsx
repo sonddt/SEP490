@@ -43,6 +43,13 @@ export default function ManagerAddVenue() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const getFieldError = (field) => {
+    if (!fieldErrors) return null;
+    const key = Object.keys(fieldErrors).find(k => k.toLowerCase() === field.toLowerCase());
+    return key ? fieldErrors[key][0] : null;
+  };
 
   const setField = (key, val) => setForm((p) => ({ ...p, [key]: val }));
   const toggleDay = (i, key, val) => setDayHours((p) => p.map((d, idx) => idx === i ? { ...d, [key]: val } : d));
@@ -77,7 +84,18 @@ export default function ManagerAddVenue() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const errors = {};
+      if (!form.name?.trim()) errors.name = ['Bạn chưa định danh tên cụm sân kìa!'];
+      if (!form.address?.trim()) errors.address = ['Bạn quên điền địa chỉ rồi!'];
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        setErrorMsg('Oops... Có vài chỗ chưa ổn, bạn kiểm tra lại bên dưới nhé!');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
       setErrorMsg('');
+      setFieldErrors({});
       setSubmitting(true);
       const request = {
         name: form.name,
@@ -96,7 +114,13 @@ export default function ManagerAddVenue() {
       navigate('/manager/venues');
     } catch (err) {
       console.error('Submit venue failed', err);
-      setErrorMsg(err.response?.data?.message || err.response?.data?.title || 'Đã xảy ra lỗi khi lưu Cụm sân. Vui lòng kiểm tra lại dữ liệu!');
+      if (err.response?.data?.errors) {
+        setFieldErrors(err.response.data.errors);
+        setErrorMsg('Oops... Hệ thống phát hiện vài phần nhập chưa chuẩn xác.');
+      } else {
+        setFieldErrors({});
+        setErrorMsg(err.response?.data?.message || err.response?.data?.title || 'Rất tiếc! Đã xảy ra sự cố khi lưu Cụm sân. Bạn thử lại nha!');
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSubmitting(false);
@@ -124,7 +148,7 @@ export default function ManagerAddVenue() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         {errorMsg && (
           <div className="alert alert-danger d-flex align-items-center mb-4" style={{ borderRadius: 10, border: 'none', background: '#fef2f2', color: '#991b1b', padding: '14px 20px' }}>
             <i className="feather-alert-circle fs-5 me-2" />
@@ -144,19 +168,23 @@ export default function ManagerAddVenue() {
                 <div className="row g-4">
                   <div className="col-12">
                     <label className="form-label fw-semibold text-dark mb-2">Tên cụm sân <span className="text-danger">*</span></label>
-                    <input type="text" className="form-control form-control-lg bg-light border-0" placeholder="Ví dụ: ShuttleUp Quận 7" value={form.name} onChange={(e) => setField('name', e.target.value)} required />
+                    <input type="text" className={`form-control form-control-lg bg-light border-0 ${getFieldError('name') ? 'is-invalid' : ''}`} placeholder="Ví dụ: ShuttleUp Quận 7" value={form.name} onChange={(e) => { setField('name', e.target.value); setFieldErrors(p => ({...p, name: null})); }} />
+                    {getFieldError('name') && <div className="invalid-feedback">{getFieldError('name')}</div>}
                   </div>
                   <div className="col-12">
                     <label className="form-label fw-semibold text-dark mb-2">Địa chỉ cụ thể <span className="text-danger">*</span></label>
-                    <textarea className="form-control form-control-lg bg-light border-0" rows="3" placeholder="Số nhà, đường, phường, quận..." value={form.address} onChange={(e) => setField('address', e.target.value)} required />
+                    <textarea className={`form-control form-control-lg bg-light border-0 ${getFieldError('address') ? 'is-invalid' : ''}`} rows="3" placeholder="Số nhà, đường, phường, quận..." value={form.address} onChange={(e) => { setField('address', e.target.value); setFieldErrors(p => ({...p, address: null})); }} />
+                    {getFieldError('address') && <div className="invalid-feedback">{getFieldError('address')}</div>}
                   </div>
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-semibold text-dark mb-2">Người đại diện</label>
-                    <input type="text" className="form-control form-control-lg bg-light border-0" placeholder="Nguyễn Văn A" value={form.contactName} onChange={(e) => setField('contactName', e.target.value)} />
+                    <input type="text" className={`form-control form-control-lg bg-light border-0 ${getFieldError('contactName') ? 'is-invalid' : ''}`} placeholder="Nguyễn Văn A" value={form.contactName} onChange={(e) => setField('contactName', e.target.value)} />
+                    {getFieldError('contactName') && <div className="invalid-feedback">{getFieldError('contactName')}</div>}
                   </div>
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-semibold text-dark mb-2">Số điện thoại</label>
-                    <input type="tel" className="form-control form-control-lg bg-light border-0" placeholder="0901234567" value={form.contactPhone} onChange={(e) => setField('contactPhone', e.target.value)} />
+                    <input type="tel" className={`form-control form-control-lg bg-light border-0 ${getFieldError('contactPhone') ? 'is-invalid' : ''}`} placeholder="0901234567" value={form.contactPhone} onChange={(e) => setField('contactPhone', e.target.value)} />
+                    {getFieldError('contactPhone') && <div className="invalid-feedback">{getFieldError('contactPhone')}</div>}
                   </div>
                 </div>
               </div>
@@ -169,11 +197,13 @@ export default function ManagerAddVenue() {
                 <div className="row g-4">
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-semibold text-dark mb-2">Vĩ độ (Latitude)</label>
-                    <input type="number" step="any" className="form-control form-control-lg bg-light border-0" placeholder="10.7769" value={form.lat} onChange={(e) => setField('lat', e.target.value)} />
+                    <input type="number" step="any" className={`form-control form-control-lg bg-light border-0 ${getFieldError('lat') ? 'is-invalid' : ''}`} placeholder="10.7769" value={form.lat} onChange={(e) => setField('lat', e.target.value)} />
+                    {getFieldError('lat') && <div className="invalid-feedback">{getFieldError('lat')}</div>}
                   </div>
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-semibold text-dark mb-2">Kinh độ (Longitude)</label>
-                    <input type="number" step="any" className="form-control form-control-lg bg-light border-0" placeholder="106.7009" value={form.lng} onChange={(e) => setField('lng', e.target.value)} />
+                    <input type="number" step="any" className={`form-control form-control-lg bg-light border-0 ${getFieldError('lng') ? 'is-invalid' : ''}`} placeholder="106.7009" value={form.lng} onChange={(e) => setField('lng', e.target.value)} />
+                    {getFieldError('lng') && <div className="invalid-feedback">{getFieldError('lng')}</div>}
                   </div>
                 </div>
               </div>

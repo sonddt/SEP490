@@ -1,11 +1,16 @@
 namespace ShuttleUp.Backend
 {
+    using CloudinaryDotNet;
     using System.Security.Claims;
     using System.Text;
     using Microsoft.AspNetCore.Authentication.JwtBearer;
     using Microsoft.EntityFrameworkCore;
+    using Microsoft.Extensions.Options;
     using Microsoft.IdentityModel.Tokens;
     using Microsoft.OpenApi.Models;
+    using ShuttleUp.Backend.Configurations;
+    using ShuttleUp.Backend.Services;
+    using ShuttleUp.Backend.Services.Interfaces;
     using ShuttleUp.BLL.Interfaces;
     using ShuttleUp.BLL.Services;
     using ShuttleUp.DAL.Models;
@@ -51,6 +56,25 @@ namespace ShuttleUp.Backend
             builder.Services.AddScoped<ICourtService, CourtService>();
             builder.Services.AddScoped<IPaymentService, PaymentService>();
             builder.Services.AddScoped<IMatchingService, MatchingService>();
+            builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("Cloudinary"));
+            builder.Services.AddSingleton(sp =>
+            {
+                var settings = sp.GetRequiredService<IOptions<CloudinarySettings>>().Value;
+
+                if (string.IsNullOrWhiteSpace(settings.CloudName)
+                    || string.IsNullOrWhiteSpace(settings.ApiKey)
+                    || string.IsNullOrWhiteSpace(settings.ApiSecret))
+                {
+                    throw new InvalidOperationException(
+                        "Missing Cloudinary settings. Please configure Cloudinary:CloudName, Cloudinary:ApiKey, Cloudinary:ApiSecret via environment variables or user-secrets.");
+                }
+
+                return new Cloudinary(new Account(
+                    settings.CloudName.Trim(),
+                    settings.ApiKey.Trim(),
+                    settings.ApiSecret.Trim()));
+            });
+            builder.Services.AddScoped<IFileService, FileService>();
 
             // ── JWT Authentication ────────────────────────────────────────────────
             var jwtKey = builder.Configuration["Jwt:Key"]!;

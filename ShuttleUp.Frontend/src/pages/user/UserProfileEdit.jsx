@@ -45,6 +45,7 @@ export default function UserProfileEdit() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const [form, setForm] = useState({
     fullName: '',
@@ -61,6 +62,7 @@ export default function UserProfileEdit() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    if (fieldErrors[name]) setFieldErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const handleAvatarChange = (e) => {
@@ -76,6 +78,7 @@ export default function UserProfileEdit() {
     setAvatarFile(null);
     setSuccess('');
     setError('');
+    setFieldErrors({});
   };
 
   const VN_PHONE_REGEX = /^0[35789][0-9]{8}$/;
@@ -109,7 +112,7 @@ export default function UserProfileEdit() {
         setAvatarFile(null);
       } catch (e) {
         if (!mounted) return;
-        setError(formatApiError(e, 'Không tải được hồ sơ.'));
+        setError(formatApiError(e, 'Oops... Không tải được hồ sơ của bạn.'));
         const fallback = {
           fullName: authUser?.fullName || '',
           phoneNumber: authUser?.phoneNumber || '',
@@ -137,10 +140,11 @@ export default function UserProfileEdit() {
     setSuccess('');
     setError('');
 
+    const newErrors = {};
+
     const fullName = (form.fullName || '').trim();
     if (!fullName) {
-      setError('Vui lòng nhập họ và tên.');
-      return;
+      newErrors.fullName = 'Bạn nhớ điền họ và tên nhé!';
     }
 
     const cleanedPhone = (form.phoneNumber || '').trim();
@@ -149,10 +153,15 @@ export default function UserProfileEdit() {
       // Cho phép hoặc số VN 0xxxxxxxxx, hoặc dạng +84xxxxxxxxx
       const isValid = VN_PHONE_REGEX.test(withoutSpaces) || /^\+84\d{9,10}$/.test(withoutSpaces);
       if (!isValid) {
-        setError('Số điện thoại không hợp lệ. Vui lòng nhập đúng định dạng.');
-        return;
+        newErrors.phoneNumber = 'Số điện thoại chưa hợp lệ, bạn kiểm tra lại nhé!';
       }
     }
+
+    if (Object.keys(newErrors).length > 0) {
+      setFieldErrors(newErrors);
+      return;
+    }
+    setFieldErrors({});
 
     setSaving(true);
     try {
@@ -193,9 +202,9 @@ export default function UserProfileEdit() {
         fullName,
       };
       setInitialForm(nextForm);
-      setSuccess('Cập nhật hồ sơ thành công.');
+      setSuccess('Tuyệt vời! Cập nhật hồ sơ thành công rồi nha.');
     } catch (e2) {
-      setError(formatApiError(e2, 'Cập nhật hồ sơ thất bại, vui lòng thử lại.'));
+      setError(formatApiError(e2, 'Rất tiếc, cập nhật hồ sơ thất bại. Bạn thử lại nha!'));
     } finally {
       setSaving(false);
     }
@@ -293,12 +302,13 @@ export default function UserProfileEdit() {
                           <label className="form-label">Họ và tên</label>
                           <input
                             type="text"
-                            className="form-control"
+                            className={`form-control ${fieldErrors.fullName ? 'is-invalid' : ''}`}
                             name="fullName"
                             placeholder="Nhập họ và tên"
                             value={form.fullName}
                             onChange={handleChange}
                           />
+                          {fieldErrors.fullName && <div className="invalid-feedback d-block mt-1">{fieldErrors.fullName}</div>}
                         </div>
                       </div>
 
@@ -322,12 +332,13 @@ export default function UserProfileEdit() {
                           <label className="form-label">Số điện thoại</label>
                           <input
                             type="tel"
-                            className="form-control"
+                            className={`form-control ${fieldErrors.phoneNumber ? 'is-invalid' : ''}`}
                             name="phoneNumber"
                             placeholder="Nhập số điện thoại"
                             value={form.phoneNumber}
                             onChange={handleChange}
                           />
+                          {fieldErrors.phoneNumber && <div className="invalid-feedback d-block mt-1">{fieldErrors.phoneNumber}</div>}
                         </div>
                       </div>
 

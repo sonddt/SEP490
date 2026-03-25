@@ -60,6 +60,10 @@ public class AuthService : IAuthService
         if (existing != null)
             throw new InvalidOperationException("Email đã được sử dụng.");
 
+        var existingPhone = await _userRepository.GetByPhoneAsync(request.PhoneNumber);
+        if (existingPhone != null)
+            throw new InvalidOperationException("Số điện thoại đã được sử dụng.");
+
         // Mặc định, mọi tài khoản đăng ký mới đều có Role PLAYER
         var roles = await ResolveRolesAsync(["PLAYER"]);
 

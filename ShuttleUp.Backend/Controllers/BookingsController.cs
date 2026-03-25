@@ -1,16 +1,12 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using CloudinaryDotNet;
-using CloudinaryDotNet.Actions;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
 using ShuttleUp.BLL.DTOs.Booking;
 using ShuttleUp.Backend.BookingForms;
+using ShuttleUp.Backend.Services.Interfaces;
 using ShuttleUp.DAL.Models;
 
 namespace ShuttleUp.Backend.Controllers;
@@ -21,14 +17,12 @@ namespace ShuttleUp.Backend.Controllers;
 public class BookingsController : ControllerBase
 {
     private readonly ShuttleUpDbContext _dbContext;
-    private readonly IConfiguration _config;
-    private readonly IWebHostEnvironment _env;
+    private readonly IFileService _fileService;
 
-    public BookingsController(ShuttleUpDbContext dbContext, IConfiguration config, IWebHostEnvironment env)
+    public BookingsController(ShuttleUpDbContext dbContext, IFileService fileService)
     {
         _dbContext = dbContext;
-        _config = config;
-        _env = env;
+        _fileService = fileService;
     }
 
     private bool TryGetCurrentUserId(out Guid userId)
@@ -248,6 +242,7 @@ public class BookingsController : ControllerBase
             {
                 b.Id,
                 b.Status,
+                b.ManagerStatusNote,
                 b.TotalAmount,
                 b.FinalAmount,
                 b.CreatedAt,
@@ -276,6 +271,7 @@ public class BookingsController : ControllerBase
             b.Id,
             bookingCode = "SU" + b.Id.ToString("N")[^6..].ToUpperInvariant(),
             b.Status,
+            b.ManagerStatusNote,
             b.TotalAmount,
             b.FinalAmount,
             b.CreatedAt,
@@ -364,64 +360,15 @@ public class BookingsController : ControllerBase
         var methodNorm = string.IsNullOrWhiteSpace(form.Method) ? "BANK" : form.Method.Trim().ToUpperInvariant();
         var methodLabel = methodNorm == "QR" ? "QR" : "BANK_TRANSFER";
 
-        var cloudName = _config["Cloudinary:CloudName"]?.Trim();
-        var apiKey = _config["Cloudinary:ApiKey"]?.Trim();
-        var apiSecret = _config["Cloudinary:ApiSecret"]?.Trim();
-
-        var cloudMissing = string.IsNullOrWhiteSpace(cloudName)
-                           || string.IsNullOrWhiteSpace(apiKey)
-                           || string.IsNullOrWhiteSpace(apiSecret);
-
         string secureUrl;
-        if (cloudMissing)
+        try
         {
-            if (!_env.IsDevelopment())
-            {
-                return StatusCode(500,
-                    new { message = "Chưa cấu hình Cloudinary trên server (CloudName/ApiKey/ApiSecret)." });
-            }
-
-            // Development: cho phép hoàn tất luồng đặt sân khi chưa có Cloudinary (ảnh không upload).
-            secureUrl = $"dev-local://payment-proof/{id}/{Guid.NewGuid():N}";
+            var upload = await _fileService.UploadPaymentProofAsync(proofImage, id, HttpContext.RequestAborted);
+            secureUrl = upload.SecureUrl;
         }
-        else
+        catch (Exception ex)
         {
-            var account = new Account(cloudName!, apiKey!, apiSecret!);
-            var cloudinary = new Cloudinary(account);
-            var publicId = $"payment_{id}_{Guid.NewGuid():N}";
-
-            await using (var stream = proofImage.OpenReadStream())
-            {
-                var uploadParams = new ImageUploadParams
-                {
-                    File = new FileDescription(proofImage.FileName, stream),
-                    Folder = "payment_proofs",
-                    PublicId = publicId,
-                    Overwrite = false,
-                    Transformation = new Transformation()
-                        .Crop("limit")
-                        .Width(1600)
-                        .Height(1600)
-                        .FetchFormat("webp")
-                };
-
-                dynamic result;
-                try
-                {
-                    result = await cloudinary.UploadAsync(uploadParams);
-                }
-                catch (Exception ex)
-                {
-                    return StatusCode(500, new { message = "Cloudinary upload exception: " + ex.Message });
-                }
-
-                secureUrl = result?.SecureUrl?.ToString() ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(secureUrl))
-                {
-                    var errMsg = result?.Error?.Message?.ToString() ?? result?.Error?.ToString() ?? "SecureUrl is null";
-                    return StatusCode(500, new { message = "Upload Cloudinary thất bại: " + errMsg });
-                }
-            }
+            return StatusCode(500, new { message = "Cloudinary upload exception: " + ex.Message });
         }
 
         var payment = new Payment

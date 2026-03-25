@@ -70,6 +70,7 @@ function mapApiRowToBooking(api) {
   return {
     id: api.id,
     code: api.bookingCode,
+    managerStatusNote: (api.managerStatusNote || '').trim(),
     court: courtLabel || api.venueName || 'Đặt sân',
     courtImg: '/assets/img/booking/booking-01.jpg',
     venueAddress: api.venueAddress || api.venueName || '',
@@ -125,6 +126,14 @@ export default function UserBookings() {
     loadBookings();
   }, [loadBookings]);
 
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      if (document.hidden) return;
+      loadBookings();
+    }, 60_000);
+    return () => window.clearInterval(t);
+  }, [loadBookings]);
+
   const filtered = bookings
     .filter(b => b.status === activeTab)
     .filter(b => matchesTimeFilter(b.filterDate, timeFilter))
@@ -147,7 +156,7 @@ export default function UserBookings() {
       await cancelBooking(cancelTarget.id);
       setCancelTarget(null);
       setDetailBooking(null);
-      showToast('Đã huỷ lịch đặt sân.');
+      showToast('Đã huỷ lịch đặt sân thành công nha.');
       setActiveTab('CANCELLED');
       await loadBookings();
     } catch (e) {
@@ -155,7 +164,7 @@ export default function UserBookings() {
       const message =
         (typeof body?.message === 'string' && body.message)
         || body?.title
-        || 'Huỷ lịch thất bại. Vui lòng thử lại.';
+        || 'Oops... Huỷ lịch thất bại rồi. Bạn thử lại nhé!';
       showToast(message, true);
     } finally {
       setCancelSubmitting(false);
@@ -269,7 +278,16 @@ export default function UserBookings() {
                             <p>Xem và quản lý các lịch đặt sân của bạn</p>
                           </div>
                         </div>
-                        <div className="col-md-6 text-end">
+                        <div className="col-md-6 text-end d-flex gap-2 justify-content-end flex-wrap">
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary btn-sm"
+                            disabled={loading}
+                            onClick={() => loadBookings()}
+                          >
+                            <i className="feather-refresh-cw me-1" />
+                            {loading ? 'Đang tải…' : 'Làm mới'}
+                          </button>
                           <Link to="/courts" className="btn btn-secondary btn-sm">
                             <i className="feather-plus me-1" />Đặt sân mới
                           </Link>
@@ -448,6 +466,20 @@ export default function UserBookings() {
                     <small className="text-muted d-block">Phương thức</small>
                     <strong>{detailBooking.paymentMethod}</strong>
                   </div>
+                  {detailBooking.status === 'CANCELLED' && detailBooking.managerStatusNote && (
+                    <div className="col-12">
+                      <div
+                        className="mt-2 p-3 rounded"
+                        style={{ background: '#fef2f2', border: '1px solid #fca5a5' }}
+                      >
+                        <small className="text-danger d-block fw-semibold mb-1">
+                          <i className="feather-alert-circle me-1" />
+                          Ghi chú từ sân
+                        </small>
+                        <p className="mb-0 small text-danger">{detailBooking.managerStatusNote}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="modal-footer">

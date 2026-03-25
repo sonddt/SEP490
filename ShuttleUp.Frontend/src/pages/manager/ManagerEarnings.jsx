@@ -24,32 +24,62 @@ const STATS = [
   { icon: 'feather-alert-circle',bg: '#fff1f2', iconColor: '#ef4444', label: 'Chưa thu',             value: '400.000 ₫' },
 ];
 
-/* ── Action Dropdown ────────────────────────────────────────────────────── */
-function ActionDropdown({ onDownload, onDelete }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  useEffect(() => {
-    if (!open) return;
-    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [open]);
+// Pagination Component
+function Pagination({ page, totalPages, onChange }) {
+  if (totalPages <= 1) return null;
+
+  const pages = [];
+  for (let i = 1; i <= totalPages; i++) {
+    pages.push(i);
+  }
 
   return (
-    <div className="dropdown dropdown-action table-drop-action" ref={ref}>
-      <button type="button" className="action-icon" onClick={() => setOpen(v => !v)}>
-        <i className="feather-more-horizontal" />
+    <div className="d-flex align-items-center justify-content-center gap-2 mt-4">
+      <button
+        type="button"
+        disabled={page <= 1}
+        onClick={() => onChange(page - 1)}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px',
+          border: '1.5px solid #e2e8f0', borderRadius: 8, background: '#fff', fontSize: 13,
+          fontWeight: 600, color: page <= 1 ? '#cbd5e1' : '#334155',
+          cursor: page <= 1 ? 'default' : 'pointer', transition: 'all .15s',
+        }}
+      >
+        <i className="feather-chevron-left" style={{ fontSize: 15 }} /> Trước
       </button>
-      {open && (
-        <div className="dropdown-menu dropdown-menu-end show" style={{ display: 'block', position: 'absolute', right: 0, top: '100%' }}>
-          <button type="button" className="dropdown-item" onClick={() => { onDownload(); setOpen(false); }}>
-            <i className="feather-download" />Tải hoá đơn
-          </button>
-          <button type="button" className="dropdown-item" onClick={() => { onDelete(); setOpen(false); }} style={{ color: '#ef4444' }}>
-            <i className="feather-trash-2" style={{ color: '#ef4444' }} />Xoá
-          </button>
-        </div>
-      )}
+
+      {pages.map((p) => (
+        <button
+          key={p}
+          type="button"
+          onClick={() => onChange(p)}
+          style={{
+            width: 38, height: 38, borderRadius: 8, border: 'none',
+            background: page === p ? 'var(--mgr-accent)' : '#f1f5f9',
+            color: page === p ? '#fff' : '#334155',
+            fontWeight: page === p ? 800 : 500, fontSize: 14,
+            cursor: 'pointer', transition: 'all .15s',
+            boxShadow: page === p ? '0 2px 8px rgba(9,126,82,.35)' : 'none',
+          }}
+        >
+          {p}
+        </button>
+      ))}
+
+      <button
+        type="button"
+        disabled={page >= totalPages}
+        onClick={() => onChange(page + 1)}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px',
+          border: '1.5px solid #e2e8f0', borderRadius: 8, background: '#fff', fontSize: 13,
+          fontWeight: 600, color: page >= totalPages ? '#cbd5e1' : '#334155',
+          cursor: page >= totalPages ? 'default' : 'pointer', transition: 'all .15s',
+        }}
+      >
+        Sau <i className="feather-chevron-right" style={{ fontSize: 15 }} />
+      </button>
     </div>
   );
 }
@@ -59,6 +89,8 @@ export default function ManagerEarnings() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [timeFilter, setTimeFilter]     = useState('month');
   const [search, setSearch]             = useState('');
+  const [page, setPage]                 = useState(1);
+  const itemsPerPage = 8;
 
   const filtered = useMemo(() => MOCK.filter(t => {
     const ms = statusFilter === 'ALL' || t.status === statusFilter;
@@ -71,6 +103,12 @@ export default function ManagerEarnings() {
 
   const totalRevenue = MOCK.filter(t => t.status === 'PAID').reduce((a, b) => a + b.amount, 0);
   const handleClearSearch = useCallback(() => setSearch(''), []);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
+  const currentPage = Math.min(page, totalPages);
+  const currentItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  useEffect(() => { setPage(1); }, [statusFilter, search, timeFilter]);
 
   return (
     <>
@@ -155,7 +193,7 @@ export default function ManagerEarnings() {
                       </div>
                     </td>
                   </tr>
-                ) : filtered.map(tx => {
+                ) : currentItems.map(tx => {
                   const st = STATUS_MAP[tx.status] || STATUS_MAP.PENDING;
                   return (
                     <tr key={tx.id}>
@@ -192,10 +230,14 @@ export default function ManagerEarnings() {
                         <span className={`badge ${st.badge}`}><i className={st.icon} />{st.label}</span>
                       </td>
                       <td className="text-end">
-                        <ActionDropdown
-                          onDownload={() => alert(`Tải hoá đơn ${tx.refId}`)}
-                          onDelete={() => alert(`Xoá ${tx.refId}`)}
-                        />
+                        <div className="d-flex align-items-center justify-content-end gap-2">
+                          <button type="button" onClick={() => alert(`Tải hoá đơn ${tx.refId}`)} className="btn btn-sm btn-light d-inline-flex align-items-center justify-content-center border" style={{ width: 32, height: 32, borderRadius: 8, color: '#0ea5e9' }} title="Tải hoá đơn">
+                            <i className="feather-download" style={{ fontSize: 13 }} />
+                          </button>
+                          <button type="button" onClick={() => alert(`Xoá ${tx.refId}`)} className="btn btn-sm btn-light d-inline-flex align-items-center justify-content-center border" style={{ width: 32, height: 32, borderRadius: 8, color: '#ef4444' }} title="Xóa">
+                            <i className="feather-trash-2" style={{ fontSize: 13 }} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -204,6 +246,12 @@ export default function ManagerEarnings() {
             </table>
           </div>
         </div>
+        
+        {totalPages > 1 && (
+          <div className="card-footer bg-white border-0 pb-4 pt-2">
+            <Pagination page={currentPage} totalPages={totalPages} onChange={setPage} />
+          </div>
+        )}
       </div>
     </>
   );

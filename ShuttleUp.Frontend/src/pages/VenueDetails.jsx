@@ -80,7 +80,7 @@ export default function VenueDetails() {
 
         const response = await fetch(`/api/venues/${resolvedId}`);
         if (!response.ok) {
-          throw new Error('Không tìm thấy thông tin sân.');
+          throw new Error('Oops... Không tìm thấy thông tin sân này rồi.');
         }
         const data = await response.json();
 
@@ -102,7 +102,7 @@ export default function VenueDetails() {
           lng: data.lng,
         });
       } catch (err) {
-        setError(err.message || 'Đã xảy ra lỗi khi tải thông tin sân.');
+        setError(err.message || 'Oops... Có lỗi nảy sinh khi tải thông tin sân.');
       } finally {
         setLoading(false);
       }

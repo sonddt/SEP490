@@ -158,6 +158,7 @@ export default function ManagerVenueList() {
   const [page, setPage]               = useState(1);
   const [deleteModal, setDeleteModal] = useState(null);
   const [viewMode, setViewMode]       = useState('grid'); // 'grid' | 'list'
+  const [actionMessage, setActionMessage] = useState({ type: '', text: '' });
 
   const totalCourts   = venues.reduce((s, v) => s + (v.courtCount ?? 0), 0);
   const totalBookings = venues.reduce((s, v) => s + (v.totalBookingsThisMonth ?? 0), 0);
@@ -230,26 +231,38 @@ export default function ManagerVenueList() {
 
   const handlePublish = async (venue) => {
     try {
+      setActionMessage({ type: '', text: '' });
       await axiosClient.put(`/manager/venues/${venue.id}/publish`);
       setVenues((prev) => prev.map((v) => v.id === venue.id ? { ...v, status: 'public' } : v));
-      alert('Đã publish cụm sân thành công!');
+      setActionMessage({ type: 'success', text: `Đã publish cụm sân "${venue.name}" thành công!` });
     } catch (e) {
-      alert(e.response?.data?.message || 'Lỗi khi publish cụm sân');
+      setActionMessage({ type: 'danger', text: e.response?.data?.message || 'Lỗi khi publish cụm sân' });
     }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleUnpublish = async (venue) => {
     try {
+      setActionMessage({ type: '', text: '' });
       await axiosClient.put(`/manager/venues/${venue.id}/unpublish`);
       setVenues((prev) => prev.map((v) => v.id === venue.id ? { ...v, status: 'draft' } : v));
-      alert('Đã unpublish cụm sân thành công. Sân đã bị ẩn.');
+      setActionMessage({ type: 'warning', text: `Đã unpublish cụm sân "${venue.name}" thành công. Sân đã bị ẩn khỏi người chơi.` });
     } catch (e) {
-      alert(e.response?.data?.message || 'Lỗi khi unpublish cụm sân');
+      setActionMessage({ type: 'danger', text: e.response?.data?.message || 'Lỗi khi unpublish cụm sân' });
     }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
     <>
+      {actionMessage.text && (
+        <div className="alert d-flex align-items-center mb-4 shadow-sm" style={{ borderRadius: 10, border: 'none', padding: '14px 20px', background: actionMessage.type === 'danger' ? '#fef2f2' : (actionMessage.type === 'success' ? '#f0fdf4' : '#fffbeb'), color: actionMessage.type === 'danger' ? '#991b1b' : (actionMessage.type === 'success' ? '#166534' : '#92400e') }}>
+          <i className={`feather-${actionMessage.type === 'success' ? 'check-circle' : 'alert-circle'} fs-5 me-2`} />
+          <span className="fw-medium">{actionMessage.text}</span>
+          <button type="button" className="btn-close ms-auto" style={{ filter: 'opacity(0.5)' }} onClick={() => setActionMessage({ type: '', text: '' })}></button>
+        </div>
+      )}
+
       {/* ── Stats ────────────────────────────────────────── */}
       <div className="row g-3 mb-4">
         {[
