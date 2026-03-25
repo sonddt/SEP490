@@ -288,7 +288,7 @@ export default function UserBookings() {
                             <i className="feather-refresh-cw me-1" />
                             {loading ? 'Đang tải…' : 'Làm mới'}
                           </button>
-                          <Link to="/courts" className="btn btn-secondary btn-sm">
+                          <Link to="/venues" className="btn btn-secondary btn-sm">
                             <i className="feather-plus me-1" />Đặt sân mới
                           </Link>
                         </div>

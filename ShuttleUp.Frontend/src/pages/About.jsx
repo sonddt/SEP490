@@ -354,7 +354,7 @@ const About = () => {
                     <Link to="/register" className="btn btn-primary d-inline-flex align-items-center">
                       <span><i className="feather-user-plus me-2"></i></span>Đăng Ký Tham Gia
                     </Link>
-                    <Link to="/courts" className="btn btn-secondary d-inline-flex align-items-center">
+                    <Link to="/venues" className="btn btn-secondary d-inline-flex align-items-center">
                       <span><i className="feather-align-justify me-2"></i></span>Tìm Hiểu Thêm
                     </Link>
                   </div>

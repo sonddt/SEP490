@@ -7,7 +7,7 @@ import PageLoader from './components/common/PageLoader';
 
 // Public pages
 import HomePage from './pages/HomePage';
-import CourtsListing from './pages/CourtsListing';
+import VenuesListing from './pages/VenuesListing';
 import VenueDetails from './pages/VenueDetails';
 import ChatPage from './pages/ChatPage';
 import Contact from './pages/Contact';
@@ -91,12 +91,18 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/change-password" element={<ChangePassword />} />
 
-          {/* ═══ Public — Courts (Player) ═══ */}
-          <Route path="/courts" element={<CourtsListing />} />
-          <Route path="/courts/list" element={<CourtsListing />} />
-          <Route path="/courts/map" element={<PlaceholderPage title="Bản đồ sân" />} />
+          {/* ═══ Public — Venues (Player) ═══ */}
+          <Route path="/venues" element={<VenuesListing />} />
+          <Route path="/venues/list" element={<VenuesListing />} />
+          <Route path="/venues/map" element={<PlaceholderPage title="Bản đồ sân" />} />
           <Route path="/venue-details/:venueId" element={<VenueDetails />} />
-          <Route path="/courts/:id" element={<VenueDetails />} />
+          <Route path="/venues/:id" element={<VenueDetails />} />
+
+          {/* Backward-compatible aliases */}
+          <Route path="/courts" element={<Navigate to="/venues" replace />} />
+          <Route path="/courts/list" element={<Navigate to="/venues/list" replace />} />
+          <Route path="/courts/map" element={<Navigate to="/venues/map" replace />} />
+          <Route path="/courts/:id" element={<Navigate to="/venues/:id" replace />} />
 
           {/* ═══ Booking flow ═══ */}
           <Route path="/booking" element={<BookingTimeline />} />

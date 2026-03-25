@@ -16,7 +16,7 @@ a:active {
 }
 
 
-/* When header is NOT transparent and NOT scrolled (e.g. /courts): white bg + dark text so menu is visible */
+/* When header is NOT transparent and NOT scrolled (e.g. /venues): white bg + dark text so menu is visible */
 .header:not(.header-trans):not(.fixed) {
   background: #ffffff !important;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);

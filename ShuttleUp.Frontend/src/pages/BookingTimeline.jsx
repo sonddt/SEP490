@@ -540,7 +540,7 @@ export default function BookingTimeline() {
       {!venueId && (
         <div className="text-center py-4 px-3 bg-white m-3 rounded shadow-sm">
           <p className="mb-2">Bạn chưa chọn cơ sở để đặt.</p>
-          <Link to="/courts" className="btn btn-primary btn-sm">Tìm sân</Link>
+          <Link to="/venues" className="btn btn-primary btn-sm">Tìm sân</Link>
         </div>
       )}
 

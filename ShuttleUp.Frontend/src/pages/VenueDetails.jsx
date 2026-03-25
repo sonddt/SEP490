@@ -37,7 +37,7 @@ const MOCK_GALLERY = [
 export default function VenueDetails() {
   // Support both route patterns:
   //   /venue-details/:venueId  (used by VenueCard links)
-  //   /courts/:id              (legacy / alternative route)
+  //   /venues/:id              (legacy / alternative route)
   const { venueId, id } = useParams();
   const resolvedId = venueId ?? id;
   const navigate = useNavigate();
@@ -132,7 +132,7 @@ export default function VenueDetails() {
         <div className="content">
           <div className="container py-5 text-center">
             <p className="text-danger mb-3">{error || 'Không tìm thấy sân.'}</p>
-            <Link to="/courts" className="btn btn-secondary">
+            <Link to="/venues" className="btn btn-secondary">
               Quay lại danh sách sân
             </Link>
           </div>

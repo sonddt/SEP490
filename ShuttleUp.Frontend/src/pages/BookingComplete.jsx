@@ -154,7 +154,7 @@ export default function BookingComplete() {
                   <i className="feather-list me-1" /> Lịch sử đặt sân
                 </Link>
                 <Link
-                  to="/courts"
+                  to="/venues"
                   className="btn btn-secondary btn-icon"
                 >
                   <i className="feather-search me-1" /> Đặt sân mới

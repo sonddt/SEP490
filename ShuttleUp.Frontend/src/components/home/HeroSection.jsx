@@ -48,7 +48,7 @@ export default function HeroSection() {
                       </div>
                     </div>
                     <div className="search-btn">
-                      <Link to="/courts" className="btn">
+                      <Link to="/venues" className="btn">
                         <i className="feather-search"></i><span className="search-text">Tìm kiếm</span>
                       </Link>
                     </div>
