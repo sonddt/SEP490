@@ -46,7 +46,7 @@ export default function ManagerSidebar({ open, onClose }) {
 
   const handleGoToProfile = () => {
     onClose?.();
-    navigate('/profile');
+    navigate('/manager/profile');
   };
 
   return (

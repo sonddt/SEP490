@@ -24,3 +24,12 @@
    - Lỗi Scroll bị che khuất: Fix bằng cách bổ sung cấu trúc chuẩn lưới (`content-below-header` và `<section className="breadcrumb">`) giúp container tránh bị Header dạng Fixed đè lên phần Menu.
    - Lỗi Highlight Text hòa vào nền: Xóa các class `text-white` ép cố định màu trắng trên container lót nền trắng, thay bằng thẻ chuẩn màu dark (`#1e293b` và `text-muted`).
 
+4. Xoá tính năng Ví (Wallet):
+   - Đã gỡ bỏ menu "Ví" ở cả `UserDashboardMenu` và `ManagerDashboardMenu` theo yêu cầu (Hệ thống không dùng ví nội bộ).
+   - Kiểm tra Database `Database.txt` không còn bảng hay khoá ngoại nào liên quan đến Ví.
+
+5. Tách biệt `Manager Profile` và `Player Profile` để khắc phục lỗi xung đột UX thao tác chéo:
+   - Xóa bỏ file cũ không sử dụng (`ManagerDashboardMenu.jsx`, `ManagerCourts.jsx`, `managerCourtsMock.js`).
+   - Tạo trang `/manager/profile` riêng khép kín trong `ManagerLayout` (hiển thị thông tin Chủ Sân, Giấy phép kinh doanh, CCCD) giao diện chuẩn SaaS.
+   - Định tuyến lại trang `MyProfile.jsx` (của chức năng Player) từ `/profile` về lại `/user/profile` để rõ ràng về mặt định danh component.
+   - Chỉnh sửa `ManagerSidebar.jsx`, `UserDropdown.jsx`, `ManagerLayout.jsx` để Navbar menu điều hướng chính xác vào 2 luồng Route tách biệt. Mọi thao tác trái tim trên "Sân yêu thích" đều được bảo vệ trong `/user/profile`.

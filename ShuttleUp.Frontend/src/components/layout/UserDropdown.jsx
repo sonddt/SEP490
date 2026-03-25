@@ -119,7 +119,7 @@ export default function UserDropdown({
 
         {/* Menu items */}
         <div style={{ padding: '6px 0', background: '#fff' }}>
-          <DropItem to="/profile" icon="feather-user" label="Hồ sơ của tôi" onNav={handleNav} />
+          <DropItem to="/user/profile" icon="feather-user" label="Hồ sơ của tôi" onNav={handleNav} />
           {isManager && !isAdmin && (
             <div
               role="button"

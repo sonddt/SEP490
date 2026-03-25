@@ -44,9 +44,9 @@ import ManagerAddCourt from './pages/manager/ManagerAddCourt';
 import ManagerBookings from './pages/manager/ManagerBookings';
 import ManagerNotifications from './pages/manager/ManagerNotifications';
 import ManagerEarnings from './pages/manager/ManagerEarnings';
-// ManagerWallet removed — project does not use wallet feature
 import ManagerPaymentSettings from './pages/manager/ManagerPaymentSettings';
 import ManagerAvailability from './pages/manager/ManagerAvailability';
+import ManagerProfile from './pages/manager/ManagerProfile';
 
 // Admin
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -110,20 +110,23 @@ function App() {
           <Route path="/booking/payment" element={<ProtectedRoute><BookingPayment /></ProtectedRoute>} />
           <Route path="/booking/complete" element={<ProtectedRoute><BookingComplete /></ProtectedRoute>} />
 
-          {/* ═══ Unified Profile (ALWAYS /profile, never role-specific) ═══ */}
-          <Route path="/profile" element={<ProtectedRoute><MyProfile /></ProtectedRoute>} />
-          <Route path="/profile/edit" element={<ProtectedRoute><UserProfileEdit /></ProtectedRoute>} />
-          <Route path="/profile/manager-info" element={<ProtectedRoute><UserManagerInfo /></ProtectedRoute>} />
-          <Route path="/profile/change-password" element={<ProtectedRoute><UserProfileChangePassword /></ProtectedRoute>} />
-          <Route path="/profile/settings" element={<ProtectedRoute><UserProfileOtherSetting /></ProtectedRoute>} />
+          {/* ═══ Player Profile ═══ */}
+          <Route path="/user/profile" element={<ProtectedRoute><MyProfile /></ProtectedRoute>} />
+          <Route path="/user/profile/edit" element={<ProtectedRoute><UserProfileEdit /></ProtectedRoute>} />
+          <Route path="/user/profile/manager-info" element={<ProtectedRoute><UserManagerInfo /></ProtectedRoute>} />
+          <Route path="/user/profile/change-password" element={<ProtectedRoute><UserProfileChangePassword /></ProtectedRoute>} />
+          <Route path="/user/profile/settings" element={<ProtectedRoute><UserProfileOtherSetting /></ProtectedRoute>} />
 
-          {/* Legacy /user/* redirects → /profile */}
-          <Route path="/user/dashboard" element={<Navigate to="/profile" replace />} />
-          <Route path="/user/my-profile" element={<Navigate to="/profile" replace />} />
-          <Route path="/user/profile" element={<Navigate to="/profile/edit" replace />} />
-          <Route path="/user/profile/manager-info" element={<Navigate to="/profile/manager-info" replace />} />
-          <Route path="/user/profile/change-password" element={<Navigate to="/profile/change-password" replace />} />
-          <Route path="/user/profile/other-settings" element={<Navigate to="/profile/settings" replace />} />
+          {/* Legacy /profile redirects → /user/profile */}
+          <Route path="/profile" element={<Navigate to="/user/profile" replace />} />
+          <Route path="/profile/edit" element={<Navigate to="/user/profile/edit" replace />} />
+          <Route path="/profile/manager-info" element={<Navigate to="/user/profile/manager-info" replace />} />
+          <Route path="/profile/change-password" element={<Navigate to="/user/profile/change-password" replace />} />
+          <Route path="/profile/settings" element={<Navigate to="/user/profile/settings" replace />} />
+          
+          {/* Legacy /user/* redirects */}
+          <Route path="/user/dashboard" element={<Navigate to="/user/profile" replace />} />
+          <Route path="/user/my-profile" element={<Navigate to="/user/profile" replace />} />
 
           {/* Player misc */}
           <Route path="/user/bookings" element={<ProtectedRoute><UserBookings /></ProtectedRoute>} />
@@ -165,8 +168,10 @@ function App() {
 
             {/* Finance */}
             <Route path="earnings" element={<ManagerEarnings />} />
-            {/* Wallet route removed — project does not use wallet */}
             <Route path="payment-settings" element={<ManagerPaymentSettings />} />
+            
+            {/* Manager Profile */}
+            <Route path="profile" element={<ManagerProfile />} />
           </Route>
 
           {/* ═══ Static pages ═══ */}

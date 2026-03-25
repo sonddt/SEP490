@@ -6,8 +6,7 @@ const menuItems = [
   { to: '/user/chat',       icon: 'chat-icon.svg',      label: 'Trò chuyện' },
   { to: '/user/favorites', icon: 'court-icon.svg',     label: 'Sân yêu thích' },
   { to: '/user/invoices',   icon: 'invoice-icon.svg',   label: 'Hóa đơn' },
-  { to: '/user/wallet',     icon: 'wallet-icon.svg',    label: 'Ví' },
-  { to: '/user/profile',    icon: 'profile-icon.svg',   label: 'Cài đặt hồ sơ' },
+  { to: '/profile/edit',    icon: 'profile-icon.svg',   label: 'Cài đặt hồ sơ' },
 ];
 
 export default function UserDashboardMenu() {

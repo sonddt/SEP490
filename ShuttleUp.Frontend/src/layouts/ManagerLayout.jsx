@@ -81,7 +81,7 @@ export default function ManagerLayout() {
             </button>
 
             <Link
-              to="/profile"
+              to="/manager/profile"
               style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}
             >
               <img
