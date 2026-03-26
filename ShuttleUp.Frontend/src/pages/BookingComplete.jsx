@@ -9,6 +9,31 @@ function formatDateVN(isoDate) {
   return `${dow}, ${d}/${m}/${y}`;
 }
 
+function padTwo(n) {
+  return String(n).padStart(2, '0');
+}
+
+/** Giờ kết thúc khung cuối: ưu tiên timeEndLabel / endTime, không thì cộng 30 phút từ timeLabel. */
+function slotRangeEndLabel(lastSlot) {
+  if (!lastSlot) return '';
+  if (lastSlot.timeEndLabel) return lastSlot.timeEndLabel;
+  if (lastSlot.endTime) {
+    const t = new Date(lastSlot.endTime);
+    if (!Number.isNaN(t.getTime())) {
+      return `${padTwo(t.getHours())}:${padTwo(t.getMinutes())}`;
+    }
+  }
+  const tl = lastSlot.timeLabel;
+  if (tl && /^\d{1,2}:\d{2}$/.test(String(tl).trim())) {
+    const [h, m] = String(tl).split(':').map(Number);
+    const endMin = h * 60 + m + 30;
+    const eh = Math.floor(endMin / 60) % 24;
+    const em = endMin % 60;
+    return `${padTwo(eh)}:${padTwo(em)}`;
+  }
+  return tl || '';
+}
+
 export default function BookingComplete() {
   const location = useLocation();
   const state    = location.state ?? {};
@@ -97,10 +122,12 @@ export default function BookingComplete() {
                     <h6 className="mb-1 text-muted">Sân &amp; Giờ</h6>
                     {courts.map(courtName => {
                       const slots = selectedSlots.filter(s => s.courtName === courtName);
+                      const last = slots[slots.length - 1];
+                      const endLabel = slotRangeEndLabel(last);
                       return (
                         <p key={courtName} className="mb-1">
                           <strong>{courtName}:</strong>{' '}
-                          {slots[0]?.timeLabel} – {slots[slots.length - 1]?.timeLabel}
+                          {slots[0]?.timeLabel} – {endLabel}
                           <span className="text-muted ms-1">({slots.length} ô × 30ph)</span>
                         </p>
                       );

@@ -23,6 +23,27 @@ public partial class Venue
 
     public string? Description { get; set; }
 
+    /// <summary>Tên ngân hàng hiển thị (VD: Vietcombank).</summary>
+    public string? PaymentBankName { get; set; }
+
+    /// <summary>Mã BIN 6 số cho VietQR (VD: 970436). Có thể để trống nếu map từ tên NH.</summary>
+    public string? PaymentBankBin { get; set; }
+
+    public string? PaymentAccountNumber { get; set; }
+
+    public string? PaymentAccountHolder { get; set; }
+
+    public string? PaymentTransferNoteTemplate { get; set; }
+
+    public bool CancelAllowed { get; set; } = true;
+
+    public int CancelBeforeMinutes { get; set; } = 120;
+
+    /// <summary>NONE | PERCENT | FULL</summary>
+    public string RefundType { get; set; } = "NONE";
+
+    public decimal? RefundPercent { get; set; }
+
     public bool? IsActive { get; set; }
 
     public DateTime? CreatedAt { get; set; }

@@ -40,3 +40,15 @@
    - **Frontend (Tương thích Theme 2 UX/UI)**: Tạo trang `Personalization.jsx` dạng Stepper 5 bước (Vị trí, Giới tính, Trình độ, Mục tiêu, Tần suất). Giao diện tối ưu có Header nền Xanh Lá, Progress Tracker, tuân thủ UX thân thiện.
    - **Bảo vệ luồng (Guard)**: Thay đổi file middleware React `ProtectedRoute.jsx` buộc người dùng có quyền `PLAYER` mà `isPersonalized == false` (hoặc null) thì vĩnh viễn bị Redirect vào `/personalization` cho tới khi hoàn tất stepper.
    - **Hồ sơ**: Đồng bộ form `UserProfileEdit.jsx` cho phép người dùng thay đổi 3 thông số Thể Thao kể trên bất kì lúc nào.
+
+## Mar 26, 2026
+1. Đồng bộ schema DB theo rule "single source of truth" vào `Database.txt`:
+   - Thêm cột thanh toán + chính sách huỷ trong bảng `venues`: `payment_bank_name`, `payment_bank_bin`, `payment_account_number`, `payment_account_holder`, `payment_transfer_note_template`, `cancel_allowed`, `cancel_before_minutes`, `refund_type`, `refund_percent`.
+   - Thêm cột snapshot chính sách huỷ trong bảng `bookings`: `cancellation_policy_snapshot_json`.
+   - Thêm bảng `user_notifications` (kèm index `idx_user_notifications_user_created`).
+   - Thêm `DROP TABLE IF EXISTS user_notifications` ở phần reset DB.
+2. Xoá file migration rời `Database/migrations_venue_checkout_notifications.sql` theo yêu cầu để chỉ cần chạy `Database.txt` một lần.
+3. Sửa compile backend cho Notifications:
+   - Bổ sung `DbSet<UserNotification>` và map `modelBuilder.Entity<UserNotification>` trong `ShuttleUpDbContext`.
+   - Bổ sung navigation `ICollection<UserNotification>` trong model `User`.
+   - Kết quả: `dotnet build ShuttleUp.Backend` thành công (0 errors).

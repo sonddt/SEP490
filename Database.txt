@@ -36,6 +36,7 @@ DROP TABLE IF EXISTS matching_posts;
 DROP TABLE IF EXISTS refund_transactions;
 DROP TABLE IF EXISTS refund_requests;
 DROP TABLE IF EXISTS payments;
+DROP TABLE IF EXISTS user_notifications;
 
 -- BOOKING
 DROP TABLE IF EXISTS court_blocks;
@@ -155,6 +156,15 @@ CREATE TABLE venues (
     lat DECIMAL(10,8),
     lng DECIMAL(11,8),
     description TEXT,
+    payment_bank_name VARCHAR(100) NULL COMMENT 'Display name e.g. Vietcombank',
+    payment_bank_bin VARCHAR(20) NULL COMMENT '6-digit VietQR bank ID',
+    payment_account_number VARCHAR(50) NULL,
+    payment_account_holder VARCHAR(255) NULL,
+    payment_transfer_note_template VARCHAR(500) NULL DEFAULT '[SĐT] - [Tên sân] - [Ngày]',
+    cancel_allowed TINYINT(1) NOT NULL DEFAULT 1,
+    cancel_before_minutes INT NOT NULL DEFAULT 120,
+    refund_type VARCHAR(20) NOT NULL DEFAULT 'NONE' COMMENT 'NONE|PERCENT|FULL',
+    refund_percent DECIMAL(5,2) NULL,
     thumbnail_file_id CHAR(36),
     contact_name VARCHAR(255),
     contact_phone VARCHAR(50),
@@ -223,9 +233,23 @@ CREATE TABLE bookings (
     contact_phone VARCHAR(50) NULL,
     guest_note TEXT NULL,
     manager_status_note VARCHAR(1000) NULL,
+    cancellation_policy_snapshot_json TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (venue_id) REFERENCES venues(id)
+);
+
+CREATE TABLE user_notifications (
+    id CHAR(36) PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    type VARCHAR(50) NOT NULL DEFAULT 'BOOKING',
+    title VARCHAR(255) NOT NULL,
+    body TEXT NULL,
+    metadata_json TEXT NULL,
+    is_read TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_notifications_user_created (user_id, created_at),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE booking_items (

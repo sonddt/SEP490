@@ -1,8 +1,11 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using ShuttleUp.Backend.Hubs;
 using ShuttleUp.DAL.Models;
 
 namespace ShuttleUp.Backend.Controllers;
@@ -13,10 +16,12 @@ namespace ShuttleUp.Backend.Controllers;
 public class ManagerBookingsController : ControllerBase
 {
     private readonly ShuttleUpDbContext _dbContext;
+    private readonly IHubContext<NotificationHub> _notificationHub;
 
-    public ManagerBookingsController(ShuttleUpDbContext dbContext)
+    public ManagerBookingsController(ShuttleUpDbContext dbContext, IHubContext<NotificationHub> notificationHub)
     {
         _dbContext = dbContext;
+        _notificationHub = notificationHub;
     }
 
     private bool TryGetCurrentUserId(out Guid userId)
@@ -190,6 +195,36 @@ public class ManagerBookingsController : ControllerBase
         await _dbContext.SaveChangesAsync();
 
         var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
+
+        if (booking.UserId is { } playerId)
+        {
+            var title = next == "CONFIRMED" ? "Đơn đặt sân đã được duyệt" : "Cập nhật đơn đặt sân";
+            var body = next == "CONFIRMED"
+                ? $"Mã #{code} tại {booking.Venue?.Name ?? "sân"} đã được chủ sân xác nhận."
+                : $"Mã #{code}: {(string.IsNullOrWhiteSpace(booking.ManagerStatusNote) ? "Đơn đã bị huỷ/từ chối." : booking.ManagerStatusNote)}";
+
+            _dbContext.UserNotifications.Add(new UserNotification
+            {
+                Id = Guid.NewGuid(),
+                UserId = playerId,
+                Type = "BOOKING",
+                Title = title,
+                Body = body,
+                MetadataJson = JsonSerializer.Serialize(new { bookingId = booking.Id, status = booking.Status }),
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow,
+            });
+            await _dbContext.SaveChangesAsync();
+
+            await _notificationHub.Clients.Group($"user-{playerId}").SendAsync("bookingStatus", new
+            {
+                bookingId = booking.Id,
+                status = booking.Status,
+                title,
+                body,
+            });
+        }
+
         return Ok(new
         {
             bookingId = booking.Id,

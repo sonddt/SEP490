@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import UserDashboardMenu from '../../components/user/UserDashboardMenu';
 import { getMyBookings, cancelBooking } from '../../api/bookingApi';
 
@@ -70,6 +70,7 @@ function mapApiRowToBooking(api) {
   return {
     id: api.id,
     code: api.bookingCode,
+    needsPaymentRetry: !!api.needsPaymentRetry,
     managerStatusNote: (api.managerStatusNote || '').trim(),
     court: courtLabel || api.venueName || 'Đặt sân',
     courtImg: '/assets/img/booking/booking-01.jpg',
@@ -99,6 +100,7 @@ const STATUS_BADGE = {
 };
 
 export default function UserBookings() {
+  const navigate = useNavigate();
   const [activeTab,     setActiveTab]     = useState('PENDING');
   const [timeFilter,    setTimeFilter]    = useState('all');
   const [sortBy,        setSortBy]        = useState('newest');
@@ -384,6 +386,17 @@ export default function UserBookings() {
                                         <i className="feather-eye me-2" />Xem chi tiết
                                       </button>
                                     </li>
+                                    {b.needsPaymentRetry && b.status === 'PENDING' && (
+                                      <li>
+                                        <button
+                                          type="button"
+                                          className="dropdown-item text-primary"
+                                          onClick={() => navigate(`/booking/payment?bookingId=${b.id}`)}
+                                        >
+                                          <i className="feather-credit-card me-2" />Thanh toán lại
+                                        </button>
+                                      </li>
+                                    )}
                                     {canUserCancel(b) && (
                                       <li>
                                         <button

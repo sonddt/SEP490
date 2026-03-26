@@ -942,6 +942,77 @@ public class ManagerVenuesController : ControllerBase
         });
     }
 
+    public class VenueCheckoutSettingsDto
+    {
+        public string? PaymentBankName { get; set; }
+        public string? PaymentBankBin { get; set; }
+        public string? PaymentAccountNumber { get; set; }
+        public string? PaymentAccountHolder { get; set; }
+        public string? PaymentTransferNoteTemplate { get; set; }
+        public bool CancelAllowed { get; set; } = true;
+        public int CancelBeforeMinutes { get; set; } = 120;
+        public string RefundType { get; set; } = "NONE";
+        public decimal? RefundPercent { get; set; }
+    }
+
+    /// <summary>
+    /// Cài đặt tài khoản nhận tiền + chính sách huỷ theo từng venue.
+    /// </summary>
+    [HttpPut("{venueId:guid}/checkout-settings")]
+    public async Task<IActionResult> PutCheckoutSettings([FromRoute] Guid venueId, [FromBody] VenueCheckoutSettingsDto dto)
+    {
+        if (dto == null)
+            return BadRequest(new { message = "Thiếu dữ liệu." });
+
+        var managerId = GetCurrentUserId();
+        if (managerId == Guid.Empty)
+            return Unauthorized(new { message = "Không xác định được người dùng hiện tại." });
+
+        var venue = await _dbContext.Venues.FirstOrDefaultAsync(v => v.Id == venueId);
+        if (venue == null)
+            return NotFound(new { message = "Venue không tồn tại." });
+
+        if (venue.OwnerUserId != managerId)
+            return Forbid();
+
+        var refundType = string.IsNullOrWhiteSpace(dto.RefundType)
+            ? "NONE"
+            : dto.RefundType.Trim().ToUpperInvariant();
+        if (refundType is not ("NONE" or "PERCENT" or "FULL"))
+            return BadRequest(new { message = "refundType phải là NONE, PERCENT hoặc FULL." });
+
+        if (dto.CancelBeforeMinutes < 0 || dto.CancelBeforeMinutes > 10080)
+            return BadRequest(new { message = "cancelBeforeMinutes phải từ 0 đến 10080 (7 ngày)." });
+
+        if (refundType == "PERCENT")
+        {
+            if (dto.RefundPercent is null)
+                return BadRequest(new { message = "Vui lòng nhập refundPercent khi refundType = PERCENT." });
+            if (dto.RefundPercent < 0 || dto.RefundPercent > 100)
+                return BadRequest(new { message = "refundPercent phải từ 0 đến 100." });
+        }
+
+        venue.PaymentBankName = string.IsNullOrWhiteSpace(dto.PaymentBankName) ? null : dto.PaymentBankName.Trim();
+        venue.PaymentBankBin = string.IsNullOrWhiteSpace(dto.PaymentBankBin) ? null : dto.PaymentBankBin.Trim();
+        venue.PaymentAccountNumber = string.IsNullOrWhiteSpace(dto.PaymentAccountNumber) ? null : dto.PaymentAccountNumber.Trim();
+        venue.PaymentAccountHolder = string.IsNullOrWhiteSpace(dto.PaymentAccountHolder) ? null : dto.PaymentAccountHolder.Trim().ToUpperInvariant();
+        venue.PaymentTransferNoteTemplate = string.IsNullOrWhiteSpace(dto.PaymentTransferNoteTemplate)
+            ? null
+            : dto.PaymentTransferNoteTemplate.Trim();
+        venue.CancelAllowed = dto.CancelAllowed;
+        venue.CancelBeforeMinutes = dto.CancelBeforeMinutes;
+        venue.RefundType = refundType;
+        venue.RefundPercent = refundType == "PERCENT" ? dto.RefundPercent : null;
+
+        await _dbContext.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "Đã lưu cài đặt thanh toán & huỷ đặt.",
+            venueId = venue.Id,
+        });
+    }
+
     private Guid GetCurrentUserId()
     {
         var userIdClaim = User.FindFirst(JwtRegisteredClaimNames.Sub) ??

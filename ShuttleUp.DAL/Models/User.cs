@@ -75,6 +75,8 @@ public partial class User
 
     public virtual ICollection<RefundTransaction> RefundTransactions { get; set; } = new List<RefundTransaction>();
 
+    public virtual ICollection<UserNotification> UserNotifications { get; set; } = new List<UserNotification>();
+
 
     public virtual ICollection<VenueReview> VenueReviews { get; set; } = new List<VenueReview>();
 

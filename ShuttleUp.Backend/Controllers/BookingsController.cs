@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -35,6 +36,30 @@ public class BookingsController : ControllerBase
 
     private static bool IsWeekendDate(DateTime d) =>
         d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+
+    private static CancellationPolicySnapshot ParsePolicyOrDefault(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return new CancellationPolicySnapshot();
+        try
+        {
+            return JsonSerializer.Deserialize<CancellationPolicySnapshot>(json) ?? new CancellationPolicySnapshot();
+        }
+        catch
+        {
+            return new CancellationPolicySnapshot();
+        }
+    }
+
+    private static DateTime ToUtcComparable(DateTime dt)
+    {
+        return dt.Kind switch
+        {
+            DateTimeKind.Utc => dt,
+            DateTimeKind.Local => dt.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(dt, DateTimeKind.Utc),
+        };
+    }
 
     /// <summary>
     /// Giá một khung 30 phút theo bảng giá sân (price = tiền / 30 phút trong khoảng giờ đó).
@@ -72,12 +97,20 @@ public class BookingsController : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.ContactPhone))
             return BadRequest(new { message = "Vui lòng nhập số điện thoại." });
 
-        var venue = await _dbContext.Venues
+        var venuePolicy = await _dbContext.Venues
             .AsNoTracking()
-            .FirstOrDefaultAsync(v => v.Id == dto.VenueId
-                                       && v.IsActive == true);
+            .Where(v => v.Id == dto.VenueId && v.IsActive == true)
+            .Select(v => new
+            {
+                v.Id,
+                v.CancelAllowed,
+                v.CancelBeforeMinutes,
+                v.RefundType,
+                v.RefundPercent,
+            })
+            .FirstOrDefaultAsync();
 
-        if (venue == null)
+        if (venuePolicy == null)
             return BadRequest(new { message = "Cơ sở không tồn tại hoặc chưa mở đặt sân." });
 
         var courtIds = dto.Items.Select(i => i.CourtId).Distinct().ToList();
@@ -157,6 +190,14 @@ public class BookingsController : ControllerBase
 
         var total = normalizedItems.Sum(x => x.Price);
 
+        var policySnapshot = new CancellationPolicySnapshot
+        {
+            AllowCancel = venuePolicy.CancelAllowed,
+            CancelBeforeMinutes = venuePolicy.CancelBeforeMinutes,
+            RefundType = string.IsNullOrWhiteSpace(venuePolicy.RefundType) ? "NONE" : venuePolicy.RefundType!,
+            RefundPercent = venuePolicy.RefundPercent,
+        };
+
         var booking = new Booking
         {
             Id = Guid.NewGuid(),
@@ -169,6 +210,7 @@ public class BookingsController : ControllerBase
             ContactName = dto.ContactName.Trim(),
             ContactPhone = dto.ContactPhone.Trim(),
             GuestNote = string.IsNullOrWhiteSpace(dto.Note) ? null : dto.Note.Trim(),
+            CancellationPolicySnapshotJson = JsonSerializer.Serialize(policySnapshot),
             CreatedAt = DateTime.UtcNow
         };
 
@@ -253,6 +295,9 @@ public class BookingsController : ControllerBase
                     .OrderByDescending(p => p.CreatedAt)
                     .Select(p => p.Method)
                     .FirstOrDefault(),
+                HasValidPaymentProof = b.Payments.Any(p =>
+                    p.GatewayReference != null
+                    && p.GatewayReference.StartsWith("https")),
                 Items = b.BookingItems.Select(bi => new
                 {
                     bi.Id,
@@ -279,6 +324,8 @@ public class BookingsController : ControllerBase
             b.VenueAddress,
             b.VenueId,
             lastPaymentMethod = b.LastPaymentMethod,
+            hasValidPaymentProof = b.HasValidPaymentProof,
+            needsPaymentRetry = b.Status == "PENDING" && !b.HasValidPaymentProof,
             b.Items
         });
 
@@ -308,6 +355,27 @@ public class BookingsController : ControllerBase
         if (booking.Status is not ("PENDING" or "CONFIRMED"))
             return BadRequest(new { message = "Không thể huỷ đơn ở trạng thái này." });
 
+        var policy = ParsePolicyOrDefault(booking.CancellationPolicySnapshotJson);
+        if (!policy.AllowCancel)
+            return BadRequest(new { message = "Theo chính sách cụm sân, bạn không thể tự huỷ đơn này. Vui lòng liên hệ chủ sân." });
+
+        var starts = booking.BookingItems
+            .Where(bi => bi.StartTime != null)
+            .Select(bi => bi.StartTime!.Value)
+            .ToList();
+        if (starts.Count > 0)
+        {
+            var minStartUtc = starts.Select(ToUtcComparable).Min();
+            var deadlineUtc = minStartUtc.AddMinutes(-policy.CancelBeforeMinutes);
+            if (DateTime.UtcNow > deadlineUtc)
+            {
+                return BadRequest(new
+                {
+                    message = $"Đã quá thời hạn huỷ (phải huỷ trước giờ đá ít nhất {policy.CancelBeforeMinutes} phút, theo chính sách lúc đặt).",
+                });
+            }
+        }
+
         booking.Status = "CANCELLED";
         foreach (var item in booking.BookingItems)
             item.Status = "CANCELLED";
@@ -319,12 +387,84 @@ public class BookingsController : ControllerBase
         await _dbContext.SaveChangesAsync();
 
         var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
+        var pol = ParsePolicyOrDefault(booking.CancellationPolicySnapshotJson);
+        var refundHint = pol.RefundType switch
+        {
+            "FULL" => "Theo chính sách lúc đặt: có thể hoàn tiền (thủ công qua chủ sân).",
+            "PERCENT" when pol.RefundPercent.HasValue => $"Theo chính sách lúc đặt: có thể hoàn khoảng {pol.RefundPercent}% (thủ công qua chủ sân).",
+            _ => "Theo chính sách lúc đặt: không hoàn tiền tự động. Liên hệ chủ sân nếu cần.",
+        };
         return Ok(new
         {
             message = "Đã huỷ đặt sân thành công.",
             bookingId = booking.Id,
             bookingCode = code,
-            status = booking.Status
+            status = booking.Status,
+            refundHint,
+        });
+    }
+
+    /// <summary>
+    /// Lấy dữ liệu để hiển thị bước thanh toán lại / tiếp tục thanh toán.
+    /// </summary>
+    [HttpGet("{id:guid}/payment-context")]
+    public async Task<IActionResult> GetPaymentContext([FromRoute] Guid id)
+    {
+        if (!TryGetCurrentUserId(out var userId))
+            return Unauthorized(new { message = "Không xác định được người dùng." });
+
+        var booking = await _dbContext.Bookings
+            .AsNoTracking()
+            .Include(b => b.Venue)
+            .Include(b => b.BookingItems).ThenInclude(bi => bi.Court)
+            .Include(b => b.Payments)
+            .FirstOrDefaultAsync(b => b.Id == id && b.UserId == userId);
+
+        if (booking == null)
+            return NotFound(new { message = "Không tìm thấy đơn đặt." });
+
+        if (booking.Status != "PENDING")
+            return BadRequest(new { message = "Chỉ có thể thanh toán khi đơn đang chờ duyệt." });
+
+        var lastPay = booking.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+        var hasProof = lastPay != null
+                       && !string.IsNullOrEmpty(lastPay.GatewayReference)
+                       && lastPay.GatewayReference.StartsWith("https", StringComparison.OrdinalIgnoreCase);
+
+        var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
+
+        var items = booking.BookingItems
+            .OrderBy(bi => bi.StartTime)
+            .Select(bi => new
+            {
+                courtId = bi.CourtId,
+                courtName = bi.Court != null ? bi.Court.Name : null,
+                startTime = bi.StartTime,
+                endTime = bi.EndTime,
+                price = bi.FinalPrice ?? 0,
+            })
+            .ToList();
+
+        var totalMins = booking.BookingItems.Count * 30;
+        var th = totalMins / 60;
+        var tm = totalMins % 60;
+        var totalHoursStr = tm > 0 ? $"{th}h{tm}" : $"{th}h";
+
+        return Ok(new
+        {
+            bookingId = booking.Id,
+            bookingCode = code,
+            venueId = booking.VenueId,
+            venueName = booking.Venue != null ? booking.Venue.Name : null,
+            venueAddress = booking.Venue != null ? booking.Venue.Address : null,
+            date = booking.BookingItems.Min(bi => bi.StartTime)?.ToString("yyyy-MM-dd"),
+            totalPrice = booking.FinalAmount ?? 0,
+            totalHours = totalHoursStr,
+            customerName = booking.ContactName,
+            customerPhone = booking.ContactPhone,
+            note = booking.GuestNote,
+            hasValidPaymentProof = hasProof,
+            selectedSlots = items,
         });
     }
 
@@ -349,6 +489,7 @@ public class BookingsController : ControllerBase
             return BadRequest(new { message = "File phải là ảnh." });
 
         var booking = await _dbContext.Bookings
+            .Include(b => b.Payments)
             .FirstOrDefaultAsync(b => b.Id == id && b.UserId == userId);
 
         if (booking == null)
@@ -356,6 +497,9 @@ public class BookingsController : ControllerBase
 
         if (booking.Status == "CANCELLED")
             return BadRequest(new { message = "Đơn đã bị huỷ." });
+
+        if (booking.Status != "PENDING")
+            return BadRequest(new { message = "Chỉ có thể nộp minh chứng khi đơn đang chờ duyệt." });
 
         var methodNorm = string.IsNullOrWhiteSpace(form.Method) ? "BANK" : form.Method.Trim().ToUpperInvariant();
         var methodLabel = methodNorm == "QR" ? "QR" : "BANK_TRANSFER";
@@ -371,28 +515,52 @@ public class BookingsController : ControllerBase
             return StatusCode(500, new { message = "Cloudinary upload exception: " + ex.Message });
         }
 
-        var payment = new Payment
-        {
-            Id = Guid.NewGuid(),
-            BookingId = booking.Id,
-            Method = methodLabel,
-            Status = "PENDING",
-            Amount = booking.FinalAmount,
-            GatewayReference = secureUrl,
-            CreatedAt = DateTime.UtcNow
-        };
+        var existingPending = booking.Payments
+            .Where(p => p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(p => p.CreatedAt)
+            .FirstOrDefault();
 
-        _dbContext.Payments.Add(payment);
+        if (existingPending != null
+            && !string.IsNullOrEmpty(existingPending.GatewayReference)
+            && existingPending.GatewayReference.StartsWith("https", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { message = "Đơn đã có minh chứng thanh toán. Không gửi lại." });
+        }
+
+        Payment paymentRow;
+        if (existingPending != null)
+        {
+            existingPending.Method = methodLabel;
+            existingPending.GatewayReference = secureUrl;
+            existingPending.Amount = booking.FinalAmount;
+            existingPending.CreatedAt = DateTime.UtcNow;
+            paymentRow = existingPending;
+        }
+        else
+        {
+            paymentRow = new Payment
+            {
+                Id = Guid.NewGuid(),
+                BookingId = booking.Id,
+                Method = methodLabel,
+                Status = "PENDING",
+                Amount = booking.FinalAmount,
+                GatewayReference = secureUrl,
+                CreatedAt = DateTime.UtcNow
+            };
+            _dbContext.Payments.Add(paymentRow);
+        }
+
         await _dbContext.SaveChangesAsync();
 
         var bookingCode = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
 
         return Ok(new
         {
-            payment.Id,
-            payment.Status,
-            payment.Method,
-            payment.Amount,
+            paymentId = paymentRow.Id,
+            paymentRow.Status,
+            paymentRow.Method,
+            paymentRow.Amount,
             proofUrl = secureUrl,
             bookingId = booking.Id,
             bookingCode

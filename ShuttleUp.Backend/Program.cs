@@ -227,6 +227,7 @@ namespace ShuttleUp.Backend
 
             app.MapControllers();
             app.MapHub<ShuttleUp.Backend.Hubs.ChatHub>("/hubs/chat");
+            app.MapHub<ShuttleUp.Backend.Hubs.NotificationHub>("/hubs/notifications");
 
             app.Run();
         }
