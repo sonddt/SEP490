@@ -9,7 +9,7 @@ const STEPS = [
 
 export default function BookingSteps({ currentStep }) {
   return (
-    <section className="booking-steps py-30">
+    <section className="booking-steps py-30" style={{ backgroundColor: '#f0fdf4' }}>
       <div className="container">
         <ul className="d-lg-flex justify-content-center align-items-center">
           {STEPS.map((step, idx) => {

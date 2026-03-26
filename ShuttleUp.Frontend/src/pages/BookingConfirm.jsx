@@ -105,19 +105,6 @@ export default function BookingConfirm() {
 
   return (
     <div className="main-wrapper" style={{ paddingTop: '96px' }}>
-
-      {/* Breadcrumb */}
-      <div className="breadcrumb mb-0">
-        <span className="primary-right-round" />
-        <div className="container">
-          <h1 className="text-white">Đặt Sân</h1>
-          <ul>
-            <li><Link to="/">Trang chủ</Link></li>
-            <li>Xác nhận đặt sân</li>
-          </ul>
-        </div>
-      </div>
-
       <BookingSteps currentStep={2} />
 
       <div className="content book-cage">

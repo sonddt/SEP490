@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './context/AuthContext';
@@ -73,8 +74,13 @@ function App() {
   const isAuthPage = authRoutes.includes(location.pathname);
   const isAdminPage = location.pathname.startsWith('/admin');
   const isManagerPage = location.pathname.startsWith('/manager');
+  const isBookingPage = location.pathname.startsWith('/booking');
 
   const showHeaderFooter = !isAuthPage && !isAdminPage && !isManagerPage;
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [location.pathname]);
 
   return (
     <>
@@ -195,7 +201,7 @@ function App() {
         </Routes>
       </div>
 
-      {showHeaderFooter && <Footer />}
+      {showHeaderFooter && !isBookingPage && <Footer />}
     </>
   );
 }

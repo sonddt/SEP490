@@ -121,6 +121,14 @@ function slotLocalBounds(dateStr, slotIndex) {
   return { start, end };
 }
 
+function isSameLocalDate(dateA, dateB) {
+  return (
+    dateA.getFullYear() === dateB.getFullYear()
+    && dateA.getMonth() === dateB.getMonth()
+    && dateA.getDate() === dateB.getDate()
+  );
+}
+
 function parseApiTimeToMinutes(v) {
   if (v == null) return 0;
   const s = String(v);
@@ -190,6 +198,10 @@ export default function BookingTimeline() {
   const navigate = useNavigate();
   const location  = useLocation();
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, []);
+
   // Venue info passed from VenueDetails
   const venueState = location.state ?? {};
   const venueName    = venueState.venueName    ?? 'Chọn sân';
@@ -220,6 +232,7 @@ export default function BookingTimeline() {
   const isDraggingRef  = useRef(false);
   const hasDraggedRef  = useRef(false);
   const dragStartRef   = useRef(null); // { courtId, slotIndex }
+  const dragModeRef    = useRef('add'); // add | remove
   // Snapshot of the court's selection BEFORE the current drag started
   // so new drag ranges ADD to existing selection rather than replace it
   const dragBaseRef    = useRef(new Set());
@@ -338,7 +351,16 @@ export default function BookingTimeline() {
   const getBookingAt = (courtId, slotIndex) =>
     existingBookings.find(b => b.courtId === courtId && slotIndex >= b.startIndex && slotIndex < b.endIndex);
 
+  const isPastSlot = (slotIndex) => {
+    const now = new Date();
+    const { end } = slotLocalBounds(selectedDate, slotIndex);
+    // Chỉ khóa "slot đã qua" trong ngày hiện tại; các ngày tương lai vẫn chọn bình thường.
+    if (!isSameLocalDate(end, now)) return false;
+    return end.getTime() <= now.getTime();
+  };
+
   const getCellStatus = (courtId, slotIndex) => {
+    if (isPastSlot(slotIndex)) return { status: 'past' };
     const booking = getBookingAt(courtId, slotIndex);
     if (booking) return { status: booking.type, label: booking.label, isBlockStart: slotIndex === booking.startIndex };
     if (selections[courtId]?.has(slotIndex)) return { status: 'selected' };
@@ -354,8 +376,9 @@ export default function BookingTimeline() {
     isDraggingRef.current  = true;
     hasDraggedRef.current  = false;
     dragStartRef.current   = { courtId, slotIndex };
+    dragModeRef.current    = status === 'selected' ? 'remove' : 'add';
     // Save a copy of whatever is already selected on this court.
-    // The new drag range will be MERGED with this base, not replace it.
+    // The new drag range will be merged/removed against this base.
     dragBaseRef.current    = new Set(selections[courtId] ?? []);
   };
 
@@ -375,10 +398,20 @@ export default function BookingTimeline() {
       if (getBookingAt(courtId, i)) return;
     }
 
-    // Merge: keep everything that was already selected + add the drag range
-    const merged = new Set(dragBaseRef.current);
-    for (let i = start; i <= end; i++) merged.add(i);
-    setSelections(prev => ({ ...prev, [courtId]: merged }));
+    const nextSet = new Set(dragBaseRef.current);
+    if (dragModeRef.current === 'remove') {
+      // Drag from a selected slot => unselect the dragged range.
+      for (let i = start; i <= end; i++) nextSet.delete(i);
+    } else {
+      // Drag from a free slot => add the dragged range.
+      for (let i = start; i <= end; i++) nextSet.add(i);
+    }
+    setSelections(prev => {
+      const next = { ...prev };
+      if (nextSet.size === 0) delete next[courtId];
+      else next[courtId] = nextSet;
+      return next;
+    });
   };
 
   // mouseup on cell → if pure click, toggle individual slot
@@ -407,6 +440,7 @@ export default function BookingTimeline() {
     isDraggingRef.current = false;
     hasDraggedRef.current = false;
     dragStartRef.current  = null;
+    dragModeRef.current   = 'add';
     dragBaseRef.current   = new Set();
   };
 
@@ -416,6 +450,7 @@ export default function BookingTimeline() {
       isDraggingRef.current = false;
       hasDraggedRef.current = false;
       dragStartRef.current  = null;
+      dragModeRef.current   = 'add';
       dragBaseRef.current   = new Set();
     };
     window.addEventListener('mouseup', stop);
@@ -445,6 +480,7 @@ export default function BookingTimeline() {
     switch (status) {
       case 'booked':   return '#ef4444';
       case 'locked':   return '#c084fc';
+      case 'past':     return '#d1d5db';
       case 'selected': return '#16a34a';
       default:         return '#ffffff';
     }
@@ -480,6 +516,10 @@ export default function BookingTimeline() {
         totalHours,
       },
     });
+  };
+
+  const handleClearSelections = () => {
+    setSelections({});
   };
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -520,6 +560,7 @@ export default function BookingTimeline() {
         {[
           { color: '#ffffff', border: '#ccc', label: 'Trống' },
           { color: '#ef4444', label: 'Đã đặt' },
+          { color: '#d1d5db', label: 'Đã qua' },
           { color: '#9ca3af', label: 'Khoá' },
           { color: '#c084fc', label: 'Sự kiện' },
           { color: '#16a34a', label: 'Đang chọn' },
@@ -685,18 +726,36 @@ export default function BookingTimeline() {
             Tổng tiền: <strong style={{ color: '#16a34a', fontSize: '16px' }}>{totalPrice.toLocaleString('vi-VN')} VNĐ</strong>
           </span>
         </div>
-        <button
-          disabled={totalSlots === 0}
-          onClick={handleNext}
-          style={{
-            backgroundColor: totalSlots > 0 ? '#eab308' : '#d1d5db',
-            color: '#fff', border: 'none', borderRadius: '8px',
-            fontSize: '15px', letterSpacing: '0.5px', padding: '10px 40px',
-            cursor: totalSlots > 0 ? 'pointer' : 'not-allowed',
-          }}
-        >
-          TIẾP THEO
-        </button>
+        <div className="d-flex align-items-center gap-2">
+          <button
+            type="button"
+            disabled={totalSlots === 0}
+            onClick={handleClearSelections}
+            style={{
+              backgroundColor: totalSlots > 0 ? '#ef4444' : '#fecaca',
+              color: '#fff',
+              border: `1px solid ${totalSlots > 0 ? '#dc2626' : '#fecaca'}`,
+              borderRadius: '8px',
+              fontSize: '14px',
+              padding: '10px 16px',
+              cursor: totalSlots > 0 ? 'pointer' : 'not-allowed',
+            }}
+          >
+            XÓA TẤT CẢ
+          </button>
+          <button
+            disabled={totalSlots === 0}
+            onClick={handleNext}
+            style={{
+              backgroundColor: totalSlots > 0 ? '#eab308' : '#d1d5db',
+              color: '#fff', border: 'none', borderRadius: '8px',
+              fontSize: '15px', letterSpacing: '0.5px', padding: '10px 40px',
+              cursor: totalSlots > 0 ? 'pointer' : 'not-allowed',
+            }}
+          >
+            TIẾP THEO
+          </button>
+        </div>
       </div>
 
       {/* ── Calendar Popup ─────────────────────────────────────────────── */}
