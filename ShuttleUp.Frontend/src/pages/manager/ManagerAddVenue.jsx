@@ -47,8 +47,13 @@ export default function ManagerAddVenue() {
 
   const getFieldError = (field) => {
     if (!fieldErrors) return null;
-    const key = Object.keys(fieldErrors).find(k => k.toLowerCase() === field.toLowerCase());
-    return key ? fieldErrors[key][0] : null;
+    const key = Object.keys(fieldErrors).find((k) => k.toLowerCase() === field.toLowerCase());
+    if (!key) return null;
+    const v = fieldErrors[key];
+    if (!v) return null;
+    if (Array.isArray(v)) return v[0] ?? null;
+    if (typeof v === 'string') return v;
+    return null;
   };
 
   const setField = (key, val) => setForm((p) => ({ ...p, [key]: val }));
