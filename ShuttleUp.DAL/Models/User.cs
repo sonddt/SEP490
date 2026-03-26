@@ -27,6 +27,14 @@ public partial class User
 
     public DateOnly? DateOfBirth { get; set; }
 
+    public string? SkillLevel { get; set; }
+
+    public string? PlayPurpose { get; set; }
+
+    public string? PlayFrequency { get; set; }
+
+    public bool? IsPersonalized { get; set; }
+
     public bool? IsActive { get; set; }
 
     public DateTime? BlockedAt { get; set; }

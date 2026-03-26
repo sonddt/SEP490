@@ -33,3 +33,10 @@
    - Tạo trang `/manager/profile` riêng khép kín trong `ManagerLayout` (hiển thị thông tin Chủ Sân, Giấy phép kinh doanh, CCCD) giao diện chuẩn SaaS.
    - Định tuyến lại trang `MyProfile.jsx` (của chức năng Player) từ `/profile` về lại `/user/profile` để rõ ràng về mặt định danh component.
    - Chỉnh sửa `ManagerSidebar.jsx`, `UserDropdown.jsx`, `ManagerLayout.jsx` để Navbar menu điều hướng chính xác vào 2 luồng Route tách biệt. Mọi thao tác trái tim trên "Sân yêu thích" đều được bảo vệ trong `/user/profile`.
+
+6. Khởi tạo tính năng Cá Nhân Hoá (Player Onboarding Personalization):
+   - **Database**: Thêm cột `skill_level`, `play_purpose`, `play_frequency`, `is_personalized` vào model User của C# (ShuttleUp.DAL/Backend).
+   - **Backend (C#)**: Cập nhật hàm `GetMyProfile` và `UpdateMyProfile` trong `ProfileController.cs` để hỗ trợ Map và Lưu/Sửa các trường cấu hình trên. Đã build thành công không lỗi.
+   - **Frontend (Tương thích Theme 2 UX/UI)**: Tạo trang `Personalization.jsx` dạng Stepper 5 bước (Vị trí, Giới tính, Trình độ, Mục tiêu, Tần suất). Giao diện tối ưu có Header nền Xanh Lá, Progress Tracker, tuân thủ UX thân thiện.
+   - **Bảo vệ luồng (Guard)**: Thay đổi file middleware React `ProtectedRoute.jsx` buộc người dùng có quyền `PLAYER` mà `isPersonalized == false` (hoặc null) thì vĩnh viễn bị Redirect vào `/personalization` cho tới khi hoàn tất stepper.
+   - **Hồ sơ**: Đồng bộ form `UserProfileEdit.jsx` cho phép người dùng thay đổi 3 thông số Thể Thao kể trên bất kì lúc nào.

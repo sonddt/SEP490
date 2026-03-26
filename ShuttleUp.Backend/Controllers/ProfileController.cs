@@ -72,6 +72,10 @@ public class ProfileController : ControllerBase
                     u.Province,
                     u.Gender,
                     u.DateOfBirth,
+                    u.SkillLevel,
+                    u.PlayPurpose,
+                    u.PlayFrequency,
+                    u.IsPersonalized,
                     avatarUrl = u.AvatarFile != null ? u.AvatarFile.FileUrl : null,
                     createdAt = u.CreatedAt,
                     Roles = u.Roles.Select(r => r.Name)
@@ -123,6 +127,10 @@ public class ProfileController : ControllerBase
                     user.Province,
                     user.Gender,
                     dateOfBirth = user.DateOfBirth?.ToString("yyyy-MM-dd"),
+                    user.SkillLevel,
+                    user.PlayPurpose,
+                    user.PlayFrequency,
+                    user.IsPersonalized,
                     user.avatarUrl,
                     createdAt = user.createdAt
                 },
@@ -199,6 +207,11 @@ public class ProfileController : ControllerBase
         public string? Address { get; set; }
         public string? District { get; set; }
         public string? Province { get; set; }
+        
+        public string? SkillLevel { get; set; }
+        public string? PlayPurpose { get; set; }
+        public string? PlayFrequency { get; set; }
+        public bool? IsPersonalized { get; set; }
     }
 
     /// <summary>
@@ -275,6 +288,12 @@ public class ProfileController : ControllerBase
             user.Address = string.IsNullOrWhiteSpace(dto.Address) ? null : dto.Address.Trim();
             user.District = string.IsNullOrWhiteSpace(dto.District) ? null : dto.District.Trim();
             user.Province = string.IsNullOrWhiteSpace(dto.Province) ? null : dto.Province.Trim();
+
+            // Cập nhật các trường Personalization
+            if (dto.SkillLevel != null) user.SkillLevel = dto.SkillLevel.Trim();
+            if (dto.PlayPurpose != null) user.PlayPurpose = dto.PlayPurpose.Trim();
+            if (dto.PlayFrequency != null) user.PlayFrequency = dto.PlayFrequency.Trim();
+            if (dto.IsPersonalized.HasValue) user.IsPersonalized = dto.IsPersonalized.Value;
 
             await _db.SaveChangesAsync();
         }

@@ -30,6 +30,7 @@ import MyProfile from './pages/user/MyProfile';
 import UserProfileEdit from './pages/user/UserProfileEdit';
 import UserProfileChangePassword from './pages/user/UserProfileChangePassword';
 import UserProfileOtherSetting from './pages/user/UserProfileOtherSetting';
+import Personalization from './pages/user/Personalization';
 import UserManagerInfo from './pages/user/UserManagerInfo';
 import UserBookings from './pages/user/UserBookings';
 import UserFavorites from './pages/user/UserFavorites';
@@ -111,6 +112,7 @@ function App() {
           <Route path="/booking/complete" element={<ProtectedRoute><BookingComplete /></ProtectedRoute>} />
 
           {/* ═══ Player Profile ═══ */}
+          <Route path="/personalization" element={<ProtectedRoute requiredRole="PLAYER"><Personalization /></ProtectedRoute>} />
           <Route path="/user/profile" element={<ProtectedRoute><MyProfile /></ProtectedRoute>} />
           <Route path="/user/profile/edit" element={<ProtectedRoute><UserProfileEdit /></ProtectedRoute>} />
           <Route path="/user/profile/manager-info" element={<ProtectedRoute><UserManagerInfo /></ProtectedRoute>} />

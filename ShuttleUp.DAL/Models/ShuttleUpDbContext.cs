@@ -542,6 +542,9 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.GenderPref)
                 .HasMaxLength(50)
                 .HasColumnName("gender_pref");
+            entity.Property(e => e.ExpenseSharing)
+                .HasMaxLength(100)
+                .HasColumnName("expense_sharing");
             entity.Property(e => e.Notes)
                 .HasColumnType("text")
                 .HasColumnName("notes");
@@ -773,6 +776,19 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.Gender)
                 .HasMaxLength(20)
                 .HasColumnName("gender");
+            entity.Property(e => e.SkillLevel)
+                .HasMaxLength(50)
+                .HasColumnName("skill_level");
+            entity.Property(e => e.PlayPurpose)
+                .HasMaxLength(100)
+                .HasColumnName("play_purpose");
+            entity.Property(e => e.PlayFrequency)
+                .HasMaxLength(50)
+                .HasColumnName("play_frequency");
+            entity.Property(e => e.IsPersonalized)
+                .HasDefaultValue(false)
+                .HasColumnType("tinyint(1)")
+                .HasColumnName("is_personalized");
             entity.Property(e => e.IsActive)
                 .HasDefaultValueSql("'1'")
                 .HasColumnName("is_active");

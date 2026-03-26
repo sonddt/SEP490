@@ -17,6 +17,8 @@ public partial class MatchingPost
 
     public string? GenderPref { get; set; }
 
+    public string? ExpenseSharing { get; set; }
+
     public string? Notes { get; set; }
 
     public string? Status { get; set; }

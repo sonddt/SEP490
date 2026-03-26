@@ -56,6 +56,9 @@ export default function UserProfileEdit() {
     address: '',
     district: '',
     province: '',
+    skillLevel: '',
+    playPurpose: '',
+    playFrequency: '',
   });
   const [initialForm, setInitialForm] = useState(null);
 
@@ -103,6 +106,9 @@ export default function UserProfileEdit() {
           address: u.address || '',
           district: u.district || '',
           province: u.province || '',
+          skillLevel: u.skillLevel || '',
+          playPurpose: u.playPurpose || '',
+          playFrequency: u.playFrequency || '',
         };
 
         setForm(loaded);
@@ -122,6 +128,9 @@ export default function UserProfileEdit() {
           address: '',
           district: '',
           province: '',
+          skillLevel: '',
+          playPurpose: '',
+          playFrequency: '',
         };
         setForm(fallback);
         setInitialForm(fallback);
@@ -174,6 +183,9 @@ export default function UserProfileEdit() {
         address: form.address || null,
         district: form.district || null,
         province: form.province || null,
+        skillLevel: form.skillLevel || null,
+        playPurpose: form.playPurpose || null,
+        playFrequency: form.playFrequency || null,
       });
 
       try {
@@ -438,6 +450,68 @@ export default function UserProfileEdit() {
                             {PROVINCES.map((p) => (
                               <option key={p} value={p}>{p}</option>
                             ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Personalization Section */}
+                      <div className="address-form-head mt-4">
+                        <h4>Mục tiêu & Kỹ năng</h4>
+                      </div>
+
+                      <div className="col-lg-4 col-md-6">
+                        <div className="input-space">
+                          <label className="form-label">Trình độ kỹ năng</label>
+                          <select
+                            className="form-control"
+                            name="skillLevel"
+                            value={form.skillLevel}
+                            onChange={handleChange}
+                          >
+                            <option value="">-- Chọn trình độ --</option>
+                            <option value="Yếu">Yếu / Mới chơi</option>
+                            <option value="Trung Bình Yếu">Trung Bình Yếu</option>
+                            <option value="Trung Bình">Trung Bình</option>
+                            <option value="Khá">Khá</option>
+                            <option value="Bán Chuyên">Bán Chuyên</option>
+                            <option value="Chuyên Nghiệp">Chuyên Nghiệp</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="col-lg-4 col-md-6">
+                        <div className="input-space">
+                          <label className="form-label">Mục tiêu chơi chính</label>
+                          <select
+                            className="form-control"
+                            name="playPurpose"
+                            value={form.playPurpose}
+                            onChange={handleChange}
+                          >
+                            <option value="">-- Chọn mục tiêu --</option>
+                            <option value="Rèn luyện sức khỏe">Rèn luyện sức khỏe</option>
+                            <option value="Giao lưu giải trí">Giao lưu giải trí</option>
+                            <option value="Tìm bạn kết giao">Tìm bạn kết giao</option>
+                            <option value="Thi đấu nâng trình">Thi đấu nâng trình</option>
+                            <option value="Giảm cân">Giảm cân</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="col-lg-4 col-md-6">
+                        <div className="input-space mb-0">
+                          <label className="form-label">Tần suất chơi</label>
+                          <select
+                            className="form-control"
+                            name="playFrequency"
+                            value={form.playFrequency}
+                            onChange={handleChange}
+                          >
+                            <option value="">-- Chọn tần suất --</option>
+                            <option value="Thỉnh thoảng">Thỉnh thoảng</option>
+                            <option value="1-2 lần/tuần">1-2 lần/tuần</option>
+                            <option value="Chỉ cuối tuần">Chỉ cuối tuần</option>
+                            <option value="Hàng ngày">Hàng ngày</option>
                           </select>
                         </div>
                       </div>
