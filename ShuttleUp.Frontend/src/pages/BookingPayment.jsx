@@ -227,18 +227,6 @@ export default function BookingPayment() {
         </div>
       )}
 
-      {/* Breadcrumb */}
-      <div className="breadcrumb mb-0">
-        <span className="primary-right-round" />
-        <div className="container">
-          <h1 className="text-white">Đặt Sân</h1>
-          <ul>
-            <li><Link to="/">Trang chủ</Link></li>
-            <li>Thanh toán</li>
-          </ul>
-        </div>
-      </div>
-
       <BookingSteps currentStep={3} />
 
       <div className="content">
