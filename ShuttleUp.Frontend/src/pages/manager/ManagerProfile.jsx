@@ -78,7 +78,7 @@ function FileUploadZone({ label, hint, multiple, accept, files, onFiles, existin
 
 /* ════════════════════════════════════════════════════════════════════════ */
 export default function ManagerProfile() {
-  const { user: authUser } = useAuth();
+  const { user: authUser, updateUser } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
@@ -86,7 +86,8 @@ export default function ManagerProfile() {
 
   /* Edit mode */
   const [editing, setEditing] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [submittingPersonal, setSubmittingPersonal] = useState(false);
+  const [submittingBiz, setSubmittingBiz] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
@@ -101,6 +102,9 @@ export default function ManagerProfile() {
     address: '',
     province: '',
   });
+
+  /* Avatar upload (personal) */
+  const [avatarFile, setAvatarFile] = useState(null);
 
   /* Business info form */
   const [bizForm, setBizForm] = useState({
@@ -163,6 +167,15 @@ export default function ManagerProfile() {
     return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('vi-VN');
   };
 
+  const formatGenderVi = (g) => {
+    const s = String(g || '').trim().toUpperCase();
+    if (!s) return '';
+    if (s === 'MALE' || s === 'NAM') return 'Nam';
+    if (s === 'FEMALE' || s === 'NỮ' || s === 'NU') return 'Nữ';
+    if (s === 'OTHER' || s === 'KHÁC' || s === 'KHAC') return 'Khác';
+    return g;
+  };
+
   const getFieldError = (field) => {
     if (!fieldErrors) return null;
     const key = Object.keys(fieldErrors).find((k) => k.toLowerCase() === field.toLowerCase());
@@ -182,9 +195,9 @@ export default function ManagerProfile() {
     return isManager ? <span className="badge bg-success">Đã xác thực</span> : <span className="badge bg-secondary">Chưa đăng ký</span>;
   })();
 
-  /* ── Submit ────────────────────────────────────────────────────── */
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  /* ── Submit (Personal) ─────────────────────────────────────────── */
+  const handleSubmitPersonal = async (e) => {
+    e?.preventDefault?.();
     const errors = {};
     if (!form.fullName?.trim()) errors.fullName = ['Bạn chưa nhập họ tên kìa!'];
     if (Object.keys(errors).length > 0) {
@@ -196,7 +209,7 @@ export default function ManagerProfile() {
     try {
       setErrorMsg('');
       setFieldErrors({});
-      setSubmitting(true);
+      setSubmittingPersonal(true);
 
       /* Update personal info */
       await profileApi.updateMe({
@@ -209,25 +222,18 @@ export default function ManagerProfile() {
         province: form.province,
       });
 
-      /* Update manager/biz info if changed */
-      if (bizForm.taxCode || bizForm.bizAddress || cccdFront.length || cccdBack.length || licenseFiles.length) {
-        const fd = new FormData();
-        if (bizForm.taxCode) fd.append('taxCode', bizForm.taxCode);
-        if (bizForm.bizAddress) fd.append('address', bizForm.bizAddress);
-        if (cccdFront[0]) fd.append('cccdFront', cccdFront[0]);
-        if (cccdBack[0]) fd.append('cccdBack', cccdBack[0]);
-        licenseFiles.forEach((f) => fd.append('businessLicenseFiles', f));
-        await axiosClient.put('/manager/profile', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      /* Upload avatar if selected */
+      if (avatarFile) {
+        const res = await profileApi.uploadAvatar(avatarFile);
+        const url = res?.avatarUrl ?? res?.user?.avatarUrl ?? null;
+        if (url) updateUser?.({ avatarUrl: url });
+        setAvatarFile(null);
       }
 
       /* Reload */
       const updated = await profileApi.getMe();
       setProfile(updated);
-      setSuccessMsg('Tuyệt vời! Hồ sơ của bạn đã được cập nhật thành công.');
-      setEditing(false);
-      setCccdFront([]);
-      setCccdBack([]);
-      setLicenseFiles([]);
+      setSuccessMsg('Đã lưu thay đổi thông tin cá nhân.');
     } catch (err) {
       if (err.response?.data?.errors) {
         setFieldErrors(err.response.data.errors);
@@ -237,7 +243,47 @@ export default function ManagerProfile() {
         setErrorMsg(err.response?.data?.message || 'Rất tiếc! Đã xảy ra sự cố khi lưu. Bạn thử lại nha!');
       }
     } finally {
-      setSubmitting(false);
+      setSubmittingPersonal(false);
+    }
+  };
+
+  /* ── Submit (Business/Owner) ───────────────────────────────────── */
+  const handleSubmitBiz = async (e) => {
+    e?.preventDefault?.();
+    try {
+      setErrorMsg('');
+      setFieldErrors({});
+      setSubmittingBiz(true);
+
+      if (bizForm.taxCode || bizForm.bizAddress || cccdFront.length || cccdBack.length || licenseFiles.length) {
+        const fd = new FormData();
+        if (bizForm.taxCode) fd.append('taxCode', bizForm.taxCode);
+        if (bizForm.bizAddress) fd.append('address', bizForm.bizAddress);
+        if (cccdFront[0]) fd.append('cccdFront', cccdFront[0]);
+        if (cccdBack[0]) fd.append('cccdBack', cccdBack[0]);
+        licenseFiles.forEach((f) => fd.append('businessLicenseFiles', f));
+        await axiosClient.put('/manager/profile', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      } else {
+        setErrorMsg('Bạn chưa cập nhật thông tin nào ở phần Chủ sân.');
+        return;
+      }
+
+      const updated = await profileApi.getMe();
+      setProfile(updated);
+      setSuccessMsg('Đã gửi/cập nhật thông tin Chủ sân. Vui lòng chờ Admin duyệt.');
+      setCccdFront([]);
+      setCccdBack([]);
+      setLicenseFiles([]);
+    } catch (err) {
+      if (err.response?.data?.errors) {
+        setFieldErrors(err.response.data.errors);
+        setErrorMsg('Oops... Hệ thống phát hiện vài phần nhập chưa chuẩn xác.');
+      } else {
+        setFieldErrors({});
+        setErrorMsg(err.response?.data?.message || 'Rất tiếc! Đã xảy ra sự cố khi gửi/cập nhật. Bạn thử lại nha!');
+      }
+    } finally {
+      setSubmittingBiz(false);
     }
   };
 
@@ -259,6 +305,7 @@ export default function ManagerProfile() {
     setCccdFront([]);
     setCccdBack([]);
     setLicenseFiles([]);
+    setAvatarFile(null);
     setErrorMsg('');
     setFieldErrors({});
     setEditing(false);
@@ -324,7 +371,7 @@ export default function ManagerProfile() {
               <div className="row g-4">
                 <div className="col-sm-6"><InfoRow label="Email" value={u.email} /></div>
                 <div className="col-sm-6"><InfoRow label="Số điện thoại" value={u.phoneNumber} /></div>
-                <div className="col-sm-6"><InfoRow label="Giới tính" value={u.gender} /></div>
+                <div className="col-sm-6"><InfoRow label="Giới tính" value={formatGenderVi(u.gender)} /></div>
                 <div className="col-sm-6"><InfoRow label="Ngày sinh" value={formatDate(u.dateOfBirth)} /></div>
                 <div className="col-12"><InfoRow label="Địa chỉ" value={u.address} /></div>
                 {u.about && <div className="col-12"><InfoRow label="Giới thiệu" value={u.about} /></div>}
@@ -400,7 +447,7 @@ export default function ManagerProfile() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} noValidate>
+      <form onSubmit={handleSubmitPersonal} noValidate>
         {errorMsg && (
           <div className="alert alert-danger d-flex align-items-center mb-4" style={{ borderRadius: 10, border: 'none', background: '#fef2f2', color: '#991b1b', padding: '14px 20px' }}>
             <i className="feather-alert-circle fs-5 me-2" />
@@ -414,6 +461,23 @@ export default function ManagerProfile() {
             <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
               <div className="card-body p-4 p-md-5">
                 <SectionHeader icon="feather-user" iconBg="#e8f5ee" iconColor="#097E52" title="Thông tin cá nhân" subtitle="Họ tên, liên hệ và dữ liệu cơ bản" />
+                <div className="d-flex align-items-center gap-3 mb-4 pb-4 border-bottom">
+                  <img
+                    src={avatarFile ? URL.createObjectURL(avatarFile) : (u?.avatarUrl || '/assets/img/profiles/avatar-01.jpg')}
+                    alt="Avatar"
+                    style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', border: '3px solid #f8fafc', flexShrink: 0 }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <label className="form-label fw-semibold text-dark mb-2">Ảnh đại diện</label>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="form-control"
+                      onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
+                    />
+                    <div className="text-muted" style={{ fontSize: 12, marginTop: 6 }}>JPG/PNG/WebP</div>
+                  </div>
+                </div>
                 <div className="row g-4">
                   <div className="col-12">
                     <label className="form-label fw-semibold text-dark mb-2">Họ và tên <span className="text-danger">*</span></label>
@@ -434,9 +498,9 @@ export default function ManagerProfile() {
                     <label className="form-label fw-semibold text-dark mb-2">Giới tính</label>
                     <select className="form-select form-select-lg bg-light border-0" value={form.gender} onChange={(e) => setF('gender', e.target.value)}>
                       <option value="">Chưa chọn</option>
-                      <option value="Nam">Nam</option>
-                      <option value="Nữ">Nữ</option>
-                      <option value="Khác">Khác</option>
+                      <option value="MALE">Nam</option>
+                      <option value="FEMALE">Nữ</option>
+                      <option value="OTHER">Khác</option>
                     </select>
                   </div>
                   <div className="col-12 col-md-6">
@@ -457,6 +521,19 @@ export default function ManagerProfile() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Personal actions (outside card, like screenshot) */}
+            <div className="d-flex justify-content-end">
+              <button
+                type="button"
+                className="btn btn-primary fw-bold px-5 py-3 shadow"
+                disabled={submittingPersonal}
+                onClick={handleSubmitPersonal}
+                style={{ borderRadius: 12, background: '#097E52', borderColor: '#097E52', minWidth: 180 }}
+              >
+                {submittingPersonal ? 'ĐANG LƯU...' : 'LƯU THAY ĐỔI'}
+              </button>
             </div>
           </div>
 
@@ -506,13 +583,21 @@ export default function ManagerProfile() {
         </div>
 
         {/* Actions */}
-        <div className="d-flex justify-content-end gap-3 mt-4 mb-4">
-          <button type="button" className="btn btn-light fw-bold px-4 py-3 shadow-sm" style={{ borderRadius: 12 }} onClick={handleCancelEdit}>
-            Hủy bỏ
-          </button>
-          <button type="submit" className="btn btn-primary fw-bold px-5 py-3 shadow" disabled={submitting} style={{ borderRadius: 12, background: '#097E52', borderColor: '#097E52' }}>
-            {submitting ? 'ĐANG LƯU...' : 'LƯU THAY ĐỔI'}
-          </button>
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-stretch align-items-md-center gap-3 mt-4 mb-4">
+          <div className="d-flex justify-content-end gap-3 ms-auto">
+            <button type="button" className="btn btn-light fw-bold px-4 py-3 shadow-sm" style={{ borderRadius: 12 }} onClick={handleCancelEdit}>
+              Hủy bỏ
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary fw-bold px-5 py-3 shadow"
+              disabled={submittingBiz}
+              onClick={handleSubmitBiz}
+              style={{ borderRadius: 12, background: '#097E52', borderColor: '#097E52' }}
+            >
+              {submittingBiz ? 'ĐANG GỬI...' : 'GỬI/CẬP NHẬT'}
+            </button>
+          </div>
         </div>
       </form>
     </>
