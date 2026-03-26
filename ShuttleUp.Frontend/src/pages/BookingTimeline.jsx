@@ -228,6 +228,7 @@ export default function BookingTimeline() {
   const isDraggingRef  = useRef(false);
   const hasDraggedRef  = useRef(false);
   const dragStartRef   = useRef(null); // { courtId, slotIndex }
+  const dragModeRef    = useRef('add'); // add | remove
   // Snapshot of the court's selection BEFORE the current drag started
   // so new drag ranges ADD to existing selection rather than replace it
   const dragBaseRef    = useRef(new Set());
@@ -371,8 +372,9 @@ export default function BookingTimeline() {
     isDraggingRef.current  = true;
     hasDraggedRef.current  = false;
     dragStartRef.current   = { courtId, slotIndex };
+    dragModeRef.current    = status === 'selected' ? 'remove' : 'add';
     // Save a copy of whatever is already selected on this court.
-    // The new drag range will be MERGED with this base, not replace it.
+    // The new drag range will be merged/removed against this base.
     dragBaseRef.current    = new Set(selections[courtId] ?? []);
   };
 
@@ -392,10 +394,20 @@ export default function BookingTimeline() {
       if (getBookingAt(courtId, i)) return;
     }
 
-    // Merge: keep everything that was already selected + add the drag range
-    const merged = new Set(dragBaseRef.current);
-    for (let i = start; i <= end; i++) merged.add(i);
-    setSelections(prev => ({ ...prev, [courtId]: merged }));
+    const nextSet = new Set(dragBaseRef.current);
+    if (dragModeRef.current === 'remove') {
+      // Drag from a selected slot => unselect the dragged range.
+      for (let i = start; i <= end; i++) nextSet.delete(i);
+    } else {
+      // Drag from a free slot => add the dragged range.
+      for (let i = start; i <= end; i++) nextSet.add(i);
+    }
+    setSelections(prev => {
+      const next = { ...prev };
+      if (nextSet.size === 0) delete next[courtId];
+      else next[courtId] = nextSet;
+      return next;
+    });
   };
 
   // mouseup on cell → if pure click, toggle individual slot
@@ -424,6 +436,7 @@ export default function BookingTimeline() {
     isDraggingRef.current = false;
     hasDraggedRef.current = false;
     dragStartRef.current  = null;
+    dragModeRef.current   = 'add';
     dragBaseRef.current   = new Set();
   };
 
@@ -433,6 +446,7 @@ export default function BookingTimeline() {
       isDraggingRef.current = false;
       hasDraggedRef.current = false;
       dragStartRef.current  = null;
+      dragModeRef.current   = 'add';
       dragBaseRef.current   = new Set();
     };
     window.addEventListener('mouseup', stop);
