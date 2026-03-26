@@ -20,10 +20,6 @@ public partial class ShuttleUpDbContext : DbContext
 
     public virtual DbSet<BookingItem> BookingItems { get; set; }
 
-    public virtual DbSet<BookingHold> BookingHolds { get; set; }
-
-    public virtual DbSet<BookingHoldItem> BookingHoldItems { get; set; }
-
     public virtual DbSet<ChatMessage> ChatMessages { get; set; }
 
     public virtual DbSet<ChatRoom> ChatRooms { get; set; }
@@ -108,9 +104,6 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.ManagerStatusNote)
                 .HasMaxLength(1000)
                 .HasColumnName("manager_status_note");
-            entity.Property(e => e.CancellationPolicySnapshotJson)
-                .HasColumnType("text")
-                .HasColumnName("cancellation_policy_snapshot_json");
             entity.Property(e => e.DiscountAmount)
                 .HasPrecision(15, 2)
                 .HasDefaultValueSql("'0.00'")
@@ -171,76 +164,6 @@ public partial class ShuttleUpDbContext : DbContext
             entity.HasOne(d => d.Court).WithMany(p => p.BookingItems)
                 .HasForeignKey(d => d.CourtId)
                 .HasConstraintName("booking_items_ibfk_2");
-        });
-
-        modelBuilder.Entity<BookingHold>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PRIMARY");
-
-            entity.ToTable("booking_holds");
-
-            entity.HasIndex(e => new { e.UserId, e.ExpiresAt }, "idx_booking_holds_user_expires");
-            entity.HasIndex(e => new { e.VenueId, e.Status, e.ExpiresAt }, "idx_booking_holds_venue_status_expires");
-
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.UserId).HasColumnName("user_id");
-            entity.Property(e => e.VenueId).HasColumnName("venue_id");
-            entity.Property(e => e.Status)
-                .HasMaxLength(20)
-                .HasDefaultValueSql("'ACTIVE'")
-                .HasColumnName("status");
-            entity.Property(e => e.ExpiresAt)
-                .HasColumnType("datetime")
-                .HasColumnName("expires_at");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("datetime")
-                .HasColumnName("created_at");
-            entity.Property(e => e.CancellationPolicySnapshotJson)
-                .HasColumnType("text")
-                .HasColumnName("cancellation_policy_snapshot_json");
-
-            entity.HasOne(d => d.User).WithMany(p => p.BookingHolds)
-                .HasForeignKey(d => d.UserId)
-                .OnDelete(DeleteBehavior.Cascade)
-                .HasConstraintName("booking_holds_ibfk_1");
-
-            entity.HasOne(d => d.Venue).WithMany(p => p.BookingHolds)
-                .HasForeignKey(d => d.VenueId)
-                .OnDelete(DeleteBehavior.Cascade)
-                .HasConstraintName("booking_holds_ibfk_2");
-        });
-
-        modelBuilder.Entity<BookingHoldItem>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PRIMARY");
-
-            entity.ToTable("booking_hold_items");
-
-            entity.HasIndex(e => new { e.CourtId, e.StartTime, e.EndTime }, "idx_hold_items_court_time");
-
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.HoldId).HasColumnName("hold_id");
-            entity.Property(e => e.CourtId).HasColumnName("court_id");
-            entity.Property(e => e.StartTime)
-                .HasColumnType("datetime")
-                .HasColumnName("start_time");
-            entity.Property(e => e.EndTime)
-                .HasColumnType("datetime")
-                .HasColumnName("end_time");
-            entity.Property(e => e.FinalPrice)
-                .HasPrecision(15, 2)
-                .HasColumnName("final_price");
-
-            entity.HasOne(d => d.Hold).WithMany(p => p.BookingHoldItems)
-                .HasForeignKey(d => d.HoldId)
-                .OnDelete(DeleteBehavior.Cascade)
-                .HasConstraintName("booking_hold_items_ibfk_1");
-
-            entity.HasOne(d => d.Court).WithMany(p => p.BookingHoldItems)
-                .HasForeignKey(d => d.CourtId)
-                .OnDelete(DeleteBehavior.Cascade)
-                .HasConstraintName("booking_hold_items_ibfk_2");
         });
 
         modelBuilder.Entity<ChatMessage>(entity =>
@@ -984,30 +907,6 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasMaxLength(255)
                 .HasColumnName("name");
             entity.Property(e => e.OwnerUserId).HasColumnName("owner_user_id");
-
-            entity.Property(e => e.PaymentBankName)
-                .HasMaxLength(100)
-                .HasColumnName("payment_bank_name");
-            entity.Property(e => e.PaymentBankBin)
-                .HasMaxLength(20)
-                .HasColumnName("payment_bank_bin");
-            entity.Property(e => e.PaymentAccountNumber)
-                .HasMaxLength(50)
-                .HasColumnName("payment_account_number");
-            entity.Property(e => e.PaymentAccountHolder)
-                .HasMaxLength(255)
-                .HasColumnName("payment_account_holder");
-            entity.Property(e => e.PaymentTransferNoteTemplate)
-                .HasMaxLength(500)
-                .HasColumnName("payment_transfer_note_template");
-            entity.Property(e => e.CancelAllowed).HasColumnName("cancel_allowed");
-            entity.Property(e => e.CancelBeforeMinutes).HasColumnName("cancel_before_minutes");
-            entity.Property(e => e.RefundType)
-                .HasMaxLength(20)
-                .HasColumnName("refund_type");
-            entity.Property(e => e.RefundPercent)
-                .HasPrecision(5, 2)
-                .HasColumnName("refund_percent");
 
             entity.HasOne(d => d.OwnerUser).WithMany(p => p.Venues)
                 .HasForeignKey(d => d.OwnerUserId)

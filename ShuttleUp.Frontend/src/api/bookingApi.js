@@ -12,15 +12,6 @@ export function createBooking(payload) {
   return axiosClient.post('/bookings', payload);
 }
 
-export function createBookingHold(payload) {
-  return axiosClient.post('/bookings/hold', payload);
-}
-
-/** @param {string} bookingId */
-export function createVnpayPaymentUrl(bookingId) {
-  return axiosClient.post(`/bookings/${bookingId}/vnpay/create-url`);
-}
-
 /** @param {string} bookingId */
 export function submitPayment(bookingId, formData) {
   return axiosClient.post(`/bookings/${bookingId}/payment`, formData);

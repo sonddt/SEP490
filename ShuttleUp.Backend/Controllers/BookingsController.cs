@@ -5,11 +5,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using ShuttleUp.BLL.DTOs.Booking;
-using ShuttleUp.Backend;
 using ShuttleUp.Backend.BookingForms;
-using ShuttleUp.Backend.Configurations;
 using ShuttleUp.Backend.Services.Interfaces;
 using ShuttleUp.DAL.Models;
 
@@ -18,23 +15,15 @@ namespace ShuttleUp.Backend.Controllers;
 [ApiController]
 [Route("api/bookings")]
 [Authorize]
-public partial class BookingsController : ControllerBase
+public class BookingsController : ControllerBase
 {
     private readonly ShuttleUpDbContext _dbContext;
     private readonly IFileService _fileService;
-    private readonly IOptions<VnpayOptions> _vnpayOptions;
-    private readonly IConfiguration _configuration;
 
-    public BookingsController(
-        ShuttleUpDbContext dbContext,
-        IFileService fileService,
-        IOptions<VnpayOptions> vnpayOptions,
-        IConfiguration configuration)
+    public BookingsController(ShuttleUpDbContext dbContext, IFileService fileService)
     {
         _dbContext = dbContext;
         _fileService = fileService;
-        _vnpayOptions = vnpayOptions;
-        _configuration = configuration;
     }
 
     private bool TryGetCurrentUserId(out Guid userId)
@@ -99,22 +88,14 @@ public partial class BookingsController : ControllerBase
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized(new { message = "Không xác định được người dùng." });
 
+        if (dto.Items == null || dto.Items.Count == 0)
+            return BadRequest(new { message = "Vui lòng chọn ít nhất một khung giờ." });
+
         if (string.IsNullOrWhiteSpace(dto.ContactName))
             return BadRequest(new { message = "Vui lòng nhập họ tên." });
 
         if (string.IsNullOrWhiteSpace(dto.ContactPhone))
             return BadRequest(new { message = "Vui lòng nhập số điện thoại." });
-
-        if (dto.HoldId.HasValue)
-            return await CreateBookingFromHoldAsync(dto, userId);
-
-        var norm = await TryNormalizeAndLoadCourtsAsync(dto.VenueId, dto.Items);
-        if (norm.Fail != null)
-            return norm.Fail;
-
-        var normalizedItems = norm.Slots!;
-        var courtById = norm.Courts!;
-        var courtIds = normalizedItems.Select(x => x.CourtId).Distinct().ToList();
 
         var venuePolicy = await _dbContext.Venues
             .AsNoTracking()
@@ -132,18 +113,80 @@ public partial class BookingsController : ControllerBase
         if (venuePolicy == null)
             return BadRequest(new { message = "Cơ sở không tồn tại hoặc chưa mở đặt sân." });
 
+        var courtIds = dto.Items.Select(i => i.CourtId).Distinct().ToList();
+
+        var courts = await _dbContext.Courts
+            .Include(c => c.CourtPrices)
+            .Where(c => courtIds.Contains(c.Id) && c.VenueId == dto.VenueId && c.IsActive == true && c.Status == "ACTIVE")
+            .ToListAsync();
+
+        if (courts.Count != courtIds.Count)
+            return BadRequest(new { message = "Một hoặc nhiều sân không thuộc cơ sở này." });
+
+        var courtById = courts.ToDictionary(c => c.Id);
+
+        var normalizedItems = new List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)>();
+        foreach (var item in dto.Items)
+        {
+            if (item.EndTime <= item.StartTime)
+                return BadRequest(new { message = "Khung giờ không hợp lệ (end phải sau start)." });
+
+            if (!courtById.TryGetValue(item.CourtId, out var court))
+                return BadRequest(new { message = "Sân không hợp lệ." });
+
+            for (var slotStart = item.StartTime; slotStart < item.EndTime; slotStart = slotStart.AddMinutes(30))
+            {
+                var slotEnd = slotStart.AddMinutes(30);
+                if (slotEnd > item.EndTime)
+                    return BadRequest(new { message = "Mỗi khung phải là bội số 30 phút." });
+
+                var price = ResolveSlotPrice(court.CourtPrices.ToList(), slotStart);
+                if (price == null)
+                    return BadRequest(new { message = $"Chưa cấu hình giá cho sân {court.Name} tại {slotStart:HH:mm}." });
+
+                normalizedItems.Add((item.CourtId, slotStart, slotEnd, price.Value));
+            }
+        }
+
         var minStart = normalizedItems.Min(x => x.Start);
         var maxEnd = normalizedItems.Max(x => x.End);
 
-        var c1 = await TryConflictBookingsAsync(normalizedItems, courtIds, minStart, maxEnd);
-        if (c1 != null)
-            return c1;
-        var c2 = await TryConflictBlocksAsync(normalizedItems, courtIds, minStart, maxEnd);
-        if (c2 != null)
-            return c2;
-        var c3 = await TryConflictHoldOthersAsync(dto.VenueId, normalizedItems, courtIds, minStart, maxEnd, null);
-        if (c3 != null)
-            return c3;
+        var existingItems = await _dbContext.BookingItems
+            .AsNoTracking()
+            .Include(bi => bi.Booking)
+            .Where(bi => bi.CourtId != null
+                         && courtIds.Contains(bi.CourtId.Value)
+                         && bi.StartTime < maxEnd && bi.EndTime > minStart
+                         && bi.Booking != null && bi.Booking.Status != "CANCELLED")
+            .ToListAsync();
+
+        foreach (var bi in existingItems)
+        {
+            foreach (var ni in normalizedItems)
+            {
+                if (ni.CourtId != bi.CourtId || bi.StartTime == null || bi.EndTime == null)
+                    continue;
+                if (bi.StartTime < ni.End && bi.EndTime > ni.Start)
+                    return Conflict(new { message = "Một hoặc nhiều khung giờ vừa được người khác đặt. Vui lòng chọn lại." });
+            }
+        }
+
+        var blocks = await _dbContext.CourtBlocks
+            .AsNoTracking()
+            .Where(b => b.CourtId != null && courtIds.Contains(b.CourtId.Value)
+                                            && b.StartTime < maxEnd && b.EndTime > minStart)
+            .ToListAsync();
+
+        foreach (var b in blocks)
+        {
+            foreach (var ni in normalizedItems)
+            {
+                if (ni.CourtId != b.CourtId || b.StartTime == null || b.EndTime == null)
+                    continue;
+                if (b.StartTime < ni.End && b.EndTime > ni.Start)
+                    return Conflict(new { message = "Một số khung giờ đang bị khóa bởi chủ sân." });
+            }
+        }
 
         var total = normalizedItems.Sum(x => x.Price);
 
@@ -173,6 +216,9 @@ public partial class BookingsController : ControllerBase
 
         foreach (var ni in normalizedItems)
         {
+            if (!courtById.TryGetValue(ni.CourtId, out var court))
+                continue;
+
             booking.BookingItems.Add(new BookingItem
             {
                 Id = Guid.NewGuid(),
@@ -250,9 +296,8 @@ public partial class BookingsController : ControllerBase
                     .Select(p => p.Method)
                     .FirstOrDefault(),
                 HasValidPaymentProof = b.Payments.Any(p =>
-                    (p.GatewayReference != null && p.GatewayReference.StartsWith("https"))
-                    || (p.Method != null && p.Method.Equals("VNPAY", StringComparison.OrdinalIgnoreCase)
-                        && p.Status != null && p.Status.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase))),
+                    p.GatewayReference != null
+                    && p.GatewayReference.StartsWith("https")),
                 Items = b.BookingItems.Select(bi => new
                 {
                     bi.Id,
@@ -383,11 +428,8 @@ public partial class BookingsController : ControllerBase
 
         var lastPay = booking.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
         var hasProof = lastPay != null
-                       && ((!string.IsNullOrEmpty(lastPay.GatewayReference)
-                            && lastPay.GatewayReference.StartsWith("https", StringComparison.OrdinalIgnoreCase))
-                           || (lastPay.Method != null && lastPay.Method.Equals("VNPAY", StringComparison.OrdinalIgnoreCase)
-                               && lastPay.Status != null
-                               && lastPay.Status.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase)));
+                       && !string.IsNullOrEmpty(lastPay.GatewayReference)
+                       && lastPay.GatewayReference.StartsWith("https", StringComparison.OrdinalIgnoreCase);
 
         var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
 
@@ -477,14 +519,6 @@ public partial class BookingsController : ControllerBase
             .Where(p => p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(p => p.CreatedAt)
             .FirstOrDefault();
-
-        if (existingPending != null
-            && existingPending.Method != null
-            && existingPending.Method.Equals("VNPAY", StringComparison.OrdinalIgnoreCase)
-            && (existingPending.Status == null || existingPending.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase)))
-        {
-            return BadRequest(new { message = "Bạn đã chọn thanh toán VNPay. Vui lòng hoàn tất trên cổng VNPay hoặc đợi kết quả giao dịch." });
-        }
 
         if (existingPending != null
             && !string.IsNullOrEmpty(existingPending.GatewayReference)

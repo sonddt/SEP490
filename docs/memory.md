@@ -48,9 +48,7 @@
    - Thêm bảng `user_notifications` (kèm index `idx_user_notifications_user_created`).
    - Thêm `DROP TABLE IF EXISTS user_notifications` ở phần reset DB.
 2. Xoá file migration rời `Database/migrations_venue_checkout_notifications.sql` theo yêu cầu để chỉ cần chạy `Database.txt` một lần.
-3. **Giữ chỗ (hold) + VNPay (hybrid CK):** Bảng `booking_holds` / `booking_hold_items`; API `POST /api/bookings/hold`, `GET/DELETE /api/bookings/hold/{id}`; `POST /bookings` nhận `holdId`; job `BookingHoldExpiryHostedService` (30s) đánh dấu `EXPIRED`. VNPay: `POST /api/bookings/{id}/vnpay/create-url`, `GET /api/payments/vnpay/return|ipn`; cấu hình `Vnpay` + `App:BackendPublicUrl` trong appsettings. Frontend: bước xác nhận gọi hold trước khi sang thanh toán; thanh toán có thêm lựa chọn VNPay.
-
-4. Sửa compile backend cho Notifications:
+3. Sửa compile backend cho Notifications:
    - Bổ sung `DbSet<UserNotification>` và map `modelBuilder.Entity<UserNotification>` trong `ShuttleUpDbContext`.
    - Bổ sung navigation `ICollection<UserNotification>` trong model `User`.
    - Kết quả: `dotnet build ShuttleUp.Backend` thành công (0 errors).
