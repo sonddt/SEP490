@@ -500,6 +500,10 @@ export default function BookingTimeline() {
     });
   };
 
+  const handleClearSelections = () => {
+    setSelections({});
+  };
+
   // ── Render ───────────────────────────────────────────────────────────────
   // paddingTop: 96px compensates for the fixed site navbar
   return (
@@ -704,18 +708,36 @@ export default function BookingTimeline() {
             Tổng tiền: <strong style={{ color: '#16a34a', fontSize: '16px' }}>{totalPrice.toLocaleString('vi-VN')} VNĐ</strong>
           </span>
         </div>
-        <button
-          disabled={totalSlots === 0}
-          onClick={handleNext}
-          style={{
-            backgroundColor: totalSlots > 0 ? '#eab308' : '#d1d5db',
-            color: '#fff', border: 'none', borderRadius: '8px',
-            fontSize: '15px', letterSpacing: '0.5px', padding: '10px 40px',
-            cursor: totalSlots > 0 ? 'pointer' : 'not-allowed',
-          }}
-        >
-          TIẾP THEO
-        </button>
+        <div className="d-flex align-items-center gap-2">
+          <button
+            type="button"
+            disabled={totalSlots === 0}
+            onClick={handleClearSelections}
+            style={{
+              backgroundColor: totalSlots > 0 ? '#ef4444' : '#fecaca',
+              color: '#fff',
+              border: `1px solid ${totalSlots > 0 ? '#dc2626' : '#fecaca'}`,
+              borderRadius: '8px',
+              fontSize: '14px',
+              padding: '10px 16px',
+              cursor: totalSlots > 0 ? 'pointer' : 'not-allowed',
+            }}
+          >
+            XÓA TẤT CẢ
+          </button>
+          <button
+            disabled={totalSlots === 0}
+            onClick={handleNext}
+            style={{
+              backgroundColor: totalSlots > 0 ? '#eab308' : '#d1d5db',
+              color: '#fff', border: 'none', borderRadius: '8px',
+              fontSize: '15px', letterSpacing: '0.5px', padding: '10px 40px',
+              cursor: totalSlots > 0 ? 'pointer' : 'not-allowed',
+            }}
+          >
+            TIẾP THEO
+          </button>
+        </div>
       </div>
 
       {/* ── Calendar Popup ─────────────────────────────────────────────── */}
