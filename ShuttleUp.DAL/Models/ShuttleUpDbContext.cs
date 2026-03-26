@@ -757,6 +757,9 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.IsRead)
                 .HasDefaultValueSql("'0'")
                 .HasColumnName("is_read");
+            entity.Property(e => e.IsDeleted)
+                .HasDefaultValueSql("'0'")
+                .HasColumnName("is_deleted");
             entity.Property(e => e.MetadataJson)
                 .HasColumnType("text")
                 .HasColumnName("metadata_json");

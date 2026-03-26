@@ -247,6 +247,7 @@ CREATE TABLE user_notifications (
     body TEXT NULL,
     metadata_json TEXT NULL,
     is_read TINYINT(1) NOT NULL DEFAULT 0,
+    is_deleted TINYINT(1) NOT NULL DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_user_notifications_user_created (user_id, created_at),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -823,6 +824,18 @@ SET @sql := IF(
   'SELECT 1'
 );
 
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- is_deleted trên user_notifications (ẩn khỏi API, không xóa cứng)
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'user_notifications' AND column_name = 'is_deleted'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE user_notifications ADD COLUMN is_deleted TINYINT(1) NOT NULL DEFAULT 0',
+  'SELECT 1');
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;

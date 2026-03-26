@@ -54,6 +54,8 @@ public class NotificationDispatchService : INotificationDispatchService
         _db.UserNotifications.Add(entity);
         await _db.SaveChangesAsync(cancellationToken);
 
+        Guid? bookingIdFromMeta = TryGetBookingId(metaJson);
+
         var group = $"user-{userId}";
         await _hub.Clients.Group(group).SendAsync(
             "notification",
@@ -64,6 +66,7 @@ public class NotificationDispatchService : INotificationDispatchService
                 title = entity.Title,
                 body = entity.Body,
                 createdAt = entity.CreatedAt,
+                bookingId = bookingIdFromMeta,
             },
             cancellationToken);
 
@@ -97,5 +100,25 @@ public class NotificationDispatchService : INotificationDispatchService
         {
             _logger.LogWarning(ex, "Gửi email thông báo thất bại cho {UserId}", userId);
         }
+    }
+
+    private static Guid? TryGetBookingId(string? metaJson)
+    {
+        if (string.IsNullOrWhiteSpace(metaJson))
+            return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(metaJson);
+            if (!doc.RootElement.TryGetProperty("bookingId", out var p))
+                return null;
+            if (p.ValueKind == JsonValueKind.String && Guid.TryParse(p.GetString(), out var g))
+                return g;
+        }
+        catch
+        {
+            /* ignore */
+        }
+
+        return null;
     }
 }

@@ -3,6 +3,8 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ShuttleUp.Backend.Constants;
+using ShuttleUp.Backend.Helpers;
 using ShuttleUp.Backend.Services.Interfaces;
 using ShuttleUp.DAL.Models;
 
@@ -203,10 +205,16 @@ public class ManagerBookingsController : ControllerBase
 
             await _notify.NotifyUserAsync(
                 playerId,
-                "BOOKING",
+                NotificationTypes.Booking,
                 title,
                 body,
-                new { bookingId = booking.Id, status = booking.Status },
+                new
+                {
+                    bookingId = booking.Id,
+                    status = booking.Status,
+                    entityType = "booking",
+                    deepLink = $"/user/bookings?bookingId={booking.Id}",
+                },
                 sendEmail: true,
                 bookingStatusPayload: new
                 {

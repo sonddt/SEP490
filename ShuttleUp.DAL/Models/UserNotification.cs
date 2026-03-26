@@ -18,6 +18,8 @@ public partial class UserNotification
 
     public bool IsRead { get; set; }
 
+    public bool IsDeleted { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public virtual User? User { get; set; }

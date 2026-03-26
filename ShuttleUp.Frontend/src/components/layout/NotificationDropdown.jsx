@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getNotifications, markNotificationRead } from '../../api/notificationsApi';
 import { useUnreadNotificationCount } from '../../hooks/useUnreadNotificationCount';
 import { refreshNotificationBadge } from '../../utils/appToast';
+import { getNotificationTargetPath } from '../../utils/notificationNavigation';
 
 function formatTime(iso) {
   if (!iso) return '';
@@ -14,6 +15,7 @@ function formatTime(iso) {
 
 export default function NotificationDropdown({ open, onToggle, onClose, iconColor = '#555', iconSize = 19 }) {
   const ref = useRef(null);
+  const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const { count: unreadCount, refresh: refreshCount } = useUnreadNotificationCount();
   const [items, setItems] = useState([]);
@@ -26,8 +28,8 @@ export default function NotificationDropdown({ open, onToggle, onClose, iconColo
     if (!isAuthenticated) return;
     setLoading(true);
     try {
-      const rows = await getNotifications({ take: 8 });
-      setItems(Array.isArray(rows) ? rows : []);
+      const { items } = await getNotifications({ take: 8 });
+      setItems(Array.isArray(items) ? items : []);
     } catch {
       setItems([]);
     } finally {
@@ -50,14 +52,22 @@ export default function NotificationDropdown({ open, onToggle, onClose, iconColo
   }, [open, onClose]);
 
   const handleClickItem = async (n) => {
-    if (!n?.id || n.isRead) return;
-    try {
-      await markNotificationRead(n.id);
-      setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
-      refreshCount();
-      refreshNotificationBadge();
-    } catch {
-      /* ignore */
+    if (!n?.id) return;
+    const isManager = user?.roles?.includes('MANAGER');
+    const path = getNotificationTargetPath(n.metadataJson, !!isManager);
+    if (!n.isRead) {
+      try {
+        await markNotificationRead(n.id);
+        setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
+        refreshCount();
+        refreshNotificationBadge();
+      } catch {
+        /* ignore */
+      }
+    }
+    if (path) {
+      onClose();
+      navigate(path);
     }
   };
 

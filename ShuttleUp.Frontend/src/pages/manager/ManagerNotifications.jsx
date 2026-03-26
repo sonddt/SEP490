@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  deleteNotification,
 } from '../../api/notificationsApi';
 import { refreshNotificationBadge } from '../../utils/appToast';
+import { getNotificationTargetPath } from '../../utils/notificationNavigation';
 
 const typeIcon = {
   BOOKING: { icon: 'feather-calendar', color: '#2563eb', bg: '#eff6ff' },
@@ -20,18 +23,28 @@ function formatTime(iso) {
   return d.toLocaleString('vi-VN');
 }
 
+const PAGE_SIZE = 20;
+
 export default function ManagerNotifications() {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [nextBefore, setNextBefore] = useState(null);
   const [filterTab, setFilterTab] = useState('all');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const rows = await getNotifications({ take: 100 });
-      setNotifications(Array.isArray(rows) ? rows : []);
+      const res = await getNotifications({ take: PAGE_SIZE });
+      setNotifications(res.items);
+      setHasMore(res.hasMore);
+      setNextBefore(res.nextBefore);
     } catch {
       setNotifications([]);
+      setHasMore(false);
+      setNextBefore(null);
     } finally {
       setLoading(false);
     }
@@ -40,6 +53,21 @@ export default function ManagerNotifications() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const loadMore = async () => {
+    if (!nextBefore || !hasMore || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await getNotifications({ take: PAGE_SIZE, before: nextBefore });
+      setNotifications((prev) => [...prev, ...res.items]);
+      setHasMore(res.hasMore);
+      setNextBefore(res.nextBefore);
+    } catch {
+      /* ignore */
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.isRead).length,
@@ -74,10 +102,25 @@ export default function ManagerNotifications() {
     }
   };
 
-  const markRead = async (id) => {
+  const handleOpen = async (n) => {
+    if (!n.isRead) {
+      try {
+        await markNotificationRead(n.id);
+        setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
+        refreshNotificationBadge();
+      } catch {
+        /* ignore */
+      }
+    }
+    const path = getNotificationTargetPath(n.metadataJson, true);
+    if (path) navigate(path);
+  };
+
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
     try {
-      await markNotificationRead(id);
-      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+      await deleteNotification(id);
+      setNotifications((prev) => prev.filter((x) => x.id !== id));
       refreshNotificationBadge();
     } catch {
       /* ignore */
@@ -126,54 +169,79 @@ export default function ManagerNotifications() {
             <p className="text-muted mt-3 mb-0">Không có thông báo nào</p>
           </div>
         ) : (
-          <div className="list-group list-group-flush">
-            {filtered.map((n) => {
-              const ti = typeIcon[n.type] || typeIcon.SYSTEM;
-              return (
-                <div
-                  key={n.id}
-                  className="list-group-item border-0"
-                  style={{
-                    padding: '14px 20px',
-                    background: n.isRead ? '#fff' : '#f8fbff',
-                    cursor: n.isRead ? 'default' : 'pointer',
-                    borderBottom: '1px solid #f1f5f9',
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => !n.isRead && markRead(n.id)}
-                  onKeyDown={(e) => e.key === 'Enter' && !n.isRead && markRead(n.id)}
-                >
-                  <div className="d-flex gap-3 align-items-start">
-                    <div style={{
-                      width: 40, height: 40, borderRadius: '50%',
-                      background: ti.bg, display: 'flex',
-                      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          <>
+            <div className="list-group list-group-flush">
+              {filtered.map((n) => {
+                const ti = typeIcon[n.type] || typeIcon.SYSTEM;
+                const hasTarget = !!getNotificationTargetPath(n.metadataJson, true);
+                return (
+                  <div
+                    key={n.id}
+                    className="list-group-item border-0"
+                    style={{
+                      padding: '14px 20px',
+                      background: n.isRead ? '#fff' : '#f8fbff',
+                      cursor: hasTarget || !n.isRead ? 'pointer' : 'default',
+                      borderBottom: '1px solid #f1f5f9',
                     }}
-                    >
-                      <i className={ti.icon} style={{ fontSize: 17, color: ti.color }} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="d-flex justify-content-between align-items-start gap-2">
-                        <div>
-                          <strong style={{ fontSize: 14, color: '#1e293b' }}>{n.title}</strong>
-                          {n.body && (
-                            <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>{n.body}</p>
-                          )}
-                        </div>
-                        <span style={{ fontSize: 11, color: '#94a3b8', whiteSpace: 'nowrap' }}>
-                          {formatTime(n.createdAt)}
-                        </span>
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleOpen(n)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleOpen(n)}
+                  >
+                    <div className="d-flex gap-3 align-items-start">
+                      <div style={{
+                        width: 40, height: 40, borderRadius: '50%',
+                        background: ti.bg, display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                      }}
+                      >
+                        <i className={ti.icon} style={{ fontSize: 17, color: ti.color }} />
                       </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="d-flex justify-content-between align-items-start gap-2">
+                          <div>
+                            <strong style={{ fontSize: 14, color: '#1e293b' }}>{n.title}</strong>
+                            {n.body && (
+                              <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>{n.body}</p>
+                            )}
+                          </div>
+                          <span style={{ fontSize: 11, color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                            {formatTime(n.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                      {!n.isRead && (
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#2563eb', flexShrink: 0, marginTop: 6 }} />
+                      )}
+                      <button
+                        type="button"
+                        className="btn btn-link text-muted p-0"
+                        style={{ flexShrink: 0, fontSize: 16, lineHeight: 1 }}
+                        title="Ẩn thông báo"
+                        aria-label="Ẩn thông báo"
+                        onClick={(e) => handleDelete(e, n.id)}
+                      >
+                        <i className="feather-trash-2" />
+                      </button>
                     </div>
-                    {!n.isRead && (
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#2563eb', flexShrink: 0, marginTop: 6 }} />
-                    )}
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+            {hasMore && (
+              <div className="card-body text-center border-top py-3">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary btn-sm"
+                  disabled={loadingMore}
+                  onClick={loadMore}
+                >
+                  {loadingMore ? 'Đang tải…' : 'Xem thêm'}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </>

@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ShuttleUp.BLL.DTOs.Booking;
 using ShuttleUp.Backend.BookingForms;
+using ShuttleUp.Backend.Constants;
+using ShuttleUp.Backend.Helpers;
 using ShuttleUp.Backend.Services.Interfaces;
 using ShuttleUp.DAL.Models;
 
@@ -279,10 +281,10 @@ public class BookingsController : ControllerBase
             {
                 await _notify.NotifyUserAsync(
                     oid,
-                    "BOOKING_NEW",
+                    NotificationTypes.BookingNew,
                     "Có đơn đặt sân mới",
                     $"Mã {code} — {dto.ContactName.Trim()} — {total:N0} VNĐ.",
-                    new { bookingId = booking.Id, venueId = dto.VenueId },
+                    NotificationMetadataBuilder.BookingForManager(booking.Id, dto.VenueId),
                     sendEmail: true);
             }
             catch
@@ -589,10 +591,10 @@ public class BookingsController : ControllerBase
             {
                 await _notify.NotifyUserAsync(
                     mgrId,
-                    "PAYMENT_PROOF",
+                    NotificationTypes.PaymentProof,
                     "Có minh chứng thanh toán mới",
                     $"Đơn {bookingCode} vừa có ảnh chứng từ từ người chơi.",
-                    new { bookingId = booking.Id, venueId = booking.VenueId },
+                    NotificationMetadataBuilder.BookingForManager(booking.Id, booking.VenueId),
                     sendEmail: false);
             }
             catch

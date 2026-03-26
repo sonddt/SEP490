@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { BOOKING_STATUSES, PAYMENT_METHODS } from '../../data/bookingsMock';
 import { getManagerBookings, patchManagerBookingStatus } from '../../api/managerBookingsApi';
 import BookingDetailModal from '../../components/manager/BookingDetailModal';
@@ -150,6 +151,7 @@ function ProofThumb({ img }) {
 
 /* ═══ MAIN ═══════════════════════════════════════════════════════════════ */
 export default function ManagerBookings() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings]   = useState([]);
   const [loading, setLoading]     = useState(true);
   const [activeTab, setActiveTab] = useState('PENDING');
@@ -191,6 +193,32 @@ export default function ManagerBookings() {
   useEffect(() => {
     fetchBookings(true);
   }, [fetchBookings]);
+
+  useEffect(() => {
+    const bid = searchParams.get('bookingId');
+    if (!bid || loading || bookings.length === 0) return;
+    const norm = String(bid).toLowerCase();
+    const found = bookings.find(
+      (b) => String(b.bookingId || b.id).toLowerCase() === norm,
+    );
+    if (!found) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('bookingId');
+      setSearchParams(next, { replace: true });
+      return;
+    }
+    setActiveTab(found.status);
+    setDetailModal(found);
+    setPage(1);
+    const next = new URLSearchParams(searchParams);
+    next.delete('bookingId');
+    setSearchParams(next, { replace: true });
+    requestAnimationFrame(() => {
+      const id = found.bookingId || found.id;
+      const el = document.querySelector(`[data-manager-booking-row="${id}"]`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }, [bookings, loading, searchParams, setSearchParams]);
 
   useEffect(() => { setPage(1); }, [activeTab, search, timeFilter, sortBy]);
 
@@ -412,7 +440,7 @@ export default function ManagerBookings() {
                   const st = BOOKING_STATUSES[b.status] || BOOKING_STATUSES.PENDING;
                   const pm = PAYMENT_METHODS[b.paymentMethod] || PAYMENT_METHODS.CASH;
                   return (
-                    <tr key={b.id}>
+                    <tr key={b.id} data-manager-booking-row={b.bookingId || b.id}>
                       {/* Court */}
                       <td>
                         <h2 className="table-avatar">

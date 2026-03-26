@@ -58,3 +58,10 @@
    - Frontend: `useAppNotificationsHub` trong `App.jsx`, trang `/user/notifications`, dropdown Header, `ManagerNotifications` dùng API thật (không mock), badge/chấm đỏ sidebar & topbar manager theo `useUnreadNotificationCount`, menu user có mục Thông báo.
 
 8. Fix 500 `Unknown column PaymentBankName / CancelAllowed`: EF map thiếu `HasColumnName` snake_case cho các field thanh toán + huỷ trên `Venue` và `CancellationPolicySnapshotJson` trên `Booking` trong `ShuttleUpDbContext`. Thêm block migration có điều kiện ở cuối `Database.txt` để DB cũ tự thêm cột `venues.*` và `bookings.cancellation_policy_snapshot_json` — chạy script (hoặc đoạn migration đó) trên MySQL đang dùng.
+
+9. Nâng cấp Notification (Mar 2026):
+   - Deep link: metadata có `deepLink` + `NotificationMetadataBuilder` (manager/player); click dropdown/list → điều hướng; `/user/bookings` và `/manager/bookings` đọc `?bookingId=` để mở modal đúng đơn.
+   - Hằng số loại: `NotificationTypes` (C#) + `constants/notificationTypes.js`.
+   - API `GET /notifications` trả `{ items, hasMore, nextBefore }` + query `before` (cursor); soft delete `is_deleted` + `DELETE /api/notifications/{id}`.
+   - SignalR payload thêm `bookingId` từ metadata; toast debounce ~4.5s theo booking/id; xóa hook `useBookingNotificationsHub.js` dư.
+   - Fix: `getNotifications` không được destructure `data` từ `axiosClient` (interceptor đã trả về body) — trước đây danh sách luôn rỗng dù unread-count đúng.

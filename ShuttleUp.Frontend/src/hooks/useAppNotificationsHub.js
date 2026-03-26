@@ -9,12 +9,21 @@ function hubBaseUrl() {
   return `${origin}/hubs/notifications`;
 }
 
+function toastDedupeKey(kind, payload) {
+  const bid = payload?.bookingId;
+  if (bid) return `booking:${bid}`;
+  if (kind === 'notification' && payload?.id) return `n:${payload.id}`;
+  return `${kind}:${payload?.title ?? ''}:${payload?.body ?? ''}`;
+}
+
 /**
  * SignalR: nhận `notification` (mọi loại) và `bookingStatus` (đơn đặt sân).
+ * Gộp toast trùng (cùng booking / cùng id) trong vài giây để tránh spam.
  */
 export function useAppNotificationsHub() {
   const { isAuthenticated } = useAuth();
   const connRef = useRef(null);
+  const lastToastRef = useRef({ key: '', at: 0 });
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -39,7 +48,21 @@ export function useAppNotificationsHub() {
 
     connRef.current = connection;
 
+    const shouldShowToast = (key) => {
+      const now = Date.now();
+      if (lastToastRef.current.key === key && now - lastToastRef.current.at < 4500) {
+        return false;
+      }
+      lastToastRef.current = { key, at: now };
+      return true;
+    };
+
     connection.on('notification', (payload) => {
+      const key = toastDedupeKey('notification', payload);
+      if (!shouldShowToast(key)) {
+        refreshNotificationBadge();
+        return;
+      }
       const title = payload?.title || 'Thông báo';
       const body = payload?.body || '';
       showAppToast('info', body ? `${title} — ${body}` : title, 6000);
@@ -47,6 +70,11 @@ export function useAppNotificationsHub() {
     });
 
     connection.on('bookingStatus', (payload) => {
+      const key = toastDedupeKey('bookingStatus', payload);
+      if (!shouldShowToast(key)) {
+        refreshNotificationBadge();
+        return;
+      }
       const title = payload?.title || 'Cập nhật đơn đặt sân';
       const body = payload?.body || '';
       showAppToast('success', body ? `${title} — ${body}` : title, 7000);
