@@ -121,6 +121,14 @@ function slotLocalBounds(dateStr, slotIndex) {
   return { start, end };
 }
 
+function isSameLocalDate(dateA, dateB) {
+  return (
+    dateA.getFullYear() === dateB.getFullYear()
+    && dateA.getMonth() === dateB.getMonth()
+    && dateA.getDate() === dateB.getDate()
+  );
+}
+
 function parseApiTimeToMinutes(v) {
   if (v == null) return 0;
   const s = String(v);
@@ -338,7 +346,16 @@ export default function BookingTimeline() {
   const getBookingAt = (courtId, slotIndex) =>
     existingBookings.find(b => b.courtId === courtId && slotIndex >= b.startIndex && slotIndex < b.endIndex);
 
+  const isPastSlot = (slotIndex) => {
+    const now = new Date();
+    const { end } = slotLocalBounds(selectedDate, slotIndex);
+    // Chỉ khóa "slot đã qua" trong ngày hiện tại; các ngày tương lai vẫn chọn bình thường.
+    if (!isSameLocalDate(end, now)) return false;
+    return end.getTime() <= now.getTime();
+  };
+
   const getCellStatus = (courtId, slotIndex) => {
+    if (isPastSlot(slotIndex)) return { status: 'past' };
     const booking = getBookingAt(courtId, slotIndex);
     if (booking) return { status: booking.type, label: booking.label, isBlockStart: slotIndex === booking.startIndex };
     if (selections[courtId]?.has(slotIndex)) return { status: 'selected' };
@@ -445,6 +462,7 @@ export default function BookingTimeline() {
     switch (status) {
       case 'booked':   return '#ef4444';
       case 'locked':   return '#c084fc';
+      case 'past':     return '#d1d5db';
       case 'selected': return '#16a34a';
       default:         return '#ffffff';
     }
@@ -520,6 +538,7 @@ export default function BookingTimeline() {
         {[
           { color: '#ffffff', border: '#ccc', label: 'Trống' },
           { color: '#ef4444', label: 'Đã đặt' },
+          { color: '#d1d5db', label: 'Đã qua' },
           { color: '#9ca3af', label: 'Khoá' },
           { color: '#c084fc', label: 'Sự kiện' },
           { color: '#16a34a', label: 'Đang chọn' },
