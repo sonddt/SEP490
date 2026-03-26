@@ -72,6 +72,7 @@ function App() {
   const isAuthPage = authRoutes.includes(location.pathname);
   const isAdminPage = location.pathname.startsWith('/admin');
   const isManagerPage = location.pathname.startsWith('/manager');
+  const isBookingPage = location.pathname.startsWith('/booking');
 
   const showHeaderFooter = !isAuthPage && !isAdminPage && !isManagerPage;
 
@@ -193,7 +194,7 @@ function App() {
         </Routes>
       </div>
 
-      {showHeaderFooter && <Footer />}
+      {showHeaderFooter && !isBookingPage && <Footer />}
     </>
   );
 }

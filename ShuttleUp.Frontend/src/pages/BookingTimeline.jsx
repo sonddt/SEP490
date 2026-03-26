@@ -198,6 +198,10 @@ export default function BookingTimeline() {
   const navigate = useNavigate();
   const location  = useLocation();
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, []);
+
   // Venue info passed from VenueDetails
   const venueState = location.state ?? {};
   const venueName    = venueState.venueName    ?? 'Chọn sân';
