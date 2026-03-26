@@ -39,6 +39,8 @@ DROP TABLE IF EXISTS payments;
 DROP TABLE IF EXISTS user_notifications;
 
 -- BOOKING
+DROP TABLE IF EXISTS booking_hold_items;
+DROP TABLE IF EXISTS booking_holds;
 DROP TABLE IF EXISTS court_blocks;
 DROP TABLE IF EXISTS court_open_hours;
 DROP TABLE IF EXISTS booking_items;
@@ -215,6 +217,36 @@ CREATE TABLE court_open_hours (
     close_time TIME NULL,
     FOREIGN KEY (court_id) REFERENCES courts(id) ON DELETE CASCADE,
     UNIQUE KEY uq_court_open_hours (court_id, day_of_week)
+);
+
+-- ======================================================================
+-- BOOKING HOLDS (giữ chỗ server-side, có TTL)
+-- ======================================================================
+
+CREATE TABLE booking_holds (
+    id CHAR(36) PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    venue_id CHAR(36) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE|CONSUMED|EXPIRED|RELEASED',
+    expires_at DATETIME NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    cancellation_policy_snapshot_json TEXT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE,
+    INDEX idx_booking_holds_user_expires (user_id, expires_at),
+    INDEX idx_booking_holds_venue_status_expires (venue_id, status, expires_at)
+);
+
+CREATE TABLE booking_hold_items (
+    id CHAR(36) PRIMARY KEY,
+    hold_id CHAR(36) NOT NULL,
+    court_id CHAR(36) NOT NULL,
+    start_time DATETIME NOT NULL,
+    end_time DATETIME NOT NULL,
+    final_price DECIMAL(15,2) NOT NULL,
+    FOREIGN KEY (hold_id) REFERENCES booking_holds(id) ON DELETE CASCADE,
+    FOREIGN KEY (court_id) REFERENCES courts(id) ON DELETE CASCADE,
+    INDEX idx_hold_items_court_time (court_id, start_time, end_time)
 );
 
 -- ======================================================================
@@ -807,6 +839,25 @@ SET @sql := IF(
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- Thêm cột cancellation_policy_snapshot_json nếu chưa có (đồng bộ với model Booking / hold policy)
+SET @col_cps := (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'bookings'
+    AND column_name = 'cancellation_policy_snapshot_json'
+);
+
+SET @sql_cps := IF(
+  @col_cps = 0,
+  'ALTER TABLE bookings ADD COLUMN cancellation_policy_snapshot_json TEXT NULL',
+  'SELECT 1'
+);
+
+PREPARE stmt_cps FROM @sql_cps;
+EXECUTE stmt_cps;
+DEALLOCATE PREPARE stmt_cps;
 
 -- Sửa id payments mẫu cũ: prefix "g" không phải hex → EF đọc Guid lỗi 500 trên /api/manager/bookings
 UPDATE payments SET id = 'ba000001-0000-0000-0000-000000000001' WHERE id = 'g0000001-0000-0000-0000-000000000001';

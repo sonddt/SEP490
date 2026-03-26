@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import BookingSteps from '../components/booking/BookingSteps';
 import { useAuth } from '../context/AuthContext';
 import { profileApi } from '../api/profileApi';
+import { createBookingHold } from '../api/bookingApi';
 
 function formatDateVN(isoDate) {
   if (!isoDate) return '';
@@ -52,6 +53,7 @@ export default function BookingConfirm() {
     phone: !!(user?.phoneNumber && String(user.phoneNumber).trim()),
   });
   const [errors, setErrors] = useState({});
+  const [holdLoading, setHoldLoading] = useState(false);
 
   useEffect(() => {
     if (!localStorage.getItem('token')) return;
@@ -89,18 +91,58 @@ export default function BookingConfirm() {
     return e;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); return; }
-    navigate('/booking/payment', {
-      state: {
-        venueId, venueName, venueAddress, date,
-        selectedSlots, totalPrice, totalHours,
-        customerName:  form.name,
-        customerPhone: form.phone,
-        note:          form.note,
-      },
-    });
+
+    const items = (selectedSlots || [])
+      .filter((s) => s.courtId && s.startTime && s.endTime)
+      .map((s) => ({
+        courtId: s.courtId,
+        startTime: s.startTime,
+        endTime: s.endTime,
+      }));
+
+    if (items.length === 0) {
+      setErrors({ form: 'Không có khung giờ hợp lệ. Vui lòng quay lại bước chọn giờ.' });
+      return;
+    }
+
+    setHoldLoading(true);
+    setErrors({});
+    try {
+      const res = await createBookingHold({
+        venueId,
+        items,
+        holdMinutes: 15,
+      });
+      const holdId = res.holdId ?? res.HoldId;
+      const expiresAt = res.expiresAt ?? res.ExpiresAt;
+      navigate('/booking/payment', {
+        state: {
+          venueId,
+          venueName,
+          venueAddress,
+          date,
+          selectedSlots,
+          totalPrice,
+          totalHours,
+          customerName: form.name,
+          customerPhone: form.phone,
+          note: form.note,
+          holdId,
+          expiresAt,
+        },
+      });
+    } catch (err) {
+      const msg =
+        err.response?.data?.message
+        || err.response?.data?.Message
+        || 'Không giữ được chỗ. Có thể khung giờ vừa bị đặt — vui lòng chọn lại.';
+      setErrors({ form: msg });
+    } finally {
+      setHoldLoading(false);
+    }
   };
 
   return (
@@ -159,6 +201,9 @@ export default function BookingConfirm() {
               <section className="card booking-form mb-4">
                 <h3 className="border-bottom">Thông tin liên hệ</h3>
                 <form noValidate>
+                  {errors.form && (
+                    <p className="text-danger small mb-3">{errors.form}</p>
+                  )}
                   {user && (
                     <p className="text-muted small mb-3" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <i className="feather-user" style={{ color: 'var(--primary-color)' }} />
@@ -295,8 +340,13 @@ export default function BookingConfirm() {
                     type="button"
                     onClick={handleNext}
                     className="btn btn-secondary btn-icon"
+                    disabled={holdLoading}
                   >
-                    Tiếp theo <i className="feather-arrow-right-circle ms-1" />
+                    {holdLoading ? (
+                      <><span className="spinner-border spinner-border-sm me-2" role="status" />Đang giữ chỗ...</>
+                    ) : (
+                      <>Tiếp theo <i className="feather-arrow-right-circle ms-1" /></>
+                    )}
                   </button>
                 </div>
               </aside>
@@ -316,8 +366,13 @@ export default function BookingConfirm() {
               type="button"
               className="btn btn-secondary btn-icon"
               onClick={handleNext}
+              disabled={holdLoading}
             >
-              Tiếp theo <i className="feather-arrow-right-circle ms-1" />
+              {holdLoading ? (
+                <><span className="spinner-border spinner-border-sm me-2" />Đang giữ chỗ...</>
+              ) : (
+                <>Tiếp theo <i className="feather-arrow-right-circle ms-1" /></>
+              )}
             </button>
           </div>
 

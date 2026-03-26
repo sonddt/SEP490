@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-do
 import BookingSteps from '../components/booking/BookingSteps';
 import {
   createBooking,
+  createVnpayPaymentUrl,
   submitPayment,
   getVenueCheckoutSettings,
   getBookingPaymentContext,
@@ -15,7 +16,7 @@ const FALLBACK_BANK = {
   note: 'Nội dung CK: [SĐT] - [Tên sân] - [Ngày]',
 };
 
-const HOLD_SECONDS = 15 * 60;
+const HOLD_FALLBACK_SECONDS = 15 * 60;
 
 function formatDateVN(isoDate) {
   if (!isoDate) return '';
@@ -52,6 +53,7 @@ export default function BookingPayment() {
   const paramBookingId = searchParams.get('bookingId');
 
   const initial = location.state ?? {};
+  const initialHoldId = initial.holdId ?? null;
 
   const [pay, setPay] = useState({
     venueId: initial.venueId ?? null,
@@ -73,6 +75,7 @@ export default function BookingPayment() {
   const [checkoutSettings, setCheckoutSettings] = useState(null);
   const [loadingCheckout, setLoadingCheckout] = useState(false);
   const [error, setError] = useState('');
+  const [vnpaySuccessBanner, setVnpaySuccessBanner] = useState(false);
 
   const loadResume = useCallback(async () => {
     if (!paramBookingId) return;
@@ -181,23 +184,66 @@ export default function BookingPayment() {
 
   useEffect(() => () => { if (proofPreview) URL.revokeObjectURL(proofPreview); }, [proofPreview]);
 
-  const [secondsLeft, setSecondsLeft] = useState(HOLD_SECONDS);
+  const isResumeFlow = !!(paramBookingId || resumeBookingId);
+
+  const holdDeadlineMs = useMemo(() => {
+    if (isResumeFlow) return null;
+    if (initial.expiresAt) {
+      const t = new Date(initial.expiresAt).getTime();
+      return Number.isNaN(t) ? null : t;
+    }
+    return null;
+  }, [isResumeFlow, initial.expiresAt]);
+
+  const [secondsLeft, setSecondsLeft] = useState(() => {
+    if (initial.expiresAt) {
+      const t = new Date(initial.expiresAt).getTime();
+      if (!Number.isNaN(t)) return Math.max(0, Math.floor((t - Date.now()) / 1000));
+    }
+    return HOLD_FALLBACK_SECONDS;
+  });
   const [expired, setExpired] = useState(false);
-  const intervalRef = useRef(null);
 
   useEffect(() => {
-    intervalRef.current = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(intervalRef.current);
+    const id = setInterval(() => {
+      if (isResumeFlow) {
+        setSecondsLeft(HOLD_FALLBACK_SECONDS);
+        return;
+      }
+      if (holdDeadlineMs != null) {
+        const left = Math.max(0, Math.floor((holdDeadlineMs - Date.now()) / 1000));
+        setSecondsLeft(left);
+        setExpired(left <= 0);
+        return;
+      }
+      setSecondsLeft((s) => {
+        if (s <= 1) {
           setExpired(true);
           return 0;
         }
-        return prev - 1;
+        return s - 1;
       });
     }, 1000);
-    return () => clearInterval(intervalRef.current);
-  }, []);
+    return () => clearInterval(id);
+  }, [isResumeFlow, holdDeadlineMs]);
+
+  const vnpayHandledRef = useRef(false);
+  useEffect(() => {
+    const v = searchParams.get('vnpay');
+    if (!v || vnpayHandledRef.current) return;
+    if (v === '1') {
+      vnpayHandledRef.current = true;
+      setError('');
+      setVnpaySuccessBanner(true);
+      const bid = searchParams.get('bookingId');
+      navigate(`/booking/payment${bid ? `?bookingId=${encodeURIComponent(bid)}` : ''}`, { replace: true });
+    } else if (v === '0') {
+      vnpayHandledRef.current = true;
+      const code = searchParams.get('code');
+      setError(code ? `VNPay từ chối (mã ${code}). Bạn có thể thử lại hoặc chuyển khoản.` : 'Giao dịch VNPay không thành công.');
+      navigate('/booking/payment', { replace: true, state: location.state });
+    }
+  }, [searchParams, navigate, location.state]);
 
   const timerMins = Math.floor(secondsLeft / 60);
   const timerSecs = secondsLeft % 60;
@@ -215,10 +261,14 @@ export default function BookingPayment() {
   };
 
   const handleConfirm = async () => {
-    if (!proofFile) { setError('Vui lòng upload ảnh minh chứng chuyển khoản.'); return; }
     if (!agreed) { setError('Vui lòng đồng ý với điều khoản dịch vụ.'); return; }
-    if (expired) { setError('Thời gian giữ chỗ đã hết. Vui lòng đặt lại.'); return; }
+    if (expired && !isResumeFlow) { setError('Thời gian giữ chỗ đã hết. Vui lòng đặt lại.'); return; }
     if (!pay.venueId) { setError('Thiếu thông tin cơ sở. Vui lòng chọn sân lại.'); return; }
+
+    if (method !== 'vnpay' && !proofFile) {
+      setError('Vui lòng upload ảnh minh chứng chuyển khoản.');
+      return;
+    }
 
     setError('');
     setLoading(true);
@@ -231,27 +281,31 @@ export default function BookingPayment() {
       if (resumeBookingId) {
         /* Thanh toán lại — chỉ upload CK */
       } else {
-        const items = (pay.selectedSlots || [])
-          .filter(s => s.courtId && s.startTime && s.endTime)
-          .map(s => ({
-            courtId: s.courtId,
-            startTime: s.startTime,
-            endTime: s.endTime,
-          }));
-
-        if (items.length === 0) {
-          setError('Không có khung giờ hợp lệ. Vui lòng quay lại chọn giờ.');
-          setLoading(false);
-          return;
-        }
-
-        const created = await createBooking({
+        const payload = {
           venueId: pay.venueId,
-          items,
           contactName: pay.customerName,
           contactPhone: pay.customerPhone,
           note: pay.note || undefined,
-        });
+        };
+        if (initialHoldId) {
+          payload.holdId = initialHoldId;
+        } else {
+          const items = (pay.selectedSlots || [])
+            .filter(s => s.courtId && s.startTime && s.endTime)
+            .map(s => ({
+              courtId: s.courtId,
+              startTime: s.startTime,
+              endTime: s.endTime,
+            }));
+          if (items.length === 0) {
+            setError('Không có khung giờ hợp lệ. Vui lòng quay lại chọn giờ.');
+            setLoading(false);
+            return;
+          }
+          payload.items = items;
+        }
+
+        const created = await createBooking(payload);
 
         bookingId = created.bookingId ?? created.BookingId;
         bookingCodeFromApi = created.bookingCode ?? created.BookingCode;
@@ -263,6 +317,24 @@ export default function BookingPayment() {
         }
       }
 
+      if (method === 'vnpay') {
+        try {
+          const vnp = await createVnpayPaymentUrl(bookingId);
+          const payUrl = vnp.payUrl ?? vnp.PayUrl;
+          if (!payUrl) {
+            setError('Không tạo được link VNPay. Kiểm tra cấu hình VNPay trên server.');
+            setLoading(false);
+            return;
+          }
+          window.location.href = payUrl;
+        } catch (ve) {
+          const msg = ve.response?.data?.message || ve.response?.data?.Message || 'Không tạo được link VNPay.';
+          setError(msg);
+          setLoading(false);
+        }
+        return;
+      }
+
       const formData = new FormData();
       formData.append('method', method === 'qr' ? 'QR' : 'BANK');
       formData.append('proofImage', proofFile);
@@ -271,7 +343,6 @@ export default function BookingPayment() {
       const bookingCode = payRes.bookingCode ?? bookingCodeFromApi ?? `SU${String(bookingId).slice(-6)}`;
 
       setLoading(false);
-      clearInterval(intervalRef.current);
 
       navigateComplete({
         venueId: pay.venueId,
@@ -360,6 +431,18 @@ export default function BookingPayment() {
 
       <div className="content">
         <div className="container">
+
+          {vnpaySuccessBanner && (
+            <div className="alert alert-success border-0 shadow-sm mb-3" style={{ borderRadius: 12 }}>
+              Tuyệt vời — thanh toán VNPay đã ghi nhận. Đơn của bạn đang chờ chủ sân duyệt trong 1–24 giờ.
+              <button
+                type="button"
+                className="btn-close float-end"
+                aria-label="Đóng"
+                onClick={() => setVnpaySuccessBanner(false)}
+              />
+            </div>
+          )}
 
           <div
             className="d-flex align-items-center justify-content-center gap-3 rounded p-3 mb-4"
@@ -478,6 +561,7 @@ export default function BookingPayment() {
                   {[
                     { id: 'bank', label: 'Chuyển khoản ngân hàng', icon: 'feather-credit-card' },
                     { id: 'qr', label: 'Quét mã QR (VietQR)', icon: 'feather-smartphone' },
+                    { id: 'vnpay', label: 'Ví VNPay (thẻ / app ngân hàng)', icon: 'feather-external-link' },
                   ].map(pm => (
                     <div key={pm.id} className="form-check mb-2">
                       <input
@@ -496,6 +580,12 @@ export default function BookingPayment() {
                     </div>
                   ))}
                 </div>
+
+                {method === 'vnpay' && (
+                  <p className="small text-muted mb-3">
+                    Bạn sẽ được chuyển sang cổng thanh toán VNPay. Sau khi thanh toán thành công, hệ thống ghi nhận tự động — không cần upload ảnh CK.
+                  </p>
+                )}
 
                 <div
                   className="rounded p-3 mb-3"
@@ -517,6 +607,11 @@ export default function BookingPayment() {
                       <p className="mb-1"><strong>Chủ TK:</strong> {bankInfo.name}</p>
                       <p className="mb-1"><strong>Số tiền:</strong> <span className="primary-text fw-semibold">{totalPrice.toLocaleString('vi-VN')} VNĐ</span></p>
                       <p className="mb-0 text-muted">{bankInfo.note}</p>
+                    </div>
+                  )}
+                  {method === 'vnpay' && (
+                    <div className="small text-muted">
+                      Nhấn nút bên dưới để tạo đơn (nếu chưa có) và mở trang thanh toán VNPay.
                     </div>
                   )}
                   {method === 'qr' && (
@@ -542,7 +637,7 @@ export default function BookingPayment() {
                   )}
                 </div>
 
-                <div className="mb-3">
+                <div className="mb-3" hidden={method === 'vnpay'}>
                   <label className="form-label fw-semibold d-flex align-items-center gap-2">
                     <i className="feather-image text-primary" />
                     Ảnh minh chứng chuyển khoản <span className="text-danger">*</span>
@@ -650,7 +745,9 @@ export default function BookingPayment() {
                   >
                     {loading
                       ? <><span className="spinner-border spinner-border-sm me-2" />Đang xử lý...</>
-                      : (resumeBookingId ? `Gửi minh chứng — ${totalPrice.toLocaleString('vi-VN')} VNĐ` : `Xác nhận đặt sân — ${totalPrice.toLocaleString('vi-VN')} VNĐ`)
+                      : (method === 'vnpay'
+                        ? `Thanh toán VNPay — ${totalPrice.toLocaleString('vi-VN')} VNĐ`
+                        : (resumeBookingId ? `Gửi minh chứng — ${totalPrice.toLocaleString('vi-VN')} VNĐ` : `Xác nhận đặt sân — ${totalPrice.toLocaleString('vi-VN')} VNĐ`))
                     }
                   </button>
                 </div>

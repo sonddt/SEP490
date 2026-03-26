@@ -57,6 +57,8 @@ namespace ShuttleUp.Backend
             builder.Services.AddScoped<IPaymentService, PaymentService>();
             builder.Services.AddScoped<IMatchingService, MatchingService>();
             builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("Cloudinary"));
+            builder.Services.Configure<VnpayOptions>(builder.Configuration.GetSection("Vnpay"));
+            builder.Services.AddHostedService<ShuttleUp.Backend.Services.BookingHoldExpiryHostedService>();
             builder.Services.AddSingleton(sp =>
             {
                 var settings = sp.GetRequiredService<IOptions<CloudinarySettings>>().Value;

@@ -23,6 +23,8 @@ public partial class Court
 
     public virtual ICollection<BookingItem> BookingItems { get; set; } = new List<BookingItem>();
 
+    public virtual ICollection<BookingHoldItem> BookingHoldItems { get; set; } = new List<BookingHoldItem>();
+
     public virtual ICollection<CourtBlock> CourtBlocks { get; set; } = new List<CourtBlock>();
 
     public virtual ICollection<CourtOpenHour> CourtOpenHours { get; set; } = new List<CourtOpenHour>();
