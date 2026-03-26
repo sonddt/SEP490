@@ -52,3 +52,9 @@
    - Bổ sung `DbSet<UserNotification>` và map `modelBuilder.Entity<UserNotification>` trong `ShuttleUpDbContext`.
    - Bổ sung navigation `ICollection<UserNotification>` trong model `User`.
    - Kết quả: `dotnet build ShuttleUp.Backend` thành công (0 errors).
+
+7. Thông báo trong app (API + SignalR + UI):
+   - Backend: `NotificationDispatchService`, email HTML tùy chọn, endpoints `GET/PATCH /api/notifications`, tích hợp vào luồng booking/thanh toán.
+   - Frontend: `useAppNotificationsHub` trong `App.jsx`, trang `/user/notifications`, dropdown Header, `ManagerNotifications` dùng API thật (không mock), badge/chấm đỏ sidebar & topbar manager theo `useUnreadNotificationCount`, menu user có mục Thông báo.
+
+8. Fix 500 `Unknown column PaymentBankName / CancelAllowed`: EF map thiếu `HasColumnName` snake_case cho các field thanh toán + huỷ trên `Venue` và `CancellationPolicySnapshotJson` trên `Booking` trong `ShuttleUpDbContext`. Thêm block migration có điều kiện ở cuối `Database.txt` để DB cũ tự thêm cột `venues.*` và `bookings.cancellation_policy_snapshot_json` — chạy script (hoặc đoạn migration đó) trên MySQL đang dùng.

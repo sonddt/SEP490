@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 const menuItems = [
   { to: '/user/dashboard',  icon: 'dashboard-icon.svg', label: 'Trang chủ' },
   { to: '/user/bookings',   icon: 'booking-icon.svg',   label: 'Đặt sân của tôi' },
+  { to: '/user/notifications', icon: 'subscribe.svg',  label: 'Thông báo' },
   { to: '/user/chat',       icon: 'chat-icon.svg',      label: 'Trò chuyện' },
   { to: '/user/favorites', icon: 'court-icon.svg',     label: 'Sân yêu thích' },
   { to: '/user/invoices',   icon: 'invoice-icon.svg',   label: 'Hóa đơn' },

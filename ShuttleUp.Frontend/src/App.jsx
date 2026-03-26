@@ -35,6 +35,8 @@ import Personalization from './pages/user/Personalization';
 import UserManagerInfo from './pages/user/UserManagerInfo';
 import UserBookings from './pages/user/UserBookings';
 import UserFavorites from './pages/user/UserFavorites';
+import UserNotifications from './pages/user/UserNotifications';
+import { useAppNotificationsHub } from './hooks/useAppNotificationsHub';
 
 // Manager — Layout + Pages
 import ManagerLayout from './layouts/ManagerLayout';
@@ -69,6 +71,7 @@ const PlaceholderPage = ({ title }) => (
 );
 
 function App() {
+  useAppNotificationsHub();
   const location = useLocation();
   const authRoutes = ['/login', '/register', '/forgot-password', '/change-password'];
   const isAuthPage = authRoutes.includes(location.pathname);
@@ -139,6 +142,7 @@ function App() {
           {/* Player misc */}
           <Route path="/user/bookings" element={<ProtectedRoute><UserBookings /></ProtectedRoute>} />
           <Route path="/user/favorites" element={<ProtectedRoute><UserFavorites /></ProtectedRoute>} />
+          <Route path="/user/notifications" element={<ProtectedRoute><UserNotifications /></ProtectedRoute>} />
           <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
 
           {/* ═══════════════════════════════════════════════════════════

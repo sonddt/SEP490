@@ -808,6 +808,107 @@ PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
+-- Thêm cột snapshot chính sách huỷ trên bookings (checkout / đặt sân)
+SET @col_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'bookings'
+    AND column_name = 'cancellation_policy_snapshot_json'
+);
+
+SET @sql := IF(
+  @col_exists = 0,
+  'ALTER TABLE bookings ADD COLUMN cancellation_policy_snapshot_json TEXT NULL',
+  'SELECT 1'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Cột thanh toán VietQR + chính sách huỷ trên venues (đồng bộ EF HasColumnName snake_case)
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'payment_bank_name'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN payment_bank_name VARCHAR(100) NULL COMMENT ''Display name e.g. Vietcombank''',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'payment_bank_bin'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN payment_bank_bin VARCHAR(20) NULL COMMENT ''6-digit VietQR bank ID''',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'payment_account_number'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN payment_account_number VARCHAR(50) NULL',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'payment_account_holder'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN payment_account_holder VARCHAR(255) NULL',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'payment_transfer_note_template'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN payment_transfer_note_template VARCHAR(500) NULL DEFAULT ''[SĐT] - [Tên sân] - [Ngày]''',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'cancel_allowed'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN cancel_allowed TINYINT(1) NOT NULL DEFAULT 1',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'cancel_before_minutes'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN cancel_before_minutes INT NOT NULL DEFAULT 120',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'refund_type'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN refund_type VARCHAR(20) NOT NULL DEFAULT ''NONE'' COMMENT ''NONE|PERCENT|FULL''',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'refund_percent'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN refund_percent DECIMAL(5,2) NULL',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 -- Sửa id payments mẫu cũ: prefix "g" không phải hex → EF đọc Guid lỗi 500 trên /api/manager/bookings
 UPDATE payments SET id = 'ba000001-0000-0000-0000-000000000001' WHERE id = 'g0000001-0000-0000-0000-000000000001';
 UPDATE payments SET id = 'ba000002-0000-0000-0000-000000000002' WHERE id = 'g0000002-0000-0000-0000-000000000002';

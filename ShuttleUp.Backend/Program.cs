@@ -75,6 +75,7 @@ namespace ShuttleUp.Backend
                     settings.ApiSecret.Trim()));
             });
             builder.Services.AddScoped<IFileService, FileService>();
+            builder.Services.AddScoped<INotificationDispatchService, NotificationDispatchService>();
 
             // ── JWT Authentication ────────────────────────────────────────────────
             var jwtKey = builder.Configuration["Jwt:Key"]!;

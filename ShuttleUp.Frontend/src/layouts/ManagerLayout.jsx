@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import ManagerSidebar from '../components/manager/ManagerSidebar';
+import { useUnreadNotificationCount } from '../hooks/useUnreadNotificationCount';
 
 const PAGE_TITLES = {
   '/manager/dashboard':       { title: 'Tổng quan', crumbs: [] },
@@ -32,6 +33,7 @@ export default function ManagerLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { title, crumbs } = getPageMeta(location.pathname);
+  const { count: unreadNotifCount } = useUnreadNotificationCount();
 
   const user = (() => {
     try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
@@ -71,13 +73,16 @@ export default function ManagerLayout() {
               className="mgr-topbar__icon-btn"
               title="Thông báo"
               onClick={() => navigate('/manager/notifications')}
+              style={{ position: 'relative' }}
             >
               <i className="feather-bell" />
-              <span style={{
-                position: 'absolute', top: 8, right: 8,
-                width: 7, height: 7, borderRadius: '50%',
-                background: '#ef4444', border: '2px solid #fff',
-              }} />
+              {unreadNotifCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: 8, right: 8,
+                  width: 7, height: 7, borderRadius: '50%',
+                  background: '#ef4444', border: '2px solid #fff',
+                }} />
+              )}
             </button>
 
             <Link

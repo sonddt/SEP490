@@ -27,6 +27,19 @@ public class NotificationsController : ControllerBase
         return Guid.TryParse(s, out userId);
     }
 
+    [HttpGet("unread-count")]
+    public async Task<IActionResult> GetUnreadCount()
+    {
+        if (!TryGetCurrentUserId(out var userId))
+            return Unauthorized();
+
+        var count = await _dbContext.UserNotifications
+            .AsNoTracking()
+            .CountAsync(n => n.UserId == userId && !n.IsRead);
+
+        return Ok(new { count });
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetMine([FromQuery] int take = 50)
     {
@@ -68,5 +81,18 @@ public class NotificationsController : ControllerBase
         n.IsRead = true;
         await _dbContext.SaveChangesAsync();
         return Ok(new { n.Id, isRead = true });
+    }
+
+    [HttpPatch("read-all")]
+    public async Task<IActionResult> MarkAllRead()
+    {
+        if (!TryGetCurrentUserId(out var userId))
+            return Unauthorized();
+
+        await _dbContext.UserNotifications
+            .Where(x => x.UserId == userId && !x.IsRead)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.IsRead, true));
+
+        return Ok(new { message = "Đã đánh dấu đã đọc." });
     }
 }

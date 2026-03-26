@@ -120,6 +120,9 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasColumnName("total_amount");
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.VenueId).HasColumnName("venue_id");
+            entity.Property(e => e.CancellationPolicySnapshotJson)
+                .HasColumnType("text")
+                .HasColumnName("cancellation_policy_snapshot_json");
 
             entity.HasOne(d => d.User).WithMany(p => p.Bookings)
                 .HasForeignKey(d => d.UserId)
@@ -907,6 +910,32 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasMaxLength(255)
                 .HasColumnName("name");
             entity.Property(e => e.OwnerUserId).HasColumnName("owner_user_id");
+
+            entity.Property(e => e.PaymentBankName)
+                .HasMaxLength(100)
+                .HasColumnName("payment_bank_name");
+            entity.Property(e => e.PaymentBankBin)
+                .HasMaxLength(20)
+                .HasColumnName("payment_bank_bin");
+            entity.Property(e => e.PaymentAccountNumber)
+                .HasMaxLength(50)
+                .HasColumnName("payment_account_number");
+            entity.Property(e => e.PaymentAccountHolder)
+                .HasMaxLength(255)
+                .HasColumnName("payment_account_holder");
+            entity.Property(e => e.PaymentTransferNoteTemplate)
+                .HasMaxLength(500)
+                .HasColumnName("payment_transfer_note_template");
+            entity.Property(e => e.CancelAllowed)
+                .HasColumnName("cancel_allowed");
+            entity.Property(e => e.CancelBeforeMinutes)
+                .HasColumnName("cancel_before_minutes");
+            entity.Property(e => e.RefundType)
+                .HasMaxLength(20)
+                .HasColumnName("refund_type");
+            entity.Property(e => e.RefundPercent)
+                .HasPrecision(5, 2)
+                .HasColumnName("refund_percent");
 
             entity.HasOne(d => d.OwnerUser).WithMany(p => p.Venues)
                 .HasForeignKey(d => d.OwnerUserId)

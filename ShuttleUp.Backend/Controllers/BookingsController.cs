@@ -19,11 +19,16 @@ public class BookingsController : ControllerBase
 {
     private readonly ShuttleUpDbContext _dbContext;
     private readonly IFileService _fileService;
+    private readonly INotificationDispatchService _notify;
 
-    public BookingsController(ShuttleUpDbContext dbContext, IFileService fileService)
+    public BookingsController(
+        ShuttleUpDbContext dbContext,
+        IFileService fileService,
+        INotificationDispatchService notify)
     {
         _dbContext = dbContext;
         _fileService = fileService;
+        _notify = notify;
     }
 
     private bool TryGetCurrentUserId(out Guid userId)
@@ -264,6 +269,28 @@ public class BookingsController : ControllerBase
             }).ToList()
         };
 
+        var ownerId = await _dbContext.Venues.AsNoTracking()
+            .Where(v => v.Id == dto.VenueId)
+            .Select(v => v.OwnerUserId)
+            .FirstOrDefaultAsync();
+        if (ownerId is { } oid && oid != Guid.Empty)
+        {
+            try
+            {
+                await _notify.NotifyUserAsync(
+                    oid,
+                    "BOOKING_NEW",
+                    "Có đơn đặt sân mới",
+                    $"Mã {code} — {dto.ContactName.Trim()} — {total:N0} VNĐ.",
+                    new { bookingId = booking.Id, venueId = dto.VenueId },
+                    sendEmail: true);
+            }
+            catch
+            {
+                /* không chặn response 201 */
+            }
+        }
+
         return StatusCode(StatusCodes.Status201Created, response);
     }
 
@@ -489,6 +516,7 @@ public class BookingsController : ControllerBase
             return BadRequest(new { message = "File phải là ảnh." });
 
         var booking = await _dbContext.Bookings
+            .Include(b => b.Venue)
             .Include(b => b.Payments)
             .FirstOrDefaultAsync(b => b.Id == id && b.UserId == userId);
 
@@ -554,6 +582,24 @@ public class BookingsController : ControllerBase
         await _dbContext.SaveChangesAsync();
 
         var bookingCode = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
+
+        if (booking.Venue?.OwnerUserId is { } mgrId && mgrId != Guid.Empty)
+        {
+            try
+            {
+                await _notify.NotifyUserAsync(
+                    mgrId,
+                    "PAYMENT_PROOF",
+                    "Có minh chứng thanh toán mới",
+                    $"Đơn {bookingCode} vừa có ảnh chứng từ từ người chơi.",
+                    new { bookingId = booking.Id, venueId = booking.VenueId },
+                    sendEmail: false);
+            }
+            catch
+            {
+                /* ignore */
+            }
+        }
 
         return Ok(new
         {

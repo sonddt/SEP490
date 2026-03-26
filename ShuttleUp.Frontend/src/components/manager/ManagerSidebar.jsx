@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useUnreadNotificationCount } from '../../hooks/useUnreadNotificationCount';
 
 const NAV_SECTIONS = [
   {
@@ -13,7 +14,7 @@ const NAV_SECTIONS = [
     items: [
       { to: '/manager/venues',        icon: 'feather-map-pin',      label: 'Cụm sân' },
       { to: '/manager/bookings',      icon: 'feather-calendar',     label: 'Đặt sân' },
-      { to: '/manager/notifications', icon: 'feather-bell',         label: 'Thông báo', badge: 3 },
+      { to: '/manager/notifications', icon: 'feather-bell',         label: 'Thông báo', badgeKey: 'notifications' },
     ],
   },
   {
@@ -33,6 +34,7 @@ const NAV_SECTIONS = [
 export default function ManagerSidebar({ open, onClose }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { count: unreadNotifCount } = useUnreadNotificationCount();
 
   const handleLogout = () => {
     logout();
@@ -77,7 +79,11 @@ export default function ManagerSidebar({ open, onClose }) {
                 >
                   <i className={item.icon} />
                   {item.label}
-                  {item.badge > 0 && <span className="mgr-sidebar__badge">{item.badge}</span>}
+                  {item.badgeKey === 'notifications' && unreadNotifCount > 0 && (
+                    <span className="mgr-sidebar__badge">
+                      {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
+                    </span>
+                  )}
                 </NavLink>
               ))}
             </div>

@@ -1,11 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using ShuttleUp.Backend.Hubs;
+using ShuttleUp.Backend.Services.Interfaces;
 using ShuttleUp.DAL.Models;
 
 namespace ShuttleUp.Backend.Controllers;
@@ -16,12 +14,12 @@ namespace ShuttleUp.Backend.Controllers;
 public class ManagerBookingsController : ControllerBase
 {
     private readonly ShuttleUpDbContext _dbContext;
-    private readonly IHubContext<NotificationHub> _notificationHub;
+    private readonly INotificationDispatchService _notify;
 
-    public ManagerBookingsController(ShuttleUpDbContext dbContext, IHubContext<NotificationHub> notificationHub)
+    public ManagerBookingsController(ShuttleUpDbContext dbContext, INotificationDispatchService notify)
     {
         _dbContext = dbContext;
-        _notificationHub = notificationHub;
+        _notify = notify;
     }
 
     private bool TryGetCurrentUserId(out Guid userId)
@@ -203,26 +201,20 @@ public class ManagerBookingsController : ControllerBase
                 ? $"Mã #{code} tại {booking.Venue?.Name ?? "sân"} đã được chủ sân xác nhận."
                 : $"Mã #{code}: {(string.IsNullOrWhiteSpace(booking.ManagerStatusNote) ? "Đơn đã bị huỷ/từ chối." : booking.ManagerStatusNote)}";
 
-            _dbContext.UserNotifications.Add(new UserNotification
-            {
-                Id = Guid.NewGuid(),
-                UserId = playerId,
-                Type = "BOOKING",
-                Title = title,
-                Body = body,
-                MetadataJson = JsonSerializer.Serialize(new { bookingId = booking.Id, status = booking.Status }),
-                IsRead = false,
-                CreatedAt = DateTime.UtcNow,
-            });
-            await _dbContext.SaveChangesAsync();
-
-            await _notificationHub.Clients.Group($"user-{playerId}").SendAsync("bookingStatus", new
-            {
-                bookingId = booking.Id,
-                status = booking.Status,
+            await _notify.NotifyUserAsync(
+                playerId,
+                "BOOKING",
                 title,
                 body,
-            });
+                new { bookingId = booking.Id, status = booking.Status },
+                sendEmail: true,
+                bookingStatusPayload: new
+                {
+                    bookingId = booking.Id,
+                    status = booking.Status,
+                    title,
+                    body,
+                });
         }
 
         return Ok(new
