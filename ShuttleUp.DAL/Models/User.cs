@@ -53,6 +53,8 @@ public partial class User
 
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 
+    public virtual ICollection<BookingSeries> BookingSeries { get; set; } = new List<BookingSeries>();
+
     public virtual ICollection<ChatMessage> ChatMessages { get; set; } = new List<ChatMessage>();
 
     public virtual ICollection<CourtBlock> CourtBlocks { get; set; } = new List<CourtBlock>();

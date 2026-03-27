@@ -9,6 +9,7 @@ using ShuttleUp.BLL.DTOs.Booking;
 using ShuttleUp.Backend.BookingForms;
 using ShuttleUp.Backend.Constants;
 using ShuttleUp.Backend.Helpers;
+using ShuttleUp.Backend.Services;
 using ShuttleUp.Backend.Services.Interfaces;
 using ShuttleUp.DAL.Models;
 
@@ -41,9 +42,6 @@ public class BookingsController : ControllerBase
         return Guid.TryParse(s, out userId);
     }
 
-    private static bool IsWeekendDate(DateTime d) =>
-        d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
-
     private static CancellationPolicySnapshot ParsePolicyOrDefault(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -66,24 +64,6 @@ public class BookingsController : ControllerBase
             DateTimeKind.Local => dt.ToUniversalTime(),
             _ => DateTime.SpecifyKind(dt, DateTimeKind.Utc),
         };
-    }
-
-    /// <summary>
-    /// Giá một khung 30 phút theo bảng giá sân (price = tiền / 30 phút trong khoảng giờ đó).
-    /// </summary>
-    private static decimal? ResolveSlotPrice(IReadOnlyCollection<CourtPrice> prices, DateTime slotStart)
-    {
-        var weekend = IsWeekendDate(slotStart);
-        var t = TimeOnly.FromDateTime(slotStart);
-        foreach (var p in prices.OrderBy(x => x.StartTime))
-        {
-            if (p.IsWeekend != weekend || p.StartTime == null || p.EndTime == null)
-                continue;
-            if (t >= p.StartTime.Value && t < p.EndTime.Value)
-                return p.Price;
-        }
-
-        return null;
     }
 
     /// <summary>
@@ -132,68 +112,15 @@ public class BookingsController : ControllerBase
 
         var courtById = courts.ToDictionary(c => c.Id);
 
-        var normalizedItems = new List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)>();
-        foreach (var item in dto.Items)
-        {
-            if (item.EndTime <= item.StartTime)
-                return BadRequest(new { message = "Khung giờ không hợp lệ (end phải sau start)." });
+        var (normalizedItems, normErr) = BookingSlotHelper.NormalizeFromCreateItems(dto.Items, courtById);
+        if (normErr != null)
+            return BadRequest(new { message = normErr });
 
-            if (!courtById.TryGetValue(item.CourtId, out var court))
-                return BadRequest(new { message = "Sân không hợp lệ." });
-
-            for (var slotStart = item.StartTime; slotStart < item.EndTime; slotStart = slotStart.AddMinutes(30))
-            {
-                var slotEnd = slotStart.AddMinutes(30);
-                if (slotEnd > item.EndTime)
-                    return BadRequest(new { message = "Mỗi khung phải là bội số 30 phút." });
-
-                var price = ResolveSlotPrice(court.CourtPrices.ToList(), slotStart);
-                if (price == null)
-                    return BadRequest(new { message = $"Chưa cấu hình giá cho sân {court.Name} tại {slotStart:HH:mm}." });
-
-                normalizedItems.Add((item.CourtId, slotStart, slotEnd, price.Value));
-            }
-        }
-
-        var minStart = normalizedItems.Min(x => x.Start);
-        var maxEnd = normalizedItems.Max(x => x.End);
-
-        var existingItems = await _dbContext.BookingItems
-            .AsNoTracking()
-            .Include(bi => bi.Booking)
-            .Where(bi => bi.CourtId != null
-                         && courtIds.Contains(bi.CourtId.Value)
-                         && bi.StartTime < maxEnd && bi.EndTime > minStart
-                         && bi.Booking != null && bi.Booking.Status != "CANCELLED")
-            .ToListAsync();
-
-        foreach (var bi in existingItems)
-        {
-            foreach (var ni in normalizedItems)
-            {
-                if (ni.CourtId != bi.CourtId || bi.StartTime == null || bi.EndTime == null)
-                    continue;
-                if (bi.StartTime < ni.End && bi.EndTime > ni.Start)
-                    return Conflict(new { message = "Một hoặc nhiều khung giờ vừa được người khác đặt. Vui lòng chọn lại." });
-            }
-        }
-
-        var blocks = await _dbContext.CourtBlocks
-            .AsNoTracking()
-            .Where(b => b.CourtId != null && courtIds.Contains(b.CourtId.Value)
-                                            && b.StartTime < maxEnd && b.EndTime > minStart)
-            .ToListAsync();
-
-        foreach (var b in blocks)
-        {
-            foreach (var ni in normalizedItems)
-            {
-                if (ni.CourtId != b.CourtId || b.StartTime == null || b.EndTime == null)
-                    continue;
-                if (b.StartTime < ni.End && b.EndTime > ni.Start)
-                    return Conflict(new { message = "Một số khung giờ đang bị khóa bởi chủ sân." });
-            }
-        }
+        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, HttpContext.RequestAborted);
+        if (conflict == "CONFLICT_BOOKING")
+            return Conflict(new { message = "Một hoặc nhiều khung giờ vừa được người khác đặt. Vui lòng chọn lại." });
+        if (conflict == "CONFLICT_BLOCK")
+            return Conflict(new { message = "Một số khung giờ đang bị khóa bởi chủ sân." });
 
         var total = normalizedItems.Sum(x => x.Price);
 
@@ -297,6 +224,265 @@ public class BookingsController : ControllerBase
     }
 
     /// <summary>
+    /// Xem trước đặt lịch dài hạn (không ghi DB).
+    /// </summary>
+    [HttpPost("long-term/preview")]
+    public async Task<IActionResult> PreviewLongTerm([FromBody] LongTermScheduleDto dto)
+    {
+        if (!TryGetCurrentUserId(out _))
+            return Unauthorized(new { message = "Không xác định được người dùng." });
+
+        var built = await BuildLongTermNormalizedAsync(dto, HttpContext.RequestAborted);
+        if (built.Error != null)
+            return built.Error;
+
+        var total = built.NormalizedItems!.Sum(x => x.Price);
+        var sessionCount = CountDistinctSessionDays(built.NormalizedItems!);
+
+        return Ok(new
+        {
+            venueId = dto.VenueId,
+            courtId = dto.CourtId,
+            courtName = built.Court!.Name,
+            slotCount = built.NormalizedItems!.Count,
+            sessionCount,
+            totalAmount = total,
+            items = built.NormalizedItems!.Select(x => new
+            {
+                courtId = x.CourtId,
+                startTime = x.Start,
+                endTime = x.End,
+                price = x.Price,
+            }),
+        });
+    }
+
+    /// <summary>
+    /// Tạo đơn đặt lịch dài hạn (một booking, thanh toán trọn gói).
+    /// </summary>
+    [HttpPost("long-term")]
+    public async Task<IActionResult> CreateLongTermBooking([FromBody] LongTermBookingRequestDto dto)
+    {
+        if (!TryGetCurrentUserId(out var userId))
+            return Unauthorized(new { message = "Không xác định được người dùng." });
+
+        if (string.IsNullOrWhiteSpace(dto.ContactName))
+            return BadRequest(new { message = "Vui lòng nhập họ tên." });
+        if (string.IsNullOrWhiteSpace(dto.ContactPhone))
+            return BadRequest(new { message = "Vui lòng nhập số điện thoại." });
+
+        var built = await BuildLongTermNormalizedAsync(dto, HttpContext.RequestAborted);
+        if (built.Error != null)
+            return built.Error;
+
+        var venuePolicy = await _dbContext.Venues
+            .AsNoTracking()
+            .Where(v => v.Id == dto.VenueId && v.IsActive == true)
+            .Select(v => new
+            {
+                v.Id,
+                v.CancelAllowed,
+                v.CancelBeforeMinutes,
+                v.RefundType,
+                v.RefundPercent,
+            })
+            .FirstOrDefaultAsync();
+
+        if (venuePolicy == null)
+            return BadRequest(new { message = "Cơ sở không tồn tại hoặc chưa mở đặt sân." });
+
+        var total = built.NormalizedItems!.Sum(x => x.Price);
+        var policySnapshot = new CancellationPolicySnapshot
+        {
+            AllowCancel = venuePolicy.CancelAllowed,
+            CancelBeforeMinutes = venuePolicy.CancelBeforeMinutes,
+            RefundType = string.IsNullOrWhiteSpace(venuePolicy.RefundType) ? "NONE" : venuePolicy.RefundType!,
+            RefundPercent = venuePolicy.RefundPercent,
+        };
+
+        var ruleJson = JsonSerializer.Serialize(new
+        {
+            type = "WEEKLY",
+            daysOfWeek = dto.DaysOfWeek,
+            sessionStart = dto.SessionStartTime,
+            sessionEnd = dto.SessionEndTime,
+            courtId = dto.CourtId,
+        });
+
+        var series = new BookingSeries
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            VenueId = dto.VenueId,
+            RecurrenceRuleJson = ruleJson,
+            RangeStartDate = built.RangeStart!.Value,
+            RangeEndDate = built.RangeEnd!.Value,
+            Status = "PENDING",
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        var booking = new Booking
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            VenueId = dto.VenueId,
+            SeriesId = series.Id,
+            Status = "PENDING",
+            TotalAmount = total,
+            DiscountAmount = 0,
+            FinalAmount = total,
+            ContactName = dto.ContactName.Trim(),
+            ContactPhone = dto.ContactPhone.Trim(),
+            GuestNote = string.IsNullOrWhiteSpace(dto.Note) ? null : dto.Note.Trim(),
+            CancellationPolicySnapshotJson = JsonSerializer.Serialize(policySnapshot),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        foreach (var ni in built.NormalizedItems!)
+        {
+            booking.BookingItems.Add(new BookingItem
+            {
+                Id = Guid.NewGuid(),
+                CourtId = ni.CourtId,
+                StartTime = ni.Start,
+                EndTime = ni.End,
+                FinalPrice = ni.Price,
+                Status = "PENDING"
+            });
+        }
+
+        await using var trx = await _dbContext.Database.BeginTransactionAsync();
+        try
+        {
+            _dbContext.BookingSeries.Add(series);
+            _dbContext.Bookings.Add(booking);
+            await _dbContext.SaveChangesAsync();
+            await trx.CommitAsync();
+        }
+        catch
+        {
+            await trx.RollbackAsync();
+            throw;
+        }
+
+        var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
+        var courtById = new Dictionary<Guid, Court> { [built.Court!.Id] = built.Court };
+
+        var response = new BookingResponseDto
+        {
+            BookingId = booking.Id,
+            BookingCode = code,
+            Status = booking.Status,
+            TotalAmount = total,
+            FinalAmount = total,
+            Items = booking.BookingItems.Select(bi => new BookingItemResponseDto
+            {
+                Id = bi.Id,
+                CourtId = bi.CourtId ?? Guid.Empty,
+                CourtName = courtById.GetValueOrDefault(bi.CourtId ?? Guid.Empty)?.Name,
+                StartTime = bi.StartTime ?? default,
+                EndTime = bi.EndTime ?? default,
+                FinalPrice = bi.FinalPrice ?? 0,
+                Status = bi.Status
+            }).ToList()
+        };
+
+        var ownerId = await _dbContext.Venues.AsNoTracking()
+            .Where(v => v.Id == dto.VenueId)
+            .Select(v => v.OwnerUserId)
+            .FirstOrDefaultAsync();
+        if (ownerId is { } oid && oid != Guid.Empty)
+        {
+            try
+            {
+                await _notify.NotifyUserAsync(
+                    oid,
+                    NotificationTypes.BookingNew,
+                    "Có đơn đặt lịch dài hạn mới",
+                    $"Mã {code} — {dto.ContactName.Trim()} — {built.NormalizedItems.Count} khung — {total:N0} VNĐ.",
+                    NotificationMetadataBuilder.BookingForManager(booking.Id, dto.VenueId),
+                    sendEmail: true);
+            }
+            catch
+            {
+                /* ignore */
+            }
+        }
+
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            seriesId = series.Id,
+            response.BookingId,
+            response.BookingCode,
+            response.Status,
+            response.TotalAmount,
+            response.FinalAmount,
+            response.Items,
+        });
+    }
+
+    private sealed class LongTermBuildResult
+    {
+        public List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)>? NormalizedItems { get; init; }
+        public Court? Court { get; init; }
+        public DateOnly? RangeStart { get; init; }
+        public DateOnly? RangeEnd { get; init; }
+        public TimeOnly? SessionStart { get; init; }
+        public TimeOnly? SessionEnd { get; init; }
+        public IActionResult? Error { get; init; }
+    }
+
+    private async Task<LongTermBuildResult> BuildLongTermNormalizedAsync(LongTermScheduleDto dto, CancellationToken ct)
+    {
+        var (rs, re, st, et, parseErr) = BookingSlotHelper.ParseLongTermSchedule(dto);
+        if (parseErr != null)
+            return new LongTermBuildResult { Error = BadRequest(new { message = parseErr }) };
+
+        var (dayFilter, dayErr) = BookingSlotHelper.ParseDaysOfWeek(dto.DaysOfWeek);
+        if (dayErr != null)
+            return new LongTermBuildResult { Error = BadRequest(new { message = dayErr }) };
+
+        var court = await _dbContext.Courts
+            .Include(c => c.CourtPrices)
+            .FirstOrDefaultAsync(c => c.Id == dto.CourtId && c.VenueId == dto.VenueId && c.IsActive == true && c.Status == "ACTIVE", ct);
+
+        if (court == null)
+            return new LongTermBuildResult { Error = BadRequest(new { message = "Sân không thuộc cơ sở hoặc không hoạt động." }) };
+
+        var venueOk = await _dbContext.Venues.AnyAsync(v => v.Id == dto.VenueId && v.IsActive == true, ct);
+        if (!venueOk)
+            return new LongTermBuildResult { Error = BadRequest(new { message = "Cơ sở không tồn tại hoặc chưa mở đặt sân." }) };
+
+        var (normalizedItems, expandErr) = BookingSlotHelper.ExpandWeeklyLongTerm(
+            dto.CourtId, court, rs, re, dayFilter, st, et, BookingSlotHelper.MaxLongTermSlots);
+        if (expandErr != null)
+            return new LongTermBuildResult { Error = BadRequest(new { message = expandErr }) };
+
+        var courtIds = new List<Guid> { dto.CourtId };
+        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, ct);
+        if (conflict == "CONFLICT_BOOKING")
+            return new LongTermBuildResult { Error = Conflict(new { message = "Một hoặc nhiều khung giờ đã có người đặt. Vui lòng đổi lịch." }) };
+        if (conflict == "CONFLICT_BLOCK")
+            return new LongTermBuildResult { Error = Conflict(new { message = "Một số khung giờ đang bị khóa bởi chủ sân." }) };
+
+        return new LongTermBuildResult
+        {
+            NormalizedItems = normalizedItems,
+            Court = court,
+            RangeStart = rs,
+            RangeEnd = re,
+            SessionStart = st,
+            SessionEnd = et,
+        };
+    }
+
+    private static int CountDistinctSessionDays(
+        List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)> items)
+    {
+        return items.Select(x => DateOnly.FromDateTime(x.Start)).Distinct().Count();
+    }
+
+    /// <summary>
     /// Lịch sử đặt sân của tài khoản hiện tại.
     /// </summary>
     [HttpGet("my")]
@@ -317,6 +503,8 @@ public class BookingsController : ControllerBase
                 b.TotalAmount,
                 b.FinalAmount,
                 b.CreatedAt,
+                b.SeriesId,
+                isLongTerm = b.SeriesId != null,
                 VenueName = b.Venue != null ? b.Venue.Name : null,
                 VenueAddress = b.Venue != null ? b.Venue.Address : null,
                 b.VenueId,
@@ -349,6 +537,8 @@ public class BookingsController : ControllerBase
             b.TotalAmount,
             b.FinalAmount,
             b.CreatedAt,
+            b.SeriesId,
+            b.isLongTerm,
             b.VenueName,
             b.VenueAddress,
             b.VenueId,
@@ -412,6 +602,13 @@ public class BookingsController : ControllerBase
         foreach (var p in booking.Payments.Where(p =>
                      p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase)))
             p.Status = "CANCELLED";
+
+        if (booking.SeriesId is { } seriesId)
+        {
+            var series = await _dbContext.BookingSeries.FirstOrDefaultAsync(s => s.Id == seriesId);
+            if (series != null)
+                series.Status = "CANCELLED";
+        }
 
         await _dbContext.SaveChangesAsync();
 

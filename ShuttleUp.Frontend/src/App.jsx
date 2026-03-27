@@ -17,6 +17,8 @@ import BookingTimeline from './pages/BookingTimeline';
 import BookingConfirm from './pages/BookingConfirm';
 import BookingPayment from './pages/BookingPayment';
 import BookingComplete from './pages/BookingComplete';
+import LongTermBooking from './pages/LongTermBooking';
+import LongTermConfirm from './pages/LongTermConfirm';
 import TermsOfService from './pages/TermsOfService';
 
 // Auth
@@ -119,6 +121,8 @@ function App() {
           <Route path="/booking/confirm" element={<ProtectedRoute><BookingConfirm /></ProtectedRoute>} />
           <Route path="/booking/payment" element={<ProtectedRoute><BookingPayment /></ProtectedRoute>} />
           <Route path="/booking/complete" element={<ProtectedRoute><BookingComplete /></ProtectedRoute>} />
+          <Route path="/booking/long-term" element={<ProtectedRoute><LongTermBooking /></ProtectedRoute>} />
+          <Route path="/booking/long-term/confirm" element={<ProtectedRoute><LongTermConfirm /></ProtectedRoute>} />
 
           {/* ═══ Player Profile ═══ */}
           <Route path="/personalization" element={<ProtectedRoute requiredRole="PLAYER"><Personalization /></ProtectedRoute>} />

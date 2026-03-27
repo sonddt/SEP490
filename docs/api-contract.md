@@ -25,6 +25,11 @@
 - `GET /api/bookings/available-slots`: Player lấy danh sách giờ trống.
 - `POST /api/bookings`: Player tiến hành book sân, chờ thanh toán.
 - `PUT /api/bookings/{id}/confirm-payment`: Manager duyệt thanh toán và check-in cho khách.
+- **Lịch dài hạn (một đơn, nhiều slot 30 phút, thanh toán một lần):**
+  - `POST /api/bookings/long-term/preview` — body: `venueId`, `courtId`, `startTime`, `endTime` (HH:mm), `dayOfWeek` (0–6, CN=0), `fromDate`, `toDate` (yyyy-MM-dd). Trả về `items`, `totalAmount`, `occurrenceCount`, `conflictCount`, `invalidOccurrences` (nếu có).
+  - `POST /api/bookings/long-term` — cùng payload + `contactName`, `contactPhone`, `note` (optional). Tạo `booking_series` + một `booking` + toàn bộ `booking_items`; giới hạn tối đa 400 slot.
+- `GET /api/bookings/my` — mỗi phần tử có thêm `seriesId` (nullable), `isLongTerm` (bool).
+- `GET /api/manager/bookings` — mỗi phần tử có thêm `seriesId`, `isLongTerm` để badge UI.
 
 ### 2.4. Matching (Kèo giao lưu)
 - `GET /api/matching-posts`: Xem danh sách các kèo đang mở (chưa đủ người).

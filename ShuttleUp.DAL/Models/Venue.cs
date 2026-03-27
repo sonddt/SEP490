@@ -50,6 +50,8 @@ public partial class Venue
 
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 
+    public virtual ICollection<BookingSeries> BookingSeries { get; set; } = new List<BookingSeries>();
+
     public virtual ICollection<Court> Courts { get; set; } = new List<Court>();
 
     public virtual ICollection<FavoriteVenue> FavoriteVenues { get; set; } = new List<FavoriteVenue>();

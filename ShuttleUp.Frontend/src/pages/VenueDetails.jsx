@@ -72,6 +72,16 @@ export default function VenueDetails() {
     });
   };
 
+  const handleLongTermBooking = () => {
+    navigate('/booking/long-term', {
+      state: {
+        venueId: venue.id,
+        venueName: venue.name,
+        venueAddress: venue.address,
+      },
+    });
+  };
+
   useEffect(() => {
     async function loadVenue() {
       try {
@@ -568,7 +578,7 @@ export default function VenueDetails() {
                     </p>
                   </li>
                 </ul>
-                <div className="d-grid btn-block mt-3">
+                <div className="d-grid btn-block mt-3 gap-2">
                   <button
                     type="button"
                     onClick={handleBooking}
@@ -576,6 +586,14 @@ export default function VenueDetails() {
                   >
                     <i className="feather-calendar" />
                     <span className="ms-2">ĐẶT LỊCH</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLongTermBooking}
+                    className="btn btn-outline-primary d-inline-flex justify-content-center align-items-center"
+                  >
+                    <i className="feather-repeat" />
+                    <span className="ms-2">ĐẶT LỊCH DÀI HẠN</span>
                   </button>
                 </div>
               </div>

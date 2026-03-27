@@ -18,6 +18,8 @@ public partial class ShuttleUpDbContext : DbContext
 
     public virtual DbSet<Booking> Bookings { get; set; }
 
+    public virtual DbSet<BookingSeries> BookingSeries { get; set; }
+
     public virtual DbSet<BookingItem> BookingItems { get; set; }
 
     public virtual DbSet<ChatMessage> ChatMessages { get; set; }
@@ -87,6 +89,8 @@ public partial class ShuttleUpDbContext : DbContext
 
             entity.HasIndex(e => e.VenueId, "venue_id");
 
+            entity.HasIndex(e => e.SeriesId, "series_id");
+
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
@@ -120,6 +124,7 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasColumnName("total_amount");
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.VenueId).HasColumnName("venue_id");
+            entity.Property(e => e.SeriesId).HasColumnName("series_id");
             entity.Property(e => e.CancellationPolicySnapshotJson)
                 .HasColumnType("text")
                 .HasColumnName("cancellation_policy_snapshot_json");
@@ -131,6 +136,47 @@ public partial class ShuttleUpDbContext : DbContext
             entity.HasOne(d => d.Venue).WithMany(p => p.Bookings)
                 .HasForeignKey(d => d.VenueId)
                 .HasConstraintName("bookings_ibfk_2");
+
+            entity.HasOne(d => d.Series).WithMany(p => p.Bookings)
+                .HasForeignKey(d => d.SeriesId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("bookings_series_fk");
+        });
+
+        modelBuilder.Entity<BookingSeries>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("booking_series");
+
+            entity.HasIndex(e => e.UserId, "booking_series_user_id");
+
+            entity.HasIndex(e => e.VenueId, "booking_series_venue_id");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.VenueId).HasColumnName("venue_id");
+            entity.Property(e => e.RecurrenceRuleJson)
+                .HasColumnType("text")
+                .HasColumnName("recurrence_rule_json");
+            entity.Property(e => e.RangeStartDate).HasColumnName("range_start_date");
+            entity.Property(e => e.RangeEndDate).HasColumnName("range_end_date");
+            entity.Property(e => e.Status)
+                .HasMaxLength(50)
+                .HasDefaultValueSql("'PENDING'")
+                .HasColumnName("status");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+
+            entity.HasOne(d => d.User).WithMany(p => p.BookingSeries)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("booking_series_ibfk_user");
+
+            entity.HasOne(d => d.Venue).WithMany(p => p.BookingSeries)
+                .HasForeignKey(d => d.VenueId)
+                .HasConstraintName("booking_series_ibfk_venue");
         });
 
         modelBuilder.Entity<BookingItem>(entity =>

@@ -12,6 +12,14 @@ export function createBooking(payload) {
   return axiosClient.post('/bookings', payload);
 }
 
+export function previewLongTermBooking(payload) {
+  return axiosClient.post('/bookings/long-term/preview', payload);
+}
+
+export function createLongTermBooking(payload) {
+  return axiosClient.post('/bookings/long-term', payload);
+}
+
 /** @param {string} bookingId */
 export function submitPayment(bookingId, formData) {
   return axiosClient.post(`/bookings/${bookingId}/payment`, formData);

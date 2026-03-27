@@ -97,6 +97,8 @@ public class ManagerBookingsController : ControllerBase
                 bookingId = b.Id,
                 bookingCode,
                 status = b.Status,
+                seriesId = b.SeriesId,
+                isLongTerm = b.SeriesId != null,
                 contactName = b.ContactName,
                 contactPhone = b.ContactPhone,
                 guestNote = b.GuestNote,
@@ -190,6 +192,13 @@ public class ManagerBookingsController : ControllerBase
             {
                 p.Status = "CANCELLED";
             }
+        }
+
+        if (booking.SeriesId is { } seriesId)
+        {
+            var series = await _dbContext.BookingSeries.FirstOrDefaultAsync(s => s.Id == seriesId);
+            if (series != null)
+                series.Status = next == "CONFIRMED" ? "ACTIVE" : "CANCELLED";
         }
 
         await _dbContext.SaveChangesAsync();

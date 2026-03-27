@@ -43,6 +43,7 @@ DROP TABLE IF EXISTS court_blocks;
 DROP TABLE IF EXISTS court_open_hours;
 DROP TABLE IF EXISTS booking_items;
 DROP TABLE IF EXISTS bookings;
+DROP TABLE IF EXISTS booking_series;
 
 -- VENUE
 DROP TABLE IF EXISTS court_prices;
@@ -221,10 +222,26 @@ CREATE TABLE court_open_hours (
 -- BOOKING
 -- ======================================================================
 
+CREATE TABLE booking_series (
+    id CHAR(36) PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    venue_id CHAR(36) NOT NULL,
+    recurrence_rule_json TEXT NOT NULL,
+    range_start_date DATE NOT NULL,
+    range_end_date DATE NOT NULL,
+    status VARCHAR(50) DEFAULT 'PENDING',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (venue_id) REFERENCES venues(id),
+    INDEX booking_series_user_id (user_id),
+    INDEX booking_series_venue_id (venue_id)
+);
+
 CREATE TABLE bookings (
     id CHAR(36) PRIMARY KEY,
     user_id CHAR(36),
     venue_id CHAR(36),
+    series_id CHAR(36) NULL,
     status VARCHAR(50) DEFAULT 'PENDING',
     total_amount DECIMAL(15,2),
     discount_amount DECIMAL(15,2) DEFAULT 0,
@@ -236,7 +253,9 @@ CREATE TABLE bookings (
     cancellation_policy_snapshot_json TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (venue_id) REFERENCES venues(id)
+    FOREIGN KEY (venue_id) REFERENCES venues(id),
+    FOREIGN KEY (series_id) REFERENCES booking_series(id) ON DELETE SET NULL,
+    INDEX series_id (series_id)
 );
 
 CREATE TABLE user_notifications (
@@ -790,6 +809,38 @@ INSERT IGNORE INTO venue_reviews (id, venue_id, user_id, stars, comment, created
 -- ======================================================================
 -- Migration: DB đã tồn tại (không chạy full script từ đầu) — bỏ comment và chạy một lần nếu thiếu cột
 -- ======================================================================
+-- Bảng booking_series + cột bookings.series_id (đặt lịch dài hạn)
+SET @tbl_exists := (
+  SELECT COUNT(*) FROM information_schema.tables
+  WHERE table_schema = DATABASE() AND table_name = 'booking_series'
+);
+SET @sql := IF(@tbl_exists = 0,
+  'CREATE TABLE booking_series (
+    id CHAR(36) PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    venue_id CHAR(36) NOT NULL,
+    recurrence_rule_json TEXT NOT NULL,
+    range_start_date DATE NOT NULL,
+    range_end_date DATE NOT NULL,
+    status VARCHAR(50) DEFAULT ''PENDING'',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (venue_id) REFERENCES venues(id),
+    INDEX booking_series_user_id (user_id),
+    INDEX booking_series_venue_id (venue_id)
+  )',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'bookings' AND column_name = 'series_id'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE bookings ADD COLUMN series_id CHAR(36) NULL, ADD INDEX series_id (series_id), ADD CONSTRAINT bookings_series_fk FOREIGN KEY (series_id) REFERENCES booking_series(id) ON DELETE SET NULL',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 -- Thêm cột manager_status_note nếu chưa có (an toàn để chạy 1 lần hoặc chạy lại)
 SET @col_exists := (
   SELECT COUNT(*)

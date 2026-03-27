@@ -64,6 +64,7 @@ function mapManagerBookingFromApi(b) {
     bookingId: b.bookingId,
     id: b.bookingId,
     bookingCode: b.bookingCode,
+    isLongTerm: b.isLongTerm === true || !!b.seriesId,
     player,
     playerAccountSub,
     playerImg: b.playerAvatarUrl || '/assets/img/profiles/avatar-01.jpg',
@@ -448,7 +449,12 @@ export default function ManagerBookings() {
                             <img className="avatar-img" src={b.courtImg} alt="" onError={e => { e.target.src = '/assets/img/booking/booking-01.jpg'; }} />
                           </span>
                           <span className="table-head-name flex-grow-1">
-                            <a href="#!" onClick={e => { e.preventDefault(); setDetailModal(b); }}>{b.court}</a>
+                            <a href="#!" onClick={e => { e.preventDefault(); setDetailModal(b); }}>
+                              {b.court}
+                              {b.isLongTerm && (
+                                <span className="badge bg-info text-dark ms-1" style={{ fontSize: '0.65rem' }}>Lịch dài hạn</span>
+                              )}
+                            </a>
                             <span><i className="feather-map-pin" style={{ fontSize: 11, marginRight: 3 }} />{b.venue}</span>
                           </span>
                         </h2>

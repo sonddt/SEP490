@@ -70,6 +70,7 @@ function mapApiRowToBooking(api) {
   return {
     id: api.id,
     code: api.bookingCode,
+    isLongTerm: api.isLongTerm === true || !!api.seriesId,
     needsPaymentRetry: !!api.needsPaymentRetry,
     managerStatusNote: (api.managerStatusNote || '').trim(),
     court: courtLabel || api.venueName || 'Đặt sân',
@@ -363,7 +364,12 @@ export default function UserBookings() {
                                       onError={e => { e.target.src = '/assets/img/venues/venues-01.jpg'; }} />
                                   </span>
                                   <span className="table-head-name flex-grow-1 ms-2">
-                                    <span>{b.court}</span>
+                                    <span>
+                                      {b.court}
+                                      {b.isLongTerm && (
+                                        <span className="badge bg-info text-dark ms-1" style={{ fontSize: '0.65rem' }}>Lịch dài hạn</span>
+                                      )}
+                                    </span>
                                     <small className="d-block text-muted" style={{ fontSize: '0.75rem' }}>
                                       <i className="feather-map-pin me-1" />{b.venueAddress}
                                     </small>
@@ -553,6 +559,12 @@ export default function UserBookings() {
                 Bạn có chắc muốn huỷ lịch đặt sân <strong>{cancelTarget.court}</strong> ngày{' '}
                 <strong>{cancelTarget.date}</strong>, {cancelTarget.time}?
                 <br />Hành động này không thể hoàn tác.
+                {cancelTarget.isLongTerm && (
+                  <>
+                    <br />
+                    <strong className="text-danger">Đơn lịch dài hạn: huỷ sẽ áp dụng cho toàn bộ các buổi trong chuỗi.</strong>
+                  </>
+                )}
               </p>
               <div className="d-flex gap-2 justify-content-center">
                 <button
