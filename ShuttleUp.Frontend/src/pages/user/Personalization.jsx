@@ -125,7 +125,7 @@ const Personalization = () => {
   };
 
   return (
-    <div style={{ backgroundColor: '#f8f9fa', minHeight: '100vh', paddingTop: '70px' }}>
+    <div style={{ backgroundColor: '#f8f9fa', minHeight: '100vh', paddingTop: '100px' }}>
       {/* Top Header */}
       <div
         className="d-flex align-items-center justify-content-between text-white px-4 py-3"
