@@ -151,7 +151,12 @@ export default function LongTermBooking() {
 
   return (
     <div className="main-wrapper" style={{ paddingTop: '96px' }}>
-      <LongTermBookingSteps currentStep={1} />
+      <LongTermBookingSteps
+        currentStep={1}
+        scheduleStepPath="/booking/long-term/fixed"
+        scheduleStepLabel="Lịch cố định"
+        confirmPath="/booking/long-term/confirm"
+      />
 
       <div className="content">
         <div className="container py-4">

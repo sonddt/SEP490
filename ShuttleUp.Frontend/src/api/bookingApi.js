@@ -20,6 +20,14 @@ export function createLongTermBooking(payload) {
   return axiosClient.post('/bookings/long-term', payload);
 }
 
+export function previewLongTermFlexible(payload) {
+  return axiosClient.post('/bookings/long-term/flexible/preview', payload);
+}
+
+export function createLongTermFlexible(payload) {
+  return axiosClient.post('/bookings/long-term/flexible', payload);
+}
+
 /** @param {string} bookingId */
 export function submitPayment(bookingId, formData) {
   return axiosClient.post(`/bookings/${bookingId}/payment`, formData);

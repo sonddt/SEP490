@@ -28,6 +28,9 @@
 - **Lịch dài hạn (một đơn, nhiều slot 30 phút, thanh toán một lần):**
   - `POST /api/bookings/long-term/preview` — body: `venueId`, `courtId`, `startTime`, `endTime` (HH:mm), `dayOfWeek` (0–6, CN=0), `fromDate`, `toDate` (yyyy-MM-dd). Trả về `items`, `totalAmount`, `occurrenceCount`, `conflictCount`, `invalidOccurrences` (nếu có).
   - `POST /api/bookings/long-term` — cùng payload + `contactName`, `contactPhone`, `note` (optional). Tạo `booking_series` + một `booking` + toàn bộ `booking_items`; giới hạn tối đa 400 slot.
+  - **Lịch dài hạn linh hoạt** (nhiều ngày/slot tự chọn, cùng mô hình một đơn + `booking_series` với `recurrence_rule_json` type `FLEXIBLE`):
+    - `POST /api/bookings/long-term/flexible/preview` — body: `venueId`, `items` (mảng `{ courtId, startTime, endTime }` — ISO local, khung là bội 30 phút). Trả `slotCount`, `totalAmount`, `rangeStart`, `rangeEnd`, `items`.
+    - `POST /api/bookings/long-term/flexible` — `venueId`, `items`, `contactName`, `contactPhone`, `note` (optional). Tạo series + booking + items; tối đa 400 ô slot.
 - `GET /api/bookings/my` — mỗi phần tử có thêm `seriesId` (nullable), `isLongTerm` (bool).
 - `GET /api/manager/bookings` — mỗi phần tử có thêm `seriesId`, `isLongTerm` để badge UI.
 

@@ -11,7 +11,11 @@ public partial class BookingSeries
 
     public Guid VenueId { get; set; }
 
-    /// <summary>JSON: recurrence type, days of week, court id, time window, etc.</summary>
+    /// <summary>
+    /// JSON quy tắc: WEEKLY (lặp tuần) hoặc FLEXIBLE (nhiều slot tự chọn).
+    /// WEEKLY: type, daysOfWeek, sessionStart, sessionEnd, courtId.
+    /// FLEXIBLE: type, itemCount (tổng số ô 30 phút).
+    /// </summary>
     public string RecurrenceRuleJson { get; set; } = "{}";
 
     public DateOnly RangeStartDate { get; set; }

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 
-const PATH_SCHEDULE = '/booking/long-term';
-const PATH_CONFIRM = '/booking/long-term/confirm';
+const DEFAULT_SCHEDULE = '/booking/long-term/fixed';
+const DEFAULT_CONFIRM = '/booking/long-term/confirm';
 
 function paymentPath(bookingId) {
   if (bookingId) {
@@ -10,13 +10,19 @@ function paymentPath(bookingId) {
   return '/booking/payment?flow=long-term';
 }
 
-/** Stepper thống nhất 4 bước cho luồng đặt lịch dài hạn */
-export default function LongTermBookingSteps({ currentStep, bookingId }) {
+/** Stepper 4 bước — nhánh cố định hoặc linh hoạt (đổi bước 1 qua props). */
+export default function LongTermBookingSteps({
+  currentStep,
+  bookingId,
+  scheduleStepPath = DEFAULT_SCHEDULE,
+  scheduleStepLabel = 'Lịch cố định',
+  confirmPath = DEFAULT_CONFIRM,
+}) {
   const payPath = paymentPath(bookingId);
 
   const STEPS = [
-    { label: 'Lịch cố định', path: PATH_SCHEDULE },
-    { label: 'Xác nhận đơn', path: PATH_CONFIRM },
+    { label: scheduleStepLabel, path: scheduleStepPath },
+    { label: 'Xác nhận đơn', path: confirmPath },
     { label: 'Thanh toán', path: payPath },
     { label: 'Hoàn tất', path: '/booking/complete' },
   ];

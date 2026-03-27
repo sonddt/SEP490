@@ -3,9 +3,9 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import LongTermBookingSteps from '../components/booking/LongTermBookingSteps';
 import { useAuth } from '../context/AuthContext';
 import { profileApi } from '../api/profileApi';
-import { createLongTermBooking } from '../api/bookingApi';
+import { createLongTermFlexible } from '../api/bookingApi';
 
-export default function LongTermConfirm() {
+export default function LongTermFlexibleConfirm() {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state ?? {};
@@ -15,13 +15,7 @@ export default function LongTermConfirm() {
     venueId = null,
     venueName = '',
     venueAddress = '',
-    courtId = '',
-    courtName = '',
-    rangeStart = '',
-    rangeEnd = '',
-    sessionStartTime = '',
-    sessionEndTime = '',
-    daysOfWeek = [],
+    items = [],
     preview = null,
   } = state;
 
@@ -70,22 +64,16 @@ export default function LongTermConfirm() {
       setErrors(e);
       return;
     }
-    if (!venueId || !courtId || !rangeStart || !rangeEnd) {
+    if (!venueId || !Array.isArray(items) || items.length === 0) {
       setSubmitError('Thiếu dữ liệu lịch. Vui lòng làm lại từ đầu.');
       return;
     }
     setSubmitError('');
     setLoading(true);
     try {
-      // axiosClient interceptor returns response.data directly (no nested .data)
-      const result = await createLongTermBooking({
+      const result = await createLongTermFlexible({
         venueId,
-        courtId,
-        rangeStart,
-        rangeEnd,
-        sessionStartTime,
-        sessionEndTime,
-        daysOfWeek,
+        items,
         contactName: form.name.trim(),
         contactPhone: form.phone.trim(),
         note: form.note.trim() || undefined,
@@ -121,27 +109,27 @@ export default function LongTermConfirm() {
     <div className="main-wrapper" style={{ paddingTop: '96px' }}>
       <LongTermBookingSteps
         currentStep={2}
-        scheduleStepPath="/booking/long-term/fixed"
-        scheduleStepLabel="Lịch cố định"
-        confirmPath="/booking/long-term/confirm"
+        scheduleStepPath="/booking/long-term/flexible"
+        scheduleStepLabel="Lịch linh hoạt"
+        confirmPath="/booking/long-term/flexible/confirm"
       />
 
       <div className="content">
         <div className="container py-4">
           <div className="card mb-4">
             <div className="card-body">
-              <h3 className="mb-3">Xác nhận đặt lịch dài hạn</h3>
+              <h3 className="mb-3">Xác nhận đặt lịch dài hạn (linh hoạt)</h3>
               <p className="text-muted mb-1"><strong>{venueName}</strong></p>
               {venueAddress && <p className="small mb-2">{venueAddress}</p>}
               <ul className="list-unstyled small mb-0">
-                <li>Sân: <strong>{courtName || courtId}</strong></li>
-                <li>Từ {rangeStart} đến {rangeEnd}</li>
-                <li>Giờ: {sessionStartTime} – {sessionEndTime}</li>
                 <li>
-                  {preview.sessionCount} buổi · {preview.slotCount} ô × 30 phút ·{' '}
+                  {preview.sessionCount} ngày có đặt · {preview.slotCount} ô × 30 phút ·{' '}
                   <strong className="text-success">{Number(preview.totalAmount).toLocaleString('vi-VN')} VNĐ</strong>
                 </li>
               </ul>
+              <p className="small text-danger mt-2 mb-0">
+                Huỷ đơn sẽ huỷ toàn bộ các khung trong chuỗi; thanh toán một lần.
+              </p>
             </div>
           </div>
 
@@ -154,8 +142,8 @@ export default function LongTermConfirm() {
                   type="text"
                   className={`form-control ${errors.name ? 'is-invalid' : ''}`}
                   value={form.name}
-                  onChange={(e) => {
-                    setForm((f) => ({ ...f, name: e.target.value }));
+                  onChange={(ev) => {
+                    setForm((f) => ({ ...f, name: ev.target.value }));
                     setErrors((er) => ({ ...er, name: '' }));
                   }}
                 />
@@ -167,8 +155,8 @@ export default function LongTermConfirm() {
                   type="tel"
                   className={`form-control ${errors.phone ? 'is-invalid' : ''}`}
                   value={form.phone}
-                  onChange={(e) => {
-                    setForm((f) => ({ ...f, phone: e.target.value }));
+                  onChange={(ev) => {
+                    setForm((f) => ({ ...f, phone: ev.target.value }));
                     setErrors((er) => ({ ...er, phone: '' }));
                   }}
                 />
@@ -180,7 +168,7 @@ export default function LongTermConfirm() {
                   className="form-control"
                   rows={2}
                   value={form.note}
-                  onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+                  onChange={(ev) => setForm((f) => ({ ...f, note: ev.target.value }))}
                 />
               </div>
               {submitError && <div className="alert alert-danger">{submitError}</div>}
@@ -196,7 +184,7 @@ export default function LongTermConfirm() {
                 <button
                   type="button"
                   className="btn btn-outline-secondary"
-                  onClick={() => navigate('/booking/long-term/fixed', { state: location.state })}
+                  onClick={() => navigate('/booking/long-term/flexible', { state: { venueId, venueName, venueAddress } })}
                 >
                   Quay lại
                 </button>

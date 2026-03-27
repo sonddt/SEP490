@@ -221,6 +221,9 @@ CREATE TABLE court_open_hours (
 -- ======================================================================
 -- BOOKING
 -- ======================================================================
+-- booking_series.recurrence_rule_json (ứng dụng quy ước, không enforce ở DB):
+--   WEEKLY: { "type":"WEEKLY", "daysOfWeek":[...], "sessionStart","sessionEnd", "courtId" }
+--   FLEXIBLE: { "type":"FLEXIBLE", "itemCount": N } — range_start_date/range_end_date = min/max ngày từ booking_items
 
 CREATE TABLE booking_series (
     id CHAR(36) PRIMARY KEY,

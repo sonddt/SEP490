@@ -17,8 +17,11 @@ import BookingTimeline from './pages/BookingTimeline';
 import BookingConfirm from './pages/BookingConfirm';
 import BookingPayment from './pages/BookingPayment';
 import BookingComplete from './pages/BookingComplete';
+import LongTermGateway from './pages/LongTermGateway';
 import LongTermBooking from './pages/LongTermBooking';
 import LongTermConfirm from './pages/LongTermConfirm';
+import LongTermFlexible from './pages/LongTermFlexible';
+import LongTermFlexibleConfirm from './pages/LongTermFlexibleConfirm';
 import TermsOfService from './pages/TermsOfService';
 
 // Auth
@@ -121,8 +124,11 @@ function App() {
           <Route path="/booking/confirm" element={<ProtectedRoute><BookingConfirm /></ProtectedRoute>} />
           <Route path="/booking/payment" element={<ProtectedRoute><BookingPayment /></ProtectedRoute>} />
           <Route path="/booking/complete" element={<ProtectedRoute><BookingComplete /></ProtectedRoute>} />
-          <Route path="/booking/long-term" element={<ProtectedRoute><LongTermBooking /></ProtectedRoute>} />
+          <Route path="/booking/long-term" element={<ProtectedRoute><LongTermGateway /></ProtectedRoute>} />
+          <Route path="/booking/long-term/fixed" element={<ProtectedRoute><LongTermBooking /></ProtectedRoute>} />
+          <Route path="/booking/long-term/flexible" element={<ProtectedRoute><LongTermFlexible /></ProtectedRoute>} />
           <Route path="/booking/long-term/confirm" element={<ProtectedRoute><LongTermConfirm /></ProtectedRoute>} />
+          <Route path="/booking/long-term/flexible/confirm" element={<ProtectedRoute><LongTermFlexibleConfirm /></ProtectedRoute>} />
 
           {/* ═══ Player Profile ═══ */}
           <Route path="/personalization" element={<ProtectedRoute requiredRole="PLAYER"><Personalization /></ProtectedRoute>} />
