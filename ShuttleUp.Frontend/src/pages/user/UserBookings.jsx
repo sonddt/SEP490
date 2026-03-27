@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import UserDashboardMenu from '../../components/user/UserDashboardMenu';
 import { getMyBookings, cancelBooking } from '../../api/bookingApi';
 
@@ -70,6 +70,7 @@ function mapApiRowToBooking(api) {
   return {
     id: api.id,
     code: api.bookingCode,
+    needsPaymentRetry: !!api.needsPaymentRetry,
     managerStatusNote: (api.managerStatusNote || '').trim(),
     court: courtLabel || api.venueName || 'Đặt sân',
     courtImg: '/assets/img/booking/booking-01.jpg',
@@ -99,6 +100,8 @@ const STATUS_BADGE = {
 };
 
 export default function UserBookings() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab,     setActiveTab]     = useState('PENDING');
   const [timeFilter,    setTimeFilter]    = useState('all');
   const [sortBy,        setSortBy]        = useState('newest');
@@ -125,6 +128,29 @@ export default function UserBookings() {
   useEffect(() => {
     loadBookings();
   }, [loadBookings]);
+
+  useEffect(() => {
+    const bid = searchParams.get('bookingId');
+    if (!bid || loading || bookings.length === 0) return;
+    const found = bookings.find(
+      (b) => String(b.id).toLowerCase() === String(bid).toLowerCase(),
+    );
+    if (!found) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('bookingId');
+      setSearchParams(next, { replace: true });
+      return;
+    }
+    setActiveTab(found.status);
+    setDetailBooking(found);
+    const next = new URLSearchParams(searchParams);
+    next.delete('bookingId');
+    setSearchParams(next, { replace: true });
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-booking-row="${found.id}"]`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }, [bookings, loading, searchParams, setSearchParams]);
 
   useEffect(() => {
     const t = window.setInterval(() => {
@@ -328,7 +354,7 @@ export default function UserBookings() {
                             </tr>
                           )}
                           {!loading && filtered.map(b => (
-                            <tr key={b.id}>
+                            <tr key={b.id} data-booking-row={b.id}>
                               {/* Court */}
                               <td>
                                 <h2 className="table-avatar">
@@ -384,6 +410,17 @@ export default function UserBookings() {
                                         <i className="feather-eye me-2" />Xem chi tiết
                                       </button>
                                     </li>
+                                    {b.needsPaymentRetry && b.status === 'PENDING' && (
+                                      <li>
+                                        <button
+                                          type="button"
+                                          className="dropdown-item text-primary"
+                                          onClick={() => navigate(`/booking/payment?bookingId=${b.id}`)}
+                                        >
+                                          <i className="feather-credit-card me-2" />Thanh toán lại
+                                        </button>
+                                      </li>
+                                    )}
                                     {canUserCancel(b) && (
                                       <li>
                                         <button

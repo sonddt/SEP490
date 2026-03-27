@@ -24,6 +24,31 @@ export default function ProtectedRoute({ children, requiredRole }) {
     );
   }
 
+  // ── Bắt buộc Personalization cho mọi PLAYER đã đăng nhập ──────────────────
+  // Kiểm tra TRƯỚC requiredRole để cover cả routes không có requiredRole (VD: /venues)
+  if (location.pathname !== '/personalization') {
+    try {
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      const roles = userData?.roles ?? [];
+      const isPlayer = roles.some((r) => String(r).toUpperCase() === 'PLAYER');
+      const isManagerRoute = location.pathname.startsWith('/manager');
+      const isAdminRoute = location.pathname.startsWith('/admin');
+
+      if (isPlayer && !isManagerRoute && !isAdminRoute) {
+        // isPersonalized === false hoặc null/undefined → chưa hoàn thành onboarding
+        const notPersonalized =
+          userData?.isPersonalized === false ||
+          userData?.isPersonalized === null ||
+          userData?.isPersonalized === undefined;
+        if (notPersonalized) {
+          return <Navigate to="/personalization" replace state={{ from: location.pathname }} />;
+        }
+      }
+    } catch {
+      // ignore parse error
+    }
+  }
+
   if (requiredRole) {
     try {
       const userData = JSON.parse(localStorage.getItem('user') || '{}');

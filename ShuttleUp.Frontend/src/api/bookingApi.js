@@ -25,3 +25,13 @@ export function getMyBookings() {
 export function cancelBooking(bookingId) {
   return axiosClient.patch(`/bookings/${bookingId}/cancel`);
 }
+
+/** @param {string} venueId @param {{ amount?: number, addInfo?: string }} [params] */
+export function getVenueCheckoutSettings(venueId, params) {
+  return axiosClient.get(`/venues/${venueId}/checkout-settings`, { params });
+}
+
+/** @param {string} bookingId */
+export function getBookingPaymentContext(bookingId) {
+  return axiosClient.get(`/bookings/${bookingId}/payment-context`);
+}

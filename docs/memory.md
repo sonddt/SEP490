@@ -33,3 +33,35 @@
    - Tạo trang `/manager/profile` riêng khép kín trong `ManagerLayout` (hiển thị thông tin Chủ Sân, Giấy phép kinh doanh, CCCD) giao diện chuẩn SaaS.
    - Định tuyến lại trang `MyProfile.jsx` (của chức năng Player) từ `/profile` về lại `/user/profile` để rõ ràng về mặt định danh component.
    - Chỉnh sửa `ManagerSidebar.jsx`, `UserDropdown.jsx`, `ManagerLayout.jsx` để Navbar menu điều hướng chính xác vào 2 luồng Route tách biệt. Mọi thao tác trái tim trên "Sân yêu thích" đều được bảo vệ trong `/user/profile`.
+
+6. Khởi tạo tính năng Cá Nhân Hoá (Player Onboarding Personalization):
+   - **Database**: Thêm cột `skill_level`, `play_purpose`, `play_frequency`, `is_personalized` vào model User của C# (ShuttleUp.DAL/Backend).
+   - **Backend (C#)**: Cập nhật hàm `GetMyProfile` và `UpdateMyProfile` trong `ProfileController.cs` để hỗ trợ Map và Lưu/Sửa các trường cấu hình trên. Đã build thành công không lỗi.
+   - **Frontend (Tương thích Theme 2 UX/UI)**: Tạo trang `Personalization.jsx` dạng Stepper 5 bước (Vị trí, Giới tính, Trình độ, Mục tiêu, Tần suất). Giao diện tối ưu có Header nền Xanh Lá, Progress Tracker, tuân thủ UX thân thiện.
+   - **Bảo vệ luồng (Guard)**: Thay đổi file middleware React `ProtectedRoute.jsx` buộc người dùng có quyền `PLAYER` mà `isPersonalized == false` (hoặc null) thì vĩnh viễn bị Redirect vào `/personalization` cho tới khi hoàn tất stepper.
+   - **Hồ sơ**: Đồng bộ form `UserProfileEdit.jsx` cho phép người dùng thay đổi 3 thông số Thể Thao kể trên bất kì lúc nào.
+
+## Mar 26, 2026
+1. Đồng bộ schema DB theo rule "single source of truth" vào `Database.txt`:
+   - Thêm cột thanh toán + chính sách huỷ trong bảng `venues`: `payment_bank_name`, `payment_bank_bin`, `payment_account_number`, `payment_account_holder`, `payment_transfer_note_template`, `cancel_allowed`, `cancel_before_minutes`, `refund_type`, `refund_percent`.
+   - Thêm cột snapshot chính sách huỷ trong bảng `bookings`: `cancellation_policy_snapshot_json`.
+   - Thêm bảng `user_notifications` (kèm index `idx_user_notifications_user_created`).
+   - Thêm `DROP TABLE IF EXISTS user_notifications` ở phần reset DB.
+2. Xoá file migration rời `Database/migrations_venue_checkout_notifications.sql` theo yêu cầu để chỉ cần chạy `Database.txt` một lần.
+3. Sửa compile backend cho Notifications:
+   - Bổ sung `DbSet<UserNotification>` và map `modelBuilder.Entity<UserNotification>` trong `ShuttleUpDbContext`.
+   - Bổ sung navigation `ICollection<UserNotification>` trong model `User`.
+   - Kết quả: `dotnet build ShuttleUp.Backend` thành công (0 errors).
+
+7. Thông báo trong app (API + SignalR + UI):
+   - Backend: `NotificationDispatchService`, email HTML tùy chọn, endpoints `GET/PATCH /api/notifications`, tích hợp vào luồng booking/thanh toán.
+   - Frontend: `useAppNotificationsHub` trong `App.jsx`, trang `/user/notifications`, dropdown Header, `ManagerNotifications` dùng API thật (không mock), badge/chấm đỏ sidebar & topbar manager theo `useUnreadNotificationCount`, menu user có mục Thông báo.
+
+8. Fix 500 `Unknown column PaymentBankName / CancelAllowed`: EF map thiếu `HasColumnName` snake_case cho các field thanh toán + huỷ trên `Venue` và `CancellationPolicySnapshotJson` trên `Booking` trong `ShuttleUpDbContext`. Thêm block migration có điều kiện ở cuối `Database.txt` để DB cũ tự thêm cột `venues.*` và `bookings.cancellation_policy_snapshot_json` — chạy script (hoặc đoạn migration đó) trên MySQL đang dùng.
+
+9. Nâng cấp Notification (Mar 2026):
+   - Deep link: metadata có `deepLink` + `NotificationMetadataBuilder` (manager/player); click dropdown/list → điều hướng; `/user/bookings` và `/manager/bookings` đọc `?bookingId=` để mở modal đúng đơn.
+   - Hằng số loại: `NotificationTypes` (C#) + `constants/notificationTypes.js`.
+   - API `GET /notifications` trả `{ items, hasMore, nextBefore }` + query `before` (cursor); soft delete `is_deleted` + `DELETE /api/notifications/{id}`.
+   - SignalR payload thêm `bookingId` từ metadata; toast debounce ~4.5s theo booking/id; xóa hook `useBookingNotificationsHub.js` dư.
+   - Fix: `getNotifications` không được destructure `data` từ `axiosClient` (interceptor đã trả về body) — trước đây danh sách luôn rỗng dù unread-count đúng.

@@ -75,6 +75,7 @@ namespace ShuttleUp.Backend
                     settings.ApiSecret.Trim()));
             });
             builder.Services.AddScoped<IFileService, FileService>();
+            builder.Services.AddScoped<INotificationDispatchService, NotificationDispatchService>();
 
             // ── JWT Authentication ────────────────────────────────────────────────
             var jwtKey = builder.Configuration["Jwt:Key"]!;
@@ -227,6 +228,7 @@ namespace ShuttleUp.Backend
 
             app.MapControllers();
             app.MapHub<ShuttleUp.Backend.Hubs.ChatHub>("/hubs/chat");
+            app.MapHub<ShuttleUp.Backend.Hubs.NotificationHub>("/hubs/notifications");
 
             app.Run();
         }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ShuttleUp.Backend;
 using ShuttleUp.DAL.Models;
 
 namespace ShuttleUp.Backend.Controllers;
@@ -221,6 +222,63 @@ public class VenuesController : ControllerBase
         });
 
         return Ok(payload);
+    }
+
+    /// <summary>
+    /// Thông tin thanh toán + chính sách huỷ (public, cho trang thanh toán đặt sân).
+    /// amount/addInfo dùng để tạo URL ảnh VietQR.
+    /// </summary>
+    [HttpGet("{id:guid}/checkout-settings")]
+    public async Task<IActionResult> GetCheckoutSettings(
+        [FromRoute] Guid id,
+        [FromQuery] decimal? amount,
+        [FromQuery] string? addInfo)
+    {
+        var v = await _dbContext.Venues
+            .AsNoTracking()
+            .Where(venue => venue.Id == id && venue.IsActive == true)
+            .Select(venue => new
+            {
+                venue.Id,
+                venue.Name,
+                venue.PaymentBankName,
+                venue.PaymentBankBin,
+                venue.PaymentAccountNumber,
+                venue.PaymentAccountHolder,
+                venue.PaymentTransferNoteTemplate,
+                venue.CancelAllowed,
+                venue.CancelBeforeMinutes,
+                venue.RefundType,
+                venue.RefundPercent,
+            })
+            .FirstOrDefaultAsync();
+
+        if (v == null)
+            return NotFound();
+
+        var bin = VietQrHelper.ResolveBin(v.PaymentBankBin, v.PaymentBankName);
+        var amt = amount ?? 0m;
+        var note = string.IsNullOrWhiteSpace(addInfo) ? null : addInfo.Trim();
+        var vietQrUrl = VietQrHelper.BuildQrImageUrl(bin, v.PaymentAccountNumber, amt, note);
+
+        return Ok(new
+        {
+            venueId = v.Id,
+            venueName = v.Name,
+            bankName = v.PaymentBankName,
+            bankBin = bin,
+            accountNumber = v.PaymentAccountNumber,
+            accountHolder = v.PaymentAccountHolder,
+            transferNoteTemplate = v.PaymentTransferNoteTemplate ?? "[SĐT] - [Tên sân] - [Ngày]",
+            vietQrImageUrl = vietQrUrl,
+            cancellation = new
+            {
+                allowCancel = v.CancelAllowed,
+                cancelBeforeMinutes = v.CancelBeforeMinutes,
+                refundType = v.RefundType ?? "NONE",
+                refundPercent = v.RefundPercent,
+            },
+        });
     }
 }
 

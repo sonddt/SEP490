@@ -36,6 +36,7 @@ DROP TABLE IF EXISTS matching_posts;
 DROP TABLE IF EXISTS refund_transactions;
 DROP TABLE IF EXISTS refund_requests;
 DROP TABLE IF EXISTS payments;
+DROP TABLE IF EXISTS user_notifications;
 
 -- BOOKING
 DROP TABLE IF EXISTS court_blocks;
@@ -70,6 +71,10 @@ CREATE TABLE users (
     province VARCHAR(100),
     gender VARCHAR(20),
     date_of_birth DATE,
+    skill_level VARCHAR(50) NULL,
+    play_purpose VARCHAR(100) NULL,
+    play_frequency VARCHAR(50) NULL,
+    is_personalized BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE,
     blocked_at DATETIME,
     blocked_reason TEXT,
@@ -151,6 +156,15 @@ CREATE TABLE venues (
     lat DECIMAL(10,8),
     lng DECIMAL(11,8),
     description TEXT,
+    payment_bank_name VARCHAR(100) NULL COMMENT 'Display name e.g. Vietcombank',
+    payment_bank_bin VARCHAR(20) NULL COMMENT '6-digit VietQR bank ID',
+    payment_account_number VARCHAR(50) NULL,
+    payment_account_holder VARCHAR(255) NULL,
+    payment_transfer_note_template VARCHAR(500) NULL DEFAULT '[SĐT] - [Tên sân] - [Ngày]',
+    cancel_allowed TINYINT(1) NOT NULL DEFAULT 1,
+    cancel_before_minutes INT NOT NULL DEFAULT 120,
+    refund_type VARCHAR(20) NOT NULL DEFAULT 'NONE' COMMENT 'NONE|PERCENT|FULL',
+    refund_percent DECIMAL(5,2) NULL,
     thumbnail_file_id CHAR(36),
     contact_name VARCHAR(255),
     contact_phone VARCHAR(50),
@@ -219,9 +233,24 @@ CREATE TABLE bookings (
     contact_phone VARCHAR(50) NULL,
     guest_note TEXT NULL,
     manager_status_note VARCHAR(1000) NULL,
+    cancellation_policy_snapshot_json TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (venue_id) REFERENCES venues(id)
+);
+
+CREATE TABLE user_notifications (
+    id CHAR(36) PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    type VARCHAR(50) NOT NULL DEFAULT 'BOOKING',
+    title VARCHAR(255) NOT NULL,
+    body TEXT NULL,
+    metadata_json TEXT NULL,
+    is_read TINYINT(1) NOT NULL DEFAULT 0,
+    is_deleted TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_notifications_user_created (user_id, created_at),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE booking_items (
@@ -304,6 +333,7 @@ CREATE TABLE matching_posts (
     required_players INT,
     skill_level VARCHAR(50),
     gender_pref VARCHAR(50),
+    expense_sharing VARCHAR(100),
     notes TEXT,
     status VARCHAR(50) DEFAULT 'OPEN',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -778,6 +808,119 @@ SET @sql := IF(
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- Thêm cột snapshot chính sách huỷ trên bookings (checkout / đặt sân)
+SET @col_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'bookings'
+    AND column_name = 'cancellation_policy_snapshot_json'
+);
+
+SET @sql := IF(
+  @col_exists = 0,
+  'ALTER TABLE bookings ADD COLUMN cancellation_policy_snapshot_json TEXT NULL',
+  'SELECT 1'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- is_deleted trên user_notifications (ẩn khỏi API, không xóa cứng)
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'user_notifications' AND column_name = 'is_deleted'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE user_notifications ADD COLUMN is_deleted TINYINT(1) NOT NULL DEFAULT 0',
+  'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Cột thanh toán VietQR + chính sách huỷ trên venues (đồng bộ EF HasColumnName snake_case)
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'payment_bank_name'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN payment_bank_name VARCHAR(100) NULL COMMENT ''Display name e.g. Vietcombank''',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'payment_bank_bin'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN payment_bank_bin VARCHAR(20) NULL COMMENT ''6-digit VietQR bank ID''',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'payment_account_number'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN payment_account_number VARCHAR(50) NULL',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'payment_account_holder'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN payment_account_holder VARCHAR(255) NULL',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'payment_transfer_note_template'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN payment_transfer_note_template VARCHAR(500) NULL DEFAULT ''[SĐT] - [Tên sân] - [Ngày]''',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'cancel_allowed'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN cancel_allowed TINYINT(1) NOT NULL DEFAULT 1',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'cancel_before_minutes'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN cancel_before_minutes INT NOT NULL DEFAULT 120',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'refund_type'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN refund_type VARCHAR(20) NOT NULL DEFAULT ''NONE'' COMMENT ''NONE|PERCENT|FULL''',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'refund_percent'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN refund_percent DECIMAL(5,2) NULL',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- Sửa id payments mẫu cũ: prefix "g" không phải hex → EF đọc Guid lỗi 500 trên /api/manager/bookings
 UPDATE payments SET id = 'ba000001-0000-0000-0000-000000000001' WHERE id = 'g0000001-0000-0000-0000-000000000001';

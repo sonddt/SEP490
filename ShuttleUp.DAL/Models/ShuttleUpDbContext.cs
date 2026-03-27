@@ -50,6 +50,8 @@ public partial class ShuttleUpDbContext : DbContext
 
     public virtual DbSet<Role> Roles { get; set; }
 
+    public virtual DbSet<UserNotification> UserNotifications { get; set; }
+
     public virtual DbSet<User> Users { get; set; }
 
     public virtual DbSet<Venue> Venues { get; set; }
@@ -118,6 +120,9 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasColumnName("total_amount");
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.VenueId).HasColumnName("venue_id");
+            entity.Property(e => e.CancellationPolicySnapshotJson)
+                .HasColumnType("text")
+                .HasColumnName("cancellation_policy_snapshot_json");
 
             entity.HasOne(d => d.User).WithMany(p => p.Bookings)
                 .HasForeignKey(d => d.UserId)
@@ -542,6 +547,9 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.GenderPref)
                 .HasMaxLength(50)
                 .HasColumnName("gender_pref");
+            entity.Property(e => e.ExpenseSharing)
+                .HasMaxLength(100)
+                .HasColumnName("expense_sharing");
             entity.Property(e => e.Notes)
                 .HasColumnType("text")
                 .HasColumnName("notes");
@@ -730,6 +738,46 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasColumnName("name");
         });
 
+        modelBuilder.Entity<UserNotification>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("user_notifications");
+
+            entity.HasIndex(e => new { e.UserId, e.CreatedAt }, "idx_user_notifications_user_created");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Body)
+                .HasColumnType("text")
+                .HasColumnName("body");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.Property(e => e.IsRead)
+                .HasDefaultValueSql("'0'")
+                .HasColumnName("is_read");
+            entity.Property(e => e.IsDeleted)
+                .HasDefaultValueSql("'0'")
+                .HasColumnName("is_deleted");
+            entity.Property(e => e.MetadataJson)
+                .HasColumnType("text")
+                .HasColumnName("metadata_json");
+            entity.Property(e => e.Title)
+                .HasMaxLength(255)
+                .HasColumnName("title");
+            entity.Property(e => e.Type)
+                .HasMaxLength(50)
+                .HasDefaultValueSql("'BOOKING'")
+                .HasColumnName("type");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.User).WithMany(p => p.UserNotifications)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("user_notifications_ibfk_1");
+        });
+
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
@@ -773,6 +821,19 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.Gender)
                 .HasMaxLength(20)
                 .HasColumnName("gender");
+            entity.Property(e => e.SkillLevel)
+                .HasMaxLength(50)
+                .HasColumnName("skill_level");
+            entity.Property(e => e.PlayPurpose)
+                .HasMaxLength(100)
+                .HasColumnName("play_purpose");
+            entity.Property(e => e.PlayFrequency)
+                .HasMaxLength(50)
+                .HasColumnName("play_frequency");
+            entity.Property(e => e.IsPersonalized)
+                .HasDefaultValue(false)
+                .HasColumnType("tinyint(1)")
+                .HasColumnName("is_personalized");
             entity.Property(e => e.IsActive)
                 .HasDefaultValueSql("'1'")
                 .HasColumnName("is_active");
@@ -852,6 +913,32 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasMaxLength(255)
                 .HasColumnName("name");
             entity.Property(e => e.OwnerUserId).HasColumnName("owner_user_id");
+
+            entity.Property(e => e.PaymentBankName)
+                .HasMaxLength(100)
+                .HasColumnName("payment_bank_name");
+            entity.Property(e => e.PaymentBankBin)
+                .HasMaxLength(20)
+                .HasColumnName("payment_bank_bin");
+            entity.Property(e => e.PaymentAccountNumber)
+                .HasMaxLength(50)
+                .HasColumnName("payment_account_number");
+            entity.Property(e => e.PaymentAccountHolder)
+                .HasMaxLength(255)
+                .HasColumnName("payment_account_holder");
+            entity.Property(e => e.PaymentTransferNoteTemplate)
+                .HasMaxLength(500)
+                .HasColumnName("payment_transfer_note_template");
+            entity.Property(e => e.CancelAllowed)
+                .HasColumnName("cancel_allowed");
+            entity.Property(e => e.CancelBeforeMinutes)
+                .HasColumnName("cancel_before_minutes");
+            entity.Property(e => e.RefundType)
+                .HasMaxLength(20)
+                .HasColumnName("refund_type");
+            entity.Property(e => e.RefundPercent)
+                .HasPrecision(5, 2)
+                .HasColumnName("refund_percent");
 
             entity.HasOne(d => d.OwnerUser).WithMany(p => p.Venues)
                 .HasForeignKey(d => d.OwnerUserId)

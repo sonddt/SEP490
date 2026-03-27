@@ -1,16 +1,21 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import BookingSteps from '../components/booking/BookingSteps';
-import { createBooking, submitPayment } from '../api/bookingApi';
+import {
+  createBooking,
+  submitPayment,
+  getVenueCheckoutSettings,
+  getBookingPaymentContext,
+} from '../api/bookingApi';
 
-const BANK_INFO = {
-  bank:    'Vietcombank',
-  account: '1234 5678 9012',
-  name:    'SHUTTLEUP BADMINTON',
-  note:    'Nội dung CK: [SĐT] - [Tên sân] - [Ngày]',
+const FALLBACK_BANK = {
+  bank: 'Vietcombank',
+  account: '—',
+  name: '—',
+  note: 'Nội dung CK: [SĐT] - [Tên sân] - [Ngày]',
 };
 
-const HOLD_SECONDS = 15 * 60; // 15 minutes
+const HOLD_SECONDS = 15 * 60;
 
 function formatDateVN(isoDate) {
   if (!isoDate) return '';
@@ -20,30 +25,134 @@ function formatDateVN(isoDate) {
 
 function padTwo(n) { return String(n).padStart(2, '0'); }
 
+function buildTransferNote(template, { phone, venueName, dateIso }) {
+  const t = template || '[SĐT] - [Tên sân] - [Ngày]';
+  return t
+    .replace('[SĐT]', phone || '')
+    .replace('[Tên sân]', venueName || '')
+    .replace('[Ngày]', dateIso ? formatDateVN(dateIso) : '');
+}
+
+function mapApiSlotsToRows(items) {
+  if (!Array.isArray(items)) return [];
+  return items.map((s) => {
+    let timeLabel = s.timeLabel;
+    if (!timeLabel && s.startTime) {
+      const d = new Date(s.startTime);
+      timeLabel = `${padTwo(d.getHours())}:${padTwo(d.getMinutes())}`;
+    }
+    return { ...s, timeLabel, price: s.price ?? 0 };
+  });
+}
+
 export default function BookingPayment() {
-  const navigate  = useNavigate();
-  const location  = useLocation();
-  const state     = location.state ?? {};
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const paramBookingId = searchParams.get('bookingId');
 
-  const {
-    venueId       = null,
-    venueName     = 'Sân cầu lông',
-    venueAddress  = '',
-    date          = new Date().toISOString().split('T')[0],
-    selectedSlots = [],
-    totalPrice    = 0,
-    totalHours    = '0h',
-    customerName  = '',
-    customerPhone = '',
-    note          = '',
-  } = state;
+  const initial = location.state ?? {};
 
-  // ── Payment method: bank or qr only ─────────────────────────────────────
+  const [pay, setPay] = useState({
+    venueId: initial.venueId ?? null,
+    venueName: initial.venueName ?? 'Sân cầu lông',
+    venueAddress: initial.venueAddress ?? '',
+    date: initial.date ?? new Date().toISOString().split('T')[0],
+    selectedSlots: initial.selectedSlots ?? [],
+    totalPrice: initial.totalPrice ?? 0,
+    totalHours: initial.totalHours ?? '0h',
+    customerName: initial.customerName ?? '',
+    customerPhone: initial.customerPhone ?? '',
+    note: initial.note ?? '',
+  });
+
+  /** Chỉ nộp CK (đã có booking — thanh toán lại) */
+  const [resumeBookingId, setResumeBookingId] = useState(paramBookingId);
+  const [resumeBookingCode, setResumeBookingCode] = useState(null);
+  const [loadingContext, setLoadingContext] = useState(!!paramBookingId);
+  const [checkoutSettings, setCheckoutSettings] = useState(null);
+  const [loadingCheckout, setLoadingCheckout] = useState(false);
+  const [error, setError] = useState('');
+
+  const loadResume = useCallback(async () => {
+    if (!paramBookingId) return;
+    setLoadingContext(true);
+    try {
+      const ctx = await getBookingPaymentContext(paramBookingId);
+      setResumeBookingId(ctx.bookingId);
+      setResumeBookingCode(ctx.bookingCode ?? null);
+      setPay({
+        venueId: ctx.venueId,
+        venueName: ctx.venueName ?? 'Sân cầu lông',
+        venueAddress: ctx.venueAddress ?? '',
+        date: ctx.date ?? new Date().toISOString().split('T')[0],
+        selectedSlots: mapApiSlotsToRows(ctx.selectedSlots),
+        totalPrice: Number(ctx.totalPrice ?? 0),
+        totalHours: ctx.totalHours ?? '0h',
+        customerName: ctx.customerName ?? '',
+        customerPhone: ctx.customerPhone ?? '',
+        note: ctx.note ?? '',
+      });
+    } catch {
+      setError('Không tải được đơn để thanh toán. Vui lòng thử từ Lịch sử đặt sân.');
+    } finally {
+      setLoadingContext(false);
+    }
+  }, [paramBookingId]);
+
+  useEffect(() => {
+    loadResume();
+  }, [loadResume]);
+
+  const transferNote = useMemo(
+    () => buildTransferNote(checkoutSettings?.transferNoteTemplate, {
+      phone: pay.customerPhone,
+      venueName: pay.venueName,
+      dateIso: pay.date,
+    }),
+    [checkoutSettings?.transferNoteTemplate, pay.customerPhone, pay.venueName, pay.date],
+  );
+
+  useEffect(() => {
+    if (!pay.venueId) return;
+    let cancelled = false;
+    (async () => {
+      setLoadingCheckout(true);
+      try {
+        const data = await getVenueCheckoutSettings(pay.venueId, {
+          amount: pay.totalPrice,
+          addInfo: transferNote,
+        });
+        if (!cancelled) setCheckoutSettings(data);
+      } catch {
+        if (!cancelled) setCheckoutSettings(null);
+      } finally {
+        if (!cancelled) setLoadingCheckout(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [pay.venueId, pay.totalPrice, transferNote]);
+
+  const bankInfo = useMemo(() => {
+    if (checkoutSettings?.bankName) {
+      return {
+        bank: checkoutSettings.bankName,
+        account: checkoutSettings.accountNumber || FALLBACK_BANK.account,
+        name: checkoutSettings.accountHolder || FALLBACK_BANK.name,
+        note: `Nội dung CK: ${transferNote}`,
+      };
+    }
+    return {
+      ...FALLBACK_BANK,
+      note: `Nội dung CK: ${transferNote}`,
+    };
+  }, [checkoutSettings, transferNote]);
+
+  const vietQrUrl = checkoutSettings?.vietQrImageUrl || null;
+
   const [method, setMethod] = useState('bank');
-
-  // ── Proof image upload ───────────────────────────────────────────────────
-  const [proofFile,    setProofFile]    = useState(null);   // File object
-  const [proofPreview, setProofPreview] = useState(null);   // Object URL
+  const [proofFile, setProofFile] = useState(null);
+  const [proofPreview, setProofPreview] = useState(null);
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
@@ -70,17 +179,15 @@ export default function BookingPayment() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Cleanup object URL on unmount
   useEffect(() => () => { if (proofPreview) URL.revokeObjectURL(proofPreview); }, [proofPreview]);
 
-  // ── 15-minute hold countdown ─────────────────────────────────────────────
   const [secondsLeft, setSecondsLeft] = useState(HOLD_SECONDS);
-  const [expired,     setExpired]     = useState(false);
+  const [expired, setExpired] = useState(false);
   const intervalRef = useRef(null);
 
   useEffect(() => {
     intervalRef.current = setInterval(() => {
-      setSecondsLeft(prev => {
+      setSecondsLeft((prev) => {
         if (prev <= 1) {
           clearInterval(intervalRef.current);
           setExpired(true);
@@ -94,84 +201,93 @@ export default function BookingPayment() {
 
   const timerMins = Math.floor(secondsLeft / 60);
   const timerSecs = secondsLeft % 60;
-  const timerUrgent = secondsLeft <= 120; // red when ≤ 2 min
+  const timerUrgent = secondsLeft <= 120;
 
-  // When expired: show overlay → after user clicks "OK" send them back
   const handleExpiredOk = useCallback(() => {
     navigate('/booking', { state: location.state, replace: true });
   }, [navigate, location.state]);
 
-  // ── Form ─────────────────────────────────────────────────────────────────
-  const [agreed,  setAgreed]  = useState(false);
+  const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState('');
+
+  const navigateComplete = (payload) => {
+    navigate('/booking/complete', { state: payload });
+  };
 
   const handleConfirm = async () => {
-    if (!proofFile)  { setError('Vui lòng upload ảnh minh chứng chuyển khoản.'); return; }
-    if (!agreed)     { setError('Vui lòng đồng ý với điều khoản dịch vụ.'); return; }
-    if (expired)     { setError('Thời gian giữ chỗ đã hết. Vui lòng đặt lại.'); return; }
-    if (!venueId)    { setError('Thiếu thông tin cơ sở. Vui lòng chọn sân lại.'); return; }
-
-    const items = (selectedSlots || [])
-      .filter(s => s.courtId && s.startTime && s.endTime)
-      .map(s => ({
-        courtId: s.courtId,
-        startTime: s.startTime,
-        endTime: s.endTime,
-      }));
-
-    if (items.length === 0) {
-      setError('Không có khung giờ hợp lệ. Vui lòng quay lại chọn giờ.');
-      return;
-    }
+    if (!proofFile) { setError('Vui lòng upload ảnh minh chứng chuyển khoản.'); return; }
+    if (!agreed) { setError('Vui lòng đồng ý với điều khoản dịch vụ.'); return; }
+    if (expired) { setError('Thời gian giữ chỗ đã hết. Vui lòng đặt lại.'); return; }
+    if (!pay.venueId) { setError('Thiếu thông tin cơ sở. Vui lòng chọn sân lại.'); return; }
 
     setError('');
     setLoading(true);
 
     try {
-      const created = await createBooking({
-        venueId,
-        items,
-        contactName: customerName,
-        contactPhone: customerPhone,
-        note: note || undefined,
-      });
+      let bookingId = resumeBookingId;
+      let bookingCodeFromApi = resumeBookingCode;
+      let bookingStatus = 'PENDING';
 
-      const bookingId = created.bookingId ?? created.BookingId;
-      const bookingCodeFromApi = created.bookingCode ?? created.BookingCode;
-      if (!bookingId) {
-        setError('Phản hồi từ server không hợp lệ (thiếu mã đơn).');
-        setLoading(false);
-        return;
+      if (resumeBookingId) {
+        /* Thanh toán lại — chỉ upload CK */
+      } else {
+        const items = (pay.selectedSlots || [])
+          .filter(s => s.courtId && s.startTime && s.endTime)
+          .map(s => ({
+            courtId: s.courtId,
+            startTime: s.startTime,
+            endTime: s.endTime,
+          }));
+
+        if (items.length === 0) {
+          setError('Không có khung giờ hợp lệ. Vui lòng quay lại chọn giờ.');
+          setLoading(false);
+          return;
+        }
+
+        const created = await createBooking({
+          venueId: pay.venueId,
+          items,
+          contactName: pay.customerName,
+          contactPhone: pay.customerPhone,
+          note: pay.note || undefined,
+        });
+
+        bookingId = created.bookingId ?? created.BookingId;
+        bookingCodeFromApi = created.bookingCode ?? created.BookingCode;
+        bookingStatus = created.status ?? created.Status ?? 'PENDING';
+        if (!bookingId) {
+          setError('Phản hồi từ server không hợp lệ (thiếu mã đơn).');
+          setLoading(false);
+          return;
+        }
       }
 
       const formData = new FormData();
       formData.append('method', method === 'qr' ? 'QR' : 'BANK');
       formData.append('proofImage', proofFile);
 
-      const pay = await submitPayment(bookingId, formData);
-      const bookingCode = pay.bookingCode ?? bookingCodeFromApi ?? `SU${String(bookingId).slice(-6)}`;
+      const payRes = await submitPayment(bookingId, formData);
+      const bookingCode = payRes.bookingCode ?? bookingCodeFromApi ?? `SU${String(bookingId).slice(-6)}`;
 
       setLoading(false);
       clearInterval(intervalRef.current);
 
-      navigate('/booking/complete', {
-        state: {
-          venueId,
-          venueName,
-          venueAddress,
-          date,
-          selectedSlots,
-          totalPrice,
-          totalHours,
-          customerName,
-          customerPhone,
-          note,
-          bookingId,
-          paymentMethod: method === 'qr' ? 'Quét mã QR' : 'Chuyển khoản ngân hàng',
-          bookingCode,
-          bookingStatus: created.status ?? created.Status ?? 'PENDING',
-        },
+      navigateComplete({
+        venueId: pay.venueId,
+        venueName: pay.venueName,
+        venueAddress: pay.venueAddress,
+        date: pay.date,
+        selectedSlots: pay.selectedSlots,
+        totalPrice: pay.totalPrice,
+        totalHours: pay.totalHours,
+        customerName: pay.customerName,
+        customerPhone: pay.customerPhone,
+        note: pay.note,
+        bookingId,
+        paymentMethod: method === 'qr' ? 'Quét mã QR' : 'Chuyển khoản ngân hàng',
+        bookingCode,
+        bookingStatus,
       });
     } catch (e) {
       setLoading(false);
@@ -194,10 +310,23 @@ export default function BookingPayment() {
     }
   };
 
+  const {
+    venueName, venueAddress, date, selectedSlots, totalPrice, totalHours,
+    customerName, customerPhone, note,
+  } = pay;
+
+  if (loadingContext) {
+    return (
+      <div className="main-wrapper content-below-header text-center py-5" style={{ paddingTop: '120px' }}>
+        <div className="spinner-border text-secondary" role="status" />
+        <p className="text-muted mt-2">Đang tải thông tin thanh toán…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="main-wrapper" style={{ paddingTop: '96px' }}>
 
-      {/* ── Expired overlay ─────────────────────────────────────────────── */}
       {expired && (
         <div
           style={{
@@ -227,24 +356,11 @@ export default function BookingPayment() {
         </div>
       )}
 
-      {/* Breadcrumb */}
-      <div className="breadcrumb mb-0">
-        <span className="primary-right-round" />
-        <div className="container">
-          <h1 className="text-white">Đặt Sân</h1>
-          <ul>
-            <li><Link to="/">Trang chủ</Link></li>
-            <li>Thanh toán</li>
-          </ul>
-        </div>
-      </div>
-
       <BookingSteps currentStep={3} />
 
       <div className="content">
         <div className="container">
 
-          {/* ── Countdown banner ──────────────────────────────────────────── */}
           <div
             className="d-flex align-items-center justify-content-center gap-3 rounded p-3 mb-4"
             style={{
@@ -265,7 +381,14 @@ export default function BookingPayment() {
             </span>
           </div>
 
-          {/* Venue card */}
+          {resumeBookingId && (
+            <p className="small text-muted mb-3">
+              <i className="feather-info me-1" />
+              Bạn đang <strong>thanh toán lại</strong> cho đơn chờ duyệt
+              {resumeBookingCode ? <> — mã <code>{resumeBookingCode}</code></> : null}.
+            </p>
+          )}
+
           <div className="master-academy dull-whitesmoke-bg card mb-4">
             <div className="d-sm-flex justify-content-start align-items-center">
               <img
@@ -287,7 +410,6 @@ export default function BookingPayment() {
           </div>
 
           <div className="row checkout">
-            {/* ── Left: order summary ─────────────────────────────────────── */}
             <div className="col-12 col-lg-7 mb-4 mb-lg-0">
               <div className="card booking-details">
                 <h3 className="border-bottom">Tóm tắt đơn đặt</h3>
@@ -344,16 +466,18 @@ export default function BookingPayment() {
               </div>
             </div>
 
-            {/* ── Right: payment panel ────────────────────────────────────── */}
             <div className="col-12 col-lg-5">
               <aside className="card payment-modes">
                 <h3 className="border-bottom">Phương thức thanh toán</h3>
 
-                {/* Method selector — bank & QR only */}
+                {loadingCheckout && (
+                  <p className="small text-muted mb-2">Đang tải thông tin tài khoản…</p>
+                )}
+
                 <div className="radio mb-3">
                   {[
                     { id: 'bank', label: 'Chuyển khoản ngân hàng', icon: 'feather-credit-card' },
-                    { id: 'qr',   label: 'Quét mã QR',              icon: 'feather-smartphone'  },
+                    { id: 'qr', label: 'Quét mã QR (VietQR)', icon: 'feather-smartphone' },
                   ].map(pm => (
                     <div key={pm.id} className="form-check mb-2">
                       <input
@@ -373,44 +497,51 @@ export default function BookingPayment() {
                   ))}
                 </div>
 
-                {/* Method detail */}
                 <div
                   className="rounded p-3 mb-3"
                   style={{ backgroundColor: '#f0fdf4', border: '1px solid #d1fae5' }}
                 >
                   {method === 'bank' && (
                     <div className="small">
-                      <p className="mb-1"><strong>Ngân hàng:</strong> {BANK_INFO.bank}</p>
+                      <p className="mb-1"><strong>Ngân hàng:</strong> {bankInfo.bank}</p>
                       <p className="mb-1">
                         <strong>Số tài khoản:</strong>{' '}
                         <span
                           style={{ fontFamily: 'monospace', letterSpacing: 1, cursor: 'pointer', textDecoration: 'underline dotted' }}
                           title="Nhấn để sao chép"
-                          onClick={() => navigator.clipboard?.writeText(BANK_INFO.account.replace(/\s/g, ''))}
+                          onClick={() => navigator.clipboard?.writeText(String(bankInfo.account).replace(/\s/g, ''))}
                         >
-                          {BANK_INFO.account}
+                          {bankInfo.account}
                         </span>
                       </p>
-                      <p className="mb-1"><strong>Chủ TK:</strong> {BANK_INFO.name}</p>
+                      <p className="mb-1"><strong>Chủ TK:</strong> {bankInfo.name}</p>
                       <p className="mb-1"><strong>Số tiền:</strong> <span className="primary-text fw-semibold">{totalPrice.toLocaleString('vi-VN')} VNĐ</span></p>
-                      <p className="mb-0 text-muted">{BANK_INFO.note}</p>
+                      <p className="mb-0 text-muted">{bankInfo.note}</p>
                     </div>
                   )}
                   {method === 'qr' && (
                     <div className="text-center small">
-                      <p className="mb-2 text-muted">Mở ứng dụng ngân hàng và quét mã QR bên dưới</p>
-                      <div
-                        className="mx-auto d-flex align-items-center justify-content-center rounded"
-                        style={{ width: '140px', height: '140px', backgroundColor: '#e5e7eb', fontSize: '12px', color: '#6b7280' }}
-                      >
-                        [QR mock]
-                      </div>
+                      <p className="mb-2 text-muted">Mở app ngân hàng và quét mã VietQR</p>
+                      {vietQrUrl ? (
+                        <img
+                          src={vietQrUrl}
+                          alt="VietQR"
+                          style={{ maxWidth: '220px', width: '100%', height: 'auto', borderRadius: 12, border: '1px solid #d1fae5' }}
+                        />
+                      ) : (
+                        <div
+                          className="mx-auto d-flex align-items-center justify-content-center rounded"
+                          style={{ width: '140px', height: '140px', backgroundColor: '#fef3c7', fontSize: '12px', color: '#92400e', padding: 8 }}
+                        >
+                          Chưa cấu hình STK/BIN đủ để tạo QR. Chủ sân cần cập nhật tại Cài đặt thanh toán.
+                        </div>
+                      )}
                       <p className="mt-2 mb-0 primary-text fw-semibold">{totalPrice.toLocaleString('vi-VN')} VNĐ</p>
+                      <p className="text-muted mt-1 mb-0" style={{ fontSize: '11px' }}>{bankInfo.note}</p>
                     </div>
                   )}
                 </div>
 
-                {/* ── Upload proof image ───────────────────────────────── */}
                 <div className="mb-3">
                   <label className="form-label fw-semibold d-flex align-items-center gap-2">
                     <i className="feather-image text-primary" />
@@ -479,7 +610,6 @@ export default function BookingPayment() {
 
                 <hr />
 
-                {/* Price breakdown */}
                 <ul className="order-sub-total list-unstyled">
                   <li className="d-flex justify-content-between mb-2">
                     <span>Tạm tính</span>
@@ -495,7 +625,6 @@ export default function BookingPayment() {
                   <h5 className="mb-0 primary-text">{totalPrice.toLocaleString('vi-VN')} VNĐ</h5>
                 </div>
 
-                {/* Agree checkbox */}
                 <div className="form-check d-flex align-items-start gap-2 policy mb-3">
                   <input
                     className="form-check-input mt-1"
@@ -521,7 +650,7 @@ export default function BookingPayment() {
                   >
                     {loading
                       ? <><span className="spinner-border spinner-border-sm me-2" />Đang xử lý...</>
-                      : `Xác nhận đặt sân — ${totalPrice.toLocaleString('vi-VN')} VNĐ`
+                      : (resumeBookingId ? `Gửi minh chứng — ${totalPrice.toLocaleString('vi-VN')} VNĐ` : `Xác nhận đặt sân — ${totalPrice.toLocaleString('vi-VN')} VNĐ`)
                     }
                   </button>
                 </div>
@@ -529,15 +658,24 @@ export default function BookingPayment() {
             </div>
           </div>
 
-          {/* Nav buttons */}
           <div className="text-center btn-row mt-4">
-            <button
-              type="button"
-              className="btn btn-primary me-3 btn-icon"
-              onClick={() => navigate('/booking/confirm', { state: location.state })}
-            >
-              <i className="feather-arrow-left-circle me-1" /> Quay lại
-            </button>
+            {!resumeBookingId ? (
+              <button
+                type="button"
+                className="btn btn-primary me-3 btn-icon"
+                onClick={() => navigate('/booking/confirm', { state: location.state })}
+              >
+                <i className="feather-arrow-left-circle me-1" /> Quay lại
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-outline-secondary me-3 btn-icon"
+                onClick={() => navigate('/user/bookings')}
+              >
+                <i className="feather-arrow-left-circle me-1" /> Về lịch sử đặt sân
+              </button>
+            )}
           </div>
 
         </div>

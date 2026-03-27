@@ -3,14 +3,15 @@ import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import ManagerSidebar from '../components/manager/ManagerSidebar';
 import { useAuth } from '../context/AuthContext';
 import UserDropdown from '../components/layout/UserDropdown';
+import { useUnreadNotificationCount } from '../hooks/useUnreadNotificationCount';
 
 const PAGE_TITLES = {
-  '/manager/dashboard':       { title: 'Tổng quan', crumbs: [] },
-  '/manager/venues':           { title: 'Cụm sân của tôi', crumbs: [] },
-  '/manager/venues/add':       { title: 'Thêm cụm sân mới', crumbs: [{ label: 'Cụm sân', to: '/manager/venues' }] },
-  '/manager/bookings':         { title: 'Quản lý đặt sân', crumbs: [] },
-  '/manager/notifications':    { title: 'Thông báo', crumbs: [] },
-  '/manager/earnings':         { title: 'Doanh thu', crumbs: [] },
+  '/manager/dashboard': { title: 'Tổng quan', crumbs: [] },
+  '/manager/venues': { title: 'Cụm sân của tôi', crumbs: [] },
+  '/manager/venues/add': { title: 'Thêm cụm sân mới', crumbs: [{ label: 'Cụm sân', to: '/manager/venues' }] },
+  '/manager/bookings': { title: 'Quản lý đặt sân', crumbs: [] },
+  '/manager/notifications': { title: 'Thông báo', crumbs: [] },
+  '/manager/earnings': { title: 'Doanh thu', crumbs: [] },
   '/manager/payment-settings': { title: 'Cài đặt thanh toán', crumbs: [] },
 };
 
@@ -35,6 +36,7 @@ export default function ManagerLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { title, crumbs } = getPageMeta(location.pathname);
+  const { count: unreadNotifCount } = useUnreadNotificationCount();
 
   const { user, logout } = useAuth();
 
@@ -78,13 +80,16 @@ export default function ManagerLayout() {
               className="mgr-topbar__icon-btn"
               title="Thông báo"
               onClick={() => navigate('/manager/notifications')}
+              style={{ position: 'relative' }}
             >
               <i className="feather-bell" />
-              <span style={{
-                position: 'absolute', top: 8, right: 8,
-                width: 7, height: 7, borderRadius: '50%',
-                background: '#ef4444', border: '2px solid #fff',
-              }} />
+              {unreadNotifCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: 8, right: 8,
+                  width: 7, height: 7, borderRadius: '50%',
+                  background: '#ef4444', border: '2px solid #fff',
+                }} />
+              )}
             </button>
 
             <ul className="nav header-navbar-rht logged-in" style={{ alignItems: 'center', gap: 0, margin: 0 }}>

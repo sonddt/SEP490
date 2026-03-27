@@ -12,3 +12,10 @@
 - Ưu tiên dùng `Inline Field Validation` (hiển thị fieldErrors đỏ ngay dưới từng ô input) thay cho một alert to tướng trên cùng.
 
 *(Cập nhật thêm khi dự án phát triển...)*
+
+## Quy tắc 3: `Database.txt` là nguồn sự thật duy nhất cho Schema DB
+- Bất kỳ khi nào có thay đổi schema DB (thêm bảng, thêm cột, xóa cột, đổi kiểu dữ liệu...), **BẮT BUỘC** phải cập nhật file `Database.txt` ngay lập tức, trong cùng một phiên làm việc.
+- File `Database.txt` phải luôn ở trạng thái có thể **copy toàn bộ và chạy một lần duy nhất** để tạo lại toàn bộ database từ đầu (idempotent: DROP IF EXISTS → CREATE → INSERT seed data).
+- Không được tách riêng migration file chỉ cho một tính năng mà bỏ qua chỉnh sửa `Database.txt` — cả hai phải đồng bộ.
+- Ghi chú cho Assistant: Sau khi sửa schema C# Entity hay `DbContext`, hãy kiểm tra ngay `Database.txt` và cập nhật nếu chưa đồng bộ.
+

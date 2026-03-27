@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './context/AuthContext';
@@ -30,9 +31,12 @@ import MyProfile from './pages/user/MyProfile';
 import UserProfileEdit from './pages/user/UserProfileEdit';
 import UserProfileChangePassword from './pages/user/UserProfileChangePassword';
 import UserProfileOtherSetting from './pages/user/UserProfileOtherSetting';
+import Personalization from './pages/user/Personalization';
 import UserManagerInfo from './pages/user/UserManagerInfo';
 import UserBookings from './pages/user/UserBookings';
 import UserFavorites from './pages/user/UserFavorites';
+import UserNotifications from './pages/user/UserNotifications';
+import { useAppNotificationsHub } from './hooks/useAppNotificationsHub';
 
 // Manager — Layout + Pages
 import ManagerLayout from './layouts/ManagerLayout';
@@ -67,13 +71,19 @@ const PlaceholderPage = ({ title }) => (
 );
 
 function App() {
+  useAppNotificationsHub();
   const location = useLocation();
   const authRoutes = ['/login', '/register', '/forgot-password', '/change-password'];
   const isAuthPage = authRoutes.includes(location.pathname);
   const isAdminPage = location.pathname.startsWith('/admin');
   const isManagerPage = location.pathname.startsWith('/manager');
+  const isBookingPage = location.pathname.startsWith('/booking');
 
   const showHeaderFooter = !isAuthPage && !isAdminPage && !isManagerPage;
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [location.pathname]);
 
   return (
     <>
@@ -111,6 +121,7 @@ function App() {
           <Route path="/booking/complete" element={<ProtectedRoute><BookingComplete /></ProtectedRoute>} />
 
           {/* ═══ Player Profile ═══ */}
+          <Route path="/personalization" element={<ProtectedRoute requiredRole="PLAYER"><Personalization /></ProtectedRoute>} />
           <Route path="/user/profile" element={<ProtectedRoute><MyProfile /></ProtectedRoute>} />
           <Route path="/user/profile/edit" element={<ProtectedRoute><UserProfileEdit /></ProtectedRoute>} />
           <Route path="/user/profile/manager-info" element={<ProtectedRoute><UserManagerInfo /></ProtectedRoute>} />
@@ -131,6 +142,7 @@ function App() {
           {/* Player misc */}
           <Route path="/user/bookings" element={<ProtectedRoute><UserBookings /></ProtectedRoute>} />
           <Route path="/user/favorites" element={<ProtectedRoute><UserFavorites /></ProtectedRoute>} />
+          <Route path="/user/notifications" element={<ProtectedRoute><UserNotifications /></ProtectedRoute>} />
           <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
 
           {/* ═══════════════════════════════════════════════════════════
@@ -193,7 +205,7 @@ function App() {
         </Routes>
       </div>
 
-      {showHeaderFooter && <Footer />}
+      {showHeaderFooter && !isBookingPage && <Footer />}
     </>
   );
 }

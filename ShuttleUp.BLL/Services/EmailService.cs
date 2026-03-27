@@ -72,4 +72,37 @@ public class EmailService : IEmailService
         await client.SendAsync(message);
         await client.DisconnectAsync(true);
     }
+
+    public async Task SendHtmlEmailAsync(string toEmail, string toName, string subject, string htmlBody)
+    {
+        var smtpHost = _configuration["Email:SmtpHost"];
+
+        if (string.IsNullOrEmpty(smtpHost))
+        {
+            _logger.LogWarning("==== [DEV] HTML Email (SMTP chưa cấu hình) ====");
+            _logger.LogWarning("To: {Email}", toEmail);
+            _logger.LogWarning("Subject: {Subject}", subject);
+            _logger.LogWarning("===============================================");
+            return;
+        }
+
+        var message = new MimeMessage();
+        message.From.Add(new MailboxAddress(
+            _configuration["Email:SenderName"] ?? "ShuttleUp",
+            _configuration["Email:SenderEmail"]!));
+        message.To.Add(new MailboxAddress(string.IsNullOrWhiteSpace(toName) ? toEmail : toName, toEmail));
+        message.Subject = subject;
+        message.Body = new BodyBuilder { HtmlBody = htmlBody }.ToMessageBody();
+
+        using var client = new SmtpClient();
+        await client.ConnectAsync(
+            smtpHost,
+            int.Parse(_configuration["Email:SmtpPort"] ?? "587"),
+            SecureSocketOptions.StartTls);
+        await client.AuthenticateAsync(
+            _configuration["Email:Username"]!,
+            _configuration["Email:Password"]!);
+        await client.SendAsync(message);
+        await client.DisconnectAsync(true);
+    }
 }

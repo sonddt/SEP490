@@ -27,6 +27,14 @@ public partial class User
 
     public DateOnly? DateOfBirth { get; set; }
 
+    public string? SkillLevel { get; set; }
+
+    public string? PlayPurpose { get; set; }
+
+    public string? PlayFrequency { get; set; }
+
+    public bool? IsPersonalized { get; set; }
+
     public bool? IsActive { get; set; }
 
     public DateTime? BlockedAt { get; set; }
@@ -66,6 +74,8 @@ public partial class User
     public virtual ICollection<RefundRequest> RefundRequestUsers { get; set; } = new List<RefundRequest>();
 
     public virtual ICollection<RefundTransaction> RefundTransactions { get; set; } = new List<RefundTransaction>();
+
+    public virtual ICollection<UserNotification> UserNotifications { get; set; } = new List<UserNotification>();
 
 
     public virtual ICollection<VenueReview> VenueReviews { get; set; } = new List<VenueReview>();
