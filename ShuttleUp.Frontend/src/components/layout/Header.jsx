@@ -58,12 +58,8 @@ const Header = ({ transparent = false }) => {
   const isAdmin   = user?.roles?.includes('ADMIN');
   const isManager = user?.roles?.includes('MANAGER');
 
-  // Profile path — fixed bug: manager -> /manager/profile, player -> /user/my-profile
-  const profilePath = isAdmin
-    ? '/admin/dashboard'
-    : isManager
-      ? '/manager/profile'
-      : '/user/my-profile';
+  // Profile path - on Player UI (Header), always go to Player profile
+  const profilePath = isAdmin ? '/admin/dashboard' : '/user/profile';
 
   const isActive = (path) => path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
 
