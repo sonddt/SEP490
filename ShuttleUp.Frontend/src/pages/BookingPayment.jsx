@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import BookingSteps from '../components/booking/BookingSteps';
+import LongTermBookingSteps from '../components/booking/LongTermBookingSteps';
 import {
   createBooking,
   submitPayment,
@@ -50,6 +51,7 @@ export default function BookingPayment() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const paramBookingId = searchParams.get('bookingId');
+  const isLongTermFlow = searchParams.get('flow') === 'long-term';
 
   const initial = location.state ?? {};
 
@@ -211,7 +213,9 @@ export default function BookingPayment() {
   const [loading, setLoading] = useState(false);
 
   const navigateComplete = (payload) => {
-    navigate('/booking/complete', { state: payload });
+    navigate('/booking/complete', {
+      state: isLongTermFlow ? { ...payload, flowLongTerm: true } : payload,
+    });
   };
 
   const handleConfirm = async () => {
@@ -356,7 +360,14 @@ export default function BookingPayment() {
         </div>
       )}
 
-      <BookingSteps currentStep={3} />
+      {isLongTermFlow ? (
+        <LongTermBookingSteps
+          currentStep={3}
+          bookingId={resumeBookingId || paramBookingId || undefined}
+        />
+      ) : (
+        <BookingSteps currentStep={3} />
+      )}
 
       <div className="content">
         <div className="container">

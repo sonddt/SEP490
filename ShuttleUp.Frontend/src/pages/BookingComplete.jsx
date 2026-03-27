@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import BookingSteps from '../components/booking/BookingSteps';
+import LongTermBookingSteps from '../components/booking/LongTermBookingSteps';
 
 function formatDateVN(isoDate) {
   if (!isoDate) return '';
@@ -51,6 +52,7 @@ export default function BookingComplete() {
     bookingCode   = `SU${Date.now().toString().slice(-6)}`,
     bookingId     = null,
     bookingStatus = 'PENDING',
+    flowLongTerm  = false,
   } = state;
 
   const statusUpper = String(bookingStatus || 'PENDING').toUpperCase();
@@ -73,7 +75,11 @@ export default function BookingComplete() {
         </div>
       </div>
 
-      <BookingSteps currentStep={4} />
+      {flowLongTerm ? (
+        <LongTermBookingSteps currentStep={4} bookingId={bookingId || undefined} />
+      ) : (
+        <BookingSteps currentStep={4} />
+      )}
 
       <div className="content">
         <div className="container">

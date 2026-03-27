@@ -96,7 +96,7 @@ export default function LongTermConfirm() {
         setLoading(false);
         return;
       }
-      navigate(`/booking/payment?bookingId=${bookingId}`);
+      navigate(`/booking/payment?bookingId=${bookingId}&flow=long-term`);
     } catch (err) {
       const msg =
         err.response?.data?.message
