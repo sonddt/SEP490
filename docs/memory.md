@@ -65,3 +65,10 @@
    - API `GET /notifications` trả `{ items, hasMore, nextBefore }` + query `before` (cursor); soft delete `is_deleted` + `DELETE /api/notifications/{id}`.
    - SignalR payload thêm `bookingId` từ metadata; toast debounce ~4.5s theo booking/id; xóa hook `useBookingNotificationsHub.js` dư.
    - Fix: `getNotifications` không được destructure `data` từ `axiosClient` (interceptor đã trả về body) — trước đây danh sách luôn rỗng dù unread-count đúng.
+
+## Mar 28, 2026
+1. **Kết bạn & quan hệ xã hội (Player)**:
+   - **Database**: Bảng `user_privacy_settings`, `friend_requests`, `friendships`, `user_blocks` (đã có trong `Database.txt` + script `docs/migration_friends_social.sql` cho DB đang chạy).
+   - **Backend**: `SocialController` (`/api/social`) — privacy, tìm exact/name, lời mời, bạn bè, chặn, `GET relationship/{id}`; thông báo `FRIEND_REQUEST` / `FRIEND_ACCEPTED` kèm `deepLink` trong metadata; `ProfileController` thêm `GET /api/profile/{userId}` (hồ sơ tối thiểu + `relationshipState` + `pendingRequestId` khi `PENDING_IN`).
+   - **Frontend**: Routes `/user/social/search`, `/user/social/friends` (tab Bạn bè / Đã nhận / Đã gửi), `/user/profile/:userId`; `RelationshipActions`, `socialApi`, QR hiển thị (`qrcode.react`) + đọc ảnh QR (`jsqr`) trên trang tìm bạn; `VITE_PUBLIC_APP_URL` (fallback `window.location.origin`) cho URL trong mã QR; menu user thêm Tìm bạn / Bạn bè; `notificationTypes` + `notificationNavigation` (deepLink / fromUserId / friendUserId).
+   - **Personalization**: Cho phép vào `/user/social/*` và `/user/profile/{guid}` dù chưa hoàn tất onboarding (theo kế hoạch tính năng xã hội).

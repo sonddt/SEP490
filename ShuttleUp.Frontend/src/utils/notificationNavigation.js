@@ -15,6 +15,12 @@ export function getNotificationTargetPath(metadataJson, isManager) {
   if (meta.deepLink && typeof meta.deepLink === 'string' && meta.deepLink.startsWith('/')) {
     return meta.deepLink;
   }
+  if (meta.fromUserId) {
+    return `/user/profile/${meta.fromUserId}`;
+  }
+  if (meta.friendUserId) {
+    return `/user/profile/${meta.friendUserId}`;
+  }
   const bid = meta.bookingId;
   if (bid) {
     const id = String(bid);

@@ -7,4 +7,8 @@ public static class NotificationTypes
     public const string Booking = "BOOKING";
     public const string PaymentProof = "PAYMENT_PROOF";
     public const string System = "SYSTEM";
+
+    public const string FriendRequest = "FRIEND_REQUEST";
+
+    public const string FriendAccepted = "FRIEND_ACCEPTED";
 }

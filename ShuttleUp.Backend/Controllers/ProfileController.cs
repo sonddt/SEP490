@@ -196,6 +196,79 @@ public class ProfileController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Hồ sơ công khai của user khác + trạng thái quan hệ với người đang xem (đồng bộ logic Social).
+    /// </summary>
+    [HttpGet("{userId:guid}")]
+    public async Task<IActionResult> GetPublicProfile(Guid userId)
+    {
+        if (!TryGetCurrentUserId(out var viewerId))
+            return Unauthorized();
+        if (userId == viewerId)
+            return BadRequest(new { message = "Để xem hồ sơ của bạn, dùng mục Hồ sơ của tôi." });
+
+        var target = await _db.Users.AsNoTracking()
+            .Where(u => u.Id == userId && u.IsActive != false)
+            .Select(u => new
+            {
+                u.Id,
+                u.FullName,
+                u.SkillLevel,
+                u.PlayPurpose,
+                u.PlayFrequency,
+                avatarUrl = u.AvatarFile != null ? u.AvatarFile.FileUrl : null
+            })
+            .FirstOrDefaultAsync();
+        if (target == null)
+            return NotFound(new { message = "Không tìm thấy người dùng." });
+
+        static (Guid Low, Guid High) OrderedPair(Guid a, Guid b) =>
+            string.Compare(a.ToString("D"), b.ToString("D"), StringComparison.Ordinal) < 0 ? (a, b) : (b, a);
+
+        string relationshipState;
+        Guid? pendingRequestId = null;
+
+        if (await _db.UserBlocks.AsNoTracking().AnyAsync(b => b.BlockerId == viewerId && b.BlockedId == userId))
+            relationshipState = "BLOCKED_BY_ME";
+        else if (await _db.UserBlocks.AsNoTracking().AnyAsync(b => b.BlockerId == userId && b.BlockedId == viewerId))
+            relationshipState = "BLOCKED_BY_THEM";
+        else
+        {
+            var (low, high) = OrderedPair(viewerId, userId);
+            if (await _db.Friendships.AsNoTracking().AnyAsync(f => f.UserLowId == low && f.UserHighId == high))
+                relationshipState = "FRIENDS";
+            else if (await _db.FriendRequests.AsNoTracking().AnyAsync(r =>
+                         r.Status == "PENDING" && r.FromUserId == viewerId && r.ToUserId == userId))
+                relationshipState = "PENDING_OUT";
+            else if (await _db.FriendRequests.AsNoTracking().AnyAsync(r =>
+                         r.Status == "PENDING" && r.FromUserId == userId && r.ToUserId == viewerId))
+            {
+                relationshipState = "PENDING_IN";
+                pendingRequestId = await _db.FriendRequests.AsNoTracking()
+                    .Where(r => r.Status == "PENDING" && r.FromUserId == userId && r.ToUserId == viewerId)
+                    .Select(r => r.Id)
+                    .FirstAsync();
+            }
+            else
+                relationshipState = "NONE";
+        }
+
+        return Ok(new
+        {
+            user = new
+            {
+                target.Id,
+                target.FullName,
+                target.SkillLevel,
+                target.PlayPurpose,
+                target.PlayFrequency,
+                target.avatarUrl
+            },
+            relationshipState,
+            pendingRequestId
+        });
+    }
+
     public class UpdateProfileDto
     {
         public string FullName { get; set; } = null!;
