@@ -576,6 +576,27 @@ export default function LongTermFlexible() {
     const tm = (hFloat - th) * 60;
     const totalHours = tm > 0 ? `${th}h${tm}` : `${th}h`;
 
+    const padTwo = (n) => String(n).padStart(2, '0');
+    const selectedSlots = [];
+    for (const line of cart) {
+      const court = courts.find((c) => c.id === line.courtId);
+      if (!court) continue;
+      for (const slotIdx of [...line.slotIndices].sort((a, b) => a - b)) {
+        const { start, end } = slotLocalBounds(line.date, slotIdx);
+        selectedSlots.push({
+          courtName: line.courtName,
+          timeLabel: `${padTwo(start.getHours())}:${padTwo(start.getMinutes())}`,
+          timeEndLabel: `${padTwo(end.getHours())}:${padTwo(end.getMinutes())}`,
+          price: getPriceForSlot(court, slotIdx, line.date, pricePerSlot),
+          slotIndex: slotIdx,
+          dateIso: line.date,
+        });
+      }
+    }
+
+    const sortedDates = [...new Set(cart.map((l) => l.date))].sort();
+    const date = sortedDates[0] ?? new Date().toISOString().split('T')[0];
+
     navigate('/booking/long-term/flexible/confirm', {
       state: {
         venueId,
@@ -584,12 +605,15 @@ export default function LongTermFlexible() {
         pricePerSlot,
         items: apiItems,
         cart,
+        selectedSlots,
+        date,
         preview: {
           slotCount,
           sessionCount: sessionDays,
           totalAmount: totalCart,
         },
         totalHours,
+        totalPrice: totalCart,
       },
     });
   };
