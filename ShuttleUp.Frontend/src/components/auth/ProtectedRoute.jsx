@@ -33,8 +33,11 @@ export default function ProtectedRoute({ children, requiredRole }) {
       const isPlayer = roles.some((r) => String(r).toUpperCase() === 'PLAYER');
       const isManagerRoute = location.pathname.startsWith('/manager');
       const isAdminRoute = location.pathname.startsWith('/admin');
+      const isPlayerSocialRoute =
+        location.pathname.startsWith('/user/social') ||
+        /^\/user\/profile\/[0-9a-fA-F-]{36}\/?$/i.test(location.pathname);
 
-      if (isPlayer && !isManagerRoute && !isAdminRoute) {
+      if (isPlayer && !isManagerRoute && !isAdminRoute && !isPlayerSocialRoute) {
         // isPersonalized === false hoặc null/undefined → chưa hoàn thành onboarding
         const notPersonalized =
           userData?.isPersonalized === false ||

@@ -71,6 +71,14 @@ public partial class ShuttleUpDbContext : DbContext
 
     public virtual DbSet<ManagerProfileRequest> ManagerProfileRequests { get; set; }
 
+    public virtual DbSet<UserPrivacySettings> UserPrivacySettings { get; set; }
+
+    public virtual DbSet<UserBlock> UserBlocks { get; set; }
+
+    public virtual DbSet<Friendship> Friendships { get; set; }
+
+    public virtual DbSet<FriendRequest> FriendRequests { get; set; }
+
     // OnConfiguring removed because connection is provided via Dependency Injection in Program.cs
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -1250,6 +1258,97 @@ public partial class ShuttleUpDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("manager_profile_requests_ibfk_1");
+        });
+
+        modelBuilder.Entity<UserPrivacySettings>(entity =>
+        {
+            entity.HasKey(e => e.UserId).HasName("PRIMARY");
+            entity.ToTable("user_privacy_settings");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.AllowFindByEmail)
+                .HasColumnType("tinyint(1)")
+                .HasDefaultValue(true)
+                .HasColumnName("allow_find_by_email");
+            entity.Property(e => e.AllowFindByPhone)
+                .HasColumnType("tinyint(1)")
+                .HasDefaultValue(true)
+                .HasColumnName("allow_find_by_phone");
+            entity.HasOne(d => d.User)
+                .WithOne(p => p.UserPrivacySettings)
+                .HasForeignKey<UserPrivacySettings>(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserBlock>(entity =>
+        {
+            entity.HasKey(e => new { e.BlockerId, e.BlockedId }).HasName("PRIMARY");
+            entity.ToTable("user_blocks");
+            entity.Property(e => e.BlockerId).HasColumnName("blocker_id");
+            entity.Property(e => e.BlockedId).HasColumnName("blocked_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.HasOne(d => d.BlockerUser)
+                .WithMany(p => p.UserBlocksAsBlocker)
+                .HasForeignKey(d => d.BlockerId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(d => d.BlockedUser)
+                .WithMany(p => p.UserBlocksAsBlocked)
+                .HasForeignKey(d => d.BlockedId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Friendship>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("friendships");
+            entity.HasIndex(e => new { e.UserLowId, e.UserHighId }, "uk_friend_pair").IsUnique();
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UserLowId).HasColumnName("user_low_id");
+            entity.Property(e => e.UserHighId).HasColumnName("user_high_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.HasOne(d => d.UserLow)
+                .WithMany()
+                .HasForeignKey(d => d.UserLowId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(d => d.UserHigh)
+                .WithMany()
+                .HasForeignKey(d => d.UserHighId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<FriendRequest>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("friend_requests");
+            entity.HasIndex(e => new { e.ToUserId, e.Status }, "idx_friend_req_to_status");
+            entity.HasIndex(e => new { e.FromUserId, e.Status }, "idx_friend_req_from_status");
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.FromUserId).HasColumnName("from_user_id");
+            entity.Property(e => e.ToUserId).HasColumnName("to_user_id");
+            entity.Property(e => e.Status)
+                .HasMaxLength(20)
+                .HasDefaultValueSql("'PENDING'")
+                .HasColumnName("status");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.Property(e => e.RespondedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("responded_at");
+            entity.HasOne(d => d.FromUser)
+                .WithMany()
+                .HasForeignKey(d => d.FromUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(d => d.ToUser)
+                .WithMany()
+                .HasForeignKey(d => d.ToUserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         OnModelCreatingPartial(modelBuilder);

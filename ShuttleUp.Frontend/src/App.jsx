@@ -41,6 +41,9 @@ import UserManagerInfo from './pages/user/UserManagerInfo';
 import UserBookings from './pages/user/UserBookings';
 import UserFavorites from './pages/user/UserFavorites';
 import UserNotifications from './pages/user/UserNotifications';
+import UserSocialSearch from './pages/user/UserSocialSearch';
+import UserSocialFriends from './pages/user/UserSocialFriends';
+import UserPublicProfile from './pages/user/UserPublicProfile';
 import { useAppNotificationsHub } from './hooks/useAppNotificationsHub';
 
 // Manager — Layout + Pages
@@ -137,6 +140,9 @@ function App() {
           <Route path="/user/profile/manager-info" element={<ProtectedRoute><UserManagerInfo /></ProtectedRoute>} />
           <Route path="/user/profile/change-password" element={<ProtectedRoute><UserProfileChangePassword /></ProtectedRoute>} />
           <Route path="/user/profile/settings" element={<ProtectedRoute><UserProfileOtherSetting /></ProtectedRoute>} />
+          <Route path="/user/social/search" element={<ProtectedRoute><UserSocialSearch /></ProtectedRoute>} />
+          <Route path="/user/social/friends" element={<ProtectedRoute><UserSocialFriends /></ProtectedRoute>} />
+          <Route path="/user/profile/:userId" element={<ProtectedRoute><UserPublicProfile /></ProtectedRoute>} />
 
           {/* Legacy /profile redirects → /user/profile */}
           <Route path="/profile" element={<Navigate to="/user/profile" replace />} />

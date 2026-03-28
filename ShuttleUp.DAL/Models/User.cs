@@ -93,4 +93,10 @@ public partial class User
     public virtual ICollection<ManagerProfile> ApprovedManagerProfiles { get; set; } = new List<ManagerProfile>();
 
     public virtual ICollection<Role> Roles { get; set; } = new List<Role>();
+
+    public virtual UserPrivacySettings? UserPrivacySettings { get; set; }
+
+    public virtual ICollection<UserBlock> UserBlocksAsBlocker { get; set; } = new List<UserBlock>();
+
+    public virtual ICollection<UserBlock> UserBlocksAsBlocked { get; set; } = new List<UserBlock>();
 }
