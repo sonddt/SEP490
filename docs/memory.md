@@ -1,74 +1,75 @@
-# Development Memory (Lịch sử làm việc)
+# Lịch sử phát triển (Development memory)
 
-## Mar 20, 2026 - Mar 22, 2026
-1. Hoàn thành chức năng xử lý nghiệp vụ Booking cốt lõi. Gồm xem lịch trống, tính toán Slot Time 30 phút, check trùng lặp (Concurrency) rất chặt chẽ ở DB. Đoạn Player Booking kết thúc thành công.
-2. Thiết kế API chuẩn RESTful cho Manager tạo Cụm Sân.
-3. Tổ chức lại toàn bộ Validation Form trên FrontEnd Manager thành Inline Validation, chuẩn UX SaaS (Dùng số, không dùng chữ, thân thiện, nhẹ nhàng).
+Tài liệu ghi lại các mốc làm việc theo thời gian. Đọc từ trên xuống là từ cũ đến mới.
 
-## Điều cần nhớ (Memory hooks):
-- **User Preference:** Giọng điệu giao diện phải luôn RẤT vui vẻ, cởi mở. Từ "Lỗi" (Error) bị cấm ngặt. Không bao giờ được render Validation dưới dạng Alert Box to đùng ở góc màn hình hay Alert native của browser. Các message nên tuân theo quy tắc: Dùng số thay cho chữ ("3 file" thay vì "ba file"), dùng từ ngữ thân thiện ("Oops...", "Tuyệt vời..."). Toàn bộ hệ thống Manager và Auth/Player đều đã được apply quy tắc này.
-- Sân (Venue) có logic Draft -> Active. Không cho Publish nếu thiếu Courts hoặc cấu hình giá. Đã code `VenueService` đáp ứng tiêu chuẩn này.
-- Cloudinary Keys được giấu kín tại `.env` (Frontend) hoặc Secret Manager (Backend). Đừng lộ API Key lên repo.
-- Phần Booking Player đã HOÀN TẤT. Đừng phí thời gian lặp lại nó nữa. Giờ nhiệm vụ trọng tâm là tập trung sức cho Matching Module.
+---
 
-## Mar 22, 2026 - Present
-1. Triển khai UX Copywriting chuẩn SaaS (thân thiện, number-focused) cho hệ thống Portal của Manager. Chuyển đổi toàn bộ alert mặc định thành dạng Inline Validation State ở tất cả các form (Profile, Payment, Add Venue, Add Court).
-2. Mở rộng bộ quy tắc UX (Tone tích cực, thân thiện) và **Quy tắc hiển thị lỗi ngay dưới trường nhập liệu (Inline Field Validation)** sang **toàn bộ pages thuộc mảng Auth & User/Player**:
-   - `Login.jsx`, `Register.jsx`, `ForgotPassword.jsx`: Cập nhật format validation "Oops...", "Bạn nhớ...". Luôn hiển thị thông báo lỗi báo đỏ ngay bên dưới trường dữ liệu bị nhập sai thay vì dùng alert tổng ở trên cùng.
-   - `user/UserProfileEdit.jsx` & `user/UserProfileChangePassword.jsx`: Thông báo success/error dạng trò chuyện tích cực, tích hợp Inline Field Validation (`fieldErrors`) hiển thị lỗi dưới từng ô input.
-   - `user/UserManagerInfo.jsx`: Rà soát validation form gửi duyệt, hiển thị lỗi chuẩn Inline Validation dưới từng field.
-   - `user/UserBookings.jsx`: Cải thiện UI Toast báo huỷ sân chuẩn UX mới.
-   - `VenueDetails.jsx`: Handle error fetching êm ái hơn.
+## Nguyên tắc cố định (áp dụng xuyên suốt)
 
-3. Sửa lỗi giao diện (CSS/Layout) trang `UserFavorites.jsx`:
-   - Lỗi Scroll bị che khuất: Fix bằng cách bổ sung cấu trúc chuẩn lưới (`content-below-header` và `<section className="breadcrumb">`) giúp container tránh bị Header dạng Fixed đè lên phần Menu.
-   - Lỗi Highlight Text hòa vào nền: Xóa các class `text-white` ép cố định màu trắng trên container lót nền trắng, thay bằng thẻ chuẩn màu dark (`#1e293b` và `text-muted`).
+- Giọng điệu giao diện: vui vẻ, cởi mở. Tránh nhãn kiểu “Lỗi” cứng nhắc; ưu tiên thông điệp thân thiện (“Oops…”, “Tuyệt vời…”).
+- Validation: không dùng alert toàn trang hay alert trình duyệt; hiển thị gần ô nhập. Ưu tiên số thay chữ (“3 file” thay vì “ba file”) khi phù hợp.
+- Sân (Venue): luồng Draft → Active; không publish nếu thiếu sân hoặc cấu hình giá. `VenueService` đã phản ánh rule này.
+- Cloudinary: key chỉ nằm trong `.env` (frontend) hoặc Secret Manager (backend), không đưa lên repo.
+- Player booking (luồng đặt sân cơ bản) đã hoàn tất; ưu tiên tiếp theo là các module khác (ví dụ Matching).
 
-4. Xoá tính năng Ví (Wallet):
-   - Đã gỡ bỏ menu "Ví" ở cả `UserDashboardMenu` và `ManagerDashboardMenu` theo yêu cầu (Hệ thống không dùng ví nội bộ).
-   - Kiểm tra Database `Database.txt` không còn bảng hay khoá ngoại nào liên quan đến Ví.
+---
 
-5. Tách biệt `Manager Profile` và `Player Profile` để khắc phục lỗi xung đột UX thao tác chéo:
-   - Xóa bỏ file cũ không sử dụng (`ManagerDashboardMenu.jsx`, `ManagerCourts.jsx`, `managerCourtsMock.js`).
-   - Tạo trang `/manager/profile` riêng khép kín trong `ManagerLayout` (hiển thị thông tin Chủ Sân, Giấy phép kinh doanh, CCCD) giao diện chuẩn SaaS.
-   - Định tuyến lại trang `MyProfile.jsx` (của chức năng Player) từ `/profile` về lại `/user/profile` để rõ ràng về mặt định danh component.
-   - Chỉnh sửa `ManagerSidebar.jsx`, `UserDropdown.jsx`, `ManagerLayout.jsx` để Navbar menu điều hướng chính xác vào 2 luồng Route tách biệt. Mọi thao tác trái tim trên "Sân yêu thích" đều được bảo vệ trong `/user/profile`.
+## 20–22 tháng 3, 2026
 
-6. Khởi tạo tính năng Cá Nhân Hoá (Player Onboarding Personalization):
-   - **Database**: Thêm cột `skill_level`, `play_purpose`, `play_frequency`, `is_personalized` vào model User của C# (ShuttleUp.DAL/Backend).
-   - **Backend (C#)**: Cập nhật hàm `GetMyProfile` và `UpdateMyProfile` trong `ProfileController.cs` để hỗ trợ Map và Lưu/Sửa các trường cấu hình trên. Đã build thành công không lỗi.
-   - **Frontend (Tương thích Theme 2 UX/UI)**: Tạo trang `Personalization.jsx` dạng Stepper 5 bước (Vị trí, Giới tính, Trình độ, Mục tiêu, Tần suất). Giao diện tối ưu có Header nền Xanh Lá, Progress Tracker, tuân thủ UX thân thiện.
-   - **Bảo vệ luồng (Guard)**: Thay đổi file middleware React `ProtectedRoute.jsx` buộc người dùng có quyền `PLAYER` mà `isPersonalized == false` (hoặc null) thì vĩnh viễn bị Redirect vào `/personalization` cho tới khi hoàn tất stepper.
-   - **Hồ sơ**: Đồng bộ form `UserProfileEdit.jsx` cho phép người dùng thay đổi 3 thông số Thể Thao kể trên bất kì lúc nào.
+1. Booking cốt lõi: xem lịch trống, slot 30 phút, kiểm tra trùng lịch (concurrency) phía DB; luồng đặt sân phía người chơi hoàn chỉnh.
+2. API REST cho Manager tạo cụm sân.
+3. Form Manager: chuyển validation sang inline, hướng UX SaaS (rõ ràng, nhẹ, ưu tiên số khi hợp lý).
 
-## Mar 26, 2026
-1. Đồng bộ schema DB theo rule "single source of truth" vào `Database.txt`:
-   - Thêm cột thanh toán + chính sách huỷ trong bảng `venues`: `payment_bank_name`, `payment_bank_bin`, `payment_account_number`, `payment_account_holder`, `payment_transfer_note_template`, `cancel_allowed`, `cancel_before_minutes`, `refund_type`, `refund_percent`.
-   - Thêm cột snapshot chính sách huỷ trong bảng `bookings`: `cancellation_policy_snapshot_json`.
-   - Thêm bảng `user_notifications` (kèm index `idx_user_notifications_user_created`).
-   - Thêm `DROP TABLE IF EXISTS user_notifications` ở phần reset DB.
-2. Xoá file migration rời `Database/migrations_venue_checkout_notifications.sql` theo yêu cầu để chỉ cần chạy `Database.txt` một lần.
-3. Sửa compile backend cho Notifications:
-   - Bổ sung `DbSet<UserNotification>` và map `modelBuilder.Entity<UserNotification>` trong `ShuttleUpDbContext`.
-   - Bổ sung navigation `ICollection<UserNotification>` trong model `User`.
-   - Kết quả: `dotnet build ShuttleUp.Backend` thành công (0 errors).
+---
 
-7. Thông báo trong app (API + SignalR + UI):
-   - Backend: `NotificationDispatchService`, email HTML tùy chọn, endpoints `GET/PATCH /api/notifications`, tích hợp vào luồng booking/thanh toán.
-   - Frontend: `useAppNotificationsHub` trong `App.jsx`, trang `/user/notifications`, dropdown Header, `ManagerNotifications` dùng API thật (không mock), badge/chấm đỏ sidebar & topbar manager theo `useUnreadNotificationCount`, menu user có mục Thông báo.
+## 22 tháng 3, 2026 (portal Manager, Auth & User)
 
-8. Fix 500 `Unknown column PaymentBankName / CancelAllowed`: EF map thiếu `HasColumnName` snake_case cho các field thanh toán + huỷ trên `Venue` và `CancellationPolicySnapshotJson` trên `Booking` trong `ShuttleUpDbContext`. Thêm block migration có điều kiện ở cuối `Database.txt` để DB cũ tự thêm cột `venues.*` và `bookings.cancellation_policy_snapshot_json` — chạy script (hoặc đoạn migration đó) trên MySQL đang dùng.
+1. Copywriting / UX SaaS cho portal Manager: thông báo và trạng thái form gần với chuẩn sản phẩm (Profile, Payment, Add Venue, Add Court).
+2. Mở rộng inline validation sang toàn bộ trang Auth & User/Player:
+   - `Login.jsx`, `Register.jsx`, `ForgotPassword.jsx`: thông báo dưới từng trường, tone tích cực.
+   - `user/UserProfileEdit.jsx`, `user/UserProfileChangePassword.jsx`: `fieldErrors` dưới từng input.
+   - `user/UserManagerInfo.jsx`: form gửi duyệt, lỗi theo từng field.
+   - `user/UserBookings.jsx`: toast khi huỷ đặt sân gọn với UX mới.
+   - `VenueDetails.jsx`: xử lý lỗi tải dữ liệu êm hơn.
+3. `UserFavorites.jsx`: sửa scroll bị header che (`content-below-header`, breadcrumb); chỉnh màu chữ (bỏ `text-white` chồng nền sáng, dùng `#1e293b` / `text-muted`).
+4. Gỡ tính năng Ví: xóa menu “Ví” ở `UserDashboardMenu` và `ManagerDashboardMenu`; rà `Database.txt` không còn bảng/khóa liên quan ví.
+5. Tách Manager Profile và Player Profile:
+   - Xóa file cũ không dùng (`ManagerDashboardMenu.jsx`, `ManagerCourts.jsx`, `managerCourtsMock.js`).
+   - Trang `/manager/profile` trong `ManagerLayout` (chủ sân, giấy phép, CCCD).
+   - `MyProfile.jsx` (player) định tuyến `/user/profile`.
+   - Cập nhật `ManagerSidebar.jsx`, `UserDropdown.jsx`, `ManagerLayout.jsx`; “Sân yêu thích” nằm trong `/user/profile`.
+6. Cá nhân hoá onboarding (Player):
+   - DB: cột `skill_level`, `play_purpose`, `play_frequency`, `is_personalized` trên User (DAL/Backend).
+   - Backend: `GetMyProfile` / `UpdateMyProfile` trong `ProfileController.cs` map và lưu các trường trên.
+   - Frontend: `Personalization.jsx` — stepper 5 bước (vị trí, giới tính, trình độ, mục tiêu, tần suất), header xanh lá, progress tracker.
+   - `ProtectedRoute.jsx`: user `PLAYER` với `isPersonalized` false/null bị redirect `/personalization` đến khi xong.
+   - `UserProfileEdit.jsx`: chỉnh sửa lại 3 thông số thể thao bất cứ lúc nào.
 
-9. Nâng cấp Notification (Mar 2026):
-   - Deep link: metadata có `deepLink` + `NotificationMetadataBuilder` (manager/player); click dropdown/list → điều hướng; `/user/bookings` và `/manager/bookings` đọc `?bookingId=` để mở modal đúng đơn.
-   - Hằng số loại: `NotificationTypes` (C#) + `constants/notificationTypes.js`.
-   - API `GET /notifications` trả `{ items, hasMore, nextBefore }` + query `before` (cursor); soft delete `is_deleted` + `DELETE /api/notifications/{id}`.
-   - SignalR payload thêm `bookingId` từ metadata; toast debounce ~4.5s theo booking/id; xóa hook `useBookingNotificationsHub.js` dư.
-   - Fix: `getNotifications` không được destructure `data` từ `axiosClient` (interceptor đã trả về body) — trước đây danh sách luôn rỗng dù unread-count đúng.
+---
 
-## Mar 28, 2026
-1. **Kết bạn & quan hệ xã hội (Player)**:
-   - **Database**: Bảng `user_privacy_settings`, `friend_requests`, `friendships`, `user_blocks` (đã có trong `Database.txt` + script `docs/migration_friends_social.sql` cho DB đang chạy).
-   - **Backend**: `SocialController` (`/api/social`) — privacy, tìm exact/name, lời mời, bạn bè, chặn, `GET relationship/{id}`; thông báo `FRIEND_REQUEST` / `FRIEND_ACCEPTED` kèm `deepLink` trong metadata; `ProfileController` thêm `GET /api/profile/{userId}` (hồ sơ tối thiểu + `relationshipState` + `pendingRequestId` khi `PENDING_IN`).
-   - **Frontend**: Routes `/user/social/search`, `/user/social/friends` (tab Bạn bè / Đã nhận / Đã gửi), `/user/profile/:userId`; `RelationshipActions`, `socialApi`, QR hiển thị (`qrcode.react`) + đọc ảnh QR (`jsqr`) trên trang tìm bạn; `VITE_PUBLIC_APP_URL` (fallback `window.location.origin`) cho URL trong mã QR; menu user thêm Tìm bạn / Bạn bè; `notificationTypes` + `notificationNavigation` (deepLink / fromUserId / friendUserId).
-   - **Personalization**: Cho phép vào `/user/social/*` và `/user/profile/{guid}` dù chưa hoàn tất onboarding (theo kế hoạch tính năng xã hội).
+## 26 tháng 3, 2026
+
+1. Schema trong `Database.txt` (single source of truth):
+   - `venues`: cột thanh toán + chính sách huỷ (`payment_bank_*`, `cancel_*`, `refund_*`, …).
+   - `bookings`: `cancellation_policy_snapshot_json`.
+   - Bảng `user_notifications` + index `idx_user_notifications_user_created`; phần reset DB có `DROP TABLE IF EXISTS user_notifications`.
+2. Xóa file migration rời `Database/migrations_venue_checkout_notifications.sql` — chỉ cần chạy `Database.txt` một lần khi init.
+3. Backend notifications: `DbSet<UserNotification>`, map entity trong `ShuttleUpDbContext`, navigation trên `User`; build Backend OK.
+4. Thông báo trong app: `NotificationDispatchService`, email HTML tùy chọn, `GET/PATCH /api/notifications`, tích hợp booking/thanh toán; frontend `useAppNotificationsHub`, `/user/notifications`, dropdown header, `ManagerNotifications` dùng API thật, badge unread.
+5. Sửa lỗi 500 `Unknown column PaymentBankName / CancelAllowed`: EF thêm `HasColumnName` snake_case cho Venue + `CancellationPolicySnapshotJson` trên Booking; cuối `Database.txt` có block migration có điều kiện cho DB cũ (MySQL).
+6. Nâng cấp notification (03/2026): deep link + `NotificationMetadataBuilder`; `NotificationTypes` (C#) và `constants/notificationTypes.js`; `GET /notifications` cursor `before` + soft delete; SignalR kèm `bookingId` trong payload; sửa `getNotifications` (axios interceptor trả body sẵn, không destructure `data` sai); gỡ hook dư `useBookingNotificationsHub.js`.
+
+---
+
+## 28 tháng 3, 2026
+
+Kết bạn & quan hệ xã hội (Player):
+
+- Database: `user_privacy_settings`, `friend_requests`, `friendships`, `user_blocks` (trong `Database.txt`; script bổ sung: `docs/migration_friends_social.sql` cho DB đang chạy).
+- Backend: `SocialController` (`/api/social`) — privacy, tìm exact/name, lời mời, bạn bè, chặn, `GET relationship/{id}`; thông báo `FRIEND_REQUEST` / `FRIEND_ACCEPTED` + `deepLink` trong metadata; `ProfileController`: `GET /api/profile/{userId}` (hồ sơ tối thiểu, `relationshipState`, `pendingRequestId` khi `PENDING_IN`).
+- Frontend: `/user/social/search`, `/user/social/friends` (tab Bạn bè / Đã nhận / Đã gửi), `/user/profile/:userId`; `RelationshipActions`, `socialApi`; QR (`qrcode.react`) + đọc ảnh QR (`jsqr`); `VITE_PUBLIC_APP_URL` (fallback `window.location.origin`); menu Tìm bạn / Bạn bè; `notificationTypes` + `notificationNavigation`.
+- Personalization: cho phép vào `/user/social/*` và `/user/profile/{guid}` dù chưa xong onboarding (theo kế hoạch tính năng xã hội).
+
+---
+
+*Cập nhật: gom theo ngày, bỏ trùng lặp và định dạng lại cho dễ đọc.*
