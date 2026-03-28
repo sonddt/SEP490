@@ -76,6 +76,109 @@ public class SocialController : ControllerBase
             await _db.SaveChangesAsync(ct);
     }
 
+    /// <summary>
+    /// Chấp nhận lời mời PENDING (accepterUserId phải là người nhận — ToUserId).
+    /// Gửi thông báo tới người gửi lời mời.
+    /// </summary>
+    private async Task AcceptPendingFriendRequestAndNotifyAsync(
+        Guid accepterUserId,
+        FriendRequest r,
+        CancellationToken ct = default)
+    {
+        var (low, high) = OrderedPair(r.FromUserId, r.ToUserId);
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+        try
+        {
+            r.Status = "ACCEPTED";
+            r.RespondedAt = DateTime.UtcNow;
+            if (!await _db.Friendships.AnyAsync(f => f.UserLowId == low && f.UserHighId == high, ct))
+            {
+                _db.Friendships.Add(new Friendship
+                {
+                    Id = Guid.NewGuid(),
+                    UserLowId = low,
+                    UserHighId = high,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            await _db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+
+        var accepterName = await _db.Users.AsNoTracking()
+            .Where(u => u.Id == accepterUserId)
+            .Select(u => u.FullName)
+            .FirstAsync(ct);
+        await _notify.NotifyUserAsync(
+            r.FromUserId,
+            NotificationTypes.FriendAccepted,
+            "Kết bạn thành công",
+            $"{accepterName} đã chấp nhận lời mời kết bạn.",
+            new { friendUserId = accepterUserId, deepLink = $"/user/profile/{accepterUserId}" },
+            false,
+            null,
+            ct);
+    }
+
+    /// <summary>
+    /// Hai lời mời PENDING cùng lúc hai chiều (A→B và B→A): gộp thành bạn bè, chấp nhận bản gửi tới <paramref name="me"/>, huỷ bản gửi đi của <paramref name="me"/>.
+    /// </summary>
+    private async Task MergeSimultaneousOppositePendingAsync(
+        Guid me,
+        Guid toId,
+        FriendRequest myOutbound,
+        FriendRequest theirInboundToMe,
+        CancellationToken ct = default)
+    {
+        var (low, high) = OrderedPair(me, toId);
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+        try
+        {
+            theirInboundToMe.Status = "ACCEPTED";
+            theirInboundToMe.RespondedAt = DateTime.UtcNow;
+            myOutbound.Status = "CANCELLED";
+            myOutbound.RespondedAt = DateTime.UtcNow;
+            if (!await _db.Friendships.AnyAsync(f => f.UserLowId == low && f.UserHighId == high, ct))
+            {
+                _db.Friendships.Add(new Friendship
+                {
+                    Id = Guid.NewGuid(),
+                    UserLowId = low,
+                    UserHighId = high,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            await _db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+
+        var accepterName = await _db.Users.AsNoTracking()
+            .Where(u => u.Id == me)
+            .Select(u => u.FullName)
+            .FirstAsync(ct);
+        await _notify.NotifyUserAsync(
+            theirInboundToMe.FromUserId,
+            NotificationTypes.FriendAccepted,
+            "Kết bạn thành công",
+            $"{accepterName} đã chấp nhận lời mời kết bạn.",
+            new { friendUserId = me, deepLink = $"/user/profile/{me}" },
+            false,
+            null,
+            ct);
+    }
+
     /// <summary>Cài đặt cho phép tìm theo email / SĐT.</summary>
     [HttpGet("privacy")]
     public async Task<IActionResult> GetPrivacy()
@@ -220,10 +323,20 @@ public class SocialController : ControllerBase
         if (pendingOut)
             return BadRequest(new { message = "Bạn đã gửi lời mời trước đó rồi." });
 
-        var pendingIn = await _db.FriendRequests.AnyAsync(r =>
+        var incoming = await _db.FriendRequests.FirstOrDefaultAsync(r =>
             r.Status == "PENDING" && r.FromUserId == toId && r.ToUserId == me);
-        if (pendingIn)
-            return BadRequest(new { message = "Người này đã gửi lời mời cho bạn — hãy xem trong mục lời mời đã nhận." });
+        if (incoming != null)
+        {
+            if (await IsEitherBlockedAsync(me, toId))
+                return BadRequest(new { message = "Không thể chấp nhận lời mời trong trạng thái hiện tại." });
+            await AcceptPendingFriendRequestAndNotifyAsync(me, incoming, CancellationToken.None);
+            return Ok(new
+            {
+                id = incoming.Id,
+                mutualAutoAccept = true,
+                message = "Hai bạn đã là bạn bè — lời mời của đối phương đã được chấp nhận."
+            });
+        }
 
         var req = new FriendRequest
         {
@@ -235,6 +348,42 @@ public class SocialController : ControllerBase
         };
         _db.FriendRequests.Add(req);
         await _db.SaveChangesAsync();
+
+        var reversePending = await _db.FriendRequests.FirstOrDefaultAsync(r =>
+            r.Status == "PENDING" && r.FromUserId == toId && r.ToUserId == me && r.Id != req.Id);
+        if (reversePending != null)
+        {
+            if (await IsEitherBlockedAsync(me, toId))
+            {
+                req.Status = "CANCELLED";
+                req.RespondedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+                return BadRequest(new { message = "Không thể kết bạn trong trạng thái hiện tại." });
+            }
+
+            await MergeSimultaneousOppositePendingAsync(me, toId, req, reversePending, CancellationToken.None);
+            return Ok(new
+            {
+                id = reversePending.Id,
+                simultaneousMutual = true,
+                message = "Hai bạn đã là bạn bè — cùng gửi lời mời lúc đó nên hệ thống đã ghép luôn."
+            });
+        }
+
+        var (lowPair, highPair) = OrderedPair(me, toId);
+        if (await _db.Friendships.AsNoTracking()
+                .AnyAsync(f => f.UserLowId == lowPair && f.UserHighId == highPair))
+        {
+            req.Status = "CANCELLED";
+            req.RespondedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            return Ok(new
+            {
+                id = req.Id,
+                simultaneousMutual = true,
+                message = "Hai bạn đã là bạn bè — đối phương vừa chấp nhận lúc này."
+            });
+        }
 
         var fromName = await _db.Users.AsNoTracking().Where(u => u.Id == me).Select(u => u.FullName).FirstAsync();
         await _notify.NotifyUserAsync(
@@ -281,41 +430,7 @@ public class SocialController : ControllerBase
         if (await IsEitherBlockedAsync(me, r.FromUserId))
             return BadRequest(new { message = "Không thể chấp nhận lời mời này." });
 
-        var (low, high) = OrderedPair(r.FromUserId, r.ToUserId);
-        await using var tx = await _db.Database.BeginTransactionAsync();
-        try
-        {
-            r.Status = "ACCEPTED";
-            r.RespondedAt = DateTime.UtcNow;
-            if (!await _db.Friendships.AnyAsync(f => f.UserLowId == low && f.UserHighId == high))
-            {
-                _db.Friendships.Add(new Friendship
-                {
-                    Id = Guid.NewGuid(),
-                    UserLowId = low,
-                    UserHighId = high,
-                    CreatedAt = DateTime.UtcNow
-                });
-            }
-            await _db.SaveChangesAsync();
-            await tx.CommitAsync();
-        }
-        catch
-        {
-            await tx.RollbackAsync();
-            throw;
-        }
-
-        var accepterName = await _db.Users.AsNoTracking().Where(u => u.Id == me).Select(u => u.FullName).FirstAsync();
-        await _notify.NotifyUserAsync(
-            r.FromUserId,
-            NotificationTypes.FriendAccepted,
-            "Kết bạn thành công",
-            $"{accepterName} đã chấp nhận lời mời kết bạn.",
-            new { friendUserId = me, deepLink = $"/user/profile/{me}" },
-            false,
-            null,
-            CancellationToken.None);
+        await AcceptPendingFriendRequestAndNotifyAsync(me, r, CancellationToken.None);
 
         return Ok(new { message = "Đã chấp nhận — giờ hai bạn là bạn bè." });
     }

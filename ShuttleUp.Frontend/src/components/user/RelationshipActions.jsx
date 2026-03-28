@@ -50,8 +50,10 @@ export default function RelationshipActions({
   const run = async (fn, okMsg) => {
     setBusy(true);
     try {
-      await fn();
-      if (okMsg) showBkToast(okMsg, 'success');
+      const result = await fn();
+      const serverMsg = result && typeof result === 'object' && typeof result.message === 'string' ? result.message : '';
+      const toastText = serverMsg || okMsg;
+      if (toastText) showBkToast(toastText, 'success');
       await refresh();
       onChanged?.();
     } catch (e) {
