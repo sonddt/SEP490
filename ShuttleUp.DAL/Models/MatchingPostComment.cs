@@ -14,7 +14,17 @@ public partial class MatchingPostComment
 
     public DateTime? CreatedAt { get; set; }
 
+    public DateTime? UpdatedAt { get; set; }
+
+    public bool IsDeleted { get; set; }
+
+    public DateTime? DeletedAt { get; set; }
+
+    public Guid? DeletedByUserId { get; set; }
+
     public virtual MatchingPost Post { get; set; } = null!;
 
     public virtual User User { get; set; } = null!;
+
+    public virtual User? DeletedByUser { get; set; }
 }

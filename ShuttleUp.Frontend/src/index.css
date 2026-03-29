@@ -1328,8 +1328,18 @@ a:active {
 }
 .matching-comment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
 .matching-comment-name { font-size: 13px; font-weight: 700; color: #1e293b; }
+.matching-comment-time-wrap { font-size: 11px; color: #94a3b8; text-align: right; }
 .matching-comment-time { font-size: 11px; color: #94a3b8; }
+.matching-comment-edited { font-size: 10px; color: #94a3b8; font-style: italic; }
 .matching-comment-content { font-size: 14px; color: #334155; line-height: 1.5; margin: 0; }
+.matching-comment-actions {
+  display: flex; align-items: center; gap: 6px; margin-top: 6px; flex-wrap: wrap;
+}
+.matching-comment-actions .btn-link { font-size: 12px; text-decoration: none; }
+.matching-comment-actions-sep { color: #cbd5e1; font-size: 12px; user-select: none; }
+.matching-comment-edit-form { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.matching-comment-edit-form .form-control { border-radius: 10px; }
+.matching-comment-edit-actions { display: flex; gap: 8px; }
 
 /* ── Responsive ────────────────────────────────────────────────────────── */
 @media (max-width: 767px) {

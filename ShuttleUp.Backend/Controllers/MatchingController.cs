@@ -1,3 +1,4 @@
+using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -30,6 +31,25 @@ public class MatchingController : ControllerBase
                 ?? User.FindFirst("sub")?.Value;
         return Guid.TryParse(s, out userId);
     }
+
+    /// <summary>MySQL datetime → JSON có hậu tố Z để FE không hiểu nhầm là giờ local (lệch ~7h VN).</summary>
+    private static DateTime AsUtcForJson(DateTime dt)
+    {
+        return dt.Kind switch
+        {
+            DateTimeKind.Utc => dt,
+            DateTimeKind.Local => dt.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(dt, DateTimeKind.Utc)
+        };
+    }
+
+    private static DateTime? AsUtcForJson(DateTime? dt) =>
+        dt.HasValue ? AsUtcForJson(dt.Value) : null;
+
+    private static DateTime AsUtcForCompare(DateTime dt) =>
+        dt.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(dt, DateTimeKind.Utc)
+            : dt.ToUniversalTime();
 
     // ═══════════════════════════════════════════════════
     //  GET /api/matching/posts — Danh sách bài đăng OPEN
@@ -714,10 +734,10 @@ public class MatchingController : ControllerBase
         if (!isMember)
             return Forbid();
 
-        var total = await _db.MatchingPostComments.CountAsync(c => c.PostId == id);
-        var items = await _db.MatchingPostComments.AsNoTracking()
+        var total = await _db.MatchingPostComments.CountAsync(c => c.PostId == id && !c.IsDeleted);
+        var raw = await _db.MatchingPostComments.AsNoTracking()
             .Include(c => c.User).ThenInclude(u => u.AvatarFile)
-            .Where(c => c.PostId == id)
+            .Where(c => c.PostId == id && !c.IsDeleted)
             .OrderByDescending(c => c.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -728,9 +748,21 @@ public class MatchingController : ControllerBase
                 fullName = c.User.FullName,
                 avatarUrl = c.User.AvatarFile != null ? c.User.AvatarFile.FileUrl : null,
                 content = c.Content,
-                createdAt = c.CreatedAt
+                createdAt = c.CreatedAt,
+                updatedAt = c.UpdatedAt
             })
             .ToListAsync();
+        var items = raw.Select(x => new
+        {
+            x.id,
+            x.userId,
+            x.fullName,
+            x.avatarUrl,
+            x.content,
+            createdAt = AsUtcForJson(x.createdAt),
+            updatedAt = AsUtcForJson(x.updatedAt),
+            isEdited = x.updatedAt.HasValue
+        }).ToList();
 
         return Ok(new { total, page, pageSize, items });
     }
@@ -752,19 +784,36 @@ public class MatchingController : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.Content))
             return BadRequest(new { message = "Vui lòng nhập nội dung bình luận." });
 
+        var trimmedNew = dto.Content.Trim();
+        if (trimmedNew.Length > 500)
+            return BadRequest(new { message = "Bình luận tối đa 500 ký tự." });
+
         // Only host + accepted members can comment
         var isMember = await _db.MatchingMembers.AsNoTracking()
             .AnyAsync(m => m.PostId == id && m.UserId == me);
         if (!isMember)
             return Forbid();
 
+        var lastAt = await _db.MatchingPostComments.AsNoTracking()
+            .Where(c => c.PostId == id && c.UserId == me && !c.IsDeleted)
+            .OrderByDescending(c => c.CreatedAt)
+            .Select(c => (DateTime?)c.CreatedAt)
+            .FirstOrDefaultAsync();
+        if (lastAt.HasValue)
+        {
+            var lastUtc = AsUtcForCompare(lastAt.Value);
+            if ((DateTime.UtcNow - lastUtc).TotalMilliseconds < 500)
+                return StatusCode(429, new { message = "Bạn gửi quá nhanh. Vui lòng đợi một chút." });
+        }
+
         var comment = new MatchingPostComment
         {
             Id = Guid.NewGuid(),
             PostId = id,
             UserId = me,
-            Content = dto.Content.Trim(),
-            CreatedAt = DateTime.UtcNow
+            Content = trimmedNew,
+            CreatedAt = DateTime.UtcNow,
+            IsDeleted = false
         };
         _db.MatchingPostComments.Add(comment);
         await _db.SaveChangesAsync();
@@ -780,9 +829,105 @@ public class MatchingController : ControllerBase
             fullName = user.FullName,
             avatarUrl = user.AvatarFile?.FileUrl,
             content = comment.Content,
-            createdAt = comment.CreatedAt,
+            createdAt = AsUtcForJson(comment.CreatedAt),
+            updatedAt = (DateTime?)null,
+            isEdited = false,
             message = "Bình luận đã được gửi."
         });
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  PATCH /api/matching/posts/{postId}/comments/{commentId} — Tác giả sửa
+    // ═══════════════════════════════════════════════════════════════
+    [HttpPatch("posts/{postId:guid}/comments/{commentId:guid}")]
+    public async Task<IActionResult> PatchComment(Guid postId, Guid commentId, [FromBody] CommentDto dto)
+    {
+        if (!TryGetCurrentUserId(out var me))
+            return Unauthorized();
+
+        if (string.IsNullOrWhiteSpace(dto.Content))
+            return BadRequest(new { message = "Vui lòng nhập nội dung bình luận." });
+
+        var trimmed = dto.Content.Trim();
+        if (trimmed.Length > 500)
+            return BadRequest(new { message = "Bình luận tối đa 500 ký tự." });
+
+        var isMember = await _db.MatchingMembers.AsNoTracking()
+            .AnyAsync(m => m.PostId == postId && m.UserId == me);
+        if (!isMember)
+            return Forbid();
+
+        var comment = await _db.MatchingPostComments
+            .FirstOrDefaultAsync(c => c.Id == commentId && c.PostId == postId);
+        if (comment == null)
+            return NotFound(new { message = "Không tìm thấy bình luận." });
+
+        if (comment.IsDeleted)
+            return BadRequest(new { message = "Bình luận này đã được gỡ, không thể sửa." });
+
+        if (comment.UserId != me)
+            return Forbid();
+
+        comment.Content = trimmed;
+        comment.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        var user = await _db.Users.AsNoTracking()
+            .Include(u => u.AvatarFile)
+            .FirstAsync(u => u.Id == me);
+
+        return Ok(new
+        {
+            id = comment.Id,
+            userId = me,
+            fullName = user.FullName,
+            avatarUrl = user.AvatarFile?.FileUrl,
+            content = comment.Content,
+            createdAt = AsUtcForJson(comment.CreatedAt),
+            updatedAt = AsUtcForJson(comment.UpdatedAt),
+            isEdited = true,
+            message = "Đã cập nhật bình luận."
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  DELETE /api/matching/posts/{postId}/comments/{commentId} — Xóa mềm (chủ bài hoặc tác giả)
+    // ═══════════════════════════════════════════════════════════════
+    [HttpDelete("posts/{postId:guid}/comments/{commentId:guid}")]
+    public async Task<IActionResult> SoftDeleteComment(Guid postId, Guid commentId)
+    {
+        if (!TryGetCurrentUserId(out var me))
+            return Unauthorized();
+
+        var isMember = await _db.MatchingMembers.AsNoTracking()
+            .AnyAsync(m => m.PostId == postId && m.UserId == me);
+        if (!isMember)
+            return Forbid();
+
+        var comment = await _db.MatchingPostComments
+            .FirstOrDefaultAsync(c => c.Id == commentId && c.PostId == postId);
+        if (comment == null)
+            return NotFound(new { message = "Không tìm thấy bình luận." });
+
+        if (comment.IsDeleted)
+            return Ok(new { message = "Bình luận đã được gỡ trước đó." });
+
+        var post = await _db.MatchingPosts.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == postId);
+        if (post == null)
+            return NotFound(new { message = "Không tìm thấy bài đăng." });
+
+        var isHost = post.CreatorUserId == me;
+        var isAuthor = comment.UserId == me;
+        if (!isHost && !isAuthor)
+            return Forbid();
+
+        comment.IsDeleted = true;
+        comment.DeletedAt = DateTime.UtcNow;
+        comment.DeletedByUserId = me;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = "Đã gỡ bình luận." });
     }
 
     // ═══════════════════════════════════════════════════════════════

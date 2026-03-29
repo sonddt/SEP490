@@ -20,6 +20,10 @@ const matchingApi = {
   // ── Comments (FB-style) ───────────────────────────────
   getComments: (postId, params) => axiosClient.get(`/matching/posts/${postId}/comments`, { params }),
   postComment: (postId, data) => axiosClient.post(`/matching/posts/${postId}/comments`, data),
+  patchComment: (postId, commentId, data) =>
+    axiosClient.patch(`/matching/posts/${postId}/comments/${commentId}`, data),
+  deleteComment: (postId, commentId) =>
+    axiosClient.delete(`/matching/posts/${postId}/comments/${commentId}`),
 
   // ── Bookings (for Create flow) ────────────────────────
   getUpcomingBookings: () => axiosClient.get('/matching/bookings'),

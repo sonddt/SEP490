@@ -703,6 +703,7 @@ public partial class ShuttleUpDbContext : DbContext
             entity.ToTable("matching_post_comments");
 
             entity.HasIndex(e => new { e.PostId, e.CreatedAt }, "idx_matching_comments_post");
+            entity.HasIndex(e => new { e.PostId, e.IsDeleted, e.CreatedAt }, "idx_matching_comments_post_active");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.PostId).HasColumnName("post_id");
@@ -714,6 +715,16 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime")
                 .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.IsDeleted)
+                .HasColumnName("is_deleted")
+                .HasDefaultValue(false);
+            entity.Property(e => e.DeletedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("deleted_at");
+            entity.Property(e => e.DeletedByUserId).HasColumnName("deleted_by_user_id");
 
             entity.HasOne(d => d.Post).WithMany(p => p.MatchingPostComments)
                 .HasForeignKey(d => d.PostId)
@@ -723,6 +734,11 @@ public partial class ShuttleUpDbContext : DbContext
             entity.HasOne(d => d.User).WithMany()
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("matching_post_comments_ibfk_2");
+
+            entity.HasOne(d => d.DeletedByUser).WithMany()
+                .HasForeignKey(d => d.DeletedByUserId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("matching_post_comments_deleted_by_fk");
         });
 
         modelBuilder.Entity<Payment>(entity =>

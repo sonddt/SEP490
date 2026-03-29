@@ -328,7 +328,7 @@ export default function MatchingPostDetail() {
 
               {/* ── FB-style Comments (only for host + accepted members) ── */}
               {(post.isHost || post.isMember) && (
-                <MatchingComments postId={postId} />
+                <MatchingComments postId={postId} isHost={post.isHost} />
               )}
             </div>
 
