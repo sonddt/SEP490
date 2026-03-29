@@ -320,6 +320,7 @@ public class MatchingController : ControllerBase
         public string? SkillLevel { get; set; }
         public string? GenderPref { get; set; }
         public string? ExpenseSharing { get; set; }
+        public string? PlayPurpose { get; set; }
         public string? Notes { get; set; }
     }
 
@@ -329,17 +330,29 @@ public class MatchingController : ControllerBase
         if (!TryGetCurrentUserId(out var me))
             return Unauthorized();
 
-        var post = await _db.MatchingPosts.FirstOrDefaultAsync(p => p.Id == id && p.CreatorUserId == me);
+        var post = await _db.MatchingPosts
+            .Include(p => p.MatchingMembers)
+            .FirstOrDefaultAsync(p => p.Id == id && p.CreatorUserId == me);
         if (post == null)
             return NotFound(new { message = "Không tìm thấy bài đăng." });
         if (post.Status != "OPEN")
             return BadRequest(new { message = "Chỉ có thể sửa bài đăng đang mở." });
 
+        if (dto.RequiredPlayers.HasValue)
+        {
+            if (dto.RequiredPlayers.Value < 1)
+                return BadRequest(new { message = "Số người cần tìm ít nhất là 1." });
+            var maxMembers = dto.RequiredPlayers.Value + 1;
+            if (post.MatchingMembers.Count > maxMembers)
+                return BadRequest(new { message = "Số người cần tìm không thể nhỏ hơn số thành viên hiện có trong nhóm." });
+            post.RequiredPlayers = dto.RequiredPlayers.Value;
+        }
+
         if (dto.Title != null) post.Title = dto.Title;
-        if (dto.RequiredPlayers.HasValue) post.RequiredPlayers = dto.RequiredPlayers.Value;
         if (dto.SkillLevel != null) post.SkillLevel = dto.SkillLevel;
         if (dto.GenderPref != null) post.GenderPref = dto.GenderPref;
         if (dto.ExpenseSharing != null) post.ExpenseSharing = dto.ExpenseSharing;
+        if (dto.PlayPurpose != null) post.PlayPurpose = dto.PlayPurpose;
         if (dto.Notes != null) post.Notes = dto.Notes;
         post.UpdatedAt = DateTime.UtcNow;
 

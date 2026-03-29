@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import matchingApi from '../../api/matchingApi';
+import MatchingPeopleCountInput from '../../components/matching/MatchingPeopleCountInput';
 
 const skillOptions = [
   { value: 'beginner', label: 'Mới chơi' },
@@ -283,13 +284,11 @@ export default function MatchingCreate() {
 
                       <div className="mb-3">
                         <label className="form-label">Số người cần thêm <span className="text-danger">*</span></label>
-                        <input
-                          type="number"
-                          className="form-control"
+                        <MatchingPeopleCountInput
+                          value={form.requiredPlayers}
+                          onChange={(n) => setForm({ ...form, requiredPlayers: n })}
                           min={1}
                           max={20}
-                          value={form.requiredPlayers}
-                          onChange={(e) => setForm({ ...form, requiredPlayers: parseInt(e.target.value) || 1 })}
                         />
                       </div>
 

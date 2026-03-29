@@ -1082,6 +1082,52 @@ a:active {
 .matching-create-step { margin-bottom: 40px; }
 .matching-create-step h4 { font-size: 20px; font-weight: 700; margin-bottom: 20px; color: #1e293b; }
 
+/* Số người cần thêm — gõ text + nút ▲▼, không scroll-wheel đổi số */
+.matching-people-count-input {
+  display: flex;
+  align-items: stretch;
+  max-width: 220px;
+}
+.matching-people-count-input__field {
+  flex: 1;
+  min-width: 0;
+  border-radius: 8px 0 0 8px;
+}
+.matching-people-count-input__btns {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #dee2e6;
+  border-left: 0;
+  border-radius: 0 8px 8px 0;
+  overflow: hidden;
+  background: #f8fafc;
+}
+.matching-people-count-input__btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border: none;
+  border-bottom: 1px solid #e2e8f0;
+  background: transparent;
+  color: #475569;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.matching-people-count-input__btn:last-child { border-bottom: none; }
+.matching-people-count-input__btn:hover:not(:disabled) {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+.matching-people-count-input__btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.matching-people-count-input__btn i { font-size: 14px; }
+
 /* ── Booking Selection ─────────────────────────────────────────────────── */
 .matching-booking-card {
   border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px;

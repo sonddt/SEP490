@@ -399,7 +399,7 @@ export default function MatchingPostDetail() {
                   {/* Host */}
                   {post.isHost && (
                     <>
-                      {!isClosed && (
+                      {isOpen && (
                         <Link to={`/matching/edit/${postId}`} className="btn btn-outline-primary w-100 mb-2">
                           <i className="feather-edit"></i> Chỉnh sửa
                         </Link>

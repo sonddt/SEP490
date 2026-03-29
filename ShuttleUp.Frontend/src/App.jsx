@@ -49,6 +49,7 @@ import { useAppNotificationsHub } from './hooks/useAppNotificationsHub';
 // Matching
 import MatchingHub from './pages/matching/MatchingHub';
 import MatchingCreate from './pages/matching/MatchingCreate';
+import MatchingEditPost from './pages/matching/MatchingEditPost';
 import MatchingPostDetail from './pages/matching/MatchingPostDetail';
 
 // Manager — Layout + Pages
@@ -169,6 +170,7 @@ function App() {
           {/* ═══ Matching ═══ */}
           <Route path="/matching" element={<ProtectedRoute><MatchingHub /></ProtectedRoute>} />
           <Route path="/matching/create" element={<ProtectedRoute><MatchingCreate /></ProtectedRoute>} />
+          <Route path="/matching/edit/:postId" element={<ProtectedRoute><MatchingEditPost /></ProtectedRoute>} />
           <Route path="/matching/:postId" element={<ProtectedRoute><MatchingPostDetail /></ProtectedRoute>} />
 
           {/* ═══════════════════════════════════════════════════════════
