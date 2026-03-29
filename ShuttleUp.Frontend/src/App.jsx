@@ -46,6 +46,11 @@ import UserSocialFriends from './pages/user/UserSocialFriends';
 import UserPublicProfile from './pages/user/UserPublicProfile';
 import { useAppNotificationsHub } from './hooks/useAppNotificationsHub';
 
+// Matching
+import MatchingHub from './pages/matching/MatchingHub';
+import MatchingCreate from './pages/matching/MatchingCreate';
+import MatchingPostDetail from './pages/matching/MatchingPostDetail';
+
 // Manager — Layout + Pages
 import ManagerLayout from './layouts/ManagerLayout';
 import ManagerDashboard from './pages/manager/ManagerDashboard';
@@ -160,6 +165,11 @@ function App() {
           <Route path="/user/favorites" element={<ProtectedRoute><UserFavorites /></ProtectedRoute>} />
           <Route path="/user/notifications" element={<ProtectedRoute><UserNotifications /></ProtectedRoute>} />
           <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+
+          {/* ═══ Matching ═══ */}
+          <Route path="/matching" element={<ProtectedRoute><MatchingHub /></ProtectedRoute>} />
+          <Route path="/matching/create" element={<ProtectedRoute><MatchingCreate /></ProtectedRoute>} />
+          <Route path="/matching/:postId" element={<ProtectedRoute><MatchingPostDetail /></ProtectedRoute>} />
 
           {/* ═══════════════════════════════════════════════════════════
                MANAGER — Nested routes with ManagerLayout (sidebar)

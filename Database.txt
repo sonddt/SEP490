@@ -28,8 +28,10 @@ DROP TABLE IF EXISTS venue_reviews;
 DROP TABLE IF EXISTS chat_room_members;
 DROP TABLE IF EXISTS chat_messages;
 DROP TABLE IF EXISTS chat_rooms;
+DROP TABLE IF EXISTS matching_post_comments;
 DROP TABLE IF EXISTS matching_members;
 DROP TABLE IF EXISTS matching_join_requests;
+DROP TABLE IF EXISTS matching_post_items;
 DROP TABLE IF EXISTS matching_posts;
 
 -- PAYMENT
@@ -402,32 +404,71 @@ CREATE TABLE matching_posts (
     id CHAR(36) PRIMARY KEY,
     creator_user_id CHAR(36),
     booking_id CHAR(36),
+    title VARCHAR(255),
+    play_date DATE,
+    play_start_time TIME,
+    play_end_time TIME,
+    venue_id CHAR(36),
+    court_name VARCHAR(100),
+    price_per_slot DECIMAL(15,2),
     required_players INT,
     skill_level VARCHAR(50),
     gender_pref VARCHAR(50),
     expense_sharing VARCHAR(100),
+    play_purpose VARCHAR(100),
     notes TEXT,
     status VARCHAR(50) DEFAULT 'OPEN',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (creator_user_id) REFERENCES users(id),
-    FOREIGN KEY (booking_id) REFERENCES bookings(id)
+    FOREIGN KEY (booking_id) REFERENCES bookings(id),
+    FOREIGN KEY (venue_id) REFERENCES venues(id),
+    INDEX idx_matching_posts_status_date (status, play_date),
+    INDEX idx_matching_posts_creator (creator_user_id)
+);
+
+CREATE TABLE matching_post_items (
+    id CHAR(36) PRIMARY KEY,
+    post_id CHAR(36) NOT NULL,
+    booking_item_id CHAR(36) NOT NULL,
+    FOREIGN KEY (post_id) REFERENCES matching_posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (booking_item_id) REFERENCES booking_items(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_post_booking_item (post_id, booking_item_id)
 );
 
 CREATE TABLE matching_join_requests (
     id CHAR(36) PRIMARY KEY,
     post_id CHAR(36),
     user_id CHAR(36),
+    message TEXT NULL,
     status VARCHAR(50) DEFAULT 'PENDING',
+    reject_reason TEXT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (post_id) REFERENCES matching_posts(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    INDEX idx_matching_join_post_status (post_id, status)
 );
 
 CREATE TABLE matching_members (
     id CHAR(36) PRIMARY KEY,
     post_id CHAR(36),
     user_id CHAR(36),
+    joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (post_id) REFERENCES matching_posts(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE KEY uq_matching_member (post_id, user_id)
+);
+
+CREATE TABLE matching_post_comments (
+    id CHAR(36) PRIMARY KEY,
+    post_id CHAR(36) NOT NULL,
+    user_id CHAR(36) NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES matching_posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    INDEX idx_matching_comments_post (post_id, created_at)
 );
 
 -- ======================================================================

@@ -11,6 +11,8 @@ public partial class MatchingMember
 
     public Guid? UserId { get; set; }
 
+    public DateTime? JoinedAt { get; set; }
+
     public virtual MatchingPost? Post { get; set; }
 
     public virtual User? User { get; set; }

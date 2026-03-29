@@ -22,4 +22,6 @@ public partial class BookingItem
     public virtual Booking? Booking { get; set; }
 
     public virtual Court? Court { get; set; }
+
+    public virtual ICollection<MatchingPostItem> MatchingPostItems { get; set; } = new List<MatchingPostItem>();
 }

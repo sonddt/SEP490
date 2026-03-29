@@ -134,6 +134,12 @@ const Header = ({ transparent = false }) => {
               </li>
 
               {isAuthenticated && (
+                <li className={isActive('/matching') ? 'active' : ''}>
+                  <Link to="/matching" onClick={closeMobileMenu}>Tìm kèo 🏸</Link>
+                </li>
+              )}
+
+              {isAuthenticated && (
                 <li className={isActive('/chat') ? 'active' : ''}>
                   <Link to="/chat" onClick={closeMobileMenu}>💬 Chat</Link>
                 </li>

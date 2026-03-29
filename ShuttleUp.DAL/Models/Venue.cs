@@ -65,4 +65,6 @@ public partial class Venue
     public virtual ICollection<VenueReview> VenueReviews { get; set; } = new List<VenueReview>();
 
     public virtual ICollection<File> Files { get; set; } = new List<File>();
+
+    public virtual ICollection<MatchingPost> MatchingPosts { get; set; } = new List<MatchingPost>();
 }
