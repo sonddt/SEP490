@@ -4,12 +4,12 @@ import VenueCard from '../components/courts/VenueCard';
 import favoritesApi from '../api/favoritesApi';
 
 /**
- * Danh sách sân - Grid (listing-grid) và List (listing-list) view.
- * Route: /courts = grid, /courts/list = list.
+ * Danh sách venues - Grid (listing-grid) và List (listing-list) view.
+ * Route: /venues = grid, /venues/list = list.
  */
-export default function CourtsListing() {
+export default function VenuesListing() {
   const location = useLocation();
-  const isListView = location.pathname === '/courts/list';
+  const isListView = location.pathname === '/venues/list';
 
   const [sortBy, setSortBy] = useState('price_asc');
   const [displayCount, setDisplayCount] = useState(9);
@@ -50,13 +50,13 @@ export default function CourtsListing() {
         }));
 
         setVenues(mapped);
-        
+
         // Load favorites (nếu đã đăng nhập). Nếu chưa đăng nhập thì bỏ qua.
         const token = localStorage.getItem('token');
         if (token) {
           try {
             const favs = await favoritesApi.getMyFavorites();
-                setFavoriteIds(new Set(favs.map((f) => f.id ?? f.Id)));
+            setFavoriteIds(new Set(favs.map((f) => f.id ?? f.Id)));
           } catch {
             setFavoriteIds(new Set());
           }
@@ -74,16 +74,32 @@ export default function CourtsListing() {
   }, [sortBy]);
 
   const sortedVenues = useMemo(() => {
-    const list = [...venues];
     const getPrice = (v) => v.minPrice ?? v.maxPrice ?? 0;
 
-    if (sortBy === 'price_asc') {
-      list.sort((a, b) => getPrice(a) - getPrice(b));
-    } else if (sortBy === 'price_desc') {
-      list.sort((a, b) => getPrice(b) - getPrice(a));
+    const priceCmp = (a, b) => {
+      const pa = getPrice(a);
+      const pb = getPrice(b);
+      const dir = sortBy === 'price_desc' ? -1 : 1;
+
+      if (pa === pb) {
+        // tie-breaker to keep deterministic ordering
+        return String(a.name ?? '').localeCompare(String(b.name ?? ''));
+      }
+
+      return (pa - pb) * dir;
+    };
+
+    // Ưu tiên favorites lên đầu danh sách (nếu có)
+    if (favoriteIds && favoriteIds.size > 0) {
+      const favList = venues.filter((v) => favoriteIds.has(v.id)).sort(priceCmp);
+      const otherList = venues.filter((v) => !favoriteIds.has(v.id)).sort(priceCmp);
+      return [...favList, ...otherList];
     }
+
+    const list = [...venues];
+    list.sort(priceCmp);
     return list;
-  }, [venues, sortBy]);
+  }, [venues, sortBy, favoriteIds]);
 
   const visibleVenues = sortedVenues.slice(0, displayCount);
   const hasMore = displayCount < sortedVenues.length;
@@ -127,7 +143,7 @@ export default function CourtsListing() {
                             <li><span>Hiển thị dưới dạng</span></li>
                             <li>
                               <Link
-                                to="/courts"
+                                to="/venues"
                                 className={!isListView ? 'active' : ''}
                                 aria-label="Dạng lưới"
                               >
@@ -136,7 +152,7 @@ export default function CourtsListing() {
                             </li>
                             <li>
                               <Link
-                                to="/courts/list"
+                                to="/venues/list"
                                 className={isListView ? 'active' : ''}
                                 aria-label="Dạng danh sách"
                               >
@@ -144,7 +160,7 @@ export default function CourtsListing() {
                               </Link>
                             </li>
                             <li>
-                              <Link to="/courts/map" aria-label="Bản đồ">
+                              <Link to="/venues/map" aria-label="Bản đồ">
                                 <img src="/assets/img/icons/sort-03.svg" alt="Map" />
                               </Link>
                             </li>
@@ -237,3 +253,4 @@ export default function CourtsListing() {
     </div>
   );
 }
+

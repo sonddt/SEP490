@@ -3,6 +3,9 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ShuttleUp.Backend.Constants;
+using ShuttleUp.Backend.Helpers;
+using ShuttleUp.Backend.Services.Interfaces;
 using ShuttleUp.DAL.Models;
 
 namespace ShuttleUp.Backend.Controllers;
@@ -13,10 +16,12 @@ namespace ShuttleUp.Backend.Controllers;
 public class ManagerBookingsController : ControllerBase
 {
     private readonly ShuttleUpDbContext _dbContext;
+    private readonly INotificationDispatchService _notify;
 
-    public ManagerBookingsController(ShuttleUpDbContext dbContext)
+    public ManagerBookingsController(ShuttleUpDbContext dbContext, INotificationDispatchService notify)
     {
         _dbContext = dbContext;
+        _notify = notify;
     }
 
     private bool TryGetCurrentUserId(out Guid userId)
@@ -92,6 +97,8 @@ public class ManagerBookingsController : ControllerBase
                 bookingId = b.Id,
                 bookingCode,
                 status = b.Status,
+                seriesId = b.SeriesId,
+                isLongTerm = b.SeriesId != null,
                 contactName = b.ContactName,
                 contactPhone = b.ContactPhone,
                 guestNote = b.GuestNote,
@@ -187,9 +194,46 @@ public class ManagerBookingsController : ControllerBase
             }
         }
 
+        if (booking.SeriesId is { } seriesId)
+        {
+            var series = await _dbContext.BookingSeries.FirstOrDefaultAsync(s => s.Id == seriesId);
+            if (series != null)
+                series.Status = next == "CONFIRMED" ? "ACTIVE" : "CANCELLED";
+        }
+
         await _dbContext.SaveChangesAsync();
 
         var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
+
+        if (booking.UserId is { } playerId)
+        {
+            var title = next == "CONFIRMED" ? "Đơn đặt sân đã được duyệt" : "Cập nhật đơn đặt sân";
+            var body = next == "CONFIRMED"
+                ? $"Mã #{code} tại {booking.Venue?.Name ?? "sân"} đã được chủ sân xác nhận."
+                : $"Mã #{code}: {(string.IsNullOrWhiteSpace(booking.ManagerStatusNote) ? "Đơn đã bị huỷ/từ chối." : booking.ManagerStatusNote)}";
+
+            await _notify.NotifyUserAsync(
+                playerId,
+                NotificationTypes.Booking,
+                title,
+                body,
+                new
+                {
+                    bookingId = booking.Id,
+                    status = booking.Status,
+                    entityType = "booking",
+                    deepLink = $"/user/bookings?bookingId={booking.Id}",
+                },
+                sendEmail: true,
+                bookingStatusPayload: new
+                {
+                    bookingId = booking.Id,
+                    status = booking.Status,
+                    title,
+                    body,
+                });
+        }
+
         return Ok(new
         {
             bookingId = booking.Id,

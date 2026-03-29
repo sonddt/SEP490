@@ -27,6 +27,14 @@ public partial class User
 
     public DateOnly? DateOfBirth { get; set; }
 
+    public string? SkillLevel { get; set; }
+
+    public string? PlayPurpose { get; set; }
+
+    public string? PlayFrequency { get; set; }
+
+    public bool? IsPersonalized { get; set; }
+
     public bool? IsActive { get; set; }
 
     public DateTime? BlockedAt { get; set; }
@@ -44,6 +52,8 @@ public partial class User
     public virtual File? AvatarFile { get; set; }
 
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
+
+    public virtual ICollection<BookingSeries> BookingSeries { get; set; } = new List<BookingSeries>();
 
     public virtual ICollection<ChatMessage> ChatMessages { get; set; } = new List<ChatMessage>();
 
@@ -67,6 +77,8 @@ public partial class User
 
     public virtual ICollection<RefundTransaction> RefundTransactions { get; set; } = new List<RefundTransaction>();
 
+    public virtual ICollection<UserNotification> UserNotifications { get; set; } = new List<UserNotification>();
+
 
     public virtual ICollection<VenueReview> VenueReviews { get; set; } = new List<VenueReview>();
 
@@ -81,4 +93,10 @@ public partial class User
     public virtual ICollection<ManagerProfile> ApprovedManagerProfiles { get; set; } = new List<ManagerProfile>();
 
     public virtual ICollection<Role> Roles { get; set; } = new List<Role>();
+
+    public virtual UserPrivacySettings? UserPrivacySettings { get; set; }
+
+    public virtual ICollection<UserBlock> UserBlocksAsBlocker { get; set; } = new List<UserBlock>();
+
+    public virtual ICollection<UserBlock> UserBlocksAsBlocked { get; set; } = new List<UserBlock>();
 }

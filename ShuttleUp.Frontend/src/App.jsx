@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './context/AuthContext';
@@ -7,7 +8,7 @@ import PageLoader from './components/common/PageLoader';
 
 // Public pages
 import HomePage from './pages/HomePage';
-import CourtsListing from './pages/CourtsListing';
+import VenuesListing from './pages/VenuesListing';
 import VenueDetails from './pages/VenueDetails';
 import ChatPage from './pages/ChatPage';
 import Contact from './pages/Contact';
@@ -16,6 +17,11 @@ import BookingTimeline from './pages/BookingTimeline';
 import BookingConfirm from './pages/BookingConfirm';
 import BookingPayment from './pages/BookingPayment';
 import BookingComplete from './pages/BookingComplete';
+import LongTermGateway from './pages/LongTermGateway';
+import LongTermBooking from './pages/LongTermBooking';
+import LongTermConfirm from './pages/LongTermConfirm';
+import LongTermFlexible from './pages/LongTermFlexible';
+import LongTermFlexibleConfirm from './pages/LongTermFlexibleConfirm';
 import TermsOfService from './pages/TermsOfService';
 
 // Auth
@@ -30,9 +36,20 @@ import MyProfile from './pages/user/MyProfile';
 import UserProfileEdit from './pages/user/UserProfileEdit';
 import UserProfileChangePassword from './pages/user/UserProfileChangePassword';
 import UserProfileOtherSetting from './pages/user/UserProfileOtherSetting';
+import Personalization from './pages/user/Personalization';
 import UserManagerInfo from './pages/user/UserManagerInfo';
 import UserBookings from './pages/user/UserBookings';
 import UserFavorites from './pages/user/UserFavorites';
+import UserNotifications from './pages/user/UserNotifications';
+import UserSocialSearch from './pages/user/UserSocialSearch';
+import UserSocialFriends from './pages/user/UserSocialFriends';
+import UserPublicProfile from './pages/user/UserPublicProfile';
+import { useAppNotificationsHub } from './hooks/useAppNotificationsHub';
+
+// Matching
+import MatchingHub from './pages/matching/MatchingHub';
+import MatchingCreate from './pages/matching/MatchingCreate';
+import MatchingPostDetail from './pages/matching/MatchingPostDetail';
 
 // Manager — Layout + Pages
 import ManagerLayout from './layouts/ManagerLayout';
@@ -44,9 +61,9 @@ import ManagerAddCourt from './pages/manager/ManagerAddCourt';
 import ManagerBookings from './pages/manager/ManagerBookings';
 import ManagerNotifications from './pages/manager/ManagerNotifications';
 import ManagerEarnings from './pages/manager/ManagerEarnings';
-// ManagerWallet removed — project does not use wallet feature
 import ManagerPaymentSettings from './pages/manager/ManagerPaymentSettings';
 import ManagerAvailability from './pages/manager/ManagerAvailability';
+import ManagerProfile from './pages/manager/ManagerProfile';
 
 // Admin
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -67,13 +84,19 @@ const PlaceholderPage = ({ title }) => (
 );
 
 function App() {
+  useAppNotificationsHub();
   const location = useLocation();
   const authRoutes = ['/login', '/register', '/forgot-password', '/change-password'];
   const isAuthPage = authRoutes.includes(location.pathname);
   const isAdminPage = location.pathname.startsWith('/admin');
   const isManagerPage = location.pathname.startsWith('/manager');
+  const isBookingPage = location.pathname.startsWith('/booking');
 
   const showHeaderFooter = !isAuthPage && !isAdminPage && !isManagerPage;
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [location.pathname]);
 
   return (
     <>
@@ -91,38 +114,62 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/change-password" element={<ChangePassword />} />
 
-          {/* ═══ Public — Courts (Player) ═══ */}
-          <Route path="/courts" element={<CourtsListing />} />
-          <Route path="/courts/list" element={<CourtsListing />} />
-          <Route path="/courts/map" element={<PlaceholderPage title="Bản đồ sân" />} />
+          {/* ═══ Public — Venues (Player) ═══ */}
+          <Route path="/venues" element={<VenuesListing />} />
+          <Route path="/venues/list" element={<VenuesListing />} />
+          <Route path="/venues/map" element={<PlaceholderPage title="Bản đồ sân" />} />
           <Route path="/venue-details/:venueId" element={<VenueDetails />} />
-          <Route path="/courts/:id" element={<VenueDetails />} />
+          <Route path="/venues/:id" element={<VenueDetails />} />
+
+          {/* Backward-compatible aliases */}
+          <Route path="/courts" element={<Navigate to="/venues" replace />} />
+          <Route path="/courts/list" element={<Navigate to="/venues/list" replace />} />
+          <Route path="/courts/map" element={<Navigate to="/venues/map" replace />} />
+          <Route path="/courts/:id" element={<Navigate to="/venues/:id" replace />} />
 
           {/* ═══ Booking flow ═══ */}
           <Route path="/booking" element={<BookingTimeline />} />
           <Route path="/booking/confirm" element={<ProtectedRoute><BookingConfirm /></ProtectedRoute>} />
           <Route path="/booking/payment" element={<ProtectedRoute><BookingPayment /></ProtectedRoute>} />
           <Route path="/booking/complete" element={<ProtectedRoute><BookingComplete /></ProtectedRoute>} />
+          <Route path="/booking/long-term" element={<ProtectedRoute><LongTermGateway /></ProtectedRoute>} />
+          <Route path="/booking/long-term/fixed" element={<ProtectedRoute><LongTermBooking /></ProtectedRoute>} />
+          <Route path="/booking/long-term/flexible" element={<ProtectedRoute><LongTermFlexible /></ProtectedRoute>} />
+          <Route path="/booking/long-term/confirm" element={<ProtectedRoute><LongTermConfirm /></ProtectedRoute>} />
+          <Route path="/booking/long-term/flexible/confirm" element={<ProtectedRoute><LongTermFlexibleConfirm /></ProtectedRoute>} />
 
-          {/* ═══ Unified Profile (ALWAYS /profile, never role-specific) ═══ */}
-          <Route path="/profile" element={<ProtectedRoute><MyProfile /></ProtectedRoute>} />
-          <Route path="/profile/edit" element={<ProtectedRoute><UserProfileEdit /></ProtectedRoute>} />
-          <Route path="/profile/manager-info" element={<ProtectedRoute><UserManagerInfo /></ProtectedRoute>} />
-          <Route path="/profile/change-password" element={<ProtectedRoute><UserProfileChangePassword /></ProtectedRoute>} />
-          <Route path="/profile/settings" element={<ProtectedRoute><UserProfileOtherSetting /></ProtectedRoute>} />
+          {/* ═══ Player Profile ═══ */}
+          <Route path="/personalization" element={<ProtectedRoute requiredRole="PLAYER"><Personalization /></ProtectedRoute>} />
+          <Route path="/user/profile" element={<ProtectedRoute><MyProfile /></ProtectedRoute>} />
+          <Route path="/user/profile/edit" element={<ProtectedRoute><UserProfileEdit /></ProtectedRoute>} />
+          <Route path="/user/profile/manager-info" element={<ProtectedRoute><UserManagerInfo /></ProtectedRoute>} />
+          <Route path="/user/profile/change-password" element={<ProtectedRoute><UserProfileChangePassword /></ProtectedRoute>} />
+          <Route path="/user/profile/settings" element={<ProtectedRoute><UserProfileOtherSetting /></ProtectedRoute>} />
+          <Route path="/user/social/search" element={<ProtectedRoute><UserSocialSearch /></ProtectedRoute>} />
+          <Route path="/user/social/friends" element={<ProtectedRoute><UserSocialFriends /></ProtectedRoute>} />
+          <Route path="/user/profile/:userId" element={<ProtectedRoute><UserPublicProfile /></ProtectedRoute>} />
 
-          {/* Legacy /user/* redirects → /profile */}
-          <Route path="/user/dashboard" element={<Navigate to="/profile" replace />} />
-          <Route path="/user/my-profile" element={<Navigate to="/profile" replace />} />
-          <Route path="/user/profile" element={<Navigate to="/profile/edit" replace />} />
-          <Route path="/user/profile/manager-info" element={<Navigate to="/profile/manager-info" replace />} />
-          <Route path="/user/profile/change-password" element={<Navigate to="/profile/change-password" replace />} />
-          <Route path="/user/profile/other-settings" element={<Navigate to="/profile/settings" replace />} />
+          {/* Legacy /profile redirects → /user/profile */}
+          <Route path="/profile" element={<Navigate to="/user/profile" replace />} />
+          <Route path="/profile/edit" element={<Navigate to="/user/profile/edit" replace />} />
+          <Route path="/profile/manager-info" element={<Navigate to="/user/profile/manager-info" replace />} />
+          <Route path="/profile/change-password" element={<Navigate to="/user/profile/change-password" replace />} />
+          <Route path="/profile/settings" element={<Navigate to="/user/profile/settings" replace />} />
+          
+          {/* Legacy /user/* redirects */}
+          <Route path="/user/dashboard" element={<Navigate to="/user/profile" replace />} />
+          <Route path="/user/my-profile" element={<Navigate to="/user/profile" replace />} />
 
           {/* Player misc */}
           <Route path="/user/bookings" element={<ProtectedRoute><UserBookings /></ProtectedRoute>} />
           <Route path="/user/favorites" element={<ProtectedRoute><UserFavorites /></ProtectedRoute>} />
+          <Route path="/user/notifications" element={<ProtectedRoute><UserNotifications /></ProtectedRoute>} />
           <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+
+          {/* ═══ Matching ═══ */}
+          <Route path="/matching" element={<ProtectedRoute><MatchingHub /></ProtectedRoute>} />
+          <Route path="/matching/create" element={<ProtectedRoute><MatchingCreate /></ProtectedRoute>} />
+          <Route path="/matching/:postId" element={<ProtectedRoute><MatchingPostDetail /></ProtectedRoute>} />
 
           {/* ═══════════════════════════════════════════════════════════
                MANAGER — Nested routes with ManagerLayout (sidebar)
@@ -159,8 +206,10 @@ function App() {
 
             {/* Finance */}
             <Route path="earnings" element={<ManagerEarnings />} />
-            {/* Wallet route removed — project does not use wallet */}
             <Route path="payment-settings" element={<ManagerPaymentSettings />} />
+            
+            {/* Manager Profile */}
+            <Route path="profile" element={<ManagerProfile />} />
           </Route>
 
           {/* ═══ Static pages ═══ */}
@@ -182,7 +231,7 @@ function App() {
         </Routes>
       </div>
 
-      {showHeaderFooter && <Footer />}
+      {showHeaderFooter && !isBookingPage && <Footer />}
     </>
   );
 }

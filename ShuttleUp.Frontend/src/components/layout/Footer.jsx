@@ -30,7 +30,7 @@ const Footer = () => {
                 <h2 className="footer-title">Khám phá</h2>
                 <ul>
                   <li><Link to="/about"><i className="fa-solid fa-angle-right"></i> Về chúng tôi</Link></li>
-                  <li><Link to="/courts"><i className="fa-solid fa-angle-right"></i> Danh sách sân</Link></li>
+                  <li><Link to="/venues"><i className="fa-solid fa-angle-right"></i> Danh sách sân</Link></li>
                   <li><Link to="/managers"><i className="fa-solid fa-angle-right"></i> Quản lý sân</Link></li>
                   <li><Link to="/events"><i className="fa-solid fa-angle-right"></i> Sự kiện</Link></li>
                   <li><Link to="/contact"><i className="fa-solid fa-angle-right"></i> Liên hệ</Link></li>

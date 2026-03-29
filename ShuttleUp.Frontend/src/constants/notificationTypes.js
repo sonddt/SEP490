@@ -1,0 +1,9 @@
+/** Đồng bộ với ShuttleUp.Backend.Constants.NotificationTypes */
+export const NOTIFICATION_TYPES = {
+  BOOKING_NEW: 'BOOKING_NEW',
+  BOOKING: 'BOOKING',
+  PAYMENT_PROOF: 'PAYMENT_PROOF',
+  SYSTEM: 'SYSTEM',
+  FRIEND_REQUEST: 'FRIEND_REQUEST',
+  FRIEND_ACCEPTED: 'FRIEND_ACCEPTED',
+};

@@ -31,19 +31,36 @@ export default function Login() {
   const syncAvatarFromProfile = async () => {
     try {
       const me = await profileApi.getMe();
-      const nextAvatarUrl = me?.user?.avatarUrl ?? null;
-      updateUser?.({ avatarUrl: nextAvatarUrl });
+      const u = me?.user ?? {};
+      updateUser?.({
+        avatarUrl: u.avatarUrl ?? null,
+        isPersonalized: u.isPersonalized ?? null,
+        skillLevel: u.skillLevel ?? null,
+        playPurpose: u.playPurpose ?? null,
+        playFrequency: u.playFrequency ?? null,
+      });
+      return u; // trả về để redirect có thể dùng
     } catch {
-      // Không ảnh hưởng luồng login; chỉ bỏ qua đồng bộ avatar.
+      // Không ảnh hưởng luồng login; bỏ qua đồng bộ.
+      return null;
     }
   };
 
   // ── Đường dẫn sau khi login xong (ưu tiên returnUrl từ ProtectedRoute) ─────
-  const redirectAfterLogin = (roles) => {
+  const redirectAfterLogin = (roles, userData) => {
     const tab = activeTabRef.current;
 
+    // Kiểm tra Player chưa cá nhân hoá → bắt buộc đến trang Personalization
+    const isPlayer = roles?.includes('PLAYER');
+    const isManagerTab = tab === 'manager';
+    if (isPlayer && !isManagerTab) {
+      const isPersonalized = userData?.isPersonalized;
+      if (isPersonalized === false || isPersonalized === null || isPersonalized === undefined) {
+        return navigate('/personalization');
+      }
+    }
+
     // Tránh bị kéo về sai dashboard bởi returnUrl cũ
-    // (đặc biệt khi user từng truy cập /manager/* hoặc /user/* trước khi login)
     const safeReturnUrl = (() => {
       if (!returnUrl) return null;
       if (returnUrl.startsWith('/manager') || returnUrl.startsWith('/user')) return null;
@@ -53,7 +70,7 @@ export default function Login() {
     if (safeReturnUrl) return navigate(safeReturnUrl);
     if (roles?.includes('ADMIN')) return navigate('/admin/dashboard');
     if (roles?.includes('MANAGER') && tab === 'manager') return navigate('/manager/venues');
-    return navigate('/courts');
+    return navigate('/venues');
   };
 
   const resolveManagerLoginGate = async (roles) => {
@@ -118,10 +135,10 @@ export default function Login() {
         return;
       }
       login(data);
-      await syncAvatarFromProfile();
+      const freshProfile = await syncAvatarFromProfile();
       if (gate.message) setError(gate.message);
       if (gate.redirect) return navigate(gate.redirect);
-      redirectAfterLogin(roles);
+      redirectAfterLogin(roles, freshProfile || data.user);
     } catch (err) {
       setError(err.response?.data?.message || 'Oops... Thông tin đăng nhập chưa chính xác rồi bạn nhé.');
     } finally {
@@ -151,10 +168,10 @@ export default function Login() {
         return;
       }
       login(data);
-      await syncAvatarFromProfile();
+      const freshProfile = await syncAvatarFromProfile();
       if (gate.message) setError(gate.message);
       if (gate.redirect) return navigate(gate.redirect);
-      redirectAfterLogin(roles);
+      redirectAfterLogin(roles, freshProfile || data.user);
     } catch (err) {
       setError(err.response?.data?.message || 'Oops... Đăng nhập bằng Google có chút trục trặc.');
     } finally {

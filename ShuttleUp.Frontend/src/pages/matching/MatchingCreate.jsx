@@ -1,0 +1,438 @@
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import matchingApi from '../../api/matchingApi';
+
+const skillOptions = [
+  { value: 'beginner', label: 'Mới chơi' },
+  { value: 'intermediate', label: 'Trung bình' },
+  { value: 'advanced', label: 'Khá giỏi' },
+  { value: 'expert', label: 'Chuyên nghiệp' },
+];
+
+const genderOptions = [
+  { value: '', label: 'Không yêu cầu' },
+  { value: 'Nam', label: 'Nam' },
+  { value: 'Nữ', label: 'Nữ' },
+];
+
+const expenseOptions = [
+  { value: 'split_equal', label: 'Chia đều' },
+  { value: 'host_pays', label: 'Bao sân (Host trả)' },
+  { value: 'female_free', label: 'Nữ miễn phí' },
+  { value: 'negotiable', label: 'Tùy thỏa thuận' },
+];
+
+export default function MatchingCreate() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const preBookingId = searchParams.get('bookingId');
+
+  const [step, setStep] = useState(preBookingId ? 2 : 1);
+  const [bookings, setBookings] = useState([]);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [selectedItemIds, setSelectedItemIds] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const [form, setForm] = useState({
+    title: '',
+    requiredPlayers: 1,
+    skillLevel: '',
+    genderPref: '',
+    expenseSharing: 'split_equal',
+    playPurpose: '',
+    notes: '',
+  });
+
+  // Load upcoming bookings
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await matchingApi.getUpcomingBookings();
+        const list = Array.isArray(res) ? res : [];
+        setBookings(list);
+
+        // Auto-select if coming from booking complete page
+        if (preBookingId) {
+          const found = list.find((b) => b.id === preBookingId);
+          if (found) {
+            setSelectedBooking(found);
+            setSelectedItemIds(found.items?.map((i) => i.id) || []);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [preBookingId]);
+
+  const handleSelectBooking = (booking) => {
+    setSelectedBooking(booking);
+    setSelectedItemIds(booking.items?.map((i) => i.id) || []);
+    setStep(2);
+  };
+
+  const toggleItem = (itemId) => {
+    setSelectedItemIds((prev) =>
+      prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]
+    );
+  };
+
+  const toggleAllItems = () => {
+    const allIds = selectedBooking?.items?.map((i) => i.id) || [];
+    if (selectedItemIds.length === allIds.length) {
+      setSelectedItemIds([]);
+    } else {
+      setSelectedItemIds(allIds);
+    }
+  };
+
+  const handleSubmit = async () => {
+    setError('');
+    if (!selectedBooking) { setError('Vui lòng chọn đơn đặt sân.'); return; }
+    if (selectedItemIds.length === 0) { setError('Vui lòng chọn ít nhất 1 ca chơi.'); return; }
+    if (form.requiredPlayers < 1) { setError('Số người cần ít nhất là 1.'); return; }
+
+    setSubmitting(true);
+    try {
+      const res = await matchingApi.createPost({
+        bookingId: selectedBooking.id,
+        bookingItemIds: selectedItemIds,
+        title: form.title || undefined,
+        requiredPlayers: form.requiredPlayers,
+        skillLevel: form.skillLevel || undefined,
+        genderPref: form.genderPref || undefined,
+        expenseSharing: form.expenseSharing || undefined,
+        playPurpose: form.playPurpose || undefined,
+        notes: form.notes || undefined,
+      });
+      navigate(`/matching/${res.id}`);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const formatDateTime = (d) => {
+    if (!d) return '';
+    return new Date(d).toLocaleDateString('vi-VN', {
+      weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+    });
+  };
+
+  const formatPrice = (v) => {
+    if (v == null) return '0đ';
+    return Number(v).toLocaleString('vi-VN') + 'đ';
+  };
+
+  const selectedItems = selectedBooking?.items?.filter((i) => selectedItemIds.includes(i.id)) || [];
+  const totalPrice = selectedItems.reduce((sum, i) => sum + (i.price || 0), 0);
+  const pricePerPerson = form.requiredPlayers > 0 ? Math.round(totalPrice / (form.requiredPlayers + 1)) : totalPrice;
+
+  return (
+    <>
+      {/* ── Breadcrumb ── */}
+      <div className="breadcrumb-bar">
+        <div className="container">
+          <div className="row">
+            <div className="col-md-12">
+              <nav aria-label="breadcrumb">
+                <ol className="breadcrumb">
+                  <li className="breadcrumb-item"><Link to="/">Trang chủ</Link></li>
+                  <li className="breadcrumb-item"><Link to="/matching">Tìm đồng đội</Link></li>
+                  <li className="breadcrumb-item active">Tạo bài đăng</li>
+                </ol>
+              </nav>
+              <h2 className="breadcrumb-title">Tạo bài tuyển đồng đội 🏸</h2>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="content">
+        <div className="container">
+          {/* ── Stepper ── */}
+          <div className="matching-stepper">
+            {['Chọn đơn sân', 'Chọn ca chơi', 'Thông tin bài đăng', 'Xác nhận'].map((label, i) => (
+              <div key={i} className={`matching-step ${step > i + 1 ? 'done' : ''} ${step === i + 1 ? 'active' : ''}`}>
+                <div className="matching-step-num">{step > i + 1 ? '✓' : i + 1}</div>
+                <span>{label}</span>
+              </div>
+            ))}
+          </div>
+
+          {error && <div className="alert alert-danger">{error}</div>}
+
+          {loading ? (
+            <div className="text-center py-5">
+              <div className="spinner-border text-primary" />
+            </div>
+          ) : (
+            <>
+              {/* ═══ STEP 1 — Chọn Booking ═══ */}
+              {step === 1 && (
+                <div className="matching-create-step">
+                  <h4>Chọn đơn đặt sân sắp tới</h4>
+                  {bookings.length === 0 ? (
+                    <div className="matching-empty-state">
+                      <div className="matching-empty-icon">📅</div>
+                      <h3>Bạn chưa có đơn đặt sân nào</h3>
+                      <p>Hãy đặt sân trước rồi quay lại tạo bài tìm đồng đội nhé!</p>
+                      <Link to="/venues" className="btn btn-primary">Tìm sân ngay</Link>
+                    </div>
+                  ) : (
+                    <div className="row">
+                      {bookings.map((b) => (
+                        <div key={b.id} className="col-lg-6 col-md-12 mb-3">
+                          <div
+                            className={`matching-booking-card ${selectedBooking?.id === b.id ? 'selected' : ''}`}
+                            onClick={() => handleSelectBooking(b)}
+                          >
+                            <div className="matching-booking-card-header">
+                              <h5>{b.venueName}</h5>
+                              <span className="badge bg-primary">{b.items?.length || 0} ca</span>
+                            </div>
+                            <p className="text-muted mb-1"><i className="feather-map-pin"></i> {b.venueAddress}</p>
+                            <p className="mb-0"><strong>Tổng:</strong> {formatPrice(b.finalAmount)}</p>
+                            {b.items?.slice(0, 3).map((item) => (
+                              <div key={item.id} className="matching-booking-item-preview">
+                                <span>{item.courtName}</span>
+                                <span>{formatDateTime(item.startTime)} — {formatDateTime(item.endTime)}</span>
+                              </div>
+                            ))}
+                            {(b.items?.length || 0) > 3 && <p className="text-muted small">...và {b.items.length - 3} ca khác</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ═══ STEP 2 — Chọn Ca Chơi ═══ */}
+              {step === 2 && selectedBooking && (
+                <div className="matching-create-step">
+                  <h4>Chọn ca chơi muốn tìm đồng đội</h4>
+                  <p className="text-muted">{selectedBooking.venueName} — {selectedBooking.venueAddress}</p>
+
+                  <div className="mb-3">
+                    <button className="btn btn-sm btn-outline-primary" onClick={toggleAllItems}>
+                      {selectedItemIds.length === (selectedBooking.items?.length || 0) ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                    </button>
+                  </div>
+
+                  <div className="matching-items-list">
+                    {selectedBooking.items?.map((item) => (
+                      <label key={item.id} className={`matching-item-card ${selectedItemIds.includes(item.id) ? 'selected' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={selectedItemIds.includes(item.id)}
+                          onChange={() => toggleItem(item.id)}
+                        />
+                        <div className="matching-item-info">
+                          <strong>{item.courtName}</strong>
+                          <span>{formatDateTime(item.startTime)} — {formatDateTime(item.endTime)}</span>
+                          <span className="matching-item-price">{formatPrice(item.price)}</span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+
+                  {selectedItemIds.length > 0 && (
+                    <div className="matching-items-summary">
+                      <span>Đã chọn: <strong>{selectedItemIds.length} ca</strong></span>
+                      <span>Tổng giá: <strong>{formatPrice(totalPrice)}</strong></span>
+                    </div>
+                  )}
+
+                  <div className="matching-step-actions">
+                    <button className="btn btn-outline-secondary" onClick={() => setStep(1)}>← Quay lại</button>
+                    <button
+                      className="btn btn-primary"
+                      disabled={selectedItemIds.length === 0}
+                      onClick={() => setStep(3)}
+                    >
+                      Tiếp tục →
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ═══ STEP 3 — Form thông tin ═══ */}
+              {step === 3 && (
+                <div className="matching-create-step">
+                  <div className="row">
+                    <div className="col-lg-7">
+                      <h4>Cá nhân hóa bài đăng</h4>
+
+                      <div className="mb-3">
+                        <label className="form-label">Tiêu đề bài đăng</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="VD: Tìm 2 người đánh kèo tối T7"
+                          value={form.title}
+                          onChange={(e) => setForm({ ...form, title: e.target.value })}
+                          maxLength={255}
+                        />
+                      </div>
+
+                      <div className="mb-3">
+                        <label className="form-label">Số người cần thêm <span className="text-danger">*</span></label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          min={1}
+                          max={20}
+                          value={form.requiredPlayers}
+                          onChange={(e) => setForm({ ...form, requiredPlayers: parseInt(e.target.value) || 1 })}
+                        />
+                      </div>
+
+                      <div className="mb-3">
+                        <label className="form-label">Trình độ yêu cầu</label>
+                        <div className="matching-chips">
+                          {skillOptions.map((o) => (
+                            <button
+                              key={o.value}
+                              className={`matching-chip ${form.skillLevel === o.value ? 'active' : ''}`}
+                              onClick={() => setForm({ ...form, skillLevel: form.skillLevel === o.value ? '' : o.value })}
+                            >
+                              {o.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="mb-3">
+                        <label className="form-label">Ưu tiên giới tính</label>
+                        <div className="matching-chips">
+                          {genderOptions.map((o) => (
+                            <button
+                              key={o.value}
+                              className={`matching-chip ${form.genderPref === o.value ? 'active' : ''}`}
+                              onClick={() => setForm({ ...form, genderPref: o.value })}
+                            >
+                              {o.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="mb-3">
+                        <label className="form-label">Hình thức chia tiền</label>
+                        <select
+                          className="form-select"
+                          value={form.expenseSharing}
+                          onChange={(e) => setForm({ ...form, expenseSharing: e.target.value })}
+                        >
+                          {expenseOptions.map((o) => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="mb-3">
+                        <label className="form-label">Ghi chú</label>
+                        <textarea
+                          className="form-control"
+                          rows={3}
+                          placeholder="Thêm ghi chú cho đồng đội (VD: mang vợt, mang nước...)"
+                          value={form.notes}
+                          onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                          maxLength={1000}
+                        />
+                      </div>
+                    </div>
+
+                    {/* ── Preview Card ── */}
+                    <div className="col-lg-5">
+                      <div className="matching-preview-card">
+                        <h5>Xem trước bài đăng</h5>
+                        <div className="matching-preview-body">
+                          <h6>{form.title || `Tìm ${form.requiredPlayers} người đánh cầu lông`}</h6>
+                          <p><i className="feather-map-pin"></i> {selectedBooking?.venueName}</p>
+                          <p><i className="feather-clock"></i> {selectedItems.length} ca chơi</p>
+                          <p><i className="feather-dollar-sign"></i> {formatPrice(pricePerPerson)}/người (chia {form.requiredPlayers + 1} người)</p>
+                          {form.skillLevel && <span className="badge bg-info me-1">{skillOptions.find(o => o.value === form.skillLevel)?.label}</span>}
+                          {form.genderPref && <span className="badge bg-secondary me-1">{form.genderPref}</span>}
+                          <span className="badge bg-success">{expenseOptions.find(o => o.value === form.expenseSharing)?.label}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="matching-step-actions">
+                    <button className="btn btn-outline-secondary" onClick={() => setStep(2)}>← Quay lại</button>
+                    <button className="btn btn-primary" onClick={() => setStep(4)}>Tiếp tục →</button>
+                  </div>
+                </div>
+              )}
+
+              {/* ═══ STEP 4 — Xác nhận & Gửi ═══ */}
+              {step === 4 && (
+                <div className="matching-create-step">
+                  <h4>Xác nhận thông tin</h4>
+
+                  <div className="matching-confirm-card">
+                    <div className="row">
+                      <div className="col-md-6">
+                        <h6>📍 Sân</h6>
+                        <p>{selectedBooking?.venueName}</p>
+                        <p className="text-muted">{selectedBooking?.venueAddress}</p>
+
+                        <h6>📅 Ca chơi ({selectedItems.length})</h6>
+                        {selectedItems.map((item) => (
+                          <p key={item.id} className="mb-1">
+                            <strong>{item.courtName}</strong> — {formatDateTime(item.startTime)} → {formatDateTime(item.endTime)} ({formatPrice(item.price)})
+                          </p>
+                        ))}
+                      </div>
+                      <div className="col-md-6">
+                        <h6>👥 Tuyển</h6>
+                        <p>{form.requiredPlayers} người — {formatPrice(pricePerPerson)}/người</p>
+
+                        <h6>🏸 Yêu cầu</h6>
+                        <p>
+                          Trình độ: {skillOptions.find(o => o.value === form.skillLevel)?.label || 'Tất cả'}<br />
+                          Giới tính: {form.genderPref || 'Không yêu cầu'}<br />
+                          Chia tiền: {expenseOptions.find(o => o.value === form.expenseSharing)?.label}
+                        </p>
+
+                        {form.notes && (
+                          <>
+                            <h6>📝 Ghi chú</h6>
+                            <p>{form.notes}</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="matching-step-actions">
+                    <button className="btn btn-outline-secondary" onClick={() => setStep(3)}>← Chỉnh sửa</button>
+                    <button
+                      className="btn btn-success btn-lg"
+                      onClick={handleSubmit}
+                      disabled={submitting}
+                    >
+                      {submitting ? (
+                        <><span className="spinner-border spinner-border-sm me-2" /> Đang tạo...</>
+                      ) : (
+                        <>🏸 Đăng bài tuyển đồng đội</>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}

@@ -24,6 +24,10 @@ function DropItem({ to, icon, label, onNav }) {
 
 export default function UserDropdown({
   user, isAdmin, isManager,
+  profilePath = '/user/profile',
+  showManagerAccess,
+  showSwitchToPlayer = false,
+  switchToPlayerPath = '/',
   open, onToggle, onClose, onLogout,
   iconColor = '#555',
   avatarSize = 33,
@@ -119,8 +123,13 @@ export default function UserDropdown({
 
         {/* Menu items */}
         <div style={{ padding: '6px 0', background: '#fff' }}>
-          <DropItem to="/profile" icon="feather-user" label="Hồ sơ của tôi" onNav={handleNav} />
-          {isManager && !isAdmin && (
+          <DropItem to={profilePath} icon="feather-user" label="Hồ sơ của tôi" onNav={handleNav} />
+
+          {(showSwitchToPlayer || (!isAdmin && isManager && showSwitchToPlayer)) && (
+            <DropItem to={switchToPlayerPath} icon="feather-refresh-cw" label="Chế độ người chơi" onNav={handleNav} />
+          )}
+
+          {(showManagerAccess ?? (isManager && !isAdmin)) && (
             <div
               role="button"
               tabIndex={0}

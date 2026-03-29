@@ -37,7 +37,7 @@ const MOCK_GALLERY = [
 export default function VenueDetails() {
   // Support both route patterns:
   //   /venue-details/:venueId  (used by VenueCard links)
-  //   /courts/:id              (legacy / alternative route)
+  //   /venues/:id              (legacy / alternative route)
   const { venueId, id } = useParams();
   const resolvedId = venueId ?? id;
   const navigate = useNavigate();
@@ -68,6 +68,16 @@ export default function VenueDetails() {
         venueAddress: venue.address,
         pricePerSlot: venue.startingPrice,
         currency: venue.currency,
+      },
+    });
+  };
+
+  const handleLongTermBooking = () => {
+    navigate('/booking/long-term', {
+      state: {
+        venueId: venue.id,
+        venueName: venue.name,
+        venueAddress: venue.address,
       },
     });
   };
@@ -132,7 +142,7 @@ export default function VenueDetails() {
         <div className="content">
           <div className="container py-5 text-center">
             <p className="text-danger mb-3">{error || 'Không tìm thấy sân.'}</p>
-            <Link to="/courts" className="btn btn-secondary">
+            <Link to="/venues" className="btn btn-secondary">
               Quay lại danh sách sân
             </Link>
           </div>
@@ -568,7 +578,7 @@ export default function VenueDetails() {
                     </p>
                   </li>
                 </ul>
-                <div className="d-grid btn-block mt-3">
+                <div className="d-grid btn-block mt-3 gap-2">
                   <button
                     type="button"
                     onClick={handleBooking}
@@ -576,6 +586,14 @@ export default function VenueDetails() {
                   >
                     <i className="feather-calendar" />
                     <span className="ms-2">ĐẶT LỊCH</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLongTermBooking}
+                    className="btn btn-outline-primary d-inline-flex justify-content-center align-items-center"
+                  >
+                    <i className="feather-repeat" />
+                    <span className="ms-2">ĐẶT LỊCH DÀI HẠN</span>
                   </button>
                 </div>
               </div>

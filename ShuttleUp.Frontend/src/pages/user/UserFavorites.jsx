@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import VenueCard from '../../components/courts/VenueCard';
 import UserDashboardMenu from '../../components/user/UserDashboardMenu';
 import favoritesApi from '../../api/favoritesApi';
@@ -41,14 +42,27 @@ export default function UserFavorites() {
   }));
 
   return (
-    <div className="main-wrapper">
+    <div className="main-wrapper content-below-header">
+      {/* Breadcrumb offset equivalent */}
+      <section className="breadcrumb breadcrumb-list mb-0">
+        <span className="primary-right-round"></span>
+        <div className="container">
+          <h1 className="text-white">Sân yêu thích</h1>
+          <ul>
+            <li><Link to="/">Trang chủ</Link></li>
+            <li>Sân yêu thích</li>
+          </ul>
+        </div>
+      </section>
+
       <UserDashboardMenu />
-      <div className="content court-bg" style={{ paddingTop: 90 }}>
+      
+      <div className="content court-bg" style={{ paddingTop: 40 }}>
         <div className="container">
           <div className="row mb-4">
             <div className="col-12">
-              <h2 className="text-white mb-2">Sân yêu thích</h2>
-              <div className="text-white-50">Nhấn trái tim để xoá bớt khỏi danh sách.</div>
+              <h2 className="mb-2" style={{ color: '#1e293b' }}>Sân yêu thích</h2>
+              <div className="text-muted">Nhấn trái tim để xoá bớt khỏi danh sách.</div>
             </div>
           </div>
 

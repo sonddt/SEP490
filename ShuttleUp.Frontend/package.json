@@ -17,6 +17,8 @@
     "aos": "^2.3.4",
     "axios": "^1.13.6",
     "bootstrap": "^5.3.8",
+    "jsqr": "^1.4.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.1",

@@ -134,7 +134,7 @@ export default function Register() {
         // Manager: chuyển sang trang hoàn thiện hồ sơ quản lý (PENDING)
         navigate('/manager/profile-request');
       } else {
-        navigate('/courts');
+        navigate('/venues');
       }
     } catch (err) {
       const res = err.response;
@@ -173,7 +173,7 @@ export default function Register() {
         try { await managerProfileApi.getMe(); } catch { /* ignore */ }
         navigate('/manager/profile-request');
       } else {
-        navigate('/courts');
+        navigate('/venues');
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Oops... Đăng ký bằng Google có chút trục trặc.');

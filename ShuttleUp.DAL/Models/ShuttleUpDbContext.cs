@@ -18,6 +18,8 @@ public partial class ShuttleUpDbContext : DbContext
 
     public virtual DbSet<Booking> Bookings { get; set; }
 
+    public virtual DbSet<BookingSeries> BookingSeries { get; set; }
+
     public virtual DbSet<BookingItem> BookingItems { get; set; }
 
     public virtual DbSet<ChatMessage> ChatMessages { get; set; }
@@ -42,6 +44,10 @@ public partial class ShuttleUpDbContext : DbContext
 
     public virtual DbSet<MatchingPost> MatchingPosts { get; set; }
 
+    public virtual DbSet<MatchingPostItem> MatchingPostItems { get; set; }
+
+    public virtual DbSet<MatchingPostComment> MatchingPostComments { get; set; }
+
     public virtual DbSet<Payment> Payments { get; set; }
 
     public virtual DbSet<RefundRequest> RefundRequests { get; set; }
@@ -49,6 +55,8 @@ public partial class ShuttleUpDbContext : DbContext
     public virtual DbSet<RefundTransaction> RefundTransactions { get; set; }
 
     public virtual DbSet<Role> Roles { get; set; }
+
+    public virtual DbSet<UserNotification> UserNotifications { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
 
@@ -67,6 +75,14 @@ public partial class ShuttleUpDbContext : DbContext
 
     public virtual DbSet<ManagerProfileRequest> ManagerProfileRequests { get; set; }
 
+    public virtual DbSet<UserPrivacySettings> UserPrivacySettings { get; set; }
+
+    public virtual DbSet<UserBlock> UserBlocks { get; set; }
+
+    public virtual DbSet<Friendship> Friendships { get; set; }
+
+    public virtual DbSet<FriendRequest> FriendRequests { get; set; }
+
     // OnConfiguring removed because connection is provided via Dependency Injection in Program.cs
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -84,6 +100,8 @@ public partial class ShuttleUpDbContext : DbContext
             entity.HasIndex(e => e.UserId, "user_id");
 
             entity.HasIndex(e => e.VenueId, "venue_id");
+
+            entity.HasIndex(e => e.SeriesId, "series_id");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt)
@@ -118,6 +136,10 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasColumnName("total_amount");
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.VenueId).HasColumnName("venue_id");
+            entity.Property(e => e.SeriesId).HasColumnName("series_id");
+            entity.Property(e => e.CancellationPolicySnapshotJson)
+                .HasColumnType("text")
+                .HasColumnName("cancellation_policy_snapshot_json");
 
             entity.HasOne(d => d.User).WithMany(p => p.Bookings)
                 .HasForeignKey(d => d.UserId)
@@ -126,6 +148,47 @@ public partial class ShuttleUpDbContext : DbContext
             entity.HasOne(d => d.Venue).WithMany(p => p.Bookings)
                 .HasForeignKey(d => d.VenueId)
                 .HasConstraintName("bookings_ibfk_2");
+
+            entity.HasOne(d => d.Series).WithMany(p => p.Bookings)
+                .HasForeignKey(d => d.SeriesId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("bookings_series_fk");
+        });
+
+        modelBuilder.Entity<BookingSeries>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("booking_series");
+
+            entity.HasIndex(e => e.UserId, "booking_series_user_id");
+
+            entity.HasIndex(e => e.VenueId, "booking_series_venue_id");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.VenueId).HasColumnName("venue_id");
+            entity.Property(e => e.RecurrenceRuleJson)
+                .HasColumnType("text")
+                .HasColumnName("recurrence_rule_json");
+            entity.Property(e => e.RangeStartDate).HasColumnName("range_start_date");
+            entity.Property(e => e.RangeEndDate).HasColumnName("range_end_date");
+            entity.Property(e => e.Status)
+                .HasMaxLength(50)
+                .HasDefaultValueSql("'PENDING'")
+                .HasColumnName("status");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+
+            entity.HasOne(d => d.User).WithMany(p => p.BookingSeries)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("booking_series_ibfk_user");
+
+            entity.HasOne(d => d.Venue).WithMany(p => p.BookingSeries)
+                .HasForeignKey(d => d.VenueId)
+                .HasConstraintName("booking_series_ibfk_venue");
         });
 
         modelBuilder.Entity<BookingItem>(entity =>
@@ -476,17 +539,30 @@ public partial class ShuttleUpDbContext : DbContext
 
             entity.ToTable("matching_join_requests");
 
-            entity.HasIndex(e => e.PostId, "post_id");
+            entity.HasIndex(e => new { e.PostId, e.Status }, "idx_matching_join_post_status");
 
             entity.HasIndex(e => e.UserId, "user_id");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.PostId).HasColumnName("post_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Message)
+                .HasColumnType("text")
+                .HasColumnName("message");
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
                 .HasDefaultValueSql("'PENDING'")
                 .HasColumnName("status");
-            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.RejectReason)
+                .HasColumnType("text")
+                .HasColumnName("reject_reason");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("updated_at");
 
             entity.HasOne(d => d.Post).WithMany(p => p.MatchingJoinRequests)
                 .HasForeignKey(d => d.PostId)
@@ -504,13 +580,15 @@ public partial class ShuttleUpDbContext : DbContext
 
             entity.ToTable("matching_members");
 
-            entity.HasIndex(e => e.PostId, "post_id");
-
-            entity.HasIndex(e => e.UserId, "user_id");
+            entity.HasIndex(e => new { e.PostId, e.UserId }, "uq_matching_member").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.PostId).HasColumnName("post_id");
             entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.JoinedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("datetime")
+                .HasColumnName("joined_at");
 
             entity.HasOne(d => d.Post).WithMany(p => p.MatchingMembers)
                 .HasForeignKey(d => d.PostId)
@@ -530,29 +608,57 @@ public partial class ShuttleUpDbContext : DbContext
 
             entity.HasIndex(e => e.BookingId, "booking_id");
 
-            entity.HasIndex(e => e.CreatorUserId, "creator_user_id");
+            entity.HasIndex(e => new { e.Status, e.PlayDate }, "idx_matching_posts_status_date");
+
+            entity.HasIndex(e => e.CreatorUserId, "idx_matching_posts_creator");
 
             entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.BookingId).HasColumnName("booking_id");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("datetime")
-                .HasColumnName("created_at");
             entity.Property(e => e.CreatorUserId).HasColumnName("creator_user_id");
-            entity.Property(e => e.GenderPref)
-                .HasMaxLength(50)
-                .HasColumnName("gender_pref");
-            entity.Property(e => e.Notes)
-                .HasColumnType("text")
-                .HasColumnName("notes");
+            entity.Property(e => e.BookingId).HasColumnName("booking_id");
+            entity.Property(e => e.Title)
+                .HasMaxLength(255)
+                .HasColumnName("title");
+            entity.Property(e => e.PlayDate).HasColumnName("play_date");
+            entity.Property(e => e.PlayStartTime)
+                .HasColumnType("time")
+                .HasColumnName("play_start_time");
+            entity.Property(e => e.PlayEndTime)
+                .HasColumnType("time")
+                .HasColumnName("play_end_time");
+            entity.Property(e => e.VenueId).HasColumnName("venue_id");
+            entity.Property(e => e.CourtName)
+                .HasMaxLength(100)
+                .HasColumnName("court_name");
+            entity.Property(e => e.PricePerSlot)
+                .HasPrecision(15, 2)
+                .HasColumnName("price_per_slot");
             entity.Property(e => e.RequiredPlayers).HasColumnName("required_players");
             entity.Property(e => e.SkillLevel)
                 .HasMaxLength(50)
                 .HasColumnName("skill_level");
+            entity.Property(e => e.GenderPref)
+                .HasMaxLength(50)
+                .HasColumnName("gender_pref");
+            entity.Property(e => e.ExpenseSharing)
+                .HasMaxLength(100)
+                .HasColumnName("expense_sharing");
+            entity.Property(e => e.PlayPurpose)
+                .HasMaxLength(100)
+                .HasColumnName("play_purpose");
+            entity.Property(e => e.Notes)
+                .HasColumnType("text")
+                .HasColumnName("notes");
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
                 .HasDefaultValueSql("'OPEN'")
                 .HasColumnName("status");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("updated_at");
 
             entity.HasOne(d => d.Booking).WithMany(p => p.MatchingPosts)
                 .HasForeignKey(d => d.BookingId)
@@ -561,6 +667,62 @@ public partial class ShuttleUpDbContext : DbContext
             entity.HasOne(d => d.CreatorUser).WithMany(p => p.MatchingPosts)
                 .HasForeignKey(d => d.CreatorUserId)
                 .HasConstraintName("matching_posts_ibfk_1");
+
+            entity.HasOne(d => d.Venue).WithMany(p => p.MatchingPosts)
+                .HasForeignKey(d => d.VenueId)
+                .HasConstraintName("matching_posts_ibfk_venue");
+        });
+
+        modelBuilder.Entity<MatchingPostItem>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("matching_post_items");
+
+            entity.HasIndex(e => new { e.PostId, e.BookingItemId }, "uq_post_booking_item").IsUnique();
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.PostId).HasColumnName("post_id");
+            entity.Property(e => e.BookingItemId).HasColumnName("booking_item_id");
+
+            entity.HasOne(d => d.Post).WithMany(p => p.MatchingPostItems)
+                .HasForeignKey(d => d.PostId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("matching_post_items_ibfk_1");
+
+            entity.HasOne(d => d.BookingItem).WithMany(p => p.MatchingPostItems)
+                .HasForeignKey(d => d.BookingItemId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("matching_post_items_ibfk_2");
+        });
+
+        modelBuilder.Entity<MatchingPostComment>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("matching_post_comments");
+
+            entity.HasIndex(e => new { e.PostId, e.CreatedAt }, "idx_matching_comments_post");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.PostId).HasColumnName("post_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Content)
+                .HasColumnType("text")
+                .HasColumnName("content");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+
+            entity.HasOne(d => d.Post).WithMany(p => p.MatchingPostComments)
+                .HasForeignKey(d => d.PostId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("matching_post_comments_ibfk_1");
+
+            entity.HasOne(d => d.User).WithMany()
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("matching_post_comments_ibfk_2");
         });
 
         modelBuilder.Entity<Payment>(entity =>
@@ -730,6 +892,46 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasColumnName("name");
         });
 
+        modelBuilder.Entity<UserNotification>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("user_notifications");
+
+            entity.HasIndex(e => new { e.UserId, e.CreatedAt }, "idx_user_notifications_user_created");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Body)
+                .HasColumnType("text")
+                .HasColumnName("body");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.Property(e => e.IsRead)
+                .HasDefaultValueSql("'0'")
+                .HasColumnName("is_read");
+            entity.Property(e => e.IsDeleted)
+                .HasDefaultValueSql("'0'")
+                .HasColumnName("is_deleted");
+            entity.Property(e => e.MetadataJson)
+                .HasColumnType("text")
+                .HasColumnName("metadata_json");
+            entity.Property(e => e.Title)
+                .HasMaxLength(255)
+                .HasColumnName("title");
+            entity.Property(e => e.Type)
+                .HasMaxLength(50)
+                .HasDefaultValueSql("'BOOKING'")
+                .HasColumnName("type");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.User).WithMany(p => p.UserNotifications)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("user_notifications_ibfk_1");
+        });
+
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
@@ -773,6 +975,19 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.Gender)
                 .HasMaxLength(20)
                 .HasColumnName("gender");
+            entity.Property(e => e.SkillLevel)
+                .HasMaxLength(50)
+                .HasColumnName("skill_level");
+            entity.Property(e => e.PlayPurpose)
+                .HasMaxLength(100)
+                .HasColumnName("play_purpose");
+            entity.Property(e => e.PlayFrequency)
+                .HasMaxLength(50)
+                .HasColumnName("play_frequency");
+            entity.Property(e => e.IsPersonalized)
+                .HasDefaultValue(false)
+                .HasColumnType("tinyint(1)")
+                .HasColumnName("is_personalized");
             entity.Property(e => e.IsActive)
                 .HasDefaultValueSql("'1'")
                 .HasColumnName("is_active");
@@ -852,6 +1067,32 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasMaxLength(255)
                 .HasColumnName("name");
             entity.Property(e => e.OwnerUserId).HasColumnName("owner_user_id");
+
+            entity.Property(e => e.PaymentBankName)
+                .HasMaxLength(100)
+                .HasColumnName("payment_bank_name");
+            entity.Property(e => e.PaymentBankBin)
+                .HasMaxLength(20)
+                .HasColumnName("payment_bank_bin");
+            entity.Property(e => e.PaymentAccountNumber)
+                .HasMaxLength(50)
+                .HasColumnName("payment_account_number");
+            entity.Property(e => e.PaymentAccountHolder)
+                .HasMaxLength(255)
+                .HasColumnName("payment_account_holder");
+            entity.Property(e => e.PaymentTransferNoteTemplate)
+                .HasMaxLength(500)
+                .HasColumnName("payment_transfer_note_template");
+            entity.Property(e => e.CancelAllowed)
+                .HasColumnName("cancel_allowed");
+            entity.Property(e => e.CancelBeforeMinutes)
+                .HasColumnName("cancel_before_minutes");
+            entity.Property(e => e.RefundType)
+                .HasMaxLength(20)
+                .HasColumnName("refund_type");
+            entity.Property(e => e.RefundPercent)
+                .HasPrecision(5, 2)
+                .HasColumnName("refund_percent");
 
             entity.HasOne(d => d.OwnerUser).WithMany(p => p.Venues)
                 .HasForeignKey(d => d.OwnerUserId)
@@ -1117,6 +1358,97 @@ public partial class ShuttleUpDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("manager_profile_requests_ibfk_1");
+        });
+
+        modelBuilder.Entity<UserPrivacySettings>(entity =>
+        {
+            entity.HasKey(e => e.UserId).HasName("PRIMARY");
+            entity.ToTable("user_privacy_settings");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.AllowFindByEmail)
+                .HasColumnType("tinyint(1)")
+                .HasDefaultValue(true)
+                .HasColumnName("allow_find_by_email");
+            entity.Property(e => e.AllowFindByPhone)
+                .HasColumnType("tinyint(1)")
+                .HasDefaultValue(true)
+                .HasColumnName("allow_find_by_phone");
+            entity.HasOne(d => d.User)
+                .WithOne(p => p.UserPrivacySettings)
+                .HasForeignKey<UserPrivacySettings>(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserBlock>(entity =>
+        {
+            entity.HasKey(e => new { e.BlockerId, e.BlockedId }).HasName("PRIMARY");
+            entity.ToTable("user_blocks");
+            entity.Property(e => e.BlockerId).HasColumnName("blocker_id");
+            entity.Property(e => e.BlockedId).HasColumnName("blocked_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.HasOne(d => d.BlockerUser)
+                .WithMany(p => p.UserBlocksAsBlocker)
+                .HasForeignKey(d => d.BlockerId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(d => d.BlockedUser)
+                .WithMany(p => p.UserBlocksAsBlocked)
+                .HasForeignKey(d => d.BlockedId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Friendship>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("friendships");
+            entity.HasIndex(e => new { e.UserLowId, e.UserHighId }, "uk_friend_pair").IsUnique();
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UserLowId).HasColumnName("user_low_id");
+            entity.Property(e => e.UserHighId).HasColumnName("user_high_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.HasOne(d => d.UserLow)
+                .WithMany()
+                .HasForeignKey(d => d.UserLowId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(d => d.UserHigh)
+                .WithMany()
+                .HasForeignKey(d => d.UserHighId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<FriendRequest>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("friend_requests");
+            entity.HasIndex(e => new { e.ToUserId, e.Status }, "idx_friend_req_to_status");
+            entity.HasIndex(e => new { e.FromUserId, e.Status }, "idx_friend_req_from_status");
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.FromUserId).HasColumnName("from_user_id");
+            entity.Property(e => e.ToUserId).HasColumnName("to_user_id");
+            entity.Property(e => e.Status)
+                .HasMaxLength(20)
+                .HasDefaultValueSql("'PENDING'")
+                .HasColumnName("status");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.Property(e => e.RespondedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("responded_at");
+            entity.HasOne(d => d.FromUser)
+                .WithMany()
+                .HasForeignKey(d => d.FromUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(d => d.ToUser)
+                .WithMany()
+                .HasForeignKey(d => d.ToUserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         OnModelCreatingPartial(modelBuilder);

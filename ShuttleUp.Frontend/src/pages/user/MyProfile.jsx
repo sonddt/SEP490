@@ -5,7 +5,6 @@ import { useAuth } from '../../context/AuthContext';
 import { profileApi } from '../../api/profileApi';
 
 export default function MyProfile() {
-  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
   const { user: authUser } = useAuth();
 
   const [loading, setLoading] = useState(true);
@@ -79,12 +78,6 @@ export default function MyProfile() {
     return null;
   })();
 
-  const handleDeactivate = () => {
-    // TODO: call API to deactivate account
-    console.log('Deactivating account...');
-    setShowDeactivateModal(false);
-  };
-
   return (
     <div className="main-wrapper">
 
@@ -145,21 +138,14 @@ export default function MyProfile() {
                       </div>
                     </div>
                     <div className="convenient-btns">
-                      <button
-                        type="button"
-                        className="btn btn-danger d-inline-flex align-items-center me-2"
-                        onClick={() => setShowDeactivateModal(true)}
-                      >
-                        <span><i className="feather-zap-off"></i></span>Vô hiệu hóa
-                      </button>
                       <Link
-                        to="/profile/edit"
+                        to="/user/profile/edit"
                         className="btn btn-secondary d-inline-flex align-items-center me-2"
                       >
                         <span><i className="feather-edit"></i></span>Chỉnh sửa hồ sơ
                       </Link>
                       <Link
-                        to="/profile/change-password"
+                        to="/user/profile/change-password"
                         className="btn btn-primary d-inline-flex align-items-center"
                       >
                         <span><i className="feather-lock"></i></span>Đổi mật khẩu
@@ -292,48 +278,6 @@ export default function MyProfile() {
       {error && (
         <div className="alert alert-warning mx-3" style={{ marginTop: 20 }}>
           {error}
-        </div>
-      )}
-
-      {/* Deactivate Confirmation Modal */}
-      {showDeactivateModal && (
-        <div
-          className="modal fade show"
-          style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}
-          tabIndex="-1"
-        >
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Xác nhận vô hiệu hóa tài khoản</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setShowDeactivateModal(false)}
-                />
-              </div>
-              <div className="modal-body">
-                <p>Bạn có chắc chắn muốn vô hiệu hóa tài khoản?<br />
-                  Hành động này sẽ đăng xuất bạn khỏi hệ thống và tạm dừng tài khoản.</p>
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => setShowDeactivateModal(false)}
-                >
-                  Hủy
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  onClick={handleDeactivate}
-                >
-                  Xác nhận vô hiệu hóa
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 

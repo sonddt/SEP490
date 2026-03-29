@@ -58,12 +58,8 @@ const Header = ({ transparent = false }) => {
   const isAdmin   = user?.roles?.includes('ADMIN');
   const isManager = user?.roles?.includes('MANAGER');
 
-  // Profile path — fixed bug: manager -> /manager/profile, player -> /user/my-profile
-  const profilePath = isAdmin
-    ? '/admin/dashboard'
-    : isManager
-      ? '/manager/profile'
-      : '/user/my-profile';
+  // Profile path - on Player UI (Header), always go to Player profile
+  const profilePath = isAdmin ? '/admin/dashboard' : '/user/profile';
 
   const isActive = (path) => path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
 
@@ -119,16 +115,16 @@ const Header = ({ transparent = false }) => {
                 <Link to="/" onClick={closeMobileMenu}>Trang chủ</Link>
               </li>
 
-              <li className={`has-submenu ${isActive('/courts') || isActive('/venue-details') ? 'active' : ''} ${openSubmenu === 'search' ? 'active' : ''}`}>
+              <li className={`has-submenu ${isActive('/venues') || isActive('/venue-details') ? 'active' : ''} ${openSubmenu === 'search' ? 'active' : ''}`}>
                 <a href="#" onClick={(e) => { e.preventDefault(); toggleSubmenu('search'); }}>
                   Tìm Sân <i className="fas fa-chevron-down" />
                 </a>
                 <ul className={`submenu ${openSubmenu === 'search' ? 'd-block' : ''}`}>
-                  <li className={isActive('/courts') && !isActive('/courts/map') ? 'active' : ''}>
-                    <Link to="/courts" onClick={closeMobileMenu}>Danh sách Sân</Link>
+                  <li className={isActive('/venues') && !isActive('/venues/map') ? 'active' : ''}>
+                    <Link to="/venues" onClick={closeMobileMenu}>Danh sách Sân</Link>
                   </li>
-                  <li className={isActive('/courts/map') ? 'active' : ''}>
-                    <Link to="/courts/map" onClick={closeMobileMenu}>Bản đồ Sân</Link>
+                  <li className={isActive('/venues/map') ? 'active' : ''}>
+                    <Link to="/venues/map" onClick={closeMobileMenu}>Bản đồ Sân</Link>
                   </li>
                 </ul>
               </li>
@@ -136,6 +132,12 @@ const Header = ({ transparent = false }) => {
               <li className={isActive('/about') ? 'active' : ''}>
                 <Link to="/about" onClick={closeMobileMenu}>Nổi bật</Link>
               </li>
+
+              {isAuthenticated && (
+                <li className={isActive('/matching') ? 'active' : ''}>
+                  <Link to="/matching" onClick={closeMobileMenu}>Tìm kèo 🏸</Link>
+                </li>
+              )}
 
               {isAuthenticated && (
                 <li className={isActive('/chat') ? 'active' : ''}>

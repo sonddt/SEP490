@@ -65,7 +65,7 @@ const featuredVenues = [
   },
 ];
 
-const nearCourts = [
+const nearVenues = [
   { id: 101, img: '/assets/img/venues/venues-04.jpg', name: 'Smart Shuttlers', address: 'Quận 1, TP HCM', rating: '4.2', reviews: '300 Đánh giá', miles: 'Cách 2.1 km' },
   { id: 102, img: '/assets/img/venues/venues-05.jpg', name: 'Parlers Badminton', address: 'Quận 3, TP HCM', rating: '4.2', reviews: '200 Đánh giá', miles: 'Cách 3.4 km' },
   { id: 103, img: '/assets/img/venues/venues-06.jpg', name: '6 Feathers', address: 'Quận Bình Thạnh, TP HCM', rating: '4.2', reviews: '400 Đánh giá', miles: 'Cách 5.8 km' },
@@ -193,7 +193,7 @@ export default function FeaturedVenues() {
                 }}
                 className="featured-venues-slider"
               >
-                {nearCourts.map((c) => (
+                {nearVenues.map((c) => (
                   <SwiperSlide key={c.id}>
                     <div className="featured-venues-item court-near-item">
                       <div className="listing-item mb-0">
@@ -243,7 +243,7 @@ export default function FeaturedVenues() {
             </div>
           </div>
           <div className="view-all text-center aos" data-aos="fade-up">
-            <Link to="/courts" className="btn btn-secondary d-inline-flex align-items-center">
+            <Link to="/venues" className="btn btn-secondary d-inline-flex align-items-center">
               <i className="feather-search me-2"></i>Tìm Kiếm Sân
             </Link>
           </div>

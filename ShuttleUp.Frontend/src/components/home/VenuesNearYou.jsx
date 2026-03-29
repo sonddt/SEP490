@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
 
-const nearCourts = [
+const nearVenues = [
   { id: 1, img: '/assets/img/venues/venues-04.jpg', name: 'Smart Shuttlers', address: 'Quận 1, TP HCM', rating: '4.2', reviews: '300 Đánh giá', miles: 'Cách 2.1 km' },
   { id: 2, img: '/assets/img/venues/venues-05.jpg', name: 'Parlers Badminton', address: 'Quận 3, TP HCM', rating: '4.2', reviews: '200 Đánh giá', miles: 'Cách 3.4 km' },
   { id: 3, img: '/assets/img/venues/venues-06.jpg', name: '6 Feathers', address: 'Quận Bình Thạnh, TP HCM', rating: '4.2', reviews: '400 Đánh giá', miles: 'Cách 5.8 km' },
@@ -11,7 +11,7 @@ const nearCourts = [
   { id: 6, img: '/assets/img/venues/venues-06.jpg', name: '6 Feathers', address: 'Quận 5, TP HCM', rating: '4.2', reviews: '400 Đánh giá', miles: 'Cách 6.5 km' },
 ];
 
-export default function CourtsNearYou() {
+export default function VenuesNearYou() {
   return (
     <section className="section court-near">
       <div className="container">
@@ -38,7 +38,7 @@ export default function CourtsNearYou() {
               }}
               className="featured-venues-slider"
             >
-              {nearCourts.map((c) => (
+              {nearVenues.map((c) => (
                 <SwiperSlide key={c.id}>
                   <div className="featured-venues-item court-near-item">
                     <div className="listing-item mb-0">
@@ -77,7 +77,6 @@ export default function CourtsNearYou() {
                 </SwiperSlide>
               ))}
             </Swiper>
-            {/* Owl-nav style external navigation arrows */}
             <div className="owl-nav">
               <button className="owl-prev cny-prev" type="button">
                 <i className="feather-chevron-left"></i>
@@ -89,7 +88,7 @@ export default function CourtsNearYou() {
           </div>
         </div>
         <div className="view-all text-center aos" data-aos="fade-up">
-          <Link to="/courts" className="btn btn-secondary d-inline-flex align-items-center">
+          <Link to="/venues" className="btn btn-secondary d-inline-flex align-items-center">
             Hiển Thị Tất Cả <span className="lh-1"><i className="feather-arrow-right-circle ms-2"></i></span>
           </Link>
         </div>
@@ -97,3 +96,4 @@ export default function CourtsNearYou() {
     </section>
   );
 }
+

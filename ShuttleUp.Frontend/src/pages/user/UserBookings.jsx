@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import UserDashboardMenu from '../../components/user/UserDashboardMenu';
 import { getMyBookings, cancelBooking } from '../../api/bookingApi';
 
@@ -70,6 +70,8 @@ function mapApiRowToBooking(api) {
   return {
     id: api.id,
     code: api.bookingCode,
+    isLongTerm: api.isLongTerm === true || !!api.seriesId,
+    needsPaymentRetry: !!api.needsPaymentRetry,
     managerStatusNote: (api.managerStatusNote || '').trim(),
     court: courtLabel || api.venueName || 'Đặt sân',
     courtImg: '/assets/img/booking/booking-01.jpg',
@@ -99,6 +101,8 @@ const STATUS_BADGE = {
 };
 
 export default function UserBookings() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab,     setActiveTab]     = useState('PENDING');
   const [timeFilter,    setTimeFilter]    = useState('all');
   const [sortBy,        setSortBy]        = useState('newest');
@@ -125,6 +129,29 @@ export default function UserBookings() {
   useEffect(() => {
     loadBookings();
   }, [loadBookings]);
+
+  useEffect(() => {
+    const bid = searchParams.get('bookingId');
+    if (!bid || loading || bookings.length === 0) return;
+    const found = bookings.find(
+      (b) => String(b.id).toLowerCase() === String(bid).toLowerCase(),
+    );
+    if (!found) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('bookingId');
+      setSearchParams(next, { replace: true });
+      return;
+    }
+    setActiveTab(found.status);
+    setDetailBooking(found);
+    const next = new URLSearchParams(searchParams);
+    next.delete('bookingId');
+    setSearchParams(next, { replace: true });
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-booking-row="${found.id}"]`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }, [bookings, loading, searchParams, setSearchParams]);
 
   useEffect(() => {
     const t = window.setInterval(() => {
@@ -288,7 +315,7 @@ export default function UserBookings() {
                             <i className="feather-refresh-cw me-1" />
                             {loading ? 'Đang tải…' : 'Làm mới'}
                           </button>
-                          <Link to="/courts" className="btn btn-secondary btn-sm">
+                          <Link to="/venues" className="btn btn-secondary btn-sm">
                             <i className="feather-plus me-1" />Đặt sân mới
                           </Link>
                         </div>
@@ -328,7 +355,7 @@ export default function UserBookings() {
                             </tr>
                           )}
                           {!loading && filtered.map(b => (
-                            <tr key={b.id}>
+                            <tr key={b.id} data-booking-row={b.id}>
                               {/* Court */}
                               <td>
                                 <h2 className="table-avatar">
@@ -337,7 +364,12 @@ export default function UserBookings() {
                                       onError={e => { e.target.src = '/assets/img/venues/venues-01.jpg'; }} />
                                   </span>
                                   <span className="table-head-name flex-grow-1 ms-2">
-                                    <span>{b.court}</span>
+                                    <span>
+                                      {b.court}
+                                      {b.isLongTerm && (
+                                        <span className="badge bg-info text-dark ms-1" style={{ fontSize: '0.65rem' }}>Lịch dài hạn</span>
+                                      )}
+                                    </span>
                                     <small className="d-block text-muted" style={{ fontSize: '0.75rem' }}>
                                       <i className="feather-map-pin me-1" />{b.venueAddress}
                                     </small>
@@ -384,6 +416,17 @@ export default function UserBookings() {
                                         <i className="feather-eye me-2" />Xem chi tiết
                                       </button>
                                     </li>
+                                    {b.needsPaymentRetry && b.status === 'PENDING' && (
+                                      <li>
+                                        <button
+                                          type="button"
+                                          className="dropdown-item text-primary"
+                                          onClick={() => navigate(`/booking/payment?bookingId=${b.id}`)}
+                                        >
+                                          <i className="feather-credit-card me-2" />Thanh toán lại
+                                        </button>
+                                      </li>
+                                    )}
                                     {canUserCancel(b) && (
                                       <li>
                                         <button
@@ -516,6 +559,12 @@ export default function UserBookings() {
                 Bạn có chắc muốn huỷ lịch đặt sân <strong>{cancelTarget.court}</strong> ngày{' '}
                 <strong>{cancelTarget.date}</strong>, {cancelTarget.time}?
                 <br />Hành động này không thể hoàn tác.
+                {cancelTarget.isLongTerm && (
+                  <>
+                    <br />
+                    <strong className="text-danger">Đơn lịch dài hạn: huỷ sẽ áp dụng cho toàn bộ các buổi trong chuỗi.</strong>
+                  </>
+                )}
               </p>
               <div className="d-flex gap-2 justify-content-center">
                 <button

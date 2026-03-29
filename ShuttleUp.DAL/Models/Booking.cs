@@ -11,6 +11,9 @@ public partial class Booking
 
     public Guid? VenueId { get; set; }
 
+    /// <summary>Đơn thuộc lịch dài hạn (nếu có).</summary>
+    public Guid? SeriesId { get; set; }
+
     public string? Status { get; set; }
 
     public decimal? TotalAmount { get; set; }
@@ -31,6 +34,9 @@ public partial class Booking
     /// <summary>Ghi chú từ sân khi từ chối / huỷ (manager), hiển thị cho người chơi.</summary>
     public string? ManagerStatusNote { get; set; }
 
+    /// <summary>JSON snapshot chính sách huỷ/refund tại thời điểm tạo đơn.</summary>
+    public string? CancellationPolicySnapshotJson { get; set; }
+
     public virtual ICollection<BookingItem> BookingItems { get; set; } = new List<BookingItem>();
 
     public virtual ICollection<MatchingPost> MatchingPosts { get; set; } = new List<MatchingPost>();
@@ -42,6 +48,8 @@ public partial class Booking
     public virtual User? User { get; set; }
 
     public virtual Venue? Venue { get; set; }
+
+    public virtual BookingSeries? Series { get; set; }
 
     public virtual ICollection<VenueReview> VenueReviews { get; set; } = new List<VenueReview>();
 }

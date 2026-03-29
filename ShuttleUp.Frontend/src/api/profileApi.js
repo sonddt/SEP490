@@ -4,6 +4,9 @@ export const profileApi = {
   getMe() {
     return axiosClient.get('/profile/me');
   },
+  getPublic(userId) {
+    return axiosClient.get(`/profile/${userId}`);
+  },
   updateMe(data) {
     return axiosClient.put('/profile/me', data);
   },

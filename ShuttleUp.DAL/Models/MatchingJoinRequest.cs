@@ -11,7 +11,15 @@ public partial class MatchingJoinRequest
 
     public Guid? UserId { get; set; }
 
+    public string? Message { get; set; }
+
     public string? Status { get; set; }
+
+    public string? RejectReason { get; set; }
+
+    public DateTime? CreatedAt { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
 
     public virtual MatchingPost? Post { get; set; }
 
