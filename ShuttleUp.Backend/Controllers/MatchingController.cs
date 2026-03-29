@@ -393,6 +393,38 @@ public class MatchingController : ControllerBase
         return Ok(new { message = "Bài đăng đã được đóng." });
     }
 
+    // ═══════════════════════════════════════════════════
+    //  POST /api/matching/posts/{id}/reopen — Mở lại bài (chủ bài)
+    // ═══════════════════════════════════════════════════
+    [HttpPost("posts/{id:guid}/reopen")]
+    public async Task<IActionResult> ReopenPost(Guid id)
+    {
+        if (!TryGetCurrentUserId(out var me))
+            return Unauthorized();
+
+        var post = await _db.MatchingPosts
+            .Include(p => p.MatchingMembers)
+            .FirstOrDefaultAsync(p => p.Id == id && p.CreatorUserId == me);
+        if (post == null)
+            return NotFound(new { message = "Không tìm thấy bài đăng." });
+        if (post.Status != "CLOSED")
+            return BadRequest(new { message = "Chỉ có thể mở lại khi bài đăng đang ở trạng thái đã đóng." });
+
+        var maxMembers = (post.RequiredPlayers ?? 0) + 1;
+        var count = post.MatchingMembers.Count;
+        post.Status = count >= maxMembers ? "FULL" : "OPEN";
+        post.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = post.Status == "FULL"
+                ? "Đã mở lại — nhóm vẫn đủ người nên bài ở trạng thái đầy chỗ."
+                : "Đã mở lại bài đăng — người chơi có thể xin tham gia trở lại.",
+            status = post.Status
+        });
+    }
+
     // ═════════════════════════════════════════════════════
     //  POST /api/matching/posts/{id}/join — Xin tham gia
     // ═════════════════════════════════════════════════════

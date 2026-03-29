@@ -81,6 +81,19 @@ export default function MatchingPostDetail() {
     }
   };
 
+  const handleReopen = async () => {
+    if (!window.confirm('Mở lại bài đăng để người chơi có thể xin tham gia?')) return;
+    setActionLoading(true);
+    try {
+      await matchingApi.reopenPost(postId);
+      await load();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Có lỗi xảy ra');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleAcceptRequest = async (requestId) => {
     try {
       await matchingApi.acceptRequest(requestId);
@@ -386,12 +399,19 @@ export default function MatchingPostDetail() {
                   {/* Host */}
                   {post.isHost && (
                     <>
-                      <Link to={`/matching/edit/${postId}`} className="btn btn-outline-primary w-100 mb-2">
-                        <i className="feather-edit"></i> Chỉnh sửa
-                      </Link>
+                      {!isClosed && (
+                        <Link to={`/matching/edit/${postId}`} className="btn btn-outline-primary w-100 mb-2">
+                          <i className="feather-edit"></i> Chỉnh sửa
+                        </Link>
+                      )}
                       {isOpen && (
-                        <button className="btn btn-outline-danger w-100" onClick={handleClose} disabled={actionLoading}>
+                        <button type="button" className="btn btn-outline-danger w-100" onClick={handleClose} disabled={actionLoading}>
                           <i className="feather-x-circle"></i> Đóng bài đăng
+                        </button>
+                      )}
+                      {isClosed && (
+                        <button type="button" className="btn btn-success w-100" onClick={handleReopen} disabled={actionLoading}>
+                          <i className="feather-refresh-cw"></i> Mở lại bài đăng
                         </button>
                       )}
                     </>

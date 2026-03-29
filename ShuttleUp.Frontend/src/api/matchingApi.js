@@ -8,6 +8,7 @@ const matchingApi = {
   createPost: (data) => axiosClient.post('/matching/posts', data),
   updatePost: (id, data) => axiosClient.put(`/matching/posts/${id}`, data),
   closePost: (id) => axiosClient.post(`/matching/posts/${id}/close`),
+  reopenPost: (id) => axiosClient.post(`/matching/posts/${id}/reopen`),
 
   // ── Join / Leave ──────────────────────────────────────
   joinPost: (id, data) => axiosClient.post(`/matching/posts/${id}/join`, data || {}),
