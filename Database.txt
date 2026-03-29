@@ -1,6 +1,17 @@
 -- ======================================================================
 -- BƯỚC 1: RESET DATABASE
 -- ======================================================================
+-- Backend (.NET) mặc định: ConnectionStrings:DefaultConnection → database=shuttle_up
+-- (xem ShuttleUp.Backend/appsettings.json). Có thể ghi đè bằng biến môi trường
+-- ConnectionStrings__DefaultConnection khi chạy Docker/IIS.
+--
+-- Nếu API báo "Unknown column 'm.parent_comment_id'":
+--   1) MySQL phải là ĐÚNG server/DB mà API dùng (không phải instance khác).
+--   2) Chạy: USE shuttle_up; rồi xem docs/verify_shuttle_up_matching_comments.sql
+--   3) Nếu cột thiếu: chạy docs/migration_matching_post_comment_replies.sql (sau USE shuttle_up).
+-- Workbench: khi chỉ bôi đen một đoạn script, DATABASE() có thể không phải shuttle_up —
+-- luôn USE shuttle_up; trước, hoặc chọn schema shuttle_up ở panel bên trái.
+-- ======================================================================
 CREATE DATABASE IF NOT EXISTS shuttle_up;
 USE shuttle_up;
 
@@ -463,6 +474,7 @@ CREATE TABLE matching_members (
 CREATE TABLE matching_post_comments (
     id CHAR(36) PRIMARY KEY,
     post_id CHAR(36) NOT NULL,
+    parent_comment_id CHAR(36) NULL,
     user_id CHAR(36) NOT NULL,
     content TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -470,9 +482,12 @@ CREATE TABLE matching_post_comments (
     is_deleted TINYINT(1) NOT NULL DEFAULT 0,
     deleted_at DATETIME NULL,
     deleted_by_user_id CHAR(36) NULL,
+    attachment_file_id CHAR(36) NULL,
     FOREIGN KEY (post_id) REFERENCES matching_posts(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT matching_post_comments_parent_fk FOREIGN KEY (parent_comment_id) REFERENCES matching_post_comments(id) ON DELETE SET NULL,
     CONSTRAINT matching_post_comments_deleted_by_fk FOREIGN KEY (deleted_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT matching_post_comments_attachment_fk FOREIGN KEY (attachment_file_id) REFERENCES files(id) ON DELETE SET NULL,
     INDEX idx_matching_comments_post (post_id, created_at),
     INDEX idx_matching_comments_post_active (post_id, is_deleted, created_at)
 );
@@ -1127,6 +1142,46 @@ SET @idx_exists := (
 );
 SET @sql := IF(@idx_exists = 0,
   'CREATE INDEX idx_matching_comments_post_active ON matching_post_comments (post_id, is_deleted, created_at)',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- matching_post_comments: trả lời bình luận (parent_comment_id, 1 cấp)
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'matching_post_comments' AND column_name = 'parent_comment_id'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE matching_post_comments ADD COLUMN parent_comment_id CHAR(36) NULL',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @fk_exists := (
+  SELECT COUNT(*) FROM information_schema.table_constraints
+  WHERE table_schema = DATABASE() AND table_name = 'matching_post_comments'
+    AND constraint_name = 'matching_post_comments_parent_fk'
+);
+SET @sql := IF(@fk_exists = 0,
+  'ALTER TABLE matching_post_comments ADD CONSTRAINT matching_post_comments_parent_fk FOREIGN KEY (parent_comment_id) REFERENCES matching_post_comments(id) ON DELETE SET NULL',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- matching_post_comments: ảnh đính kèm
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'matching_post_comments' AND column_name = 'attachment_file_id'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE matching_post_comments ADD COLUMN attachment_file_id CHAR(36) NULL',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @fk_exists := (
+  SELECT COUNT(*) FROM information_schema.table_constraints
+  WHERE table_schema = DATABASE() AND table_name = 'matching_post_comments'
+    AND constraint_name = 'matching_post_comments_attachment_fk'
+);
+SET @sql := IF(@fk_exists = 0,
+  'ALTER TABLE matching_post_comments ADD CONSTRAINT matching_post_comments_attachment_fk FOREIGN KEY (attachment_file_id) REFERENCES files(id) ON DELETE SET NULL',
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 

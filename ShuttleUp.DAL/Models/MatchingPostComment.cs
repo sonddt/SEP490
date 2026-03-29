@@ -8,6 +8,9 @@ public partial class MatchingPostComment
 
     public Guid PostId { get; set; }
 
+    /// <summary>Bình luận gốc được trả lời (chỉ 1 cấp: parent không có parent).</summary>
+    public Guid? ParentCommentId { get; set; }
+
     public Guid UserId { get; set; }
 
     public string Content { get; set; } = null!;
@@ -22,7 +25,15 @@ public partial class MatchingPostComment
 
     public Guid? DeletedByUserId { get; set; }
 
+    public Guid? AttachmentFileId { get; set; }
+
     public virtual MatchingPost Post { get; set; } = null!;
+
+    public virtual File? AttachmentFile { get; set; }
+
+    public virtual MatchingPostComment? ParentComment { get; set; }
+
+    public virtual ICollection<MatchingPostComment> ChildComments { get; set; } = new List<MatchingPostComment>();
 
     public virtual User User { get; set; } = null!;
 

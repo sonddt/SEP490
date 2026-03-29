@@ -16,4 +16,6 @@ public class CloudinarySettings
     public string AvatarFolder { get; set; } = "avatars";
 
     public string PaymentProofFolder { get; set; } = "payment_proofs";
+
+    public string MatchingCommentFolder { get; set; } = "matching_comments";
 }

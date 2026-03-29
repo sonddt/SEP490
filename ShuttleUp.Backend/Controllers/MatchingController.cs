@@ -2,6 +2,7 @@ using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ShuttleUp.Backend.Constants;
@@ -15,13 +16,17 @@ namespace ShuttleUp.Backend.Controllers;
 [Authorize]
 public class MatchingController : ControllerBase
 {
+    private const int CommentContentMaxLength = 2000;
+
     private readonly ShuttleUpDbContext _db;
     private readonly INotificationDispatchService _notify;
+    private readonly IFileService _fileService;
 
-    public MatchingController(ShuttleUpDbContext db, INotificationDispatchService notify)
+    public MatchingController(ShuttleUpDbContext db, INotificationDispatchService notify, IFileService fileService)
     {
         _db = db;
         _notify = notify;
+        _fileService = fileService;
     }
 
     private bool TryGetCurrentUserId(out Guid userId)
@@ -720,51 +725,199 @@ public class MatchingController : ControllerBase
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  GET /api/matching/posts/{id}/comments — Load comments (FB)
+    //  GET /api/matching/posts/{id}/comments — Bình luận gốc (paginate) + replyCount + sort
     // ═══════════════════════════════════════════════════════════════
     [HttpGet("posts/{id:guid}/comments")]
-    public async Task<IActionResult> GetComments(Guid id, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    public async Task<IActionResult> GetCommentRoots(
+        Guid id,
+        [FromQuery] string sort = "newest",
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10)
     {
         if (!TryGetCurrentUserId(out var me))
             return Unauthorized();
 
-        // Only host + accepted members can see comments
         var isMember = await _db.MatchingMembers.AsNoTracking()
             .AnyAsync(m => m.PostId == id && m.UserId == me);
         if (!isMember)
             return Forbid();
 
-        var total = await _db.MatchingPostComments.CountAsync(c => c.PostId == id && !c.IsDeleted);
-        var raw = await _db.MatchingPostComments.AsNoTracking()
-            .Include(c => c.User).ThenInclude(u => u.AvatarFile)
-            .Where(c => c.PostId == id && !c.IsDeleted)
-            .OrderByDescending(c => c.CreatedAt)
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 10;
+        if (pageSize > 50) pageSize = 50;
+
+        var replyCounts = await _db.MatchingPostComments.AsNoTracking()
+            .Where(r => r.PostId == id && !r.IsDeleted && r.ParentCommentId != null)
+            .GroupBy(r => r.ParentCommentId!)
+            .Select(g => new { ParentId = g.Key, Cnt = g.Count() })
+            .ToListAsync();
+        var replyCountByRoot = new Dictionary<Guid, int>();
+        foreach (var x in replyCounts)
+        {
+            var pid = x.ParentId;
+            if (pid != null)
+                replyCountByRoot[pid.Value] = x.Cnt;
+        }
+
+        var rootsQuery = _db.MatchingPostComments.AsNoTracking()
+            .Include(c => c.User).ThenInclude(u => u!.AvatarFile)
+            .Include(c => c.AttachmentFile)
+            .Where(c => c.PostId == id && !c.IsDeleted && c.ParentCommentId == null);
+
+        var roots = await rootsQuery.ToListAsync();
+        var totalRoots = roots.Count;
+        var totalAll = totalRoots + replyCounts.Sum(x => (int)x.Cnt);
+
+        IEnumerable<MatchingPostComment> ordered = sort switch
+        {
+            "oldest" => roots.OrderBy(c => c.CreatedAt),
+            "popular" => roots
+                .OrderByDescending(c => replyCountByRoot.GetValueOrDefault(c.Id, 0))
+                .ThenByDescending(c => c.CreatedAt),
+            _ => roots.OrderByDescending(c => c.CreatedAt)
+        };
+
+        var pageItems = ordered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(c => new
+            .ToList();
+
+        var items = pageItems.Select(c => new
+        {
+            id = c.Id,
+            userId = c.UserId,
+            fullName = c.User.FullName,
+            avatarUrl = c.User.AvatarFile?.FileUrl,
+            content = c.Content,
+            createdAt = AsUtcForJson(c.CreatedAt),
+            updatedAt = AsUtcForJson(c.UpdatedAt),
+            isEdited = c.UpdatedAt.HasValue,
+            parentCommentId = (Guid?)null,
+            replyToFullName = (string?)null,
+            replyCount = replyCountByRoot.GetValueOrDefault(c.Id, 0),
+            attachmentFileId = c.AttachmentFileId,
+            imageUrl = c.AttachmentFile?.FileUrl
+        }).ToList();
+
+        return Ok(new
+        {
+            total = totalRoots,
+            totalAll,
+            page,
+            pageSize,
+            sort,
+            items
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  GET /api/matching/posts/{postId}/comments/{rootId}/replies — Lazy load phản hồi
+    // ═══════════════════════════════════════════════════════════════
+    [HttpGet("posts/{postId:guid}/comments/{rootId:guid}/replies")]
+    public async Task<IActionResult> GetCommentReplies(Guid postId, Guid rootId, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+    {
+        if (!TryGetCurrentUserId(out var me))
+            return Unauthorized();
+
+        var isMember = await _db.MatchingMembers.AsNoTracking()
+            .AnyAsync(m => m.PostId == postId && m.UserId == me);
+        if (!isMember)
+            return Forbid();
+
+        var root = await _db.MatchingPostComments.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == rootId && c.PostId == postId && !c.IsDeleted && c.ParentCommentId == null);
+        if (root == null)
+            return NotFound(new { message = "Không tìm thấy bình luận gốc." });
+
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 50;
+        if (pageSize > 100) pageSize = 100;
+
+        var total = await _db.MatchingPostComments.CountAsync(c =>
+            c.PostId == postId && !c.IsDeleted && c.ParentCommentId == rootId);
+
+        var raw = await _db.MatchingPostComments.AsNoTracking()
+            .Include(c => c.User).ThenInclude(u => u!.AvatarFile)
+            .Include(c => c.ParentComment).ThenInclude(p => p!.User)
+            .Include(c => c.AttachmentFile)
+            .Where(c => c.PostId == postId && !c.IsDeleted && c.ParentCommentId == rootId)
+            .OrderBy(c => c.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var items = raw.Select(c =>
+        {
+            string? replyToFullName = null;
+            if (c.ParentComment != null && !c.ParentComment.IsDeleted)
+                replyToFullName = c.ParentComment.User.FullName;
+            return new
             {
                 id = c.Id,
                 userId = c.UserId,
                 fullName = c.User.FullName,
-                avatarUrl = c.User.AvatarFile != null ? c.User.AvatarFile.FileUrl : null,
+                avatarUrl = c.User.AvatarFile?.FileUrl,
                 content = c.Content,
-                createdAt = c.CreatedAt,
-                updatedAt = c.UpdatedAt
-            })
-            .ToListAsync();
-        var items = raw.Select(x => new
-        {
-            x.id,
-            x.userId,
-            x.fullName,
-            x.avatarUrl,
-            x.content,
-            createdAt = AsUtcForJson(x.createdAt),
-            updatedAt = AsUtcForJson(x.updatedAt),
-            isEdited = x.updatedAt.HasValue
+                createdAt = AsUtcForJson(c.CreatedAt),
+                updatedAt = AsUtcForJson(c.UpdatedAt),
+                isEdited = c.UpdatedAt.HasValue,
+                parentCommentId = c.ParentCommentId,
+                replyToFullName,
+                replyCount = 0,
+                attachmentFileId = c.AttachmentFileId,
+                imageUrl = c.AttachmentFile?.FileUrl
+            };
         }).ToList();
 
-        return Ok(new { total, page, pageSize, items });
+        return Ok(new { total, page, pageSize, rootId, items });
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  POST /api/matching/posts/{postId}/comments/upload-image
+    // ═══════════════════════════════════════════════════════════════
+    [HttpPost("posts/{postId:guid}/comments/upload-image")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(8_000_000)]
+    public async Task<IActionResult> UploadCommentImage(Guid postId, IFormFile file)
+    {
+        if (!TryGetCurrentUserId(out var me))
+            return Unauthorized();
+
+        var isMember = await _db.MatchingMembers.AsNoTracking()
+            .AnyAsync(m => m.PostId == postId && m.UserId == me);
+        if (!isMember)
+            return Forbid();
+
+        if (file == null || file.Length <= 0)
+            return BadRequest(new { message = "Vui lòng chọn ảnh." });
+        if (file.ContentType == null || !file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { message = "Chỉ được đính kèm file ảnh." });
+
+        string secureUrl;
+        try
+        {
+            var upload = await _fileService.UploadMatchingCommentImageAsync(file, postId, me, HttpContext.RequestAborted);
+            secureUrl = upload.SecureUrl;
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Tải ảnh lên thất bại: " + ex.Message });
+        }
+
+        var fileRow = new ShuttleUp.DAL.Models.File
+        {
+            Id = Guid.NewGuid(),
+            FileUrl = secureUrl,
+            FileName = file.FileName,
+            MimeType = file.ContentType,
+            FileSize = (int?)file.Length,
+            UploadedByUserId = me,
+            CreatedAt = DateTime.UtcNow
+        };
+        _db.Files.Add(fileRow);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { fileId = fileRow.Id, url = secureUrl });
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -773,6 +926,12 @@ public class MatchingController : ControllerBase
     public class CommentDto
     {
         public string Content { get; set; } = null!;
+
+        /// <summary>Trả lời bình luận gốc (không trả lời bình luận đã là reply).</summary>
+        public Guid? ParentCommentId { get; set; }
+
+        /// <summary>File ảnh đã upload qua POST .../comments/upload-image.</summary>
+        public Guid? AttachmentFileId { get; set; }
     }
 
     [HttpPost("posts/{id:guid}/comments")]
@@ -781,18 +940,47 @@ public class MatchingController : ControllerBase
         if (!TryGetCurrentUserId(out var me))
             return Unauthorized();
 
-        if (string.IsNullOrWhiteSpace(dto.Content))
-            return BadRequest(new { message = "Vui lòng nhập nội dung bình luận." });
-
-        var trimmedNew = dto.Content.Trim();
-        if (trimmedNew.Length > 500)
-            return BadRequest(new { message = "Bình luận tối đa 500 ký tự." });
-
-        // Only host + accepted members can comment
         var isMember = await _db.MatchingMembers.AsNoTracking()
             .AnyAsync(m => m.PostId == id && m.UserId == me);
         if (!isMember)
             return Forbid();
+
+        string? replyToFullName = null;
+        Guid? parentId = null;
+        Guid? parentAuthorId = null;
+        if (dto.ParentCommentId.HasValue)
+        {
+            var parent = await _db.MatchingPostComments.AsNoTracking()
+                .Include(p => p.User)
+                .FirstOrDefaultAsync(c => c.Id == dto.ParentCommentId.Value && c.PostId == id);
+            if (parent == null || parent.IsDeleted)
+                return BadRequest(new { message = "Không tìm thấy bình luận để trả lời." });
+            if (parent.ParentCommentId != null)
+                return BadRequest(new { message = "Chỉ trả lời được một cấp — hãy trả lời bình luận gốc." });
+            parentId = parent.Id;
+            parentAuthorId = parent.UserId;
+            replyToFullName = parent.User.FullName;
+        }
+
+        Guid? attachmentId = null;
+        string? imageUrl = null;
+        if (dto.AttachmentFileId.HasValue)
+        {
+            var att = await _db.Files.AsNoTracking()
+                .FirstOrDefaultAsync(f => f.Id == dto.AttachmentFileId.Value);
+            if (att == null || att.UploadedByUserId != me)
+                return BadRequest(new { message = "Ảnh đính kèm không hợp lệ." });
+            if (string.IsNullOrEmpty(att.MimeType) || !att.MimeType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { message = "Chỉ được đính kèm file ảnh." });
+            attachmentId = att.Id;
+            imageUrl = att.FileUrl;
+        }
+
+        var trimmedNew = string.IsNullOrWhiteSpace(dto.Content) ? string.Empty : dto.Content.Trim();
+        if (trimmedNew.Length == 0 && !attachmentId.HasValue)
+            return BadRequest(new { message = "Vui lòng nhập nội dung hoặc đính kèm một ảnh." });
+        if (trimmedNew.Length > CommentContentMaxLength)
+            return BadRequest(new { message = $"Bình luận tối đa {CommentContentMaxLength} ký tự." });
 
         var lastAt = await _db.MatchingPostComments.AsNoTracking()
             .Where(c => c.PostId == id && c.UserId == me && !c.IsDeleted)
@@ -806,14 +994,19 @@ public class MatchingController : ControllerBase
                 return StatusCode(429, new { message = "Bạn gửi quá nhanh. Vui lòng đợi một chút." });
         }
 
+        var postRow = await _db.MatchingPosts.AsNoTracking()
+            .FirstAsync(p => p.Id == id);
+
         var comment = new MatchingPostComment
         {
             Id = Guid.NewGuid(),
             PostId = id,
+            ParentCommentId = parentId,
             UserId = me,
             Content = trimmedNew,
             CreatedAt = DateTime.UtcNow,
-            IsDeleted = false
+            IsDeleted = false,
+            AttachmentFileId = attachmentId
         };
         _db.MatchingPostComments.Add(comment);
         await _db.SaveChangesAsync();
@@ -821,6 +1014,45 @@ public class MatchingController : ControllerBase
         var user = await _db.Users.AsNoTracking()
             .Include(u => u.AvatarFile)
             .FirstAsync(u => u.Id == me);
+
+        var meta = new { postId = id, deepLink = $"/matching/{id}" };
+        var hostId = postRow.CreatorUserId;
+
+        if (!parentId.HasValue)
+        {
+            if (hostId.HasValue && hostId.Value != me)
+            {
+                await _notify.NotifyUserAsync(
+                    hostId.Value,
+                    NotificationTypes.MatchingNewComment,
+                    "Bình luận mới trên bài tìm kèo",
+                    $"{user.FullName} vừa bình luận trong nhóm của bạn.",
+                    meta);
+            }
+        }
+        else
+        {
+            if (hostId.HasValue && hostId.Value != me)
+            {
+                await _notify.NotifyUserAsync(
+                    hostId.Value,
+                    NotificationTypes.MatchingCommentReply,
+                    "Có phản hồi mới",
+                    $"{user.FullName} vừa trả lời một bình luận trên bài của bạn.",
+                    meta);
+            }
+
+            if (parentAuthorId.HasValue && parentAuthorId.Value != me
+                                        && parentAuthorId.Value != hostId)
+            {
+                await _notify.NotifyUserAsync(
+                    parentAuthorId.Value,
+                    NotificationTypes.MatchingCommentReply,
+                    "Có người trả lời bạn",
+                    $"{user.FullName} vừa trả lời bình luận của bạn.",
+                    meta);
+            }
+        }
 
         return Ok(new
         {
@@ -832,6 +1064,11 @@ public class MatchingController : ControllerBase
             createdAt = AsUtcForJson(comment.CreatedAt),
             updatedAt = (DateTime?)null,
             isEdited = false,
+            parentCommentId = comment.ParentCommentId,
+            replyToFullName,
+            replyCount = 0,
+            attachmentFileId = comment.AttachmentFileId,
+            imageUrl,
             message = "Bình luận đã được gửi."
         });
     }
@@ -844,13 +1081,6 @@ public class MatchingController : ControllerBase
     {
         if (!TryGetCurrentUserId(out var me))
             return Unauthorized();
-
-        if (string.IsNullOrWhiteSpace(dto.Content))
-            return BadRequest(new { message = "Vui lòng nhập nội dung bình luận." });
-
-        var trimmed = dto.Content.Trim();
-        if (trimmed.Length > 500)
-            return BadRequest(new { message = "Bình luận tối đa 500 ký tự." });
 
         var isMember = await _db.MatchingMembers.AsNoTracking()
             .AnyAsync(m => m.PostId == postId && m.UserId == me);
@@ -868,24 +1098,45 @@ public class MatchingController : ControllerBase
         if (comment.UserId != me)
             return Forbid();
 
+        var trimmed = string.IsNullOrWhiteSpace(dto.Content) ? string.Empty : dto.Content.Trim();
+        if (trimmed.Length == 0 && !comment.AttachmentFileId.HasValue)
+            return BadRequest(new { message = "Vui lòng nhập nội dung hoặc giữ ảnh đính kèm." });
+        if (trimmed.Length > CommentContentMaxLength)
+            return BadRequest(new { message = $"Bình luận tối đa {CommentContentMaxLength} ký tự." });
+
         comment.Content = trimmed;
         comment.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        var user = await _db.Users.AsNoTracking()
-            .Include(u => u.AvatarFile)
-            .FirstAsync(u => u.Id == me);
+        var projected = await _db.MatchingPostComments.AsNoTracking()
+            .Include(c => c.User).ThenInclude(u => u!.AvatarFile)
+            .Include(c => c.ParentComment).ThenInclude(p => p!.User)
+            .Include(c => c.AttachmentFile)
+            .FirstAsync(c => c.Id == commentId);
+
+        string? replyToName = null;
+        if (projected.ParentCommentId.HasValue && projected.ParentComment != null && !projected.ParentComment.IsDeleted)
+            replyToName = projected.ParentComment.User.FullName;
+
+        var replyCount = projected.ParentCommentId == null
+            ? await _db.MatchingPostComments.CountAsync(c => c.ParentCommentId == projected.Id && !c.IsDeleted)
+            : 0;
 
         return Ok(new
         {
-            id = comment.Id,
+            id = projected.Id,
             userId = me,
-            fullName = user.FullName,
-            avatarUrl = user.AvatarFile?.FileUrl,
-            content = comment.Content,
-            createdAt = AsUtcForJson(comment.CreatedAt),
-            updatedAt = AsUtcForJson(comment.UpdatedAt),
+            fullName = projected.User.FullName,
+            avatarUrl = projected.User.AvatarFile?.FileUrl,
+            content = projected.Content,
+            createdAt = AsUtcForJson(projected.CreatedAt),
+            updatedAt = AsUtcForJson(projected.UpdatedAt),
             isEdited = true,
+            parentCommentId = projected.ParentCommentId,
+            replyToFullName = replyToName,
+            replyCount,
+            attachmentFileId = projected.AttachmentFileId,
+            imageUrl = projected.AttachmentFile?.FileUrl,
             message = "Đã cập nhật bình luận."
         });
     }

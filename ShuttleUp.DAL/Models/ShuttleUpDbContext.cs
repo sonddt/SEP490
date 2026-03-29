@@ -725,6 +725,19 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasColumnType("datetime")
                 .HasColumnName("deleted_at");
             entity.Property(e => e.DeletedByUserId).HasColumnName("deleted_by_user_id");
+            entity.Property(e => e.ParentCommentId).HasColumnName("parent_comment_id");
+            entity.Property(e => e.AttachmentFileId).HasColumnName("attachment_file_id");
+
+            entity.HasOne(d => d.AttachmentFile).WithMany()
+                .HasForeignKey(d => d.AttachmentFileId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("matching_post_comments_attachment_fk");
+
+            entity.HasOne(d => d.ParentComment)
+                .WithMany(c => c.ChildComments)
+                .HasForeignKey(d => d.ParentCommentId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("matching_post_comments_parent_fk");
 
             entity.HasOne(d => d.Post).WithMany(p => p.MatchingPostComments)
                 .HasForeignKey(d => d.PostId)

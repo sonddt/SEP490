@@ -19,6 +19,15 @@ const matchingApi = {
 
   // ── Comments (FB-style) ───────────────────────────────
   getComments: (postId, params) => axiosClient.get(`/matching/posts/${postId}/comments`, { params }),
+  getCommentReplies: (postId, rootId, params) =>
+    axiosClient.get(`/matching/posts/${postId}/comments/${rootId}/replies`, { params }),
+  uploadCommentImage: (postId, file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return axiosClient.post(`/matching/posts/${postId}/comments/upload-image`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
   postComment: (postId, data) => axiosClient.post(`/matching/posts/${postId}/comments`, data),
   patchComment: (postId, commentId, data) =>
     axiosClient.patch(`/matching/posts/${postId}/comments/${commentId}`, data),

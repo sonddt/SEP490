@@ -15,6 +15,9 @@ export function getNotificationTargetPath(metadataJson, isManager) {
   if (meta.deepLink && typeof meta.deepLink === 'string' && meta.deepLink.startsWith('/')) {
     return meta.deepLink;
   }
+  if (meta.postId != null && meta.postId !== '') {
+    return `/matching/${meta.postId}`;
+  }
   if (meta.fromUserId) {
     return `/user/profile/${meta.fromUserId}`;
   }

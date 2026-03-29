@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import matchingApi from '../../api/matchingApi';
 import MatchingMembers from '../../components/matching/MatchingMembers';
@@ -39,6 +39,19 @@ export default function MatchingPostDetail() {
   }, [postId, navigate]);
 
   useEffect(() => { load(); }, [load]);
+
+  const commentMentionMembers = useMemo(() => {
+    const list = [...(post?.members || [])];
+    const hid = post?.host?.id;
+    if (hid && !list.some((m) => m.userId === hid)) {
+      list.unshift({
+        userId: hid,
+        fullName: post.host.fullName,
+        avatarUrl: post.host.avatarUrl,
+      });
+    }
+    return list;
+  }, [post]);
 
   // ── Actions ──
   const handleJoin = async () => {
@@ -328,7 +341,7 @@ export default function MatchingPostDetail() {
 
               {/* ── FB-style Comments (only for host + accepted members) ── */}
               {(post.isHost || post.isMember) && (
-                <MatchingComments postId={postId} isHost={post.isHost} />
+                <MatchingComments postId={postId} isHost={post.isHost} postMembers={commentMentionMembers} />
               )}
             </div>
 
