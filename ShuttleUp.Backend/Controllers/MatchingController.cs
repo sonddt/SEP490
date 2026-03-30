@@ -68,13 +68,14 @@ public class MatchingController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 12)
     {
-        if (!TryGetCurrentUserId(out _))
+        if (!TryGetCurrentUserId(out var me))
             return Unauthorized();
 
         var query = _db.MatchingPosts.AsNoTracking()
             .Include(p => p.CreatorUser).ThenInclude(u => u!.AvatarFile)
             .Include(p => p.Venue)
             .Include(p => p.MatchingMembers)
+            .Include(p => p.MatchingJoinRequests)
             .Where(p => p.Status == "OPEN");
 
         // Filters
@@ -96,7 +97,7 @@ public class MatchingController : ControllerBase
         var total = await query.CountAsync();
         var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
-        var result = items.Select(p => MapPostCard(p));
+        var result = items.Select(p => MapPostCard(p, me));
         return Ok(new { total, page, pageSize, items = result });
     }
 
@@ -1227,30 +1228,45 @@ public class MatchingController : ControllerBase
     // ═══════════════════════════════════════════
     //  Helper — map post to card DTO
     // ═══════════════════════════════════════════
-    private static object MapPostCard(MatchingPost p) => new
+    private static object MapPostCard(MatchingPost p, Guid me)
     {
-        id = p.Id,
-        title = p.Title,
-        playDate = p.PlayDate,
-        playStartTime = p.PlayStartTime?.ToString("HH:mm"),
-        playEndTime = p.PlayEndTime?.ToString("HH:mm"),
-        venueName = p.Venue?.Name,
-        venueAddress = p.Venue?.Address,
-        courtName = p.CourtName,
-        pricePerSlot = p.PricePerSlot,
-        requiredPlayers = p.RequiredPlayers,
-        skillLevel = p.SkillLevel,
-        genderPref = p.GenderPref,
-        expenseSharing = p.ExpenseSharing,
-        status = p.Status,
-        membersCount = p.MatchingMembers.Count,
-        createdAt = p.CreatedAt,
-        host = new
+        var filled = p.MatchingMembers.Count;
+        var totalSlots = (p.RequiredPlayers ?? 0) + 1;
+        var slotsLeft = Math.Max(totalSlots - filled, 0);
+        var isHost = p.CreatorUserId == me;
+        var isMember = p.MatchingMembers.Any(m => m.UserId == me);
+        var isPending = p.MatchingJoinRequests.Any(r => r.UserId == me && r.Status == "PENDING");
+        var canRequestJoin = !isHost && !isMember && !isPending && p.Status == "OPEN" && slotsLeft > 0;
+
+        return new
         {
-            id = p.CreatorUser?.Id,
-            fullName = p.CreatorUser?.FullName,
-            avatarUrl = p.CreatorUser?.AvatarFile?.FileUrl,
-            skillLevel = p.CreatorUser?.SkillLevel
-        }
-    };
+            id = p.Id,
+            title = p.Title,
+            playDate = p.PlayDate,
+            playStartTime = p.PlayStartTime?.ToString("HH:mm"),
+            playEndTime = p.PlayEndTime?.ToString("HH:mm"),
+            venueName = p.Venue?.Name,
+            venueAddress = p.Venue?.Address,
+            courtName = p.CourtName,
+            pricePerSlot = p.PricePerSlot,
+            requiredPlayers = p.RequiredPlayers,
+            skillLevel = p.SkillLevel,
+            genderPref = p.GenderPref,
+            expenseSharing = p.ExpenseSharing,
+            status = p.Status,
+            membersCount = filled,
+            createdAt = p.CreatedAt,
+            isHost,
+            isMember,
+            isPending,
+            canRequestJoin,
+            host = new
+            {
+                id = p.CreatorUser?.Id,
+                fullName = p.CreatorUser?.FullName,
+                avatarUrl = p.CreatorUser?.AvatarFile?.FileUrl,
+                skillLevel = p.CreatorUser?.SkillLevel
+            }
+        };
+    }
 }

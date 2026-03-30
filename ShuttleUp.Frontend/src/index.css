@@ -1038,6 +1038,39 @@ a:active {
 
 .matching-card-cta { padding: 12px 16px; border-top: 1px solid #f1f5f9; }
 .matching-card-cta .btn { font-size: 13px; font-weight: 600; border-radius: 8px; }
+.matching-card-cta-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.matching-card-cta-detail,
+.matching-card-cta-join {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+.matching-card-cta-join .feather-user-plus {
+  width: 16px;
+  height: 16px;
+}
+.matching-card-join-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: matching-card-spin 0.6s linear infinite;
+}
+@keyframes matching-card-spin {
+  to { transform: rotate(360deg); }
+}
+.matching-card-cta-join:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 
 /* ── Empty State ───────────────────────────────────────────────────────── */
 .matching-empty-state {

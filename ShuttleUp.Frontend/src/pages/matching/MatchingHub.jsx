@@ -130,7 +130,7 @@ export default function MatchingHub() {
                   ) : (
                     <div className="row">
                       {posts.map((p) => (
-                        <MatchingPostCard key={p.id} post={p} />
+                        <MatchingPostCard key={p.id} post={p} onJoined={loadPosts} />
                       ))}
                     </div>
                   )}
@@ -171,7 +171,7 @@ export default function MatchingHub() {
                   ) : (
                     <div className="row">
                       {myPosts.map((p) => (
-                        <MatchingPostCard key={p.id} post={p} />
+                        <MatchingPostCard key={p.id} post={p} onJoined={loadMyPosts} />
                       ))}
                     </div>
                   )}

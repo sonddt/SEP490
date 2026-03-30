@@ -1,4 +1,6 @@
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import matchingApi from '../../api/matchingApi';
 
 const defaultImg = '/assets/img/venues/venues-01.jpg';
 
@@ -16,7 +18,17 @@ const expenseLabels = {
   negotiable: 'Thỏa thuận',
 };
 
-export default function MatchingPostCard({ post }) {
+export default function MatchingPostCard({ post, onJoined }) {
+  const [joinBusy, setJoinBusy] = useState(false);
+  const [joinNotice, setJoinNotice] = useState(null);
+  const noticeTimer = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    };
+  }, []);
+
   const totalSlots = (post.requiredPlayers || 0) + 1; // +1 host
   const filled = post.membersCount || 0;
   const slotsLeft = Math.max(totalSlots - filled, 0);
@@ -31,6 +43,26 @@ export default function MatchingPostCard({ post }) {
   const formatPrice = (v) => {
     if (v == null) return 'Thỏa thuận';
     return Number(v).toLocaleString('vi-VN') + 'đ';
+  };
+
+  const canQuickJoin = post.canRequestJoin === true;
+
+  const handleQuickJoin = async () => {
+    if (!canQuickJoin || joinBusy) return;
+    setJoinBusy(true);
+    setJoinNotice(null);
+    try {
+      await matchingApi.joinPost(post.id, {});
+      setJoinNotice({ type: 'success', text: 'Đã gửi yêu cầu — chờ chủ bài duyệt nhé!' });
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
+      noticeTimer.current = setTimeout(() => setJoinNotice(null), 5000);
+      onJoined?.();
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Chưa gửi được yêu cầu — bạn thử lại sau nhé.';
+      setJoinNotice({ type: 'error', text: msg });
+    } finally {
+      setJoinBusy(false);
+    }
   };
 
   return (
@@ -101,9 +133,43 @@ export default function MatchingPostCard({ post }) {
 
         {/* ── CTA ── */}
         <div className="matching-card-cta">
-          <Link to={`/matching/${post.id}`} className="btn btn-primary btn-sm w-100">
-            Xem chi tiết
-          </Link>
+          <div className="matching-card-cta-row">
+            <Link to={`/matching/${post.id}`} className="btn btn-outline-primary btn-sm matching-card-cta-detail">
+              Xem chi tiết
+            </Link>
+            {canQuickJoin ? (
+              <button
+                type="button"
+                className="btn btn-primary btn-sm matching-card-cta-join"
+                onClick={handleQuickJoin}
+                disabled={joinBusy}
+              >
+                {joinBusy ? (
+                  <span className="matching-card-join-spinner" aria-hidden="true" />
+                ) : (
+                  <i className="feather-user-plus"></i>
+                )}
+                <span>{joinBusy ? 'Đang gửi...' : 'Xin tham gia'}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-primary btn-sm matching-card-cta-join"
+                disabled
+                title="Bạn không thể xin tham gia từ đây (đã tham gia, đang chờ duyệt, là chủ bài, hoặc nhóm đã đủ)."
+              >
+                <i className="feather-user-plus"></i>
+                <span>Xin tham gia</span>
+              </button>
+            )}
+          </div>
+          {joinNotice && (
+            <p
+              className={`matching-card-join-notice small mb-0 mt-2 ${joinNotice.type === 'success' ? 'text-success' : 'text-warning'}`}
+            >
+              {joinNotice.text}
+            </p>
+          )}
         </div>
       </div>
     </div>
