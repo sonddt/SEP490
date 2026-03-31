@@ -23,15 +23,18 @@ public class BookingsController : ControllerBase
     private readonly ShuttleUpDbContext _dbContext;
     private readonly IFileService _fileService;
     private readonly INotificationDispatchService _notify;
+    private readonly IMatchingPostLifecycleService _matchingPostLifecycle;
 
     public BookingsController(
         ShuttleUpDbContext dbContext,
         IFileService fileService,
-        INotificationDispatchService notify)
+        INotificationDispatchService notify,
+        IMatchingPostLifecycleService matchingPostLifecycle)
     {
         _dbContext = dbContext;
         _fileService = fileService;
         _notify = notify;
+        _matchingPostLifecycle = matchingPostLifecycle;
     }
 
     private bool TryGetCurrentUserId(out Guid userId)
@@ -863,6 +866,8 @@ public class BookingsController : ControllerBase
         }
 
         await _dbContext.SaveChangesAsync();
+
+        await _matchingPostLifecycle.CancelPostsByBookingAsync(booking, HttpContext.RequestAborted);
 
         var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
         var pol = ParsePolicyOrDefault(booking.CancellationPolicySnapshotJson);

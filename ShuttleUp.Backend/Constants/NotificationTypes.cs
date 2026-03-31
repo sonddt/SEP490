@@ -18,6 +18,7 @@ public static class NotificationTypes
     public const string MatchingJoinRejected = "MATCHING_JOIN_REJECTED";
     public const string MatchingMemberKicked = "MATCHING_MEMBER_KICKED";
     public const string MatchingPostClosed = "MATCHING_POST_CLOSED";
+    public const string MatchingPostCancelled = "MATCHING_POST_CANCELLED";
     public const string MatchingNewComment = "MATCHING_NEW_COMMENT";
     public const string MatchingCommentReply = "MATCHING_COMMENT_REPLY";
 }

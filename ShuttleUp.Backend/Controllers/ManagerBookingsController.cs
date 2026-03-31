@@ -17,11 +17,16 @@ public class ManagerBookingsController : ControllerBase
 {
     private readonly ShuttleUpDbContext _dbContext;
     private readonly INotificationDispatchService _notify;
+    private readonly IMatchingPostLifecycleService _matchingPostLifecycle;
 
-    public ManagerBookingsController(ShuttleUpDbContext dbContext, INotificationDispatchService notify)
+    public ManagerBookingsController(
+        ShuttleUpDbContext dbContext,
+        INotificationDispatchService notify,
+        IMatchingPostLifecycleService matchingPostLifecycle)
     {
         _dbContext = dbContext;
         _notify = notify;
+        _matchingPostLifecycle = matchingPostLifecycle;
     }
 
     private bool TryGetCurrentUserId(out Guid userId)
@@ -202,6 +207,9 @@ public class ManagerBookingsController : ControllerBase
         }
 
         await _dbContext.SaveChangesAsync();
+
+        if (next == "CANCELLED")
+            await _matchingPostLifecycle.CancelPostsByBookingAsync(booking, HttpContext.RequestAborted);
 
         var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
 
