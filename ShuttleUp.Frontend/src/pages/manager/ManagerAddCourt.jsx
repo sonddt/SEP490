@@ -24,12 +24,10 @@ export default function ManagerAddCourt() {
   
   const [form, setForm] = useState({
     name: '',
-    code: '',
     surface: 'Gỗ PU',
     maxGuests: 4,
     priceWeekday: '',
     priceWeekend: '',
-    peakPricing: false,
     description: ''
   });
 
@@ -231,11 +229,6 @@ export default function ManagerAddCourt() {
                     {getFieldError('name') && <div className="invalid-feedback">{getFieldError('name')}</div>}
                   </div>
                   <div className="col-12 col-md-6">
-                    <label className="form-label fw-semibold text-dark mb-2">Mã quản lý nội bộ</label>
-                    <input type="text" className={`form-control form-control-lg bg-light border-0 ${getFieldError('code') ? 'is-invalid' : ''}`} placeholder="Ví dụ: B1" value={form.code} onChange={(e) => setField('code', e.target.value)} />
-                    {getFieldError('code') && <div className="invalid-feedback">{getFieldError('code')}</div>}
-                  </div>
-                  <div className="col-12 col-md-6">
                     <label className="form-label fw-semibold text-dark mb-2">Loại mặt thảm</label>
                     <select className="form-select form-select-lg bg-light border-0" value={form.surface} onChange={(e) => setField('surface', e.target.value)}>
                       {SURFACE_TYPES.map((s) => <option key={s}>{s}</option>)}
@@ -270,12 +263,6 @@ export default function ManagerAddCourt() {
                       <input type="number" min={0} className={`form-control bg-light border-0 ${getFieldError('priceWeekend') ? 'is-invalid' : ''}`} placeholder="120000" value={form.priceWeekend} onChange={(e) => setField('priceWeekend', e.target.value)} />
                       <span className="input-group-text bg-light border-0 text-muted">đ/giờ</span>
                       {getFieldError('priceWeekend') && <div className="invalid-feedback">{getFieldError('priceWeekend')}</div>}
-                    </div>
-                  </div>
-                  <div className="col-12">
-                    <div className="form-check form-switch pt-2" style={{ transform: 'scale(1.1)', transformOrigin: 'left center' }}>
-                      <input className="form-check-input" type="checkbox" id="peakToggleCourt" checked={form.peakPricing} onChange={(e) => setField('peakPricing', e.target.checked)} />
-                      <label className="form-check-label ms-2 fw-medium text-dark" htmlFor="peakToggleCourt">Mở khóa phụ thu theo khung Giờ Vàng (Cao điểm)</label>
                     </div>
                   </div>
                 </div>
