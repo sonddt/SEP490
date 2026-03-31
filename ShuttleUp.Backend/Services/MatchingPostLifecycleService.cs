@@ -16,7 +16,10 @@ public class MatchingPostLifecycleService : IMatchingPostLifecycleService
         _notify = notify;
     }
 
-    public async Task CancelPostsByBookingAsync(Booking booking, CancellationToken cancellationToken = default)
+    public async Task CancelPostsByBookingAsync(
+        Booking booking,
+        string? cancelledBy = null,
+        CancellationToken cancellationToken = default)
     {
         if (booking == null)
             return;
@@ -76,7 +79,8 @@ public class MatchingPostLifecycleService : IMatchingPostLifecycleService
 
             var bookingCode = "SU" + bookingId.ToString("N")[^6..].ToUpperInvariant();
             var title = "Bài ghép trận đã bị huỷ";
-            var body = $"Booking #{bookingCode} bị huỷ nên bài \"{post.Title}\" không còn hiệu lực.";
+            var who = string.IsNullOrWhiteSpace(cancelledBy) ? "hệ thống" : cancelledBy.Trim();
+            var body = $"Booking #{bookingCode}: Đơn đã bị hủy/từ chối bởi {who} nên bài \"{post.Title}\" không còn hiệu lực.";
 
             foreach (var uid in recipientIds)
             {

@@ -209,7 +209,7 @@ public class ManagerBookingsController : ControllerBase
         await _dbContext.SaveChangesAsync();
 
         if (next == "CANCELLED")
-            await _matchingPostLifecycle.CancelPostsByBookingAsync(booking, HttpContext.RequestAborted);
+            await _matchingPostLifecycle.CancelPostsByBookingAsync(booking, cancelledBy: "chủ sân", HttpContext.RequestAborted);
 
         var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
 

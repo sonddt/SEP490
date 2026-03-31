@@ -867,7 +867,7 @@ public class BookingsController : ControllerBase
 
         await _dbContext.SaveChangesAsync();
 
-        await _matchingPostLifecycle.CancelPostsByBookingAsync(booking, HttpContext.RequestAborted);
+        await _matchingPostLifecycle.CancelPostsByBookingAsync(booking, cancelledBy: "người chơi", HttpContext.RequestAborted);
 
         var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
         var pol = ParsePolicyOrDefault(booking.CancellationPolicySnapshotJson);
