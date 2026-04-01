@@ -556,32 +556,78 @@ public class MatchingController : ControllerBase
         if (!TryGetCurrentUserId(out var me))
             return Unauthorized();
 
-        var request = await _db.MatchingJoinRequests
-            .Include(r => r.Post).ThenInclude(p => p!.MatchingMembers)
-            .FirstOrDefaultAsync(r => r.Id == id);
-        if (request == null)
-            return NotFound(new { message = "Không tìm thấy yêu cầu." });
-        if (request.Post?.CreatorUserId != me)
-            return Forbid();
-        if (request.Status != "PENDING")
-            return BadRequest(new { message = "Yêu cầu này đã được xử lý." });
-
-        // Over-join protection
-        var currentMembers = request.Post.MatchingMembers.Count;
-        var maxMembers = (request.Post.RequiredPlayers ?? 0) + 1; // +1 host
-        if (currentMembers >= maxMembers)
-            return BadRequest(new { message = "Nhóm đã đủ người. Không thể chấp nhận thêm." });
+        Guid postId;
+        Guid acceptedUserId;
+        string postTitle;
 
         await using var tx = await _db.Database.BeginTransactionAsync();
         try
         {
+            var request = await _db.MatchingJoinRequests
+                .Include(r => r.Post)
+                .FirstOrDefaultAsync(r => r.Id == id);
+            if (request == null)
+            {
+                await tx.RollbackAsync();
+                return NotFound(new { message = "Không tìm thấy yêu cầu." });
+            }
+
+            if (request.Post?.CreatorUserId != me)
+            {
+                await tx.RollbackAsync();
+                return Forbid();
+            }
+
+            if (request.Status != "PENDING")
+            {
+                await tx.RollbackAsync();
+                return BadRequest(new { message = "Yêu cầu này đã được xử lý." });
+            }
+
+            if (!request.PostId.HasValue)
+            {
+                await tx.RollbackAsync();
+                return BadRequest(new { message = "Yêu cầu tham gia không hợp lệ." });
+            }
+
+            postId = request.PostId.Value;
+            acceptedUserId = request.UserId ?? Guid.Empty;
+            postTitle = request.Post?.Title ?? string.Empty;
+
+            // Serialize concurrent accepts on the same post
+            await _db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT id FROM matching_posts WHERE id = {postId} FOR UPDATE");
+
+            var maxMembers = (request.Post?.RequiredPlayers ?? 0) + 1; // +1 host
+            var currentMembers = await _db.MatchingMembers.CountAsync(m => m.PostId == postId);
+            if (currentMembers >= maxMembers)
+            {
+                await tx.RollbackAsync();
+                return BadRequest(new { message = "Nhóm đã đủ người. Không thể chấp nhận thêm." });
+            }
+
+            if (request.UserId == null)
+            {
+                await tx.RollbackAsync();
+                return BadRequest(new { message = "Yêu cầu tham gia không hợp lệ." });
+            }
+
+            // Already a member? (also avoids unique constraint exceptions)
+            var alreadyMember = await _db.MatchingMembers
+                .AnyAsync(m => m.PostId == postId && m.UserId == request.UserId);
+            if (alreadyMember)
+            {
+                await tx.RollbackAsync();
+                return BadRequest(new { message = "Người chơi này đã là thành viên của nhóm." });
+            }
+
             request.Status = "ACCEPTED";
             request.UpdatedAt = DateTime.UtcNow;
 
             _db.MatchingMembers.Add(new MatchingMember
             {
                 Id = Guid.NewGuid(),
-                PostId = request.PostId,
+                PostId = postId,
                 UserId = request.UserId,
                 JoinedAt = DateTime.UtcNow
             });
@@ -589,15 +635,18 @@ public class MatchingController : ControllerBase
             await _db.SaveChangesAsync();
 
             // Auto-close if full
-            var newCount = currentMembers + 1;
+            var newCount = await _db.MatchingMembers.CountAsync(m => m.PostId == postId);
             if (newCount >= maxMembers)
             {
-                request.Post.Status = "FULL";
-                request.Post.UpdatedAt = DateTime.UtcNow;
+                if (request.Post != null)
+                {
+                    request.Post.Status = "FULL";
+                    request.Post.UpdatedAt = DateTime.UtcNow;
+                }
 
                 // Cancel remaining pending requests
                 var remaining = await _db.MatchingJoinRequests
-                    .Where(r => r.PostId == request.PostId && r.Status == "PENDING")
+                    .Where(r => r.PostId == postId && r.Status == "PENDING")
                     .ToListAsync();
                 foreach (var r in remaining)
                 {
@@ -620,11 +669,11 @@ public class MatchingController : ControllerBase
         var hostName = await _db.Users.AsNoTracking()
             .Where(u => u.Id == me).Select(u => u.FullName).FirstAsync();
         await _notify.NotifyUserAsync(
-            request.UserId!.Value,
+            acceptedUserId,
             NotificationTypes.MatchingJoinAccepted,
             "Đã được chấp nhận! 🎉",
-            $"{hostName} đã chấp nhận bạn vào nhóm \"{request.Post.Title}\".",
-            new { postId = request.PostId, deepLink = $"/matching/{request.PostId}" });
+            $"{hostName} đã chấp nhận bạn vào nhóm \"{postTitle}\".",
+            new { postId, deepLink = $"/matching/{postId}" });
 
         return Ok(new { message = "Đã chấp nhận thành viên mới vào nhóm." });
     }
