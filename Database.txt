@@ -1195,6 +1195,39 @@ UPDATE payments SET id = 'ba000006-0000-0000-0000-000000000006' WHERE id = 'g000
 UPDATE payments SET id = 'ba000007-0000-0000-0000-000000000007' WHERE id = 'g0000007-0000-0000-0000-000000000007';
 
 -- ======================================================================
+-- SAMPLE MATCHING DATA
+-- ======================================================================
+
+-- creator_user_id a0000001 (Player 1), b0000001 (Player 2)
+-- booking_id e0000001, e0000003
+-- venue_id c0000001, c0000002
+
+INSERT IGNORE INTO matching_posts (id, creator_user_id, booking_id, title, play_date, play_start_time, play_end_time, venue_id, court_name, price_per_slot, required_players, skill_level, gender_pref, expense_sharing, play_purpose, status, created_at) VALUES
+('d1000001-0000-0000-0000-000000000001', 'a0000001-0000-0000-0000-000000000001', 'e0000001-0000-0000-0000-000000000001', 'Tìm 3 đồng đội giao lưu trình độ Trung bình', CURDATE() + INTERVAL 2 DAY, '18:00:00', '20:00:00', 'c0000001-0000-0000-0000-000000000001', 'Sân 1', 50000.00, 3, 'intermediate', 'Không yêu cầu', 'split_equal', 'Giao lưu vui vẻ', 'OPEN', NOW()),
+('d1000002-0000-0000-0000-000000000002', 'b0000001-0000-0000-0000-000000000001', 'e0000003-0000-0000-0000-000000000003', 'Kèo nữ đánh sáng sớm, bao sân', CURDATE() + INTERVAL 3 DAY, '06:00:00', '08:00:00', 'c0000002-0000-0000-0000-000000000002', 'Sân 1', 0.00, 1, 'beginner', 'Nữ', 'host_pays', 'Rèn luyện sức khỏe', 'FULL', NOW());
+
+INSERT IGNORE INTO matching_post_items (id, post_id, booking_item_id) VALUES
+(UUID(), 'd1000001-0000-0000-0000-000000000001', 'f0000001-0000-0000-0000-000000000001'),
+(UUID(), 'd1000002-0000-0000-0000-000000000002', 'f0000003-0000-0000-0000-000000000003');
+
+INSERT IGNORE INTO matching_members (id, post_id, user_id, joined_at) VALUES
+(UUID(), 'd1000001-0000-0000-0000-000000000001', 'a0000001-0000-0000-0000-000000000001', NOW()), -- Host
+(UUID(), 'd1000001-0000-0000-0000-000000000001', 'b0000002-0000-0000-0000-000000000002', NOW()), -- Accepted member
+(UUID(), 'd1000002-0000-0000-0000-000000000002', 'b0000001-0000-0000-0000-000000000001', NOW()), -- Host
+(UUID(), 'd1000002-0000-0000-0000-000000000002', 'b0000002-0000-0000-0000-000000000002', NOW()); -- Full member
+
+INSERT IGNORE INTO matching_join_requests (id, post_id, user_id, message, status, reject_reason, created_at) VALUES
+(UUID(), 'd1000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'Cho mình tham gia với nhé, mình cũng cỡ trung bình.', 'PENDING', NULL, NOW()),
+(UUID(), 'd1000001-0000-0000-0000-000000000001', 'b0000003-0000-0000-0000-000000000003', 'Trình mình hơi yếu, mong được giao lưu.', 'REJECTED', 'Ưu tiên trình độ trung bình bạn nhé.', NOW() - INTERVAL 1 HOUR);
+
+INSERT IGNORE INTO matching_post_comments (id, post_id, user_id, content, created_at) VALUES
+('df000001-0000-0000-0000-000000000001', 'd1000001-0000-0000-0000-000000000001', 'b0000002-0000-0000-0000-000000000002', 'Chào chủ bài, mình đã join nhóm. Hẹn gặp bạn!', NOW() - INTERVAL 30 MINUTE),
+('df000002-0000-0000-0000-000000000001', 'd1000001-0000-0000-0000-000000000001', 'a0000001-0000-0000-0000-000000000001', 'Chào Cường, cứ mang nước thoải mái nhé, sân có chỗ để vợt.', NOW() - INTERVAL 20 MINUTE),
+('df000003-0000-0000-0000-000000000001', 'd1000001-0000-0000-0000-000000000001', 'b0000002-0000-0000-0000-000000000002', 'Ok bạn!', NOW() - INTERVAL 10 MINUTE);
+
+UPDATE matching_post_comments SET parent_comment_id = 'df000002-0000-0000-0000-000000000001' WHERE id = 'df000003-0000-0000-0000-000000000001';
+
+-- ======================================================================
 -- Kiểm tra kết quả
 -- ======================================================================
 

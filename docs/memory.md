@@ -76,4 +76,26 @@ Kết bạn & quan hệ xã hội (Player):
 
 ---
 
+## 29 tháng 3 – 1 tháng 4, 2026 (Matching Core — Phase 1)
+
+1. **Database Schema (`Database.txt`)**:
+   - Nâng cấp `matching_posts`: thêm `title`, `play_date`, `play_start/end_time`, `venue_id`, `court_name`, `price_per_slot`.
+   - Bảng trung gian `matching_post_items`: liên kết bài đăng với các `booking_items` cụ thể.
+   - Mở rộng `matching_join_requests` (`message`, `reject_reason`) và `matching_members` (`joined_at`).
+2. **Backend Architecture**:
+   - `MatchingController.cs`: triển khai 15 API endpoints quản lý toàn bộ vòng đời bài đăng.
+   - Logic nghiệp vụ:
+     - **Over-join protection**: Chặn duyệt khi đã đủ người.
+     - **Auto-close**: Tự động chuyển status `FULL` và hủy yêu cầu pending khi slot cuối được accept.
+     - **Re-open**: Tự động mở lại bài đăng khi có người bị kick/rời nhóm khiến slot trống.
+     - **Auth-gated Social**: Chỉ host và thành viên được duyệt mới thấy/gửi bình luận nhóm (FB-style).
+3. **Frontend UI/UX**:
+   - `MatchingHub.jsx`: Grid bài đăng kèm filter chuyên sâu (trình độ, ngày, khu vực) và pagination.
+   - `MatchingCreate.jsx`: Stepper 4 bước (Chọn đơn sân → Chọn ca chơi → Thông tin bài → Xác nhận) kèm Preview Card trực quan. Áp dụng Rule 2 (inline validation, copywriting thân thiện).
+   - `MatchingPostDetail.jsx`: Dashboard quản lý cho host (duyệt/từ chối/kick) và seeker (form xin tham gia, countdown slots).
+   - Tích hợp `index.css`: ~370 dòng CSS tùy chỉnh cho matching (nền gradient, progress bar, circular SVG chart cho slots).
+4. **Hệ thống Thông báo**: Tích hợp notifications SignalR cho mọi hành động (xin gia nhập, duyệt, từ chối, đóng bài, bình luận mới).
+
+---
+
 *Cập nhật: gom theo ngày, bỏ trùng lặp và định dạng lại cho dễ đọc.*

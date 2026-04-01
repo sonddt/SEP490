@@ -118,11 +118,15 @@ export default function MatchingCreate() {
     }
   };
 
-  const formatDateTime = (d) => {
+  const formatDate = (d) => {
     if (!d) return '';
-    return new Date(d).toLocaleDateString('vi-VN', {
-      weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
-    });
+    const date = new Date(d);
+    return date.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+
+  const formatTime = (d) => {
+    if (!d) return '';
+    return new Date(d).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
   };
 
   const formatPrice = (v) => {
@@ -187,28 +191,52 @@ export default function MatchingCreate() {
                     </div>
                   ) : (
                     <div className="row">
-                      {bookings.map((b) => (
-                        <div key={b.id} className="col-lg-6 col-md-12 mb-3">
-                          <div
-                            className={`matching-booking-card ${selectedBooking?.id === b.id ? 'selected' : ''}`}
-                            onClick={() => handleSelectBooking(b)}
-                          >
-                            <div className="matching-booking-card-header">
-                              <h5>{b.venueName}</h5>
-                              <span className="badge bg-primary">{b.items?.length || 0} ca</span>
-                            </div>
-                            <p className="text-muted mb-1"><i className="feather-map-pin"></i> {b.venueAddress}</p>
-                            <p className="mb-0"><strong>Tổng:</strong> {formatPrice(b.finalAmount)}</p>
-                            {b.items?.slice(0, 3).map((item) => (
-                              <div key={item.id} className="matching-booking-item-preview">
-                                <span>{item.courtName}</span>
-                                <span>{formatDateTime(item.startTime)} — {formatDateTime(item.endTime)}</span>
+                      {bookings.map((b) => {
+                        const firstItem = b.items?.[0];
+                        const dateStr = firstItem ? formatDate(firstItem.startTime) : '';
+                        return (
+                          <div key={b.id} className="col-lg-6 col-md-12 mb-3">
+                            <div
+                              className={`matching-booking-card ${selectedBooking?.id === b.id ? 'selected' : ''}`}
+                              onClick={() => handleSelectBooking(b)}
+                            >
+                              <div className="matching-booking-card-header mb-2">
+                                <h5><i className="feather-home me-2 text-primary"></i>{b.venueName}</h5>
+                                <span className="badge bg-primary rounded-pill px-3 py-2">
+                                    <i className="feather-layers me-1"></i> {b.items?.length || 0} ca
+                                </span>
                               </div>
-                            ))}
-                            {(b.items?.length || 0) > 3 && <p className="text-muted small">...và {b.items.length - 3} ca khác</p>}
+                              
+                              <div className="d-flex align-items-start mb-2 text-muted">
+                                <i className="feather-map-pin me-2 mt-1"></i>
+                                <span>{b.venueAddress}</span>
+                              </div>
+                              
+                              <div className="d-flex align-items-center mb-3 pb-2 border-bottom">
+                                <i className="feather-calendar me-2 text-secondary"></i>
+                                <span className="fw-medium text-dark">{dateStr}</span>
+                                <span className="mx-2 text-muted">|</span>
+                                <i className="feather-credit-card me-2 text-success"></i>
+                                <span className="fw-bold text-success">{formatPrice(b.finalAmount)}</span>
+                              </div>
+
+                              <div className="matching-booking-items-wrapper">
+                                {b.items?.slice(0, 3).map((item) => (
+                                  <div key={item.id} className="matching-booking-item-preview d-flex justify-content-between align-items-center py-1">
+                                    <span className="fw-medium text-dark"><i className="feather-check-circle text-primary me-2" style={{ fontSize: '14px' }}></i>{item.courtName}</span>
+                                    <span className="text-muted small"><i className="feather-clock me-1"></i> {formatTime(item.startTime)} - {formatTime(item.endTime)}</span>
+                                  </div>
+                                ))}
+                                {(b.items?.length || 0) > 3 && (
+                                    <div className="text-center mt-2 p-1 bg-light rounded text-muted small">
+                                        <i className="feather-more-horizontal"></i> ...và {b.items.length - 3} ca khác
+                                    </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -226,27 +254,59 @@ export default function MatchingCreate() {
                     </button>
                   </div>
 
-                  <div className="matching-items-list">
-                    {selectedBooking.items?.map((item) => (
-                      <label key={item.id} className={`matching-item-card ${selectedItemIds.includes(item.id) ? 'selected' : ''}`}>
-                        <input
-                          type="checkbox"
-                          checked={selectedItemIds.includes(item.id)}
-                          onChange={() => toggleItem(item.id)}
-                        />
-                        <div className="matching-item-info">
-                          <strong>{item.courtName}</strong>
-                          <span>{formatDateTime(item.startTime)} — {formatDateTime(item.endTime)}</span>
-                          <span className="matching-item-price">{formatPrice(item.price)}</span>
-                        </div>
-                      </label>
-                    ))}
+                  <div className="matching-items-list mt-3">
+                    {selectedBooking.items?.map((item) => {
+                      const isSelected = selectedItemIds.includes(item.id);
+                      return (
+                        <label key={item.id} className={`matching-item-card d-flex align-items-center p-3 mb-2 border rounded ${isSelected ? 'selected border-primary' : ''}`} style={{ cursor: 'pointer', transition: 'all 0.2s', position: 'relative', overflow: 'hidden' }}>
+                          {isSelected && <div className="position-absolute top-0 start-0 h-100 bg-primary" style={{ width: '4px' }}></div>}
+                          
+                          <div className="me-3">
+                            <input
+                              type="checkbox"
+                              className="form-check-input"
+                              style={{ width: '1.2em', height: '1.2em', cursor: 'pointer' }}
+                              checked={isSelected}
+                              onChange={() => toggleItem(item.id)}
+                            />
+                          </div>
+
+                          <div className="matching-item-info flex-grow-1" style={{ paddingTop: '5px' }}>
+                            <div className="d-flex justify-content-between align-items-center mb-1">
+                              <strong className="d-flex align-items-center fs-6 text-dark">
+                                <i className="feather-layers text-primary me-2"></i> 
+                                {item.courtName}
+                              </strong>
+                              <span className="badge bg-success bg-opacity-10 text-success border border-success px-2 py-1">
+                                <i className="feather-tag me-1"></i> {formatPrice(item.price)}
+                              </span>
+                            </div>
+                            
+                            <div className="d-flex align-items-center text-muted small mt-2 pb-1">
+                              <span className="me-4 d-flex align-items-center"><i className="feather-calendar me-1"></i> {formatDate(item.startTime)}</span>
+                              <span className="d-flex align-items-center"><i className="feather-clock me-1 text-secondary"></i> <span className="fw-medium text-dark">{formatTime(item.startTime)} - {formatTime(item.endTime)}</span></span>
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })}
                   </div>
 
                   {selectedItemIds.length > 0 && (
-                    <div className="matching-items-summary">
-                      <span>Đã chọn: <strong>{selectedItemIds.length} ca</strong></span>
-                      <span>Tổng giá: <strong>{formatPrice(totalPrice)}</strong></span>
+                    <div className="matching-items-summary d-flex justify-content-between align-items-center p-3 bg-white border border-primary rounded mt-3 shadow-sm">
+                      <div className="d-flex align-items-center">
+                        <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-flex align-items-center justify-content-center">
+                          <i className="feather-check-square fs-5"></i>
+                        </div>
+                        <div>
+                          <span className="text-muted d-block small">Đã chọn</span>
+                          <strong className="fs-5">{selectedItemIds.length} ca chơi</strong>
+                        </div>
+                      </div>
+                      <div className="text-end">
+                        <span className="text-muted d-block small">Tổng giá trị</span>
+                        <strong className="fs-5 text-success">{formatPrice(totalPrice)}</strong>
+                      </div>
                     </div>
                   )}
 
@@ -387,7 +447,7 @@ export default function MatchingCreate() {
                         <h6>📅 Ca chơi ({selectedItems.length})</h6>
                         {selectedItems.map((item) => (
                           <p key={item.id} className="mb-1">
-                            <strong>{item.courtName}</strong> — {formatDateTime(item.startTime)} → {formatDateTime(item.endTime)} ({formatPrice(item.price)})
+                            <strong>{item.courtName}</strong> — {formatDate(item.startTime)} {formatTime(item.startTime)} → {formatTime(item.endTime)} ({formatPrice(item.price)})
                           </p>
                         ))}
                       </div>
