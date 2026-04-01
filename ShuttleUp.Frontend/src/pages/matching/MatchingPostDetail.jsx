@@ -191,261 +191,270 @@ export default function MatchingPostDetail() {
 
   return (
     <>
-      {/* ── Breadcrumb ── */}
-      <div className="breadcrumb-bar">
+      <div className="content py-5" style={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
         <div className="container">
-          <div className="row">
-            <div className="col-md-12">
-              <nav aria-label="breadcrumb">
-                <ol className="breadcrumb">
-                  <li className="breadcrumb-item"><Link to="/">Trang chủ</Link></li>
-                  <li className="breadcrumb-item"><Link to="/matching">Tìm đồng đội</Link></li>
-                  <li className="breadcrumb-item active">{post.title}</li>
-                </ol>
-              </nav>
-              <h2 className="breadcrumb-title">{post.title}</h2>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="content matching-detail-content">
-        <div className="container">
+          {/* Minimal Breadcrumb */}
+          <nav aria-label="breadcrumb" style={{ marginBottom: '24px' }}>
+            <ol className="breadcrumb mb-0" style={{ backgroundColor: 'transparent', padding: 0 }}>
+              <li className="breadcrumb-item"><Link to="/" style={{ color: '#64748b', textDecoration: 'none', fontWeight: '600' }}>Trang chủ</Link></li>
+              <li className="breadcrumb-item"><Link to="/matching" style={{ color: '#64748b', textDecoration: 'none', fontWeight: '600' }}>Tìm kèo 🏸</Link></li>
+              <li className="breadcrumb-item active" style={{ color: '#097E52', fontWeight: '800' }}>{post.title}</li>
+            </ol>
+          </nav>
+          
+          {/* Header Action Section - Minimal Hero */}
+          <div style={{ backgroundColor: '#fff', borderRadius: '24px', padding: '32px 40px', marginBottom: '32px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
+             <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+                <img src={post.host?.avatarUrl || defaultAvatar} alt={post.host?.fullName} style={{ width: '80px', height: '80px', borderRadius: '16px', objectFit: 'cover', border: '3px solid #e8f5ee', boxShadow: '0 2px 10px rgba(9,126,82,0.1)' }} />
+                <div>
+                  <h3 style={{ fontSize: '26px', fontWeight: '800', color: '#1e293b', marginBottom: '8px', letterSpacing: '-0.5px' }}>{post.title}</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '15px', fontWeight: '700', color: '#097E52' }}><i className="feather-user me-1"></i> {post.host?.fullName}</span>
+                    <span style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: '#cbd5e1' }}></span>
+                    <span style={{ fontSize: '13px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Chủ bài đăng</span>
+                    {post.host?.skillLevel && (
+                      <span style={{ fontSize: '12px', fontWeight: '700', color: '#475569', backgroundColor: '#f1f5f9', padding: '6px 12px', borderRadius: '8px' }}>{skillLabels[post.host.skillLevel] || post.host.skillLevel}</span>
+                    )}
+                  </div>
+                </div>
+             </div>
+             
+             <div style={{ textAlign: 'right' }}>
+                {isFull && <span style={{ display: 'inline-block', backgroundColor: '#fef2f2', color: '#ef4444', padding: '10px 20px', borderRadius: '12px', fontWeight: '800', fontSize: '15px' }}><i className="feather-check-circle me-2"></i>Đã đủ người</span>}
+                {isClosed && <span style={{ display: 'inline-block', backgroundColor: '#f1f5f9', color: '#64748b', padding: '10px 20px', borderRadius: '12px', fontWeight: '800', fontSize: '15px' }}><i className="feather-x-circle me-2"></i>Đã đóng</span>}
+                {isOpen && !isFull && !isClosed && <span style={{ display: 'inline-flex', alignItems: 'center', backgroundColor: '#e8f5ee', color: '#097E52', padding: '10px 20px', borderRadius: '12px', fontWeight: '800', fontSize: '15px', border: '1px solid #bbf7d0' }}><i className="feather-radio me-2" style={{ animation: 'blink 2s infinite' }}></i> Đang tuyển người</span>}
+             </div>
+          </div>
+
           <div className="row">
             {/* ═══ Left Column ═══ */}
             <div className="col-lg-8">
-              {/* ── Hero Image ── */}
-              <div className="matching-detail-hero">
-                <img src={defaultImg} className="img-fluid rounded" alt={post.title} />
-                {isFull && <div className="matching-status-badge badge-full">Đã đủ người</div>}
-                {isClosed && <div className="matching-status-badge badge-closed">Đã đóng</div>}
-              </div>
-
-              {/* ── Host Info ── */}
-              <div className="matching-detail-host">
-                <img src={post.host?.avatarUrl || defaultAvatar} alt={post.host?.fullName} className="host-avatar-lg" />
-                <div>
-                  <h5>{post.host?.fullName}</h5>
-                  <div className="host-badges">
-                    {post.host?.skillLevel && <span className="badge-sm">{skillLabels[post.host.skillLevel] || post.host.skillLevel}</span>}
-                    {post.host?.gender && <span className="badge-sm">{post.host.gender}</span>}
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Detail Info ── */}
-              <div className="matching-detail-info">
-                <div className="matching-detail-row">
-                  <span className="matching-detail-label"><i className="feather-map-pin"></i> Sân</span>
-                  <span>{post.venueName}{post.courtName ? ` — ${post.courtName}` : ''}</span>
-                </div>
-                {post.venueAddress && (
-                  <div className="matching-detail-row">
-                    <span className="matching-detail-label"><i className="feather-navigation"></i> Địa chỉ</span>
-                    <span>{post.venueAddress}</span>
-                  </div>
-                )}
-                <div className="matching-detail-row">
-                  <span className="matching-detail-label"><i className="feather-calendar"></i> Ngày chơi</span>
-                  <span>{formatDate(post.playDate)}</span>
-                </div>
-                <div className="matching-detail-row">
-                  <span className="matching-detail-label"><i className="feather-clock"></i> Giờ</span>
-                  <span>{post.playStartTime} – {post.playEndTime}</span>
-                </div>
-                <div className="matching-detail-row">
-                  <span className="matching-detail-label"><i className="feather-dollar-sign"></i> Giá/slot</span>
-                  <span className="fw-bold text-primary">{formatPrice(post.pricePerSlot)}</span>
-                </div>
-                <div className="matching-detail-row">
-                  <span className="matching-detail-label"><i className="feather-users"></i> Số người cần</span>
-                  <span>{post.requiredPlayers} người</span>
-                </div>
-                {post.skillLevel && (
-                  <div className="matching-detail-row">
-                    <span className="matching-detail-label"><i className="feather-award"></i> Trình độ</span>
-                    <span className="badge bg-info">{skillLabels[post.skillLevel] || post.skillLevel}</span>
-                  </div>
-                )}
-                {post.genderPref && (
-                  <div className="matching-detail-row">
-                    <span className="matching-detail-label"><i className="feather-user"></i> Giới tính</span>
-                    <span>{post.genderPref}</span>
-                  </div>
-                )}
-                {post.expenseSharing && (
-                  <div className="matching-detail-row">
-                    <span className="matching-detail-label"><i className="feather-credit-card"></i> Chia tiền</span>
-                    <span className="badge bg-success">{expenseLabels[post.expenseSharing] || post.expenseSharing}</span>
-                  </div>
-                )}
-                {post.notes && (
-                  <div className="matching-detail-notes">
-                    <h6><i className="feather-file-text"></i> Ghi chú</h6>
-                    <p>{post.notes}</p>
-                  </div>
-                )}
-              </div>
-
-              {/* ── Booking Items (ca chơi) ── */}
-              {post.bookingItems && post.bookingItems.length > 0 && (
-                <div className="matching-detail-items">
-                  <h5>📅 Ca chơi chi tiết</h5>
-                  {post.bookingItems.map((item, i) => (
-                    <div key={i} className="matching-booking-item-preview">
-                      <span className="fw-bold">{item.courtName}</span>
-                      <span>
-                        {item.startTime && new Date(item.startTime).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                        {' — '}
-                        {item.endTime && new Date(item.endTime).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      <span>{formatPrice(item.price)}</span>
+              
+              <div style={{ backgroundColor: '#fff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', overflow: 'hidden', marginBottom: '32px' }}>
+                <div style={{ padding: '24px 32px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#e8f5ee', color: '#097E52', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className="feather-info" style={{ fontSize: '18px' }}></i>
                     </div>
-                  ))}
+                    <h5 style={{ margin: 0, fontWeight: '800', color: '#1e293b' }}>Thông tin chi tiết</h5>
+                </div>
+                {/* Information matrix */}
+                <div style={{ padding: '32px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
+                    <div style={{ display: 'flex', gap: '16px' }}>
+                        <div style={{ width: '48px', height: '48px', borderRadius: '14px', backgroundColor: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <i className="feather-map-pin" style={{ fontSize: '20px' }}></i>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Địa điểm</div>
+                            <div style={{ fontSize: '16px', color: '#1e293b', fontWeight: '800', marginBottom: '2px' }}>{post.venueName}</div>
+                            {post.venueAddress && <div style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.4', fontWeight: '500' }}>{post.venueAddress}</div>}
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '16px' }}>
+                        <div style={{ width: '48px', height: '48px', borderRadius: '14px', backgroundColor: '#ffedd5', color: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <i className="feather-calendar" style={{ fontSize: '20px' }}></i>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Lịch chơi</div>
+                            <div style={{ fontSize: '16px', color: '#1e293b', fontWeight: '800', marginBottom: '2px' }}>{formatDate(post.playDate)}</div>
+                            <div style={{ fontSize: '14px', color: '#1e293b', fontWeight: '700' }}>{post.playStartTime} – {post.playEndTime}</div>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '16px' }}>
+                        <div style={{ width: '48px', height: '48px', borderRadius: '14px', backgroundColor: '#f3e8ff', color: '#9333ea', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <i className="feather-award" style={{ fontSize: '20px' }}></i>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Yêu cầu trình độ</div>
+                            <div style={{ fontSize: '16px', color: '#1e293b', fontWeight: '800', marginBottom: '2px' }}>{post.skillLevel ? (skillLabels[post.skillLevel] || post.skillLevel) : 'Mọi trình độ'}</div>
+                            <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}><i className="feather-users me-1"></i> {post.genderPref || 'Nam & Nữ đều được'}</div>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '16px' }}>
+                        <div style={{ width: '48px', height: '48px', borderRadius: '14px', backgroundColor: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <i className="feather-credit-card" style={{ fontSize: '20px' }}></i>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Chi phí dự kiến</div>
+                            <div style={{ fontSize: '18px', color: '#097E52', fontWeight: '800', marginBottom: '2px', letterSpacing: '-0.5px' }}>{formatPrice(post.pricePerSlot)} <span style={{ fontSize: '14px', color: '#64748b', fontWeight: '600' }}>/ ng</span></div>
+                            <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}><i className="feather-pie-chart me-1"></i> {expenseLabels[post.expenseSharing] || post.expenseSharing}</div>
+                        </div>
+                    </div>
+                </div>
+
+                {post.notes && (
+                  <div style={{ borderTop: '1px dashed #e2e8f0', padding: '24px 32px' }}>
+                     <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}><i className="feather-feather me-2"></i>Ghi chú từ chủ nhóm</div>
+                     <div style={{ backgroundColor: '#fffbeb', color: '#b45309', padding: '16px 20px', borderRadius: '12px', fontSize: '14.5px', fontWeight: '500', lineHeight: '1.6' }}>
+                        {post.notes}
+                     </div>
+                  </div>
+                )}
+                
+                {post.bookingItems && post.bookingItems.length > 0 && (
+                  <div style={{ borderTop: '1px dashed #e2e8f0', padding: '24px 32px' }}>
+                      <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}><i className="feather-layers me-2"></i>Danh sách ca chơi ghép</div>
+                      {post.bookingItems.map((item, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#f8fafc', borderRadius: '12px', marginBottom: '8px', border: '1px solid #f1f5f9' }}>
+                          <div>
+                            <span style={{ fontWeight: '700', color: '#1e293b', marginRight: '12px' }}>{item.courtName}</span>
+                            <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}>
+                              {item.startTime && new Date(item.startTime).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit' })} {' - '} 
+                              {item.endTime && new Date(item.endTime).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <span style={{ fontWeight: '800', color: '#097E52' }}>{formatPrice(item.price)}</span>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Comments moved up right below details */}
+              {(post.isHost || post.isMember) && (
+                <div style={{ paddingBottom: '32px' }}>
+                   <MatchingComments postId={postId} isHost={post.isHost} postMembers={commentMentionMembers} />
                 </div>
               )}
 
-              {/* ── HOST: Manage Requests/Members ── */}
+            </div>
+
+            {/* ═══ Right Column ═══ */}
+            <div className="col-lg-4">
+              
+              {/* Slots Action Card */}
+              <div style={{ backgroundColor: '#fff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', padding: '32px', marginBottom: '24px', textAlign: 'center' }}>
+                <div style={{ marginBottom: '24px', position: 'relative', width: '120px', height: '120px', margin: '0 auto 24px' }}>
+                   <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%' }}>
+                     <path style={{ stroke: '#f1f5f9', strokeWidth: '3', fill: 'none' }} d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" />
+                     <path style={{ stroke: '#097E52', strokeWidth: '3', strokeDasharray: `${progressPct}, 100`, fill: 'none', strokeLinecap: 'round' }} d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" />
+                     <text x="18" y="22" style={{ fill: '#1e293b', fontSize: '10px', fontWeight: '800', textAnchor: 'middle' }}>{filled}/{totalSlots}</text>
+                   </svg>
+                </div>
+                {slotsLeft > 0 ? (
+                  <h5 style={{ fontWeight: '800', color: '#097E52', marginBottom: '24px' }}>Còn {slotsLeft} chỗ trống</h5>
+                ) : (
+                  <h5 style={{ fontWeight: '800', color: '#ef4444', marginBottom: '24px' }}>Đã đủ đội hình</h5>
+                )}
+
+                {/* Finder Buttons */}
+                {!post.isHost && !post.isMember && !post.isPending && isOpen && (
+                    <>
+                      {showJoinForm ? (
+                        <div style={{ textAlign: 'left' }}>
+                          <label style={{ fontSize: '13px', fontWeight: '700', color: '#64748b', marginBottom: '8px', display: 'block' }}>Lời nhắn (tuỳ chọn)</label>
+                          <textarea
+                            className="form-control mb-3"
+                            rows={3}
+                            placeholder="Xin chào, mình đánh loại khá, có thể join nhóm hôm nay không?"
+                            value={joinMessage}
+                            onChange={(e) => setJoinMessage(e.target.value)}
+                            style={{ borderRadius: '12px', fontSize: '14px', padding: '12px' }}
+                          />
+                          <button className="btn btn-primary w-100 mb-2" onClick={handleJoin} disabled={actionLoading} style={{ padding: '12px', borderRadius: '12px', fontWeight: '700' }}>
+                            {actionLoading ? 'Đang gửi...' : 'Gửi yêu cầu xin tham gia'}
+                          </button>
+                          <button className="btn w-100" onClick={() => setShowJoinForm(false)} style={{ backgroundColor: '#f1f5f9', color: '#64748b', padding: '12px', borderRadius: '12px', fontWeight: '600' }}>Hủy bỏ</button>
+                        </div>
+                      ) : (
+                        <button className="btn btn-primary w-100" onClick={() => setShowJoinForm(true)} style={{ padding: '14px', borderRadius: '14px', fontSize: '16px', fontWeight: '700', boxShadow: '0 4px 12px rgba(9,126,82,0.2)' }}>
+                          <i className="feather-user-plus me-2"></i> Xin tham gia nhóm
+                        </button>
+                      )}
+                    </>
+                  )}
+
+                  {post.isPending && (
+                    <>
+                      <div style={{ backgroundColor: '#fffbeb', color: '#b45309', padding: '16px', borderRadius: '12px', fontWeight: '700', marginBottom: '12px' }}>
+                        <i className="feather-clock me-2"></i> Yêu cầu đang được chờ Host duyệt...
+                      </div>
+                      <button className="btn w-100" onClick={handleCancelJoin} disabled={actionLoading} style={{ border: '1px solid #e2e8f0', color: '#ef4444', padding: '12px', borderRadius: '12px', fontWeight: '600' }}>
+                        Hủy yêu cầu tham gia
+                      </button>
+                    </>
+                  )}
+
+                  {post.isMember && !post.isHost && (
+                    <button className="btn w-100" onClick={handleLeave} disabled={actionLoading} style={{ backgroundColor: '#fef2f2', color: '#ef4444', padding: '14px', borderRadius: '14px', fontWeight: '700' }}>
+                      <i className="feather-log-out me-2"></i> Rời khỏi nhóm chơi
+                    </button>
+                  )}
+
+                  {post.isHost && (
+                    <>
+                      {isOpen && (
+                        <Link to={`/matching/edit/${postId}`} className="btn w-100 mb-3" style={{ border: '2px solid #e8f5ee', color: '#097E52', padding: '12px', borderRadius: '12px', fontWeight: '700' }}>
+                          <i className="feather-edit me-2"></i> Chỉnh sửa bài đăng
+                        </Link>
+                      )}
+                      {isOpen && (
+                        <button type="button" className="btn w-100" onClick={handleClose} disabled={actionLoading} style={{ backgroundColor: '#fef2f2', color: '#ef4444', padding: '12px', borderRadius: '12px', fontWeight: '700' }}>
+                          <i className="feather-x-circle me-2"></i> Đóng tuyển người chơi
+                        </button>
+                      )}
+                      {isClosed && (
+                        <button type="button" className="btn btn-primary w-100" onClick={handleReopen} disabled={actionLoading} style={{ padding: '12px', borderRadius: '12px', fontWeight: '700' }}>
+                          <i className="feather-refresh-cw me-2"></i> Mở lại bài để tuyển thêm
+                        </button>
+                      )}
+                    </>
+                  )}
+
+                  {(isClosed || isFull) && !post.isHost && !post.isMember && (
+                    <button className="btn w-100" disabled style={{ backgroundColor: '#f1f5f9', color: '#94a3b8', padding: '14px', borderRadius: '14px', fontWeight: '700' }}>
+                      {isClosed ? 'Bài đăng đã đóng' : 'Đã đủ đội hình'}
+                    </button>
+                  )}
+              </div>
+
+              {/* Host management card */}
               {post.isHost && (
-                <div className="matching-host-manage">
-                  <div className="matching-host-tabs">
+                <div style={{ backgroundColor: '#fff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', padding: '24px 0', marginBottom: '24px' }}>
+                  <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', padding: '0 24px 16px', gap: '8px' }}>
                     <button
-                      className={`matching-tab ${hostTab === 'requests' ? 'active' : ''}`}
                       onClick={() => setHostTab('requests')}
+                      style={{ flex: 1, padding: '10px', borderRadius: '10px', fontWeight: '700', fontSize: '14px', border: 'none', transition: 'all 0.2s', backgroundColor: hostTab === 'requests' ? '#f1f5f9' : 'transparent', color: hostTab === 'requests' ? '#097E52' : '#64748b' }}
                     >
-                      Yêu cầu ({post.pendingRequests?.length || 0})
+                      Duyệt tham gia {post.pendingRequests?.length > 0 && <span style={{ backgroundColor: '#ef4444', color: '#fff', padding: '2px 6px', borderRadius: '10px', fontSize: '10px', marginLeft: '4px' }}>{post.pendingRequests.length}</span>}
                     </button>
                     <button
-                      className={`matching-tab ${hostTab === 'members' ? 'active' : ''}`}
                       onClick={() => setHostTab('members')}
+                      style={{ flex: 1, padding: '10px', borderRadius: '10px', fontWeight: '700', fontSize: '14px', border: 'none', transition: 'all 0.2s', backgroundColor: hostTab === 'members' ? '#f1f5f9' : 'transparent', color: hostTab === 'members' ? '#097E52' : '#64748b' }}
                     >
                       Thành viên ({post.membersCount || 0})
                     </button>
                   </div>
 
-                  {hostTab === 'requests' ? (
-                    <MatchingJoinRequests
-                      requests={post.pendingRequests || []}
-                      onAccept={handleAcceptRequest}
-                      onReject={handleRejectRequest}
-                    />
-                  ) : (
-                    <MatchingMembers
-                      members={post.members || []}
-                      isHost={true}
-                      onKick={handleKick}
-                    />
-                  )}
-                </div>
-              )}
-
-              {/* ── FB-style Comments (only for host + accepted members) ── */}
-              {(post.isHost || post.isMember) && (
-                <MatchingComments postId={postId} isHost={post.isHost} postMembers={commentMentionMembers} />
-              )}
-            </div>
-
-            {/* ═══ Right Column ═══ */}
-            <div className="col-lg-4">
-              {/* ── Action Card ── */}
-              <div className="matching-action-card">
-                {/* Slots Progress */}
-                <div className="matching-slots-big">
-                  <div className="matching-slots-circle">
-                    <svg viewBox="0 0 36 36" className="matching-circular-chart">
-                      <path className="circle-bg" d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" />
-                      <path className="circle-fill" strokeDasharray={`${progressPct}, 100`} d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" />
-                      <text x="18" y="20.35" className="circle-text">{filled}/{totalSlots}</text>
-                    </svg>
+                  <div style={{ padding: '16px 24px 0' }}>
+                    {hostTab === 'requests' ? (
+                      <MatchingJoinRequests
+                        requests={post.pendingRequests || []}
+                        onAccept={handleAcceptRequest}
+                        onReject={handleRejectRequest}
+                      />
+                    ) : (
+                      <MatchingMembers
+                        members={post.members || []}
+                        isHost={true}
+                        onKick={handleKick}
+                      />
+                    )}
                   </div>
-                  <p className="matching-slots-label">
-                    {slotsLeft > 0 ? `Còn ${slotsLeft} chỗ trống` : 'Đã đủ người'}
-                  </p>
                 </div>
+              )}
 
-                {/* ── Action Buttons ── */}
-                <div className="matching-action-buttons">
-                  {/* Finder */}
-                  {!post.isHost && !post.isMember && !post.isPending && isOpen && (
-                    <>
-                      {showJoinForm ? (
-                        <div className="matching-join-form">
-                          <textarea
-                            className="form-control mb-2"
-                            rows={2}
-                            placeholder="Lời nhắn cho chủ bài (tùy chọn)"
-                            value={joinMessage}
-                            onChange={(e) => setJoinMessage(e.target.value)}
-                          />
-                          <button className="btn btn-primary w-100 mb-2" onClick={handleJoin} disabled={actionLoading}>
-                            {actionLoading ? '...' : '🏸 Gửi yêu cầu'}
-                          </button>
-                          <button className="btn btn-outline-secondary w-100" onClick={() => setShowJoinForm(false)}>Hủy</button>
-                        </div>
-                      ) : (
-                        <button className="btn btn-primary btn-lg w-100" onClick={() => setShowJoinForm(true)}>
-                          <i className="feather-user-plus"></i> Xin tham gia
-                        </button>
-                      )}
-                    </>
-                  )}
-
-                  {/* Pending */}
-                  {post.isPending && (
-                    <>
-                      <button className="btn btn-warning btn-lg w-100 mb-2" disabled>
-                        <i className="feather-clock"></i> Đang chờ duyệt...
-                      </button>
-                      <button className="btn btn-outline-danger w-100" onClick={handleCancelJoin} disabled={actionLoading}>
-                        Hủy yêu cầu
-                      </button>
-                    </>
-                  )}
-
-                  {/* Member (not host) */}
-                  {post.isMember && !post.isHost && (
-                    <button className="btn btn-outline-danger w-100" onClick={handleLeave} disabled={actionLoading}>
-                      <i className="feather-log-out"></i> Rời nhóm
-                    </button>
-                  )}
-
-                  {/* Host */}
-                  {post.isHost && (
-                    <>
-                      {isOpen && (
-                        <Link to={`/matching/edit/${postId}`} className="btn btn-outline-primary w-100 mb-2">
-                          <i className="feather-edit"></i> Chỉnh sửa
-                        </Link>
-                      )}
-                      {isOpen && (
-                        <button type="button" className="btn btn-outline-danger w-100" onClick={handleClose} disabled={actionLoading}>
-                          <i className="feather-x-circle"></i> Đóng bài đăng
-                        </button>
-                      )}
-                      {isClosed && (
-                        <button type="button" className="btn btn-success w-100" onClick={handleReopen} disabled={actionLoading}>
-                          <i className="feather-refresh-cw"></i> Mở lại bài đăng
-                        </button>
-                      )}
-                    </>
-                  )}
-
-                  {/* Closed/Full */}
-                  {(isClosed || isFull) && !post.isHost && !post.isMember && (
-                    <button className="btn btn-secondary btn-lg w-100" disabled>
-                      {isClosed ? 'Bài đăng đã đóng' : 'Đã đủ người'}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* ── Members Card (sidebar for non-host) ── */}
+              {/* Members List specifically for non-host */}
               {!post.isHost && (
-                <div className="matching-sidebar-card">
-                  <h5>👥 Thành viên ({post.membersCount}/{totalSlots})</h5>
+                <div style={{ backgroundColor: '#fff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', padding: '24px' }}>
+                  <h5 style={{ fontWeight: '800', color: '#1e293b', marginBottom: '20px' }}><i className="feather-users me-2"></i>Đội hình hiện tại ({post.membersCount}/{totalSlots})</h5>
                   <MatchingMembers members={post.members || []} isHost={false} />
                 </div>
               )}
+
             </div>
           </div>
         </div>
