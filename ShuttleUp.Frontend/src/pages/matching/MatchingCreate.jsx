@@ -4,10 +4,13 @@ import matchingApi from '../../api/matchingApi';
 import MatchingPeopleCountInput from '../../components/matching/MatchingPeopleCountInput';
 
 const skillOptions = [
-  { value: 'beginner', label: 'Mới chơi' },
-  { value: 'intermediate', label: 'Trung bình' },
-  { value: 'advanced', label: 'Khá giỏi' },
-  { value: 'expert', label: 'Chuyên nghiệp' },
+  { value: '', label: 'Không yêu cầu' },
+  { value: 'Yếu', label: 'Yếu / Mới chơi' },
+  { value: 'Trung Bình Yếu', label: 'Trung Bình Yếu' },
+  { value: 'Trung Bình', label: 'Trung Bình' },
+  { value: 'Khá', label: 'Khá' },
+  { value: 'Bán Chuyên', label: 'Bán Chuyên' },
+  { value: 'Chuyên Nghiệp', label: 'Chuyên nghiệp' }
 ];
 
 const genderOptions = [
@@ -245,77 +248,161 @@ export default function MatchingCreate() {
               {/* ═══ STEP 2 — Chọn Ca Chơi ═══ */}
               {step === 2 && selectedBooking && (
                 <div className="matching-create-step">
-                  <h4>Chọn ca chơi muốn tìm đồng đội</h4>
-                  <p className="text-muted">{selectedBooking.venueName} — {selectedBooking.venueAddress}</p>
+                  <h4 className="fw-bold" style={{ color: '#1e293b' }}>Chọn ca chơi muốn tìm đồng đội</h4>
+                  <p style={{ color: '#64748b', marginBottom: '32px' }}><i className="feather-map-pin me-2"></i>{selectedBooking.venueName} — {selectedBooking.venueAddress}</p>
 
-                  <div className="mb-3">
-                    <button className="btn btn-sm btn-outline-primary" onClick={toggleAllItems}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h5 style={{ margin: 0, fontWeight: '700', color: '#1e293b' }}>Danh sách ca chơi</h5>
+                    <button 
+                      onClick={toggleAllItems}
+                      style={{ 
+                        background: 'none', border: 'none', color: '#097E52', 
+                        fontWeight: '600', fontSize: '14px', cursor: 'pointer',
+                        padding: '6px 12px', borderRadius: '6px', transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(9, 126, 82, 0.08)'}
+                      onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                    >
                       {selectedItemIds.length === (selectedBooking.items?.length || 0) ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
                     </button>
                   </div>
 
-                  <div className="matching-items-list mt-3">
+                  <div className="matching-items-list">
                     {selectedBooking.items?.map((item) => {
                       const isSelected = selectedItemIds.includes(item.id);
                       return (
-                        <label key={item.id} className={`matching-item-card d-flex align-items-center p-3 mb-2 border rounded ${isSelected ? 'selected border-primary' : ''}`} style={{ cursor: 'pointer', transition: 'all 0.2s', position: 'relative', overflow: 'hidden' }}>
-                          {isSelected && <div className="position-absolute top-0 start-0 h-100 bg-primary" style={{ width: '4px' }}></div>}
+                        <div 
+                          key={item.id}
+                          onClick={() => toggleItem(item.id)}
+                          style={{
+                            border: isSelected ? '2px solid #097E52' : '1px solid #e9eef4',
+                            backgroundColor: isSelected ? 'rgba(9, 126, 82, 0.03)' : '#fff',
+                            borderRadius: '16px',
+                            padding: '16px 20px',
+                            marginBottom: '16px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            boxShadow: isSelected ? '0 8px 20px rgba(9, 126, 82, 0.08)' : '0 2px 8px rgba(0,0,0,0.03)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            position: 'relative',
+                            overflow: 'hidden'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isSelected) {
+                              e.currentTarget.style.borderColor = '#cbd5e1';
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                              e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.06)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isSelected) {
+                              e.currentTarget.style.borderColor = '#e9eef4';
+                              e.currentTarget.style.transform = 'translateY(0)';
+                              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.03)';
+                            }
+                          }}
+                        >
+                          {isSelected && (
+                            <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: '4px', backgroundColor: '#097E52' }} />
+                          )}
                           
-                          <div className="me-3">
-                            <input
-                              type="checkbox"
-                              className="form-check-input"
-                              style={{ width: '1.2em', height: '1.2em', cursor: 'pointer' }}
-                              checked={isSelected}
-                              onChange={() => toggleItem(item.id)}
-                            />
-                          </div>
-
-                          <div className="matching-item-info flex-grow-1" style={{ paddingTop: '5px' }}>
-                            <div className="d-flex justify-content-between align-items-center mb-1">
-                              <strong className="d-flex align-items-center fs-6 text-dark">
-                                <i className="feather-layers text-primary me-2"></i> 
-                                {item.courtName}
-                              </strong>
-                              <span className="badge bg-success bg-opacity-10 text-success border border-success px-2 py-1">
-                                <i className="feather-tag me-1"></i> {formatPrice(item.price)}
-                              </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                            <div style={{ 
+                              width: '54px', height: '54px', borderRadius: '14px', 
+                              backgroundColor: isSelected ? '#097E52' : '#f1f5f9',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              color: isSelected ? '#fff' : '#64748b',
+                              transition: 'all 0.2s ease',
+                              flexShrink: 0
+                            }}>
+                              <i className="feather-clock" style={{ fontSize: '22px' }}></i>
                             </div>
                             
-                            <div className="d-flex align-items-center text-muted small mt-2 pb-1">
-                              <span className="me-4 d-flex align-items-center"><i className="feather-calendar me-1"></i> {formatDate(item.startTime)}</span>
-                              <span className="d-flex align-items-center"><i className="feather-clock me-1 text-secondary"></i> <span className="fw-medium text-dark">{formatTime(item.startTime)} - {formatTime(item.endTime)}</span></span>
+                            <div>
+                              <div style={{ fontSize: '20px', fontWeight: '800', color: '#1e293b', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                                {formatTime(item.startTime)} - {formatTime(item.endTime)}
+                              </div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '16px', fontSize: '13.5px', color: '#64748b', fontWeight: '500' }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <i className="feather-layers opacity-75"></i> {item.courtName}
+                                </span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <i className="feather-calendar opacity-75"></i> {formatDate(item.startTime)}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        </label>
+                          
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '22px', fontWeight: '800', color: '#097E52', marginBottom: '4px', letterSpacing: '-0.5px' }}>
+                              {formatPrice(item.price)}
+                            </div>
+                            <div style={{ fontSize: '12px', fontWeight: '700', color: isSelected ? '#097E52' : '#94a3b8', letterSpacing: '0.5px' }}>
+                              {isSelected ? 'ĐÃ CHỌN LỊCH' : 'CHỌN CA NÀY'}
+                            </div>
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
 
                   {selectedItemIds.length > 0 && (
-                    <div className="matching-items-summary d-flex justify-content-between align-items-center p-3 bg-white border border-primary rounded mt-3 shadow-sm">
-                      <div className="d-flex align-items-center">
-                        <div className="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary d-flex align-items-center justify-content-center">
-                          <i className="feather-check-square fs-5"></i>
+                    <div style={{
+                      background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                      borderRadius: '20px',
+                      padding: '24px 32px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      border: '1px solid #e2e8f0',
+                      marginTop: '32px',
+                      marginBottom: '16px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                        <div style={{ 
+                          width: '64px', height: '64px', borderRadius: '18px', 
+                          backgroundColor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: '#097E52'
+                        }}>
+                          <i className="feather-check-circle" style={{ fontSize: '28px' }}></i>
                         </div>
                         <div>
-                          <span className="text-muted d-block small">Đã chọn</span>
-                          <strong className="fs-5">{selectedItemIds.length} ca chơi</strong>
+                          <div style={{ fontSize: '13px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                            TỔNG SỐ CA
+                          </div>
+                          <div style={{ fontSize: '24px', fontWeight: '800', color: '#1e293b' }}>
+                            {selectedItemIds.length} ca chơi
+                          </div>
                         </div>
                       </div>
-                      <div className="text-end">
-                        <span className="text-muted d-block small">Tổng giá trị</span>
-                        <strong className="fs-5 text-success">{formatPrice(totalPrice)}</strong>
+                      
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                          TỔNG THANH TOÁN
+                        </div>
+                        <div style={{ fontSize: '32px', fontWeight: '800', color: '#097E52', letterSpacing: '-1px' }}>
+                          {formatPrice(totalPrice)}
+                        </div>
                       </div>
                     </div>
                   )}
 
-                  <div className="matching-step-actions">
-                    <button className="btn btn-outline-secondary" onClick={() => setStep(1)}>← Quay lại</button>
+                  <div className="matching-step-actions mt-4 pt-3 border-top" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <button 
+                      className="btn" 
+                      style={{ backgroundColor: '#f1f5f9', color: '#475569', fontWeight: '600', padding: '12px 24px', borderRadius: '12px' }}
+                      onClick={() => setStep(1)}
+                    >
+                      ← Quay lại
+                    </button>
                     <button
                       className="btn btn-primary"
                       disabled={selectedItemIds.length === 0}
                       onClick={() => setStep(3)}
+                      style={{ padding: '12px 36px', borderRadius: '12px', fontSize: '16px', fontWeight: '700', boxShadow: '0 6px 16px rgba(9,126,82,0.2)' }}
                     >
                       Tiếp tục →
                     </button>
@@ -435,54 +522,112 @@ export default function MatchingCreate() {
               {/* ═══ STEP 4 — Xác nhận & Gửi ═══ */}
               {step === 4 && (
                 <div className="matching-create-step">
-                  <h4>Xác nhận thông tin</h4>
+                  <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#e8f5ee', color: '#097E52', marginBottom: '20px' }}>
+                        <i className="feather-check" style={{ fontSize: '40px' }}></i>
+                    </div>
+                    <h3 style={{ fontWeight: '800', color: '#1e293b', marginBottom: '12px' }}>Kiểm tra lần cuối</h3>
+                    <p style={{ color: '#64748b', fontSize: '16px' }}>Vui lòng xem lại thông tin bài viết trước khi báo danh đồng đội</p>
+                  </div>
 
-                  <div className="matching-confirm-card">
-                    <div className="row">
-                      <div className="col-md-6">
-                        <h6>📍 Sân</h6>
-                        <p>{selectedBooking?.venueName}</p>
-                        <p className="text-muted">{selectedBooking?.venueAddress}</p>
+                  <div style={{ maxWidth: '800px', margin: '0 auto', background: '#fff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 20px 40px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                    
+                    <div style={{ padding: '32px 40px', background: '#f8fafc', borderBottom: '1px dashed #cbd5e1' }}>
+                        <h4 style={{ fontSize: '24px', fontWeight: '800', color: '#1e293b', margin: 0, lineHeight: '1.4' }}>
+                          {form.title || `Tìm ${form.requiredPlayers} người đánh cầu lông ghép kèo`}
+                        </h4>
+                    </div>
 
-                        <h6>📅 Ca chơi ({selectedItems.length})</h6>
-                        {selectedItems.map((item) => (
-                          <p key={item.id} className="mb-1">
-                            <strong>{item.courtName}</strong> — {formatDate(item.startTime)} {formatTime(item.startTime)} → {formatTime(item.endTime)} ({formatPrice(item.price)})
-                          </p>
-                        ))}
-                      </div>
-                      <div className="col-md-6">
-                        <h6>👥 Tuyển</h6>
-                        <p>{form.requiredPlayers} người — {formatPrice(pricePerPerson)}/người</p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+                        <div style={{ flex: '1 1 320px', padding: '40px', borderRight: '1px dashed #cbd5e1', borderBottom: '1px dashed #cbd5e1' }}>
+                            <div style={{ marginBottom: '36px' }}>
+                                <div style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}><i className="feather-map-pin me-2"></i>ĐỊA ĐIỂM SÂN</div>
+                                <div style={{ fontSize: '18px', fontWeight: '800', color: '#1e293b', marginBottom: '4px' }}>{selectedBooking?.venueName}</div>
+                                <div style={{ fontSize: '14px', color: '#64748b', fontWeight: '500', lineHeight: '1.5' }}>{selectedBooking?.venueAddress}</div>
+                            </div>
+                            
+                            <div>
+                                <div style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}><i className="feather-calendar me-2"></i>Lịch trình ({selectedItems.length} ca)</div>
+                                {selectedItems.map((item) => {
+                                    const dateObj = new Date(item.startTime);
+                                    const dayName = formatDate(item.startTime).split(',')[0];
+                                    const dayDate = dateObj.getDate();
+                                    return (
+                                        <div key={item.id} style={{ display: 'flex', gap: '16px', marginBottom: '12px', padding: '14px', backgroundColor: '#f8fafc', borderRadius: '14px', border: '1px solid #f1f5f9' }}>
+                                            <div style={{ width: '56px', height: '56px', borderRadius: '12px', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', flexShrink: 0 }}>
+                                                <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>{dayName}</span>
+                                                <span style={{ fontSize: '20px', fontWeight: '800', color: '#097E52', lineHeight: '1.1' }}>{dayDate < 10 ? `0${dayDate}` : dayDate}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                <div style={{ fontSize: '16px', fontWeight: '800', color: '#1e293b', marginBottom: '4px' }}>{formatTime(item.startTime)} - {formatTime(item.endTime)}</div>
+                                                <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}>{item.courtName} • <span style={{ color: '#097E52' }}>{formatPrice(item.price)}</span></div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
 
-                        <h6>🏸 Yêu cầu</h6>
-                        <p>
-                          Trình độ: {skillOptions.find(o => o.value === form.skillLevel)?.label || 'Tất cả'}<br />
-                          Giới tính: {form.genderPref || 'Không yêu cầu'}<br />
-                          Chia tiền: {expenseOptions.find(o => o.value === form.expenseSharing)?.label}
-                        </p>
+                        <div style={{ flex: '1 1 320px', padding: '40px' }}>
+                            <div style={{ marginBottom: '36px', display: 'flex', gap: '16px' }}>
+                                <div style={{ flex: 1, padding: '20px 16px', backgroundColor: '#e8f5ee', borderRadius: '16px', border: '1px solid #bbf7d0', textAlign: 'center' }}>
+                                    <div style={{ fontSize: '12px', fontWeight: '700', color: '#097E52', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Tuyển thêm</div>
+                                    <div style={{ fontSize: '28px', fontWeight: '800', color: '#065f3e' }}>{form.requiredPlayers} <span style={{ fontSize: '14px' }}>người</span></div>
+                                </div>
+                                <div style={{ flex: 1, padding: '20px 16px', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+                                    <div style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Chi phí / ng</div>
+                                    <div style={{ fontSize: '20px', fontWeight: '800', color: '#1e293b' }}>{formatPrice(pricePerPerson)}</div>
+                                </div>
+                            </div>
+                            
+                            <div style={{ marginBottom: '32px' }}>
+                                <div style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '20px' }}>🏸 YÊU CẦU ĐỒNG ĐỘI</div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '16px', borderBottom: '1px solid #f1f5f9' }}>
+                                        <span style={{ color: '#64748b', fontWeight: '600', display: 'flex', alignItems: 'center' }}><i className="feather-bar-chart-2 me-2"></i>Trình độ</span>
+                                        <span style={{ color: '#1e293b', fontWeight: '800' }}>{skillOptions.find(o => o.value === form.skillLevel)?.label || 'Bất kỳ mức nào'}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '16px', borderBottom: '1px solid #f1f5f9' }}>
+                                        <span style={{ color: '#64748b', fontWeight: '600', display: 'flex', alignItems: 'center' }}><i className="feather-users me-2"></i>Giới tính</span>
+                                        <span style={{ color: '#1e293b', fontWeight: '800' }}>{form.genderPref || 'Nam & Nữ đều được'}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <span style={{ color: '#64748b', fontWeight: '600', display: 'flex', alignItems: 'center' }}><i className="feather-credit-card me-2"></i>Chi phí</span>
+                                        <span style={{ color: '#097E52', fontWeight: '800', display: 'flex', alignItems: 'center' }}>{expenseOptions.find(o => o.value === form.expenseSharing)?.label}</span>
+                                    </div>
+                                </div>
+                            </div>
 
-                        {form.notes && (
-                          <>
-                            <h6>📝 Ghi chú</h6>
-                            <p>{form.notes}</p>
-                          </>
-                        )}
-                      </div>
+                            {form.notes && (
+                                <div>
+                                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>📝 THÔNG ĐIỆP GỬI GẮM</div>
+                                    <div style={{ padding: '20px', backgroundColor: '#fffbeb', color: '#b45309', borderRadius: '16px', border: '1px solid #fde68a', fontSize: '14.5px', lineHeight: '1.6', fontWeight: '500' }}>
+                                        {form.notes}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                   </div>
 
-                  <div className="matching-step-actions">
-                    <button className="btn btn-outline-secondary" onClick={() => setStep(3)}>← Chỉnh sửa</button>
+                  <div style={{ maxWidth: '800px', margin: '40px auto 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '2px dashed #e2e8f0', paddingTop: '32px' }}>
+                    <button 
+                      className="btn" 
+                      onClick={() => setStep(3)}
+                      style={{ backgroundColor: '#fff', border: '2px solid #e2e8f0', color: '#475569', fontWeight: '700', padding: '14px 28px', borderRadius: '16px' }}
+                    >
+                      ← Chỉnh sửa lại
+                    </button>
                     <button
-                      className="btn btn-success btn-lg"
+                      className="btn btn-primary"
                       onClick={handleSubmit}
                       disabled={submitting}
+                      style={{ padding: '14px 40px', borderRadius: '16px', fontSize: '16px', fontWeight: '800', boxShadow: '0 8px 24px rgba(9,126,82,0.25)', display: 'flex', alignItems: 'center', gap: '8px' }}
                     >
                       {submitting ? (
-                        <><span className="spinner-border spinner-border-sm me-2" /> Đang tạo...</>
+                        <><span className="spinner-border spinner-border-sm" /> Đang tạo bài...</>
                       ) : (
-                        <>🏸 Đăng bài tuyển đồng đội</>
+                        <><i className="feather-send"></i> Đăng bài tuyển ngay</>
                       )}
                     </button>
                   </div>
