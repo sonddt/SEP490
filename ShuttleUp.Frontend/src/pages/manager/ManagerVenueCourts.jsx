@@ -143,7 +143,7 @@ export default function ManagerVenueCourts() {
           <i className="feather-arrow-left fs-5" />
         </Link>
         <div>
-          <h3 className="mb-0 fw-bold text-dark">Quản lý Sân con</h3>
+          <h3 className="mb-0 fw-bold text-dark" style={{ fontSize: 20 }}>Quản lý Sân con</h3>
           <p className="text-secondary mb-0 mt-1" style={{ fontSize: 14 }}>Xem và thao tác trên danh sách các sân thuộc cụm sân hiện tại</p>
         </div>
       </div>
@@ -152,9 +152,9 @@ export default function ManagerVenueCourts() {
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
         <div className="mgr-filter-tabs">
           {[
-            { key: 'all', label: 'Tất cả sân' },
-            { key: 'active', label: 'Đang hoạt động' },
-            { key: 'inactive', label: 'Tạm ngưng' },
+            { key: 'all', label: 'Tất cả sân', count: courts.length },
+            { key: 'active', label: 'Đang hoạt động', count: courts.filter(c => c.status).length },
+            { key: 'inactive', label: 'Tạm ngưng', count: courts.filter(c => !c.status).length },
           ].map((t) => (
             <button
               key={t.key} type="button"
@@ -162,6 +162,7 @@ export default function ManagerVenueCourts() {
               onClick={() => setFilterTab(t.key)}
             >
               {t.label}
+              <span className="mgr-filter-tab__count">{t.count}</span>
             </button>
           ))}
         </div>
@@ -174,8 +175,8 @@ export default function ManagerVenueCourts() {
       <div className="card border-0">
         <div className="card-header d-flex align-items-center justify-content-between flex-wrap gap-2" style={{ background: '#fff' }}>
           <div>
-            <h4 style={{ margin: 0 }}>Danh sách sân</h4>
-            <span style={{ fontSize: 13, color: '#94a3b8' }}>
+            <h4 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Danh sách sân</h4>
+            <span style={{ fontSize: 14, color: '#64748b', fontWeight: 500 }}>
               {filtered.length} sân · {courts.filter((c) => c.status).length} đang hoạt động
             </span>
           </div>
@@ -186,10 +187,10 @@ export default function ManagerVenueCourts() {
                 type="text" className="form-control bk-search-input"
                 placeholder="Tìm sân..."
                 value={search} onChange={(e) => setSearch(e.target.value)}
-                style={{ fontSize: 13 }}
+                style={{ fontSize: 14 }}
               />
             </div>
-            <select className="form-select" style={{ width: 140, fontSize: 13 }} value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            <select className="form-select" style={{ width: 140, fontSize: 14 }} value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
               <option value="default">Mặc định</option>
               <option value="price">Theo giá</option>
               <option value="name">Theo tên</option>

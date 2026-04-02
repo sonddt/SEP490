@@ -77,7 +77,9 @@ export default function ManagerSidebar({ open, onClose }) {
                   className={({ isActive }) => `mgr-sidebar__item${isActive ? ' active' : ''}`}
                   onClick={onClose}
                 >
-                  <i className={item.icon} />
+                  <span className="mgr-sidebar__item-icon">
+                    <i className={item.icon} />
+                  </span>
                   {item.label}
                   {item.badgeKey === 'notifications' && unreadNotifCount > 0 && (
                     <span className="mgr-sidebar__badge">
@@ -98,7 +100,9 @@ export default function ManagerSidebar({ open, onClose }) {
               onClick={handleGoToProfile}
               style={{ width: '100%', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left' }}
             >
-              <i className="feather-user" />
+              <span className="mgr-sidebar__item-icon">
+                <i className="feather-user" />
+              </span>
               Hồ sơ của tôi
             </button>
             <button
@@ -107,7 +111,9 @@ export default function ManagerSidebar({ open, onClose }) {
               onClick={handleSwitchToPlayer}
               style={{ width: '100%', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left' }}
             >
-              <i className="feather-refresh-cw" />
+              <span className="mgr-sidebar__item-icon">
+                <i className="feather-refresh-cw" />
+              </span>
               Chế độ Người chơi
             </button>
           </div>

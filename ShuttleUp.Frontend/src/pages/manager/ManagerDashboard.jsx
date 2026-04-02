@@ -2,10 +2,10 @@ import { Link } from 'react-router-dom';
 
 /* ── Mock data ─────────────────────────────────────────────────────────── */
 const stats = [
-  { label: 'Tổng cụm sân',       value: '3',             icon: 'feather-map-pin',     color: '#0d7c5f', bg: '#e8f5ee' },
-  { label: 'Đặt sân hôm nay',    value: '8',             icon: 'feather-calendar',    color: '#2563eb', bg: '#eff6ff' },
-  { label: 'Doanh thu tháng này', value: '12.400.000 ₫', icon: 'feather-trending-up', color: '#d97706', bg: '#fffbeb' },
-  { label: 'Chờ phê duyệt',      value: '1',             icon: 'feather-clock',       color: '#ef4444', bg: '#fef2f2' },
+  { label: 'Tổng cụm sân',       value: '3',             icon: 'feather-map-pin',     variant: 'green' },
+  { label: 'Đặt sân hôm nay',    value: '8',             icon: 'feather-calendar',    variant: 'blue' },
+  { label: 'Doanh thu tháng này', value: '12.400.000 ₫', icon: 'feather-trending-up', variant: 'amber' },
+  { label: 'Chờ phê duyệt',      value: '1',             icon: 'feather-clock',       variant: 'red' },
 ];
 
 const recentBookings = [
@@ -28,13 +28,13 @@ export default function ManagerDashboard() {
       <div className="row g-3 mb-4">
         {stats.map(s => (
           <div key={s.label} className="col-xl-3 col-sm-6">
-            <div className="mgr-stat-card">
-              <div className="mgr-stat-card__icon" style={{ background: s.bg }}>
-                <i className={s.icon} style={{ color: s.color }} />
+            <div className={`mgr-stat-card mgr-stat-card--${s.variant}`}>
+              <div className="mgr-stat-card__icon">
+                <i className={s.icon} />
               </div>
               <div>
                 <div className="mgr-stat-card__label">{s.label}</div>
-                <div className="mgr-stat-card__value" style={{ color: s.color }}>{s.value}</div>
+                <div className="mgr-stat-card__value">{s.value}</div>
               </div>
             </div>
           </div>
@@ -111,18 +111,18 @@ export default function ManagerDashboard() {
         {/* Quick Actions */}
         <div className="col-lg-4">
           <div className="card card-tableset border-0">
-            <div className="card-body" style={{ padding: '20px' }}>
-              <div className="court-table-head" style={{ marginBottom: 16 }}>
+            <div className="card-body" style={{ padding: '24px' }}>
+              <div className="court-table-head" style={{ marginBottom: 20 }}>
                 <h4>Thao tác nhanh</h4>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <Link to="/manager/venues/add" className="btn btn-secondary d-inline-flex align-items-center justify-content-center">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <Link to="/manager/venues/add" className="btn btn-secondary d-inline-flex align-items-center justify-content-center" style={{ padding: '12px 18px', fontSize: 15 }}>
                   <i className="feather-plus-circle me-2" /> Thêm cụm sân mới
                 </Link>
-                <Link to="/manager/venues" className="btn btn-outline-secondary d-inline-flex align-items-center justify-content-center">
+                <Link to="/manager/venues" className="btn btn-outline-secondary d-inline-flex align-items-center justify-content-center" style={{ padding: '12px 18px', fontSize: 15 }}>
                   <i className="feather-map-pin me-2" /> Quản lý cụm sân
                 </Link>
-                <Link to="/manager/earnings" className="btn btn-outline-secondary d-inline-flex align-items-center justify-content-center">
+                <Link to="/manager/earnings" className="btn btn-outline-secondary d-inline-flex align-items-center justify-content-center" style={{ padding: '12px 18px', fontSize: 15 }}>
                   <i className="feather-bar-chart-2 me-2" /> Báo cáo doanh thu
                 </Link>
               </div>

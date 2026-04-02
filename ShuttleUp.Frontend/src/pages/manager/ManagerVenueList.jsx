@@ -266,15 +266,15 @@ export default function ManagerVenueList() {
       {/* ── Stats ────────────────────────────────────────── */}
       <div className="row g-3 mb-4">
         {[
-          { label: 'Tổng cụm sân',       value: venues.length,                                icon: 'feather-map-pin',      color: '#0d7c5f', bg: '#e8f5ee' },
-          { label: 'Tổng sân',            value: totalCourts,                                  icon: 'feather-grid',         color: '#2563eb', bg: '#eff6ff' },
-          { label: 'Đặt sân tháng này',   value: totalBookings,                                icon: 'feather-calendar',     color: '#d97706', bg: '#fffbeb' },
-          { label: 'Doanh thu tháng',     value: (totalRevenue / 1000000).toFixed(1) + ' tr ₫', icon: 'feather-trending-up',  color: '#10b981', bg: '#ecfdf5' },
+          { label: 'Tổng cụm sân',       value: venues.length,                                icon: 'feather-map-pin',      variant: 'green' },
+          { label: 'Tổng sân',            value: totalCourts,                                  icon: 'feather-grid',         variant: 'blue' },
+          { label: 'Đặt sân tháng này',   value: totalBookings,                                icon: 'feather-calendar',     variant: 'amber' },
+          { label: 'Doanh thu tháng',     value: (totalRevenue / 1000000).toFixed(1) + ' tr ₫', icon: 'feather-trending-up',  variant: 'teal' },
         ].map((s) => (
           <div key={s.label} className="col-xl-3 col-sm-6">
-            <div className="mgr-stat-card">
-              <div className="mgr-stat-card__icon" style={{ background: s.bg }}>
-                <i className={s.icon} style={{ color: s.color }} />
+            <div className={`mgr-stat-card mgr-stat-card--${s.variant}`}>
+              <div className="mgr-stat-card__icon">
+                <i className={s.icon} />
               </div>
               <div>
                 <div className="mgr-stat-card__label">{s.label}</div>
@@ -505,26 +505,27 @@ export default function ManagerVenueList() {
                     </div>
                   </div>
                   <div className="mgr-venue-card__footer">
+                    <Link to={`/manager/venues/${venue.id}/courts`} className="btn btn-sm btn-secondary" style={{ flex: 1 }}>
+                      <i className="feather-grid" /> Quản lý sân
+                    </Link>
+                    <Link to={`/manager/venues/${venue.id}/edit`} className="btn btn-sm btn-outline-secondary" style={{ flex: 0, padding: '7px 14px' }}>
+                      <i className="feather-edit-2" />
+                    </Link>
                     {venue.status === 'draft' ? (
-                      <button type="button" className="btn btn-sm btn-primary" style={{ flex: 1 }} onClick={() => handlePublish(venue)}>
-                        <i className="feather-upload" /> Publish
+                      <button type="button" className="btn btn-sm btn-outline-secondary" style={{ flex: 0, padding: '7px 14px' }} onClick={() => handlePublish(venue)} title="Publish">
+                        <i className="feather-upload" />
                       </button>
                     ) : (
-                      <button type="button" className="btn btn-sm btn-warning" style={{ flex: 1 }} onClick={() => handleUnpublish(venue)}>
-                        <i className="feather-eye-off" /> Unpublish
+                      <button type="button" className="btn btn-sm btn-outline-secondary" style={{ flex: 0, padding: '7px 14px', color: '#d97706', borderColor: '#fbbf24' }} onClick={() => handleUnpublish(venue)} title="Unpublish">
+                        <i className="feather-eye-off" />
                       </button>
                     )}
-                    <Link to={`/manager/venues/${venue.id}/courts`} className="btn btn-sm btn-outline-secondary" style={{ flex: 1 }}>
-                      <i className="feather-grid" />
-                    </Link>
-                    <Link to={`/manager/venues/${venue.id}/edit`} className="btn btn-sm btn-secondary" style={{ flex: 1 }}>
-                      <i className="feather-edit-2" /> Sửa
-                    </Link>
                     <button
                       type="button"
                       className="btn btn-sm btn-outline-danger"
                       onClick={() => setDeleteModal(venue)}
-                      style={{ width: 40, padding: '7px 0', justifyContent: 'center' }}
+                      style={{ flex: 0, padding: '7px 12px' }}
+                      title="Xoá"
                     >
                       <i className="feather-trash-2" />
                     </button>

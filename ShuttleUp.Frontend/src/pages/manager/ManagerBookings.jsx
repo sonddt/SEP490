@@ -319,16 +319,20 @@ export default function ManagerBookings() {
 
       {/* Stats */}
       <div className="bk-stats-strip">
-        <div className="bk-stat-card">
-          <i className="feather-list bk-stat-card__icon" />
+        <div className="bk-stat-card" style={{ '--_accent': '#2563eb' }}>
+          <div className="bk-stat-card__icon-wrap" style={{ background: '#eff6ff', borderColor: '#93c5fd' }}>
+            <i className="feather-list bk-stat-card__icon" style={{ color: '#2563eb' }} />
+          </div>
           <div>
             <div className="bk-stat-card__label">Tổng ({TABS.find(t => t.key === activeTab)?.label})</div>
             <div className="bk-stat-card__value">{processed.length}</div>
           </div>
         </div>
         {(activeTab === 'UPCOMING' || activeTab === 'COMPLETED') && (
-          <div className="bk-stat-card">
-            <i className="feather-trending-up bk-stat-card__icon" style={{ color: '#097E52' }} />
+          <div className="bk-stat-card" style={{ '--_accent': '#097E52' }}>
+            <div className="bk-stat-card__icon-wrap" style={{ background: '#e8f5ee', borderColor: '#a7d7be' }}>
+              <i className="feather-trending-up bk-stat-card__icon" style={{ color: '#097E52' }} />
+            </div>
             <div>
               <div className="bk-stat-card__label">Doanh thu đã TT</div>
               <div className="bk-stat-card__value" style={{ color: '#097E52' }}>{tabRevenue.toLocaleString('vi-VN')} ₫</div>
@@ -336,8 +340,10 @@ export default function ManagerBookings() {
           </div>
         )}
         {activeTab === 'PENDING' && (
-          <div className="bk-stat-card">
-            <i className="feather-clock bk-stat-card__icon" style={{ color: '#d97706' }} />
+          <div className="bk-stat-card" style={{ '--_accent': '#d97706' }}>
+            <div className="bk-stat-card__icon-wrap" style={{ background: '#fffbeb', borderColor: '#fcd34d' }}>
+              <i className="feather-clock bk-stat-card__icon" style={{ color: '#d97706' }} />
+            </div>
             <div>
               <div className="bk-stat-card__label">Chờ phê duyệt</div>
               <div className="bk-stat-card__value" style={{ color: '#d97706' }}>{counts.PENDING || 0}</div>
