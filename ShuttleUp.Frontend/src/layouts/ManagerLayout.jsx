@@ -18,11 +18,11 @@ const PAGE_TITLES = {
 function getPageMeta(pathname) {
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
   if (pathname.includes('/courts/add'))
-    return { title: 'Thêm sân mới', crumbs: [{ label: 'Cụm sân', to: '/manager/venues' }, { label: 'Danh sách sân', to: pathname.replace(/\/courts\/add$/, '/courts') }] };
+    return { title: 'Thêm sân mới', crumbs: [{ label: 'Cụm sân', to: '/manager/venues' }, { label: 'Sân con', to: pathname.replace(/\/courts\/add$/, '/courts') }] };
   if (/\/courts\/\d+\/edit/.test(pathname))
-    return { title: 'Chỉnh sửa sân', crumbs: [{ label: 'Cụm sân', to: '/manager/venues' }, { label: 'Danh sách sân', to: pathname.replace(/\/courts\/\d+\/edit$/, '/courts') }] };
+    return { title: 'Chỉnh sửa sân', crumbs: [{ label: 'Cụm sân', to: '/manager/venues' }, { label: 'Sân con', to: pathname.replace(/\/courts\/\d+\/edit$/, '/courts') }] };
   if (pathname.includes('/courts'))
-    return { title: 'Danh sách sân', crumbs: [{ label: 'Cụm sân', to: '/manager/venues' }] };
+    return { title: 'Quản lý Sân con', crumbs: [{ label: 'Cụm sân', to: '/manager/venues' }] };
   if (pathname.includes('/edit'))
     return { title: 'Chỉnh sửa cụm sân', crumbs: [{ label: 'Cụm sân', to: '/manager/venues' }] };
   if (pathname.includes('/availability'))
