@@ -500,7 +500,7 @@ a:active {
   --mgr-topbar-h: 64px;
   --mgr-radius: 12px;
   --mgr-shadow: 0 2px 8px rgba(0,0,0,.06), 0 6px 24px rgba(0,0,0,.04);
-  --mgr-font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --mgr-font: 'Be Vietnam Pro', 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 .mgr-layout{display:flex;min-height:100vh;background:#f0f4f8;font-family:var(--mgr-font)}
 
@@ -1177,6 +1177,19 @@ a:active {
 }
 .matching-booking-item-preview:last-child { border-bottom: none; }
 
+/* Force form elements to inherit body font (Be Vietnam Pro).
+   Browsers default label/input/select/button to system fonts (Segoe UI/Arial),
+   this ensures all form controls use the same font as body. */
+label,
+input,
+select,
+textarea,
+button,
+optgroup {
+  font-family: inherit;
+}
+
+
 /* ── Time Slot Selection ───────────────────────────────────────────────── */
 .matching-items-list { display: flex; flex-direction: column; gap: 8px; }
 .matching-item-card {
@@ -1299,7 +1312,7 @@ a:active {
 }
 .circle-text {
   fill: #1e293b; font-size: 8px; font-weight: 700; text-anchor: middle;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Be Vietnam Pro', sans-serif;
 }
 .matching-slots-label { font-size: 14px; color: #64748b; font-weight: 500; }
 

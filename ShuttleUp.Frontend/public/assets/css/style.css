@@ -51,7 +51,7 @@ Version      : 1.0
 /*-----------------
     1. Typography
 -----------------------*/
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&amp;display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&display=swap");
 .add-court .venue-options ul, .appointment-info ul, .css-equal-content, .css-equal-heights {
   display: flex;
   display: -webkit-flex;
@@ -314,7 +314,7 @@ Version      : 1.0
 	2. General
 -----------------------*/
 body {
-  font-family: "Outfit", sans-serif;
+  font-family: "Be Vietnam Pro", sans-serif;
   font-size: 16px;
   color: #6B7385;
   font-weight: 400;
@@ -7777,7 +7777,7 @@ Version      : 1.0
   padding: 0;
   border: 0;
   margin-bottom: 0;
-  font-family: "Outfit", sans-serif;
+  font-family: "Be Vietnam Pro", sans-serif;
 }
 .map-right .map-listing .profile-widget.venue-profile-list {
   display: flex;
@@ -7852,7 +7852,7 @@ Version      : 1.0
   font-size: 20px;
   font-weight: 600;
   margin-bottom: 10px;
-  font-family: "Outfit", sans-serif;
+  font-family: "Be Vietnam Pro", sans-serif;
 }
 .map-right .profile-widget .pro-content .title a {
   display: inline-block;

@@ -2,10 +2,20 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import matchingApi from '../../api/matchingApi';
 import MatchingPostCard from '../../components/matching/MatchingPostCard';
-import MatchingFilter from '../../components/matching/MatchingFilter';
+
+const skillOptions = [
+  { value: '', label: 'Tất cả trình độ' },
+  { value: 'Yếu', label: 'Yếu / Mới chơi' },
+  { value: 'Trung Bình Yếu', label: 'Trung Bình Yếu' },
+  { value: 'Trung Bình', label: 'Trung Bình' },
+  { value: 'Khá', label: 'Khá' },
+  { value: 'Bán Chuyên', label: 'Bán Chuyên' },
+  { value: 'Chuyên Nghiệp', label: 'Chuyên nghiệp' }
+];
 
 export default function MatchingHub() {
   const [tab, setTab] = useState('all'); // 'all' | 'my'
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [posts, setPosts] = useState([]);
   const [myPosts, setMyPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,107 +59,168 @@ export default function MatchingHub() {
     if (tab === 'my') loadMyPosts();
   }, [tab, loadMyPosts]);
 
-  const handleFilterChange = (newFilters) => {
-    setFilters(newFilters);
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+    setPage(1);
+  };
+  
+  const handleResetFilters = () => {
+    setFilters({ skillLevel: '', playDate: '', province: '', sort: 'newest' });
     setPage(1);
   };
 
   const totalPages = Math.ceil(total / 12);
 
   return (
-    <>
+    <div className="main-wrapper content-below-header">
       {/* ── Breadcrumb ── */}
-      <div className="breadcrumb-bar">
+      <section className="breadcrumb breadcrumb-list mb-0">
+        <span className="primary-right-round"></span>
         <div className="container">
-          <div className="row">
-            <div className="col-md-12 col-12">
-              <nav aria-label="breadcrumb">
-                <ol className="breadcrumb">
-                  <li className="breadcrumb-item"><Link to="/">Trang chủ</Link></li>
-                  <li className="breadcrumb-item active" aria-current="page">Tìm đồng đội</li>
-                </ol>
-              </nav>
-              <h2 className="breadcrumb-title">Tìm đồng đội 🏸</h2>
-            </div>
-          </div>
+          <h1 className="text-white">Tìm đồng đội 🏸</h1>
+          <ul>
+            <li><Link to="/">Trang chủ</Link></li>
+            <li>Tìm đồng đội</li>
+          </ul>
         </div>
-      </div>
+      </section>
 
-      <div className="content matching-hub-content">
+      <div className="content py-5" style={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
         <div className="container">
 
           {/* ── Header Bar ── */}
-          <div className="matching-hub-header">
-            <div className="matching-hub-header-left">
-              <div className="matching-tabs">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '20px' }}>
+            <div style={{ display: 'flex', gap: '8px', backgroundColor: '#fff', padding: '6px', borderRadius: '16px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', border: '1px solid #e2e8f0' }}>
                 <button
-                  className={`matching-tab ${tab === 'all' ? 'active' : ''}`}
+                  style={{ padding: '10px 24px', borderRadius: '12px', border: 'none', fontWeight: '700', fontSize: '15px', transition: 'all 0.2s', backgroundColor: tab === 'all' ? '#e8f5ee' : 'transparent', color: tab === 'all' ? '#097E52' : '#64748b' }}
                   onClick={() => setTab('all')}
                 >
                   Tất cả bài đăng
                 </button>
                 <button
-                  className={`matching-tab ${tab === 'my' ? 'active' : ''}`}
+                  style={{ padding: '10px 24px', borderRadius: '12px', border: 'none', fontWeight: '700', fontSize: '15px', transition: 'all 0.2s', backgroundColor: tab === 'my' ? '#e8f5ee' : 'transparent', color: tab === 'my' ? '#097E52' : '#64748b' }}
                   onClick={() => setTab('my')}
                 >
                   Bài đăng của tôi
                 </button>
-              </div>
-              <span className="matching-count">{tab === 'all' ? total : myPosts.length} bài đăng</span>
             </div>
-            <Link to="/matching/create" className="btn btn-primary matching-create-btn">
-              <i className="feather-plus"></i> Tạo bài đăng
+            
+            <Link to="/matching/create" className="btn btn-primary" style={{ padding: '12px 24px', borderRadius: '14px', fontWeight: '700', boxShadow: '0 4px 12px rgba(9,126,82,0.2)' }}>
+              <i className="feather-plus me-2"></i> Tạo bài đăng mới
             </Link>
           </div>
 
-          {/* ── Filter (only for 'all' tab) ── */}
+          {/* ── Filter & View Options ── */}
           {tab === 'all' && (
-            <MatchingFilter filters={filters} onFilterChange={handleFilterChange} />
-          )}
-
-          {/* ── Grid ── */}
-          {loading ? (
-            <div className="text-center py-5">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Đang tải...</span>
+            <div style={{ backgroundColor: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', padding: '24px', marginBottom: '32px' }}>
+              <div className="row align-items-center">
+                  <div className="col-lg-8">
+                     {/* Modern Filter Inputs */}
+                     <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, minWidth: '180px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px' }}><i className="feather-award me-1"></i> Trình độ</label>
+                            <select className="form-select" style={{ borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '700', color: '#1e293b' }} value={filters.skillLevel} onChange={(e) => handleFilterChange('skillLevel', e.target.value)}>
+                              {skillOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
+                        </div>
+                        <div style={{ flex: 1, minWidth: '180px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px' }}><i className="feather-calendar me-1"></i> Ngày chơi</label>
+                            <input type="date" className="form-control" style={{ borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '700', color: '#1e293b' }} value={filters.playDate} onChange={(e) => handleFilterChange('playDate', e.target.value)} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: '180px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px' }}><i className="feather-map-pin me-1"></i> Khu vực</label>
+                            <input type="text" className="form-control" placeholder="VD: Quận 7" style={{ borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '700', color: '#1e293b' }} value={filters.province} onChange={(e) => handleFilterChange('province', e.target.value)} />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '2px' }}>
+                            <button onClick={handleResetFilters} style={{ height: '48px', padding: '0 20px', borderRadius: '12px', backgroundColor: '#fef2f2', color: '#ef4444', border: '1px solid #fee2e2', fontWeight: '700', transition: 'all 0.2s', display: 'flex', alignItems: 'center' }}>
+                                <i className="feather-x me-1"></i> Xoá lọc
+                            </button>
+                        </div>
+                     </div>
+                  </div>
+                  
+                  <div className="col-lg-4 mt-4 mt-lg-0">
+                     <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-end', alignItems: 'flex-end', height: '100%' }}>
+                         {/* View Mode Toggle */}
+                         <div>
+                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block', textAlign: 'right' }}>Hiển thị</label>
+                            <div style={{ display: 'flex', backgroundColor: '#f1f5f9', borderRadius: '12px', padding: '4px' }}>
+                                <button
+                                    onClick={() => setViewMode('grid')}
+                                    style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px', border: 'none', backgroundColor: viewMode === 'grid' ? '#fff' : 'transparent', boxShadow: viewMode === 'grid' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none', color: viewMode === 'grid' ? '#097E52' : '#94a3b8', transition: 'all 0.2s' }}
+                                >
+                                    <i className="feather-grid" style={{ fontSize: '18px' }}></i>
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('list')}
+                                    style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px', border: 'none', backgroundColor: viewMode === 'list' ? '#fff' : 'transparent', boxShadow: viewMode === 'list' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none', color: viewMode === 'list' ? '#097E52' : '#94a3b8', transition: 'all 0.2s' }}
+                                >
+                                    <i className="feather-list" style={{ fontSize: '20px' }}></i>
+                                </button>
+                            </div>
+                         </div>
+                         
+                         {/* Sort Options */}
+                         <div style={{ minWidth: '160px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block' }}>Sắp xếp</label>
+                            <select className="form-select" style={{ height: '48px', borderRadius: '12px', border: 'none', backgroundColor: '#f1f5f9', fontWeight: '700', color: '#1e293b' }} value={filters.sort || 'newest'} onChange={(e) => handleFilterChange('sort', e.target.value)}>
+                              <option value="newest">Mới nhất</option>
+                              <option value="price_asc">Giá tăng dần</option>
+                              <option value="soonest">Sắp diễn ra</option>
+                            </select>
+                         </div>
+                     </div>
+                  </div>
               </div>
             </div>
-          ) : (
+          )}
+
+          {/* ── Grid/List Post Results ── */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h5 style={{ fontWeight: '700', color: '#1e293b', margin: 0 }}>
+                {tab === 'all' 
+                  ? (total > 0 ? `Đang hiển thị ${total} bài đăng tuyển người` : '') 
+                  : (myPosts.length > 0 ? `Bạn đã tạo ${myPosts.length} bài đăng` : '')
+                }
+              </h5>
+          </div>
+
+          {!loading && (
             <>
               {tab === 'all' ? (
                 <>
                   {posts.length === 0 ? (
-                    <div className="matching-empty-state">
-                      <div className="matching-empty-icon">🏸</div>
-                      <h3>Chưa có bài đăng nào</h3>
-                      <p>Hãy là người đầu tiên tạo bài tuyển đồng đội!</p>
-                      <Link to="/matching/create" className="btn btn-primary">
-                        <i className="feather-plus"></i> Tạo bài đăng ngay
-                      </Link>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 20px', backgroundColor: '#fff', borderRadius: '24px', border: '1px dashed #cbd5e1' }}>
+                      <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏸</div>
+                      <h3 style={{ fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>Chưa có bài đăng nào trúng khớp</h3>
+                      <p style={{ color: '#64748b', fontWeight: '600', marginBottom: '24px' }}>Hãy thử điều chỉnh bộ lọc hoặc là người đầu tiên tạo bài!</p>
+                      <button onClick={handleResetFilters} className="btn btn-outline-secondary" style={{ borderRadius: '12px', fontWeight: '700', padding: '10px 24px' }}>
+                        Xoá bộ lọc
+                      </button>
                     </div>
                   ) : (
                     <div className="row">
                       {posts.map((p) => (
-                        <MatchingPostCard key={p.id} post={p} onJoined={loadPosts} />
+                        <MatchingPostCard key={p.id} post={p} viewMode={viewMode} onJoined={loadPosts} />
                       ))}
                     </div>
                   )}
 
                   {/* Pagination */}
                   {totalPages > 1 && (
-                    <div className="matching-pagination">
+                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: '40px' }}>
                       <nav>
-                        <ul className="pagination justify-content-center">
+                        <ul className="pagination" style={{ gap: '8px' }}>
                           <li className={`page-item ${page <= 1 ? 'disabled' : ''}`}>
-                            <button className="page-link" onClick={() => setPage(page - 1)}>‹</button>
+                            <button className="page-link" style={{ borderRadius: '12px', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', backgroundColor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', fontWeight: '700', color: '#1e293b' }} onClick={() => setPage(page - 1)}>‹</button>
                           </li>
                           {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                            <li key={p} className={`page-item ${p === page ? 'active' : ''}`}>
-                              <button className="page-link" onClick={() => setPage(p)}>{p}</button>
+                            <li key={p} className="page-item">
+                              <button className="page-link" style={{ borderRadius: '12px', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', backgroundColor: p === page ? '#097E52' : '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', fontWeight: '700', color: p === page ? '#fff' : '#1e293b' }} onClick={() => setPage(p)}>{p}</button>
                             </li>
                           ))}
                           <li className={`page-item ${page >= totalPages ? 'disabled' : ''}`}>
-                            <button className="page-link" onClick={() => setPage(page + 1)}>›</button>
+                            <button className="page-link" style={{ borderRadius: '12px', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', backgroundColor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', fontWeight: '700', color: '#1e293b' }} onClick={() => setPage(page + 1)}>›</button>
                           </li>
                         </ul>
                       </nav>
@@ -160,18 +231,18 @@ export default function MatchingHub() {
                 /* ── My Posts Tab ── */
                 <>
                   {myPosts.length === 0 ? (
-                    <div className="matching-empty-state">
-                      <div className="matching-empty-icon">📝</div>
-                      <h3>Bạn chưa tạo bài đăng nào</h3>
-                      <p>Hãy tạo bài đăng để tìm đồng đội!</p>
-                      <Link to="/matching/create" className="btn btn-primary">
-                        <i className="feather-plus"></i> Tạo bài đăng
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 20px', backgroundColor: '#fff', borderRadius: '24px', border: '1px dashed #cbd5e1' }}>
+                      <div style={{ fontSize: '48px', marginBottom: '16px' }}>📝</div>
+                      <h3 style={{ fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>Bạn chưa tạo bài đăng nào</h3>
+                      <p style={{ color: '#64748b', fontWeight: '600', marginBottom: '24px' }}>Hãy tạo bài tuyển người trải qua những trận cầu đỉnh cao nhé!</p>
+                      <Link to="/matching/create" className="btn btn-primary" style={{ borderRadius: '14px', fontWeight: '700', padding: '12px 28px', boxShadow: '0 4px 12px rgba(9,126,82,0.2)' }}>
+                        <i className="feather-plus me-2"></i> Tạo bài đăng ngay
                       </Link>
                     </div>
                   ) : (
                     <div className="row">
                       {myPosts.map((p) => (
-                        <MatchingPostCard key={p.id} post={p} onJoined={loadMyPosts} />
+                        <MatchingPostCard key={p.id} post={p} viewMode={viewMode} onJoined={loadMyPosts} />
                       ))}
                     </div>
                   )}
@@ -179,8 +250,16 @@ export default function MatchingHub() {
               )}
             </>
           )}
+
+          {loading && (
+            <div className="text-center py-5">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Đang tải...</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-    </>
+    </div>
   );
 }

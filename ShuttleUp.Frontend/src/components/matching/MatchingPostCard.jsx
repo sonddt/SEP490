@@ -24,7 +24,7 @@ const expenseLabels = {
   negotiable: 'Thỏa thuận',
 };
 
-export default function MatchingPostCard({ post, onJoined }) {
+export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) {
   const { user } = useAuth();
   const [joinBusy, setJoinBusy] = useState(false);
   const [joinNotice, setJoinNotice] = useState(null);
@@ -73,116 +73,205 @@ export default function MatchingPostCard({ post, onJoined }) {
     }
   };
 
-  return (
-    <div className="col-lg-4 col-md-6">
-      <div className="matching-post-card">
-        {/* ── Image + Badges ── */}
-        <div className="matching-card-img">
-          <Link to={`/matching/${post.id}`}>
-            <img src={defaultImg} className="img-fluid" alt={post.title} />
-          </Link>
-          <div className="matching-card-badges">
-            {post.skillLevel && (
-              <span className="badge-skill">{skillLabels[post.skillLevel] || post.skillLevel}</span>
+  if (viewMode === 'list') {
+    return (
+      <div className="col-12 mb-4">
+        <div style={{ display: 'flex', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', overflow: 'hidden', transition: 'all 0.3s' }}>
+          {/* Image Side */}
+          <div style={{ width: '280px', position: 'relative', flexShrink: 0 }}>
+            <Link to={`/matching/${post.id}`} style={{ display: 'block', height: '100%' }}>
+              <img src={defaultImg} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={post.title} />
+            </Link>
+            <div style={{ position: 'absolute', top: '12px', left: '12px', display: 'flex', gap: '8px', zIndex: 1 }}>
+              {post.skillLevel && (
+                <span style={{ backgroundColor: '#097E52', color: '#fff', padding: '4px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: '700' }}>
+                  {skillLabels[post.skillLevel] || post.skillLevel}
+                </span>
+              )}
+            </div>
+            {post.status === 'FULL' && (
+              <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '700', fontSize: '16px', zIndex: 2 }}>
+                Đã đủ người
+              </div>
             )}
-            <span className="badge-price">{formatPrice(post.pricePerSlot)}/slot</span>
+            <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '16px 12px 12px', background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)', zIndex: 1 }}>
+              <span style={{ color: '#fff', fontWeight: '700', fontSize: '15px' }}>{formatPrice(post.pricePerSlot)}<span style={{ fontSize: '12px', opacity: 0.8 }}>/slot</span></span>
+            </div>
           </div>
-          {post.status === 'FULL' && <div className="matching-card-overlay">Đã đủ người</div>}
+
+          {/* Content Side */}
+          <div style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+              <div>
+                <h4 style={{ fontSize: '20px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>
+                  <Link to={`/matching/${post.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{post.title}</Link>
+                </h4>
+                <div style={{ display: 'flex', gap: '16px', color: '#64748b', fontSize: '14px', fontWeight: '600' }}>
+                  <span><i className="feather-map-pin me-1" style={{ color: '#097E52' }}></i> {post.venueName}{post.courtName ? ` — ${post.courtName}` : ''}</span>
+                  {post.expenseSharing && (
+                    <span><i className="feather-pie-chart me-1" style={{ color: '#097E52' }}></i> {expenseLabels[post.expenseSharing] || post.expenseSharing}</span>
+                  )}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b', marginBottom: '4px' }}>
+                  {formatDate(post.playDate)}
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: '#64748b', backgroundColor: '#f1f5f9', padding: '4px 10px', borderRadius: '8px', display: 'inline-block' }}>
+                  <i className="feather-clock me-1"></i> {post.playStartTime} – {post.playEndTime}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <img src={post.host?.avatarUrl || '/assets/img/profiles/avatar-01.jpg'} alt={post.host?.fullName} style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #e2e8f0' }} />
+                  <div>
+                    <div style={{ fontSize: '11px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Chủ nhóm</div>
+                    <div style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>{post.host?.fullName}</div>
+                  </div>
+                </div>
+
+                <div style={{ height: '32px', width: '1px', backgroundColor: '#e2e8f0' }}></div>
+
+                <div>
+                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                     <span style={{ fontSize: '13px', fontWeight: '700', color: '#1e293b' }}>👥 {filled}/{totalSlots} người</span>
+                     <span style={{ fontSize: '13px', fontWeight: '700', color: slotsLeft <= 1 ? '#ef4444' : '#097E52' }}>{slotsLeft > 0 ? `Còn ${slotsLeft} chỗ` : 'Đã đủ'}</span>
+                   </div>
+                   <div style={{ width: '140px', height: '6px', backgroundColor: '#f1f5f9', borderRadius: '3px', overflow: 'hidden' }}>
+                     <div style={{ width: `${progressPct}%`, height: '100%', backgroundColor: slotsLeft <= 1 ? '#ef4444' : '#097E52', borderRadius: '3px' }}></div>
+                   </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                {isPostOwner ? (
+                  <Link to={`/matching/${post.id}`} className="btn btn-primary" style={{ borderRadius: '10px', fontWeight: '700', padding: '8px 24px' }}>
+                    Xem chi tiết
+                  </Link>
+                ) : (
+                  <>
+                    <Link to={`/matching/${post.id}`} className="btn btn-outline-primary" style={{ borderRadius: '10px', fontWeight: '700', padding: '8px 20px' }}>
+                      Chi tiết
+                    </Link>
+                    {canQuickJoin ? (
+                      <button onClick={handleQuickJoin} disabled={joinBusy} className="btn btn-primary" style={{ borderRadius: '10px', fontWeight: '700', padding: '8px 20px', display: 'flex', alignItems: 'center' }}>
+                         {joinBusy ? 'Đang gửi...' : <><i className="feather-user-plus me-2"></i> Xin tham gia</>}
+                      </button>
+                    ) : (
+                      <button disabled className="btn btn-secondary" style={{ borderRadius: '10px', fontWeight: '700', padding: '8px 20px', opacity: 0.6 }}>
+                         <i className="feather-user-plus me-2"></i> Xin tham gia
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+            {joinNotice && (
+              <div style={{ marginTop: '12px', fontSize: '13px', fontWeight: '700', color: joinNotice.type === 'success' ? '#16a34a' : '#d97706', textAlign: 'right' }}>
+                {joinNotice.text}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Grid Mode (Default)
+  return (
+    <div className="col-lg-4 col-md-6 mb-4">
+      <div className="matching-post-card h-100 d-flex flex-column" style={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', overflow: 'hidden', backgroundColor: '#fff', transition: 'transform 0.2s' }}>
+        {/* ── Image + Badges ── */}
+        <div className="matching-card-img" style={{ position: 'relative', height: '180px' }}>
+          <Link to={`/matching/${post.id}`} style={{ display: 'block', height: '100%' }}>
+            <img src={defaultImg} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={post.title} />
+          </Link>
+          <div style={{ position: 'absolute', top: '12px', left: '12px', display: 'flex', gap: '8px', zIndex: 1 }}>
+            {post.skillLevel && (
+               <span style={{ backgroundColor: '#097E52', color: '#fff', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                 {skillLabels[post.skillLevel] || post.skillLevel}
+               </span>
+            )}
+          </div>
+          {post.status === 'FULL' && (
+            <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '800', fontSize: '16px', zIndex: 2 }}>
+              Đã đủ người
+            </div>
+          )}
+          <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '16px 12px 12px', background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)', zIndex: 1 }}>
+              <span style={{ color: '#fff', fontWeight: '800', fontSize: '16px' }}>{formatPrice(post.pricePerSlot)}<span style={{ fontSize: '12px', opacity: 0.8 }}>/slot</span></span>
+          </div>
         </div>
 
         {/* ── Content ── */}
-        <div className="matching-card-body">
-          <h4 className="matching-card-title">
-            <Link to={`/matching/${post.id}`}>{post.title}</Link>
+        <div className="matching-card-body" style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <h4 style={{ fontSize: '18px', fontWeight: '800', color: '#1e293b', marginBottom: '12px', lineHeight: '1.4' }}>
+            <Link to={`/matching/${post.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{post.title}</Link>
           </h4>
-          <p className="matching-card-venue">
-            <i className="feather-map-pin"></i>
+          
+          <div style={{ fontSize: '13px', fontWeight: '600', color: '#64748b', marginBottom: '6px' }}>
+            <i className="feather-map-pin me-2" style={{ color: '#097E52' }}></i>
             {post.venueName}{post.courtName ? ` — ${post.courtName}` : ''}
-          </p>
-          {post.venueAddress && (
-            <p className="matching-card-address">{post.venueAddress}</p>
-          )}
-
-          {/* ── Expense sharing ── */}
+          </div>
+          
           {post.expenseSharing && (
-            <p className="matching-card-expense">
-              <i className="feather-dollar-sign"></i>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#64748b', marginBottom: '16px' }}>
+              <i className="feather-pie-chart me-2" style={{ color: '#097E52' }}></i>
               {expenseLabels[post.expenseSharing] || post.expenseSharing}
-            </p>
+            </div>
           )}
-        </div>
 
-        {/* ── Slots Progress ── */}
-        <div className="matching-card-slots">
-          <div className="slots-bar">
-            <div className="slots-fill" style={{ width: `${progressPct}%` }}></div>
+          {/* ── Slots Progress ── */}
+          <div style={{ marginTop: 'auto', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <span style={{ fontSize: '13px', fontWeight: '800', color: '#1e293b' }}>👥 {filled}/{totalSlots} người</span>
+              <span style={{ fontSize: '12px', fontWeight: '800', color: slotsLeft <= 1 ? '#ef4444' : '#097E52' }}>{slotsLeft > 0 ? `Còn ${slotsLeft} chỗ` : 'Đã đủ'}</span>
+            </div>
+            <div style={{ width: '100%', height: '6px', backgroundColor: '#f1f5f9', borderRadius: '3px', overflow: 'hidden' }}>
+              <div style={{ width: `${progressPct}%`, height: '100%', backgroundColor: slotsLeft <= 1 ? '#ef4444' : '#097E52', borderRadius: '3px' }}></div>
+            </div>
           </div>
-          <div className="slots-text">
-            <span>👥 {filled}/{totalSlots} slot</span>
-            <span className={slotsLeft <= 1 ? 'text-danger fw-bold' : ''}>{slotsLeft > 0 ? `Còn ${slotsLeft} chỗ` : 'Đã đủ'}</span>
-          </div>
-        </div>
 
-        {/* ── Footer ── */}
-        <div className="matching-card-footer">
-          <div className="matching-card-meta">
-            <span><i className="feather-calendar"></i> {formatDate(post.playDate)}</span>
-            <span><i className="feather-clock"></i> {post.playStartTime} – {post.playEndTime}</span>
-          </div>
-          <div className="matching-card-host">
-            <img
-              src={post.host?.avatarUrl || '/assets/img/profiles/avatar-01.jpg'}
-              alt={post.host?.fullName}
-              className="host-avatar"
-            />
-            <span>{post.host?.fullName}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
+            <div>
+               <div style={{ fontSize: '12px', fontWeight: '800', color: '#1e293b', marginBottom: '2px' }}>{formatDate(post.playDate)}</div>
+               <div style={{ fontSize: '12px', fontWeight: '700', color: '#64748b' }}>{post.playStartTime} – {post.playEndTime}</div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <img src={post.host?.avatarUrl || '/assets/img/profiles/avatar-01.jpg'} alt={post.host?.fullName} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
+            </div>
           </div>
         </div>
 
         {/* ── CTA ── */}
-        <div className="matching-card-cta">
+        <div style={{ padding: '0 20px 20px' }}>
           {isPostOwner ? (
-            <Link to={`/matching/${post.id}`} className="btn btn-primary btn-sm w-100">
+            <Link to={`/matching/${post.id}`} className="btn btn-primary w-100" style={{ borderRadius: '10px', fontWeight: '800', padding: '10px' }}>
               Xem chi tiết
             </Link>
           ) : (
-            <div className="matching-card-cta-row">
-              <Link to={`/matching/${post.id}`} className="btn btn-outline-primary btn-sm matching-card-cta-detail">
-                Xem chi tiết
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <Link to={`/matching/${post.id}`} className="btn btn-outline-primary flex-fill" style={{ borderRadius: '10px', fontWeight: '800', padding: '10px' }}>
+                Chi tiết
               </Link>
               {canQuickJoin ? (
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm matching-card-cta-join"
-                  onClick={handleQuickJoin}
-                  disabled={joinBusy}
-                >
-                  {joinBusy ? (
-                    <span className="matching-card-join-spinner" aria-hidden="true" />
-                  ) : (
-                    <i className="feather-user-plus"></i>
-                  )}
-                  <span>{joinBusy ? 'Đang gửi...' : 'Xin tham gia'}</span>
+                <button onClick={handleQuickJoin} disabled={joinBusy} className="btn btn-primary flex-fill" style={{ borderRadius: '10px', fontWeight: '800', padding: '10px' }}>
+                   {joinBusy ? '...' : 'Xin tham gia'}
                 </button>
               ) : (
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm matching-card-cta-join"
-                  disabled
-                  title="Bạn không thể xin tham gia từ đây (đã tham gia, đang chờ duyệt, hoặc nhóm đã đủ)."
-                >
-                  <i className="feather-user-plus"></i>
-                  <span>Xin tham gia</span>
+                <button disabled className="btn btn-secondary flex-fill" style={{ borderRadius: '10px', fontWeight: '800', padding: '10px', opacity: 0.6 }}>
+                   Tham gia
                 </button>
               )}
             </div>
           )}
           {joinNotice && (
-            <p
-              className={`matching-card-join-notice small mb-0 mt-2 ${joinNotice.type === 'success' ? 'text-success' : 'text-warning'}`}
-            >
-              {joinNotice.text}
-            </p>
+             <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: '700', color: joinNotice.type === 'success' ? '#16a34a' : '#d97706', textAlign: 'center' }}>
+               {joinNotice.text}
+             </div>
           )}
         </div>
       </div>

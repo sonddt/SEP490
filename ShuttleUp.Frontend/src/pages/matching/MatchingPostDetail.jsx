@@ -190,25 +190,18 @@ export default function MatchingPostDetail() {
   const isClosed = post.status === 'CLOSED';
 
   return (
-    <>
+    <div className="main-wrapper content-below-header">
       <div className="content py-5" style={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
         <div className="container">
 
-          {/* Minimal Breadcrumb */}
-          <nav aria-label="breadcrumb" style={{ marginBottom: '24px' }}>
-            <ol className="breadcrumb mb-0" style={{ backgroundColor: 'transparent', padding: 0 }}>
-              <li className="breadcrumb-item"><Link to="/" style={{ color: '#64748b', textDecoration: 'none', fontWeight: '600' }}>Trang chủ</Link></li>
-              <li className="breadcrumb-item"><Link to="/matching" style={{ color: '#64748b', textDecoration: 'none', fontWeight: '600' }}>Tìm kèo 🏸</Link></li>
-              <li className="breadcrumb-item active" style={{ color: '#097E52', fontWeight: '800' }}>{post.title}</li>
-            </ol>
-          </nav>
+
           
           {/* Header Action Section - Minimal Hero */}
           <div style={{ backgroundColor: '#fff', borderRadius: '24px', padding: '32px 40px', marginBottom: '32px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
              <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
                 <img src={post.host?.avatarUrl || defaultAvatar} alt={post.host?.fullName} style={{ width: '80px', height: '80px', borderRadius: '16px', objectFit: 'cover', border: '3px solid #e8f5ee', boxShadow: '0 2px 10px rgba(9,126,82,0.1)' }} />
                 <div>
-                  <h3 style={{ fontSize: '26px', fontWeight: '800', color: '#1e293b', marginBottom: '8px', letterSpacing: '-0.5px' }}>{post.title}</h3>
+                  <h3 style={{ fontSize: '26px', fontWeight: '700', color: '#1e293b', marginBottom: '8px', letterSpacing: '-0.5px' }}>{post.title}</h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '15px', fontWeight: '700', color: '#097E52' }}><i className="feather-user me-1"></i> {post.host?.fullName}</span>
                     <span style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: '#cbd5e1' }}></span>
@@ -221,9 +214,9 @@ export default function MatchingPostDetail() {
              </div>
              
              <div style={{ textAlign: 'right' }}>
-                {isFull && <span style={{ display: 'inline-block', backgroundColor: '#fef2f2', color: '#ef4444', padding: '10px 20px', borderRadius: '12px', fontWeight: '800', fontSize: '15px' }}><i className="feather-check-circle me-2"></i>Đã đủ người</span>}
-                {isClosed && <span style={{ display: 'inline-block', backgroundColor: '#f1f5f9', color: '#64748b', padding: '10px 20px', borderRadius: '12px', fontWeight: '800', fontSize: '15px' }}><i className="feather-x-circle me-2"></i>Đã đóng</span>}
-                {isOpen && !isFull && !isClosed && <span style={{ display: 'inline-flex', alignItems: 'center', backgroundColor: '#e8f5ee', color: '#097E52', padding: '10px 20px', borderRadius: '12px', fontWeight: '800', fontSize: '15px', border: '1px solid #bbf7d0' }}><i className="feather-radio me-2" style={{ animation: 'blink 2s infinite' }}></i> Đang tuyển người</span>}
+                {isFull && <span style={{ display: 'inline-block', backgroundColor: '#fef2f2', color: '#ef4444', padding: '10px 20px', borderRadius: '12px', fontWeight: '700', fontSize: '15px' }}><i className="feather-check-circle me-2"></i>Đã đủ người</span>}
+                {isClosed && <span style={{ display: 'inline-block', backgroundColor: '#f1f5f9', color: '#64748b', padding: '10px 20px', borderRadius: '12px', fontWeight: '700', fontSize: '15px' }}><i className="feather-x-circle me-2"></i>Đã đóng</span>}
+                {isOpen && !isFull && !isClosed && <span style={{ display: 'inline-flex', alignItems: 'center', backgroundColor: '#e8f5ee', color: '#097E52', padding: '10px 20px', borderRadius: '12px', fontWeight: '700', fontSize: '15px', border: '1px solid #bbf7d0' }}><i className="feather-radio me-2" style={{ animation: 'blink 2s infinite' }}></i> Đang tuyển người</span>}
              </div>
           </div>
 
@@ -236,7 +229,7 @@ export default function MatchingPostDetail() {
                     <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#e8f5ee', color: '#097E52', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <i className="feather-info" style={{ fontSize: '18px' }}></i>
                     </div>
-                    <h5 style={{ margin: 0, fontWeight: '800', color: '#1e293b' }}>Thông tin chi tiết</h5>
+                    <h5 style={{ margin: 0, fontWeight: '700', color: '#1e293b' }}>Thông tin chi tiết</h5>
                 </div>
                 {/* Information matrix */}
                 <div style={{ padding: '32px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
@@ -245,8 +238,8 @@ export default function MatchingPostDetail() {
                             <i className="feather-map-pin" style={{ fontSize: '20px' }}></i>
                         </div>
                         <div>
-                            <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Địa điểm</div>
-                            <div style={{ fontSize: '16px', color: '#1e293b', fontWeight: '800', marginBottom: '2px' }}>{post.venueName}</div>
+                            <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Địa điểm</div>
+                            <div style={{ fontSize: '16px', color: '#1e293b', fontWeight: '700', marginBottom: '2px' }}>{post.venueName}</div>
                             {post.venueAddress && <div style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.4', fontWeight: '500' }}>{post.venueAddress}</div>}
                         </div>
                     </div>
@@ -256,8 +249,8 @@ export default function MatchingPostDetail() {
                             <i className="feather-calendar" style={{ fontSize: '20px' }}></i>
                         </div>
                         <div>
-                            <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Lịch chơi</div>
-                            <div style={{ fontSize: '16px', color: '#1e293b', fontWeight: '800', marginBottom: '2px' }}>{formatDate(post.playDate)}</div>
+                            <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Lịch chơi</div>
+                            <div style={{ fontSize: '16px', color: '#1e293b', fontWeight: '700', marginBottom: '2px' }}>{formatDate(post.playDate)}</div>
                             <div style={{ fontSize: '14px', color: '#1e293b', fontWeight: '700' }}>{post.playStartTime} – {post.playEndTime}</div>
                         </div>
                     </div>
@@ -267,8 +260,8 @@ export default function MatchingPostDetail() {
                             <i className="feather-award" style={{ fontSize: '20px' }}></i>
                         </div>
                         <div>
-                            <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Yêu cầu trình độ</div>
-                            <div style={{ fontSize: '16px', color: '#1e293b', fontWeight: '800', marginBottom: '2px' }}>{post.skillLevel ? (skillLabels[post.skillLevel] || post.skillLevel) : 'Mọi trình độ'}</div>
+                            <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Yêu cầu trình độ</div>
+                            <div style={{ fontSize: '16px', color: '#1e293b', fontWeight: '700', marginBottom: '2px' }}>{post.skillLevel ? (skillLabels[post.skillLevel] || post.skillLevel) : 'Mọi trình độ'}</div>
                             <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}><i className="feather-users me-1"></i> {post.genderPref || 'Nam & Nữ đều được'}</div>
                         </div>
                     </div>
@@ -278,8 +271,8 @@ export default function MatchingPostDetail() {
                             <i className="feather-credit-card" style={{ fontSize: '20px' }}></i>
                         </div>
                         <div>
-                            <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Chi phí dự kiến</div>
-                            <div style={{ fontSize: '18px', color: '#097E52', fontWeight: '800', marginBottom: '2px', letterSpacing: '-0.5px' }}>{formatPrice(post.pricePerSlot)} <span style={{ fontSize: '14px', color: '#64748b', fontWeight: '600' }}>/ ng</span></div>
+                            <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Chi phí dự kiến</div>
+                            <div style={{ fontSize: '18px', color: '#097E52', fontWeight: '700', marginBottom: '2px', letterSpacing: '-0.5px' }}>{formatPrice(post.pricePerSlot)} <span style={{ fontSize: '14px', color: '#64748b', fontWeight: '600' }}>/ ng</span></div>
                             <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}><i className="feather-pie-chart me-1"></i> {expenseLabels[post.expenseSharing] || post.expenseSharing}</div>
                         </div>
                     </div>
@@ -287,7 +280,7 @@ export default function MatchingPostDetail() {
 
                 {post.notes && (
                   <div style={{ borderTop: '1px dashed #e2e8f0', padding: '24px 32px' }}>
-                     <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}><i className="feather-feather me-2"></i>Ghi chú từ chủ nhóm</div>
+                     <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}><i className="feather-feather me-2"></i>Ghi chú từ chủ nhóm</div>
                      <div style={{ backgroundColor: '#fffbeb', color: '#b45309', padding: '16px 20px', borderRadius: '12px', fontSize: '14.5px', fontWeight: '500', lineHeight: '1.6' }}>
                         {post.notes}
                      </div>
@@ -296,7 +289,7 @@ export default function MatchingPostDetail() {
                 
                 {post.bookingItems && post.bookingItems.length > 0 && (
                   <div style={{ borderTop: '1px dashed #e2e8f0', padding: '24px 32px' }}>
-                      <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}><i className="feather-layers me-2"></i>Danh sách ca chơi ghép</div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}><i className="feather-layers me-2"></i>Danh sách ca chơi ghép</div>
                       {post.bookingItems.map((item, i) => (
                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#f8fafc', borderRadius: '12px', marginBottom: '8px', border: '1px solid #f1f5f9' }}>
                           <div>
@@ -306,7 +299,7 @@ export default function MatchingPostDetail() {
                               {item.endTime && new Date(item.endTime).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                          <span style={{ fontWeight: '800', color: '#097E52' }}>{formatPrice(item.price)}</span>
+                          <span style={{ fontWeight: '700', color: '#097E52' }}>{formatPrice(item.price)}</span>
                         </div>
                       ))}
                   </div>
@@ -331,13 +324,13 @@ export default function MatchingPostDetail() {
                    <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%' }}>
                      <path style={{ stroke: '#f1f5f9', strokeWidth: '3', fill: 'none' }} d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" />
                      <path style={{ stroke: '#097E52', strokeWidth: '3', strokeDasharray: `${progressPct}, 100`, fill: 'none', strokeLinecap: 'round' }} d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" />
-                     <text x="18" y="22" style={{ fill: '#1e293b', fontSize: '10px', fontWeight: '800', textAnchor: 'middle' }}>{filled}/{totalSlots}</text>
+                     <text x="18" y="22" style={{ fill: '#1e293b', fontSize: '10px', fontWeight: '700', textAnchor: 'middle' }}>{filled}/{totalSlots}</text>
                    </svg>
                 </div>
                 {slotsLeft > 0 ? (
-                  <h5 style={{ fontWeight: '800', color: '#097E52', marginBottom: '24px' }}>Còn {slotsLeft} chỗ trống</h5>
+                  <h5 style={{ fontWeight: '700', color: '#097E52', marginBottom: '24px' }}>Còn {slotsLeft} chỗ trống</h5>
                 ) : (
-                  <h5 style={{ fontWeight: '800', color: '#ef4444', marginBottom: '24px' }}>Đã đủ đội hình</h5>
+                  <h5 style={{ fontWeight: '700', color: '#ef4444', marginBottom: '24px' }}>Đã đủ đội hình</h5>
                 )}
 
                 {/* Finder Buttons */}
@@ -450,7 +443,7 @@ export default function MatchingPostDetail() {
               {/* Members List specifically for non-host */}
               {!post.isHost && (
                 <div style={{ backgroundColor: '#fff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', padding: '24px' }}>
-                  <h5 style={{ fontWeight: '800', color: '#1e293b', marginBottom: '20px' }}><i className="feather-users me-2"></i>Đội hình hiện tại ({post.membersCount}/{totalSlots})</h5>
+                  <h5 style={{ fontWeight: '700', color: '#1e293b', marginBottom: '20px' }}><i className="feather-users me-2"></i>Đội hình hiện tại ({post.membersCount}/{totalSlots})</h5>
                   <MatchingMembers members={post.members || []} isHost={false} />
                 </div>
               )}
@@ -459,6 +452,6 @@ export default function MatchingPostDetail() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
