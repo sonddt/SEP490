@@ -98,4 +98,23 @@ Kết bạn & quan hệ xã hội (Player):
 
 ---
 
+## 2 tháng 4, 2026 (Manager & Admin UI Premium Overhaul)
+
+1. **Giao diện Manager (Premium SaaS)**:
+   - Thay đổi kiến trúc CSS (`.mgr-sidebar`, `.mgr-topbar`), chuyển sang thiết kế dạng thẻ nổi (floating cards).
+   - Sidebar được bo tròn 20px, sử dụng gradient Emerald Green (`#064e3b` kết hợp `#065f46`), text đậm hơn để tăng độ tương phản.
+   - Topbar sử dụng hiệu ứng frosted-glass (`backdrop-filter: blur`), bo góc 16px, thụt lề 14px tạo cảm giác tách biệt khỏi viền trình duyệt.
+   - Layout tổng quan được bổ sung background với radial-gradient nhẹ, tạo chiều sâu cho màn hình.
+2. **Quản lý sân con (Courts)**:
+   - Sửa lỗi thẻ Type hiện `ACTIVE` bằng hàm loại trừ logic nội bộ (`isRealCourtType`).
+   - Card Actions và Table Actions được chuẩn hoá (nút lớn, nhãn bằng chữ, màu xanh da trời cho Edit và đỏ ngói cho Delete).
+3. **Giao diện Admin**:
+   - Khởi tạo thư mục `layouts/AdminLayout.jsx` và `components/admin/AdminSidebar.jsx` chuyên biệt.
+   - Áp dụng cấu trúc nested-route trên `App.jsx` (`/admin/*`) thay vì wrap thủ công ở từng page.
+   - Xoá triệt để dải header cũ (breadcrumb) và thanh menu ngang (`AdminDashboardMenu`) lỗi thời ở tất cả trang con (`AdminDashboard`, `AdminAccounts`, `AdminManagerRequests`, ...).
+   - Sidebar sử dụng bộ màu Indigo/Dark Navy (`#1e1b4b` -> `#312e81`) để phân biệt với role Manager, giữ nguyên hiệu ứng floating floating/rounded. Sắp xếp lại logo, icon feather, và menu phụ Khác. Thống kê sử dụng card `adm-stat-card` có sọc màu accent tương ứng nội dung.
+
+---
+
 *Cập nhật: gom theo ngày, bỏ trùng lặp và định dạng lại cho dễ đọc.*
+

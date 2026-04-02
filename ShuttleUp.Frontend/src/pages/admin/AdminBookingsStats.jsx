@@ -6,6 +6,9 @@ const statusMap = {
   Confirmed: { label: 'Xác nhận', cls: 'bg-success' },
   Pending:   { label: 'Chờ xử lý', cls: 'bg-warning text-dark' },
   Cancelled: { label: 'Đã huỷ',   cls: 'bg-danger'  },
+  CONFIRMED: { label: 'Xác nhận', cls: 'bg-success' },
+  PENDING:   { label: 'Chờ xử lý', cls: 'bg-warning text-dark' },
+  CANCELLED: { label: 'Đã huỷ',   cls: 'bg-danger'  },
 };
 
 export default function AdminBookingsStats() {
