@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import AdminDashboardMenu from '../../components/admin/AdminDashboardMenu';
 
 // ── Hooks & API ────────────────────────────────────────────────────────────
 import axiosClient from '../../api/axiosClient';
@@ -87,26 +86,9 @@ export default function AdminManagerRequests() {
   const handleNextPage = () => setPage(p => Math.min(totalPages, p + 1));
 
   return (
-    <div className="main-wrapper">
-      {/* Breadcrumb */}
-      <section className="breadcrumb breadcrumb-list mb-0">
-        <span className="primary-right-round"></span>
-        <div className="container">
-          <h1 className="text-white">Duyệt Chủ sân</h1>
-          <ul>
-            <li><Link to="/">Trang chủ</Link></li>
-            <li><Link to="/admin/dashboard">Quản trị</Link></li>
-            <li>Duyệt Chủ sân</li>
-          </ul>
-        </div>
-      </section>
-
-      <AdminDashboardMenu />
-
-      <div className="content court-bg">
-        <div className="container">
-          <div className="card card-tableset">
-            <div className="card-body">
+    <>
+      <div className="card card-tableset">
+        <div className="card-body">
               {/* ── Toolbar ─────────────────────────────────── */}
               <div className="row mb-3 align-items-center g-2">
                 <div className="col-md-4">
@@ -239,8 +221,6 @@ export default function AdminManagerRequests() {
                 </div>
               )}
 
-            </div>
-          </div>
         </div>
       </div>
 
@@ -422,7 +402,7 @@ export default function AdminManagerRequests() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 

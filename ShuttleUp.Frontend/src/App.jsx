@@ -66,7 +66,8 @@ import ManagerPaymentSettings from './pages/manager/ManagerPaymentSettings';
 import ManagerAvailability from './pages/manager/ManagerAvailability';
 import ManagerProfile from './pages/manager/ManagerProfile';
 
-// Admin
+// Admin — Layout + Pages
+import AdminLayout from './layouts/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminAccounts from './pages/admin/AdminAccounts';
 import AdminManagerRequests from './pages/admin/AdminManagerRequests';
@@ -221,12 +222,24 @@ function App() {
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/privacy-policy" element={<TermsOfService />} />
 
-          {/* ═══ Admin ═══ */}
-          <Route path="/admin/dashboard" element={<ProtectedRoute requiredRole="ADMIN"><AdminDashboard /></ProtectedRoute>} />
-          <Route path="/admin/accounts" element={<ProtectedRoute requiredRole="ADMIN"><AdminAccounts /></ProtectedRoute>} />
-          <Route path="/admin/manager-requests" element={<ProtectedRoute requiredRole="ADMIN"><AdminManagerRequests /></ProtectedRoute>} />
-          <Route path="/admin/bookings-stats" element={<ProtectedRoute requiredRole="ADMIN"><AdminBookingsStats /></ProtectedRoute>} />
-          <Route path="/admin/revenue-stats" element={<ProtectedRoute requiredRole="ADMIN"><AdminRevenueStats /></ProtectedRoute>} />
+          {/* ═══════════════════════════════════════════════════════════
+               ADMIN — Nested routes with AdminLayout (sidebar)
+             ═══════════════════════════════════════════════════════════ */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute requiredRole="ADMIN">
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="accounts" element={<AdminAccounts />} />
+            <Route path="manager-requests" element={<AdminManagerRequests />} />
+            <Route path="bookings-stats" element={<AdminBookingsStats />} />
+            <Route path="revenue-stats" element={<AdminRevenueStats />} />
+          </Route>
 
           {/* ═══ 404 ═══ */}
           <Route path="*" element={<PlaceholderPage title="404 – Không tìm thấy trang" />} />

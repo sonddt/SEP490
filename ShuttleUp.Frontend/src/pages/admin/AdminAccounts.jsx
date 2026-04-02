@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import AdminDashboardMenu from '../../components/admin/AdminDashboardMenu';
 
 import axiosClient from '../../api/axiosClient';
 
@@ -30,7 +29,7 @@ export default function AdminAccounts() {
   // Modal: view detail
   const [selected,    setSelected]    = useState(null);
   // Confirm: block / unblock
-  const [confirmAction, setConfirmAction] = useState(null); // { user, action }
+  const [confirmAction, setConfirmAction] = useState(null);
   const [blockReason, setBlockReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError,   setActionError]   = useState(null);
@@ -75,7 +74,7 @@ export default function AdminAccounts() {
 
       setConfirmAction(null);
       setBlockReason('');
-      load(page); // reload current page
+      load(page);
     } catch (e) {
       setActionError(e.message);
     } finally {
@@ -84,25 +83,9 @@ export default function AdminAccounts() {
   };
 
   return (
-    <div className="main-wrapper">
-      <section className="breadcrumb breadcrumb-list mb-0">
-        <span className="primary-right-round"></span>
-        <div className="container">
-          <h1 className="text-white">Quản lý Tài khoản</h1>
-          <ul>
-            <li><Link to="/">Trang chủ</Link></li>
-            <li><Link to="/admin/dashboard">Quản trị</Link></li>
-            <li>Tài khoản</li>
-          </ul>
-        </div>
-      </section>
-
-      <AdminDashboardMenu />
-
-      <div className="content court-bg">
-        <div className="container">
-          <div className="card card-tableset">
-            <div className="card-body">
+    <>
+      <div className="card card-tableset">
+        <div className="card-body">
 
               {/* ── Toolbar ──────────────────────────────────────── */}
               <form className="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3" onSubmit={handleSearch}>
@@ -213,8 +196,6 @@ export default function AdminAccounts() {
 
             </div>
           </div>
-        </div>
-      </div>
 
       {/* ── Modal: Detail ──────────────────────────────────────────────── */}
       {selected && (
@@ -298,6 +279,6 @@ export default function AdminAccounts() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
