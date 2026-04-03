@@ -33,7 +33,7 @@ function emptyThread() {
   return { expanded: false, loaded: false, loading: false, items: [] };
 }
 
-export default function MatchingComments({ postId, isHost = false, postMembers = [] }) {
+export default function MatchingComments({ postId, isHost = false, postMembers = [], readOnly = false }) {
   const { user } = useAuth();
   const mentionMembers = useMemo(
     () =>
@@ -376,9 +376,9 @@ export default function MatchingComments({ postId, isHost = false, postMembers =
 
   const renderCommentRow = (c, { isReply, rootId }) => {
     const isAuthor = sameUserId(c.userId, user?.id);
-    const canEdit = isAuthor;
-    const canDelete = isHost || isAuthor;
-    const canReplyToThis = !isReply;
+    const canEdit = isAuthor && !readOnly;
+    const canDelete = (isHost || isAuthor) && !readOnly;
+    const canReplyToThis = !isReply && !readOnly;
 
     return (
       <div key={c.id} className={`matching-comment-item${isReply ? ' matching-comment-item--reply' : ''}`}>
@@ -479,6 +479,11 @@ export default function MatchingComments({ postId, isHost = false, postMembers =
         <h5 className="matching-comments-title">
           <i className="feather-message-circle"></i> Bình luận nhóm ({totalAll})
         </h5>
+        {readOnly && (
+          <span className="text-muted small" style={{ fontWeight: 600 }}>
+            Bài đã kết thúc — chỉ xem
+          </span>
+        )}
         <select
           className="form-select form-select-sm matching-comments-sort"
           value={sort}
@@ -491,7 +496,7 @@ export default function MatchingComments({ postId, isHost = false, postMembers =
         </select>
       </div>
 
-      {replyingTo && (
+      {replyingTo && !readOnly && (
         <div className="matching-comment-replying-banner">
           <span>
             Đang trả lời <strong>{replyingTo.fullName}</strong>
@@ -502,6 +507,8 @@ export default function MatchingComments({ postId, isHost = false, postMembers =
         </div>
       )}
 
+      {!readOnly && (
+        <>
       <form className="matching-comment-form matching-comment-form--stack" onSubmit={handleSend}>
         <div className="matching-comment-input-wrap">
           <textarea
@@ -576,6 +583,8 @@ export default function MatchingComments({ postId, isHost = false, postMembers =
       </form>
       <p className="text-muted small mb-2">{content.length}/{CONTENT_MAX} ký tự</p>
       {formError && <p className="text-warning small mb-2">{formError}</p>}
+        </>
+      )}
 
       <div className="matching-comments-list">
         {roots.map((root) => {

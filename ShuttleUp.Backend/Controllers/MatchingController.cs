@@ -21,12 +21,30 @@ public class MatchingController : ControllerBase
     private readonly ShuttleUpDbContext _db;
     private readonly INotificationDispatchService _notify;
     private readonly IFileService _fileService;
+    private readonly IMatchingPostActivityService _activity;
 
-    public MatchingController(ShuttleUpDbContext db, INotificationDispatchService notify, IFileService fileService)
+    public MatchingController(
+        ShuttleUpDbContext db,
+        INotificationDispatchService notify,
+        IFileService fileService,
+        IMatchingPostActivityService activity)
     {
         _db = db;
         _notify = notify;
         _fileService = fileService;
+        _activity = activity;
+    }
+
+    private static bool IsInactiveStatus(string? status) =>
+        string.Equals(status, "Inactive", StringComparison.OrdinalIgnoreCase);
+
+    private async Task<bool> IsPostInactiveAsync(Guid postId, CancellationToken cancellationToken = default)
+    {
+        var st = await _db.MatchingPosts.AsNoTracking()
+            .Where(p => p.Id == postId)
+            .Select(p => p.Status)
+            .FirstOrDefaultAsync(cancellationToken);
+        return IsInactiveStatus(st);
     }
 
     private bool TryGetCurrentUserId(out Guid userId)
@@ -71,12 +89,20 @@ public class MatchingController : ControllerBase
         if (!TryGetCurrentUserId(out var me))
             return Unauthorized();
 
+        await _activity.ApplyExpiredOpenAndFullToInactiveAsync(HttpContext.RequestAborted);
+
+        var nowUtc = DateTime.UtcNow;
         var query = _db.MatchingPosts.AsNoTracking()
             .Include(p => p.CreatorUser).ThenInclude(u => u!.AvatarFile)
             .Include(p => p.Venue)
             .Include(p => p.MatchingMembers)
             .Include(p => p.MatchingJoinRequests)
-            .Where(p => p.Status == "OPEN");
+            .Include(p => p.MatchingPostItems).ThenInclude(i => i.BookingItem)
+            .Where(p => p.Status == "OPEN" || p.Status == "FULL")
+            .Where(p => p.MatchingPostItems.Any(i =>
+                i.BookingItem != null
+                && i.BookingItem.StartTime.HasValue
+                && i.BookingItem.StartTime.Value > nowUtc));
 
         // Filters
         if (!string.IsNullOrWhiteSpace(skillLevel))
@@ -110,12 +136,56 @@ public class MatchingController : ControllerBase
         if (!TryGetCurrentUserId(out var me))
             return Unauthorized();
 
+        await _activity.ApplyExpiredOpenAndFullToInactiveAsync(HttpContext.RequestAborted);
+
         var list = await _db.MatchingPosts.AsNoTracking()
             .Include(p => p.CreatorUser).ThenInclude(u => u!.AvatarFile)
             .Include(p => p.Venue)
             .Include(p => p.MatchingMembers)
             .Include(p => p.MatchingJoinRequests)
             .Where(p => p.CreatorUserId == me)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
+
+        return Ok(list.Select(p => new
+        {
+            id = p.Id,
+            title = p.Title,
+            playDate = p.PlayDate,
+            playStartTime = p.PlayStartTime?.ToString("HH:mm"),
+            playEndTime = p.PlayEndTime?.ToString("HH:mm"),
+            venueName = p.Venue?.Name,
+            venueAddress = p.Venue?.Address,
+            courtName = p.CourtName,
+            pricePerSlot = p.PricePerSlot,
+            requiredPlayers = p.RequiredPlayers,
+            skillLevel = p.SkillLevel,
+            genderPref = p.GenderPref,
+            expenseSharing = p.ExpenseSharing,
+            status = p.Status,
+            membersCount = p.MatchingMembers.Count,
+            pendingRequests = p.MatchingJoinRequests.Count(r => r.Status == "PENDING"),
+            createdAt = p.CreatedAt
+        }));
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  GET /api/matching/posts/joined — Bài đã tham gia (không phải chủ bài)
+    // ═══════════════════════════════════════════════════
+    [HttpGet("posts/joined")]
+    public async Task<IActionResult> GetJoinedPosts()
+    {
+        if (!TryGetCurrentUserId(out var me))
+            return Unauthorized();
+
+        await _activity.ApplyExpiredOpenAndFullToInactiveAsync(HttpContext.RequestAborted);
+
+        var list = await _db.MatchingPosts.AsNoTracking()
+            .Include(p => p.CreatorUser).ThenInclude(u => u!.AvatarFile)
+            .Include(p => p.Venue)
+            .Include(p => p.MatchingMembers)
+            .Include(p => p.MatchingJoinRequests)
+            .Where(p => p.CreatorUserId != me && p.MatchingMembers.Any(m => m.UserId == me))
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
 
@@ -150,6 +220,8 @@ public class MatchingController : ControllerBase
         if (!TryGetCurrentUserId(out var me))
             return Unauthorized();
 
+        await _activity.EnsurePostInactiveIfElapsedAsync(id, HttpContext.RequestAborted);
+
         var p = await _db.MatchingPosts.AsNoTracking()
             .Include(x => x.CreatorUser).ThenInclude(u => u!.AvatarFile)
             .Include(x => x.Venue)
@@ -164,6 +236,7 @@ public class MatchingController : ControllerBase
 
         var isHost = p.CreatorUserId == me;
         var isMember = p.MatchingMembers.Any(m => m.UserId == me);
+        var myMemberId = p.MatchingMembers.FirstOrDefault(m => m.UserId == me)?.Id;
         var myJoinRequest = await _db.MatchingJoinRequests.AsNoTracking()
             .FirstOrDefaultAsync(r => r.PostId == id && r.UserId == me && r.Status == "PENDING");
 
@@ -223,6 +296,7 @@ public class MatchingController : ControllerBase
             // Current user context
             isHost,
             isMember,
+            myMemberId,
             myJoinRequestId = myJoinRequest?.Id,
             isPending = myJoinRequest != null,
 
@@ -361,6 +435,8 @@ public class MatchingController : ControllerBase
             .FirstOrDefaultAsync(p => p.Id == id && p.CreatorUserId == me);
         if (post == null)
             return NotFound(new { message = "Không tìm thấy bài đăng." });
+        if (IsInactiveStatus(post.Status))
+            return BadRequest(new { message = "Bài đăng đã kết thúc — không thể chỉnh sửa." });
         if (post.Status != "OPEN")
             return BadRequest(new { message = "Chỉ có thể sửa bài đăng đang mở." });
 
@@ -400,6 +476,8 @@ public class MatchingController : ControllerBase
             .FirstOrDefaultAsync(p => p.Id == id && p.CreatorUserId == me);
         if (post == null)
             return NotFound(new { message = "Không tìm thấy bài đăng." });
+        if (IsInactiveStatus(post.Status))
+            return BadRequest(new { message = "Bài đăng đã kết thúc — không thể đóng tuyển người." });
 
         post.Status = "CLOSED";
         post.UpdatedAt = DateTime.UtcNow;
@@ -483,6 +561,8 @@ public class MatchingController : ControllerBase
             .FirstOrDefaultAsync(p => p.Id == id);
         if (post == null)
             return NotFound(new { message = "Không tìm thấy bài đăng." });
+        if (IsInactiveStatus(post.Status))
+            return BadRequest(new { message = "Bài đăng đã kết thúc — không thể xin tham gia." });
         if (post.Status != "OPEN")
             return BadRequest(new { message = "Bài đăng này không còn nhận thành viên mới." });
         if (post.CreatorUserId == me)
@@ -576,6 +656,12 @@ public class MatchingController : ControllerBase
             {
                 await tx.RollbackAsync();
                 return Forbid();
+            }
+
+            if (IsInactiveStatus(request.Post?.Status))
+            {
+                await tx.RollbackAsync();
+                return BadRequest(new { message = "Bài đăng đã kết thúc — không thể duyệt tham gia." });
             }
 
             if (request.Status != "PENDING")
@@ -699,6 +785,8 @@ public class MatchingController : ControllerBase
             return NotFound(new { message = "Không tìm thấy yêu cầu." });
         if (request.Post?.CreatorUserId != me)
             return Forbid();
+        if (IsInactiveStatus(request.Post?.Status))
+            return BadRequest(new { message = "Bài đăng đã kết thúc — không thể xử lý yêu cầu." });
         if (request.Status != "PENDING")
             return BadRequest(new { message = "Yêu cầu này đã được xử lý." });
 
@@ -746,9 +834,10 @@ public class MatchingController : ControllerBase
         if (isHost && isSelf)
             return BadRequest(new { message = "Chủ bài đăng không thể rời nhóm. Hãy đóng bài đăng." });
 
+        var postIdForRefresh = member.PostId;
+
         _db.MatchingMembers.Remove(member);
 
-        // If post was FULL, reopen it
         if (member.Post?.Status == "FULL")
         {
             member.Post.Status = "OPEN";
@@ -756,6 +845,9 @@ public class MatchingController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
+
+        if (postIdForRefresh.HasValue)
+            await _activity.EnsurePostInactiveIfElapsedAsync(postIdForRefresh.Value, HttpContext.RequestAborted);
 
         // Notify
         if (isHost && !isSelf)
@@ -937,6 +1029,8 @@ public class MatchingController : ControllerBase
             .AnyAsync(m => m.PostId == postId && m.UserId == me);
         if (!isMember)
             return Forbid();
+        if (await IsPostInactiveAsync(postId))
+            return BadRequest(new { message = "Bài đăng đã kết thúc — không thể đính kèm ảnh bình luận." });
 
         if (file == null || file.Length <= 0)
             return BadRequest(new { message = "Vui lòng chọn ảnh." });
@@ -994,6 +1088,8 @@ public class MatchingController : ControllerBase
             .AnyAsync(m => m.PostId == id && m.UserId == me);
         if (!isMember)
             return Forbid();
+        if (await IsPostInactiveAsync(id))
+            return BadRequest(new { message = "Bài đăng đã kết thúc — không thể gửi bình luận mới." });
 
         string? replyToFullName = null;
         Guid? parentId = null;
@@ -1136,6 +1232,8 @@ public class MatchingController : ControllerBase
             .AnyAsync(m => m.PostId == postId && m.UserId == me);
         if (!isMember)
             return Forbid();
+        if (await IsPostInactiveAsync(postId))
+            return BadRequest(new { message = "Bài đăng đã kết thúc — không thể sửa bình luận." });
 
         var comment = await _db.MatchingPostComments
             .FirstOrDefaultAsync(c => c.Id == commentId && c.PostId == postId);
@@ -1204,6 +1302,8 @@ public class MatchingController : ControllerBase
             .AnyAsync(m => m.PostId == postId && m.UserId == me);
         if (!isMember)
             return Forbid();
+        if (await IsPostInactiveAsync(postId))
+            return BadRequest(new { message = "Bài đăng đã kết thúc — không thể gỡ bình luận." });
 
         var comment = await _db.MatchingPostComments
             .FirstOrDefaultAsync(c => c.Id == commentId && c.PostId == postId);
@@ -1285,7 +1385,8 @@ public class MatchingController : ControllerBase
         var isHost = p.CreatorUserId == me;
         var isMember = p.MatchingMembers.Any(m => m.UserId == me);
         var isPending = p.MatchingJoinRequests.Any(r => r.UserId == me && r.Status == "PENDING");
-        var canRequestJoin = !isHost && !isMember && !isPending && p.Status == "OPEN" && slotsLeft > 0;
+        var canRequestJoin = !isHost && !isMember && !isPending && p.Status == "OPEN" && slotsLeft > 0
+            && !IsInactiveStatus(p.Status);
 
         return new
         {

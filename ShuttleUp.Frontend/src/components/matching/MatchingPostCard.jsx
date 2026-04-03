@@ -53,7 +53,7 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
   };
 
   const isPostOwner = post.isHost === true || sameUserId(user?.id, post.host?.id);
-  const canQuickJoin = post.canRequestJoin === true;
+  const canQuickJoin = post.canRequestJoin === true && post.status !== 'Inactive';
 
   const handleQuickJoin = async () => {
     if (!canQuickJoin || joinBusy) return;
@@ -89,6 +89,11 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
                 </span>
               )}
             </div>
+            {post.status === 'Inactive' && (
+              <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '700', fontSize: '15px', zIndex: 2, textAlign: 'center', padding: '8px' }}>
+                Đã kết thúc
+              </div>
+            )}
             {post.status === 'FULL' && (
               <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '700', fontSize: '16px', zIndex: 2 }}>
                 Đã đủ người
@@ -196,6 +201,11 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
                </span>
             )}
           </div>
+          {post.status === 'Inactive' && (
+            <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '800', fontSize: '15px', zIndex: 3, textAlign: 'center', padding: '8px' }}>
+              Đã kết thúc
+            </div>
+          )}
           {post.status === 'FULL' && (
             <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '800', fontSize: '16px', zIndex: 2 }}>
               Đã đủ người

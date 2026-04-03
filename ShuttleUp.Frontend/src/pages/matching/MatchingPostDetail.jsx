@@ -4,6 +4,12 @@ import matchingApi from '../../api/matchingApi';
 import MatchingMembers from '../../components/matching/MatchingMembers';
 import MatchingJoinRequests from '../../components/matching/MatchingJoinRequests';
 import MatchingComments from '../../components/matching/MatchingComments';
+import { useAuth } from '../../context/AuthContext';
+
+function sameUserId(a, b) {
+  if (a == null || b == null) return false;
+  return String(a).toLowerCase() === String(b).toLowerCase();
+}
 
 const defaultImg = '/assets/img/venues/venues-01.jpg';
 const defaultAvatar = '/assets/img/profiles/avatar-01.jpg';
@@ -20,6 +26,7 @@ const expenseLabels = {
 export default function MatchingPostDetail() {
   const { postId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -39,6 +46,12 @@ export default function MatchingPostDetail() {
   }, [postId, navigate]);
 
   useEffect(() => { load(); }, [load]);
+
+  const isInactive = post?.status === 'Inactive';
+
+  useEffect(() => {
+    if (post?.isHost && isInactive && hostTab === 'requests') setHostTab('members');
+  }, [post?.isHost, isInactive, hostTab]);
 
   const commentMentionMembers = useMemo(() => {
     const list = [...(post?.members || [])];
@@ -139,18 +152,12 @@ export default function MatchingPostDetail() {
     if (!window.confirm('Bạn muốn rời khỏi nhóm?')) return;
     setActionLoading(true);
     try {
-      // Find my member record
-      const myMember = post.members?.find(m => m.userId === post.host?.id);
-      // Actually, we need to find MY member record — but post doesn't expose me directly
-      // Let's find it from members where the current user's ID matches
-      // Since we know isMember is true, we need to get our memberId
-      // The API returns all members, so we need to figure out who is "me"
-      // Let's use the fact that "isMember" is true and find by exclusion
-      // Better: just call the leave endpoint which finds by current user
-      const meAsMember = post.members?.find(m => !post.isHost || m.userId !== post.host?.id);
-      if (meAsMember?.memberId) {
-        await matchingApi.removeMember(meAsMember.memberId);
+      const myMember = post.members?.find((m) => sameUserId(m.userId, user?.id));
+      if (myMember?.memberId) {
+        await matchingApi.removeMember(myMember.memberId);
         await load();
+      } else {
+        alert('Không tìm thấy thông tin thành viên — tải lại trang và thử lại.');
       }
     } catch (err) {
       alert(err.response?.data?.message || 'Có lỗi xảy ra');
@@ -214,9 +221,10 @@ export default function MatchingPostDetail() {
              </div>
              
              <div style={{ textAlign: 'right' }}>
-                {isFull && <span style={{ display: 'inline-block', backgroundColor: '#fef2f2', color: '#ef4444', padding: '10px 20px', borderRadius: '12px', fontWeight: '700', fontSize: '15px' }}><i className="feather-check-circle me-2"></i>Đã đủ người</span>}
-                {isClosed && <span style={{ display: 'inline-block', backgroundColor: '#f1f5f9', color: '#64748b', padding: '10px 20px', borderRadius: '12px', fontWeight: '700', fontSize: '15px' }}><i className="feather-x-circle me-2"></i>Đã đóng</span>}
-                {isOpen && !isFull && !isClosed && <span style={{ display: 'inline-flex', alignItems: 'center', backgroundColor: '#e8f5ee', color: '#097E52', padding: '10px 20px', borderRadius: '12px', fontWeight: '700', fontSize: '15px', border: '1px solid #bbf7d0' }}><i className="feather-radio me-2" style={{ animation: 'blink 2s infinite' }}></i> Đang tuyển người</span>}
+                {isInactive && <span style={{ display: 'inline-block', backgroundColor: '#f1f5f9', color: '#475569', padding: '10px 20px', borderRadius: '12px', fontWeight: '700', fontSize: '15px' }}><i className="feather-archive me-2"></i>Đã kết thúc</span>}
+                {!isInactive && isFull && <span style={{ display: 'inline-block', backgroundColor: '#fef2f2', color: '#ef4444', padding: '10px 20px', borderRadius: '12px', fontWeight: '700', fontSize: '15px' }}><i className="feather-check-circle me-2"></i>Đã đủ người</span>}
+                {!isInactive && isClosed && <span style={{ display: 'inline-block', backgroundColor: '#f1f5f9', color: '#64748b', padding: '10px 20px', borderRadius: '12px', fontWeight: '700', fontSize: '15px' }}><i className="feather-x-circle me-2"></i>Đã đóng</span>}
+                {!isInactive && isOpen && !isFull && !isClosed && <span style={{ display: 'inline-flex', alignItems: 'center', backgroundColor: '#e8f5ee', color: '#097E52', padding: '10px 20px', borderRadius: '12px', fontWeight: '700', fontSize: '15px', border: '1px solid #bbf7d0' }}><i className="feather-radio me-2" style={{ animation: 'blink 2s infinite' }}></i> Đang tuyển người</span>}
              </div>
           </div>
 
@@ -309,7 +317,12 @@ export default function MatchingPostDetail() {
               {/* Comments moved up right below details */}
               {(post.isHost || post.isMember) && (
                 <div style={{ paddingBottom: '32px' }}>
-                   <MatchingComments postId={postId} isHost={post.isHost} postMembers={commentMentionMembers} />
+                   <MatchingComments
+                     postId={postId}
+                     isHost={post.isHost}
+                     postMembers={commentMentionMembers}
+                     readOnly={isInactive}
+                   />
                 </div>
               )}
 
@@ -334,7 +347,7 @@ export default function MatchingPostDetail() {
                 )}
 
                 {/* Finder Buttons */}
-                {!post.isHost && !post.isMember && !post.isPending && isOpen && (
+                {!post.isHost && !post.isMember && !post.isPending && isOpen && !isInactive && (
                     <>
                       {showJoinForm ? (
                         <div style={{ textAlign: 'left' }}>
@@ -360,7 +373,7 @@ export default function MatchingPostDetail() {
                     </>
                   )}
 
-                  {post.isPending && (
+                  {post.isPending && !isInactive && (
                     <>
                       <div style={{ backgroundColor: '#fffbeb', color: '#b45309', padding: '16px', borderRadius: '12px', fontWeight: '700', marginBottom: '12px' }}>
                         <i className="feather-clock me-2"></i> Yêu cầu đang được chờ Host duyệt...
@@ -377,7 +390,7 @@ export default function MatchingPostDetail() {
                     </button>
                   )}
 
-                  {post.isHost && (
+                  {post.isHost && !isInactive && (
                     <>
                       {isOpen && (
                         <Link to={`/matching/edit/${postId}`} className="btn w-100 mb-3" style={{ border: '2px solid #e8f5ee', color: '#097E52', padding: '12px', borderRadius: '12px', fontWeight: '700' }}>
@@ -397,15 +410,34 @@ export default function MatchingPostDetail() {
                     </>
                   )}
 
-                  {(isClosed || isFull) && !post.isHost && !post.isMember && (
+                  {isInactive && post.isHost && (
+                    <p className="text-muted small mb-0" style={{ fontWeight: '600' }}>
+                      Bài đã kết thúc — bạn chỉ có thể xem và quản lý thành viên (kick).
+                    </p>
+                  )}
+
+                  {(isInactive || isClosed || isFull) && !post.isHost && !post.isMember && (
                     <button className="btn w-100" disabled style={{ backgroundColor: '#f1f5f9', color: '#94a3b8', padding: '14px', borderRadius: '14px', fontWeight: '700' }}>
-                      {isClosed ? 'Bài đăng đã đóng' : 'Đã đủ đội hình'}
+                      {isInactive ? 'Bài đăng đã kết thúc' : isClosed ? 'Bài đăng đã đóng' : 'Đã đủ đội hình'}
                     </button>
                   )}
               </div>
 
               {/* Host management card */}
-              {post.isHost && (
+              {post.isHost && isInactive && (
+                <div style={{ backgroundColor: '#fff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', padding: '24px', marginBottom: '24px' }}>
+                  <h5 style={{ fontWeight: '700', color: '#1e293b', marginBottom: '20px' }}><i className="feather-users me-2"></i>Thành viên ({post.membersCount || 0})</h5>
+                  <MatchingMembers
+                    members={post.members || []}
+                    isHost
+                    onKick={handleKick}
+                    hostUserId={post.host?.id}
+                    currentUserId={user?.id}
+                  />
+                </div>
+              )}
+
+              {post.isHost && !isInactive && (
                 <div style={{ backgroundColor: '#fff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', padding: '24px 0', marginBottom: '24px' }}>
                   <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', padding: '0 24px 16px', gap: '8px' }}>
                     <button
@@ -432,8 +464,10 @@ export default function MatchingPostDetail() {
                     ) : (
                       <MatchingMembers
                         members={post.members || []}
-                        isHost={true}
+                        isHost
                         onKick={handleKick}
+                        hostUserId={post.host?.id}
+                        currentUserId={user?.id}
                       />
                     )}
                   </div>
@@ -444,7 +478,12 @@ export default function MatchingPostDetail() {
               {!post.isHost && (
                 <div style={{ backgroundColor: '#fff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', padding: '24px' }}>
                   <h5 style={{ fontWeight: '700', color: '#1e293b', marginBottom: '20px' }}><i className="feather-users me-2"></i>Đội hình hiện tại ({post.membersCount}/{totalSlots})</h5>
-                  <MatchingMembers members={post.members || []} isHost={false} />
+                  <MatchingMembers
+                    members={post.members || []}
+                    isHost={false}
+                    hostUserId={post.host?.id}
+                    currentUserId={user?.id}
+                  />
                 </div>
               )}
 

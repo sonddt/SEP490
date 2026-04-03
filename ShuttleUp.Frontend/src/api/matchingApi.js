@@ -4,6 +4,7 @@ const matchingApi = {
   // ── Posts ──────────────────────────────────────────────
   getPosts: (params) => axiosClient.get('/matching/posts', { params }),
   getMyPosts: () => axiosClient.get('/matching/posts/my'),
+  getJoinedPosts: () => axiosClient.get('/matching/posts/joined'),
   getPostDetail: (id) => axiosClient.get(`/matching/posts/${id}`),
   createPost: (data) => axiosClient.post('/matching/posts', data),
   updatePost: (id, data) => axiosClient.put(`/matching/posts/${id}`, data),

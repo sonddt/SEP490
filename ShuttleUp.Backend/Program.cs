@@ -77,6 +77,7 @@ namespace ShuttleUp.Backend
             builder.Services.AddScoped<IFileService, FileService>();
             builder.Services.AddScoped<INotificationDispatchService, NotificationDispatchService>();
             builder.Services.AddScoped<IMatchingPostLifecycleService, MatchingPostLifecycleService>();
+            builder.Services.AddScoped<IMatchingPostActivityService, MatchingPostActivityService>();
 
             // ── JWT Authentication ────────────────────────────────────────────────
             var jwtKey = builder.Configuration["Jwt:Key"]!;

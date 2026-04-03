@@ -14,10 +14,11 @@ const skillOptions = [
 ];
 
 export default function MatchingHub() {
-  const [tab, setTab] = useState('all'); // 'all' | 'my'
+  const [tab, setTab] = useState('all'); // 'all' | 'my' | 'joined'
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [posts, setPosts] = useState([]);
   const [myPosts, setMyPosts] = useState([]);
+  const [joinedPosts, setJoinedPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -51,13 +52,23 @@ export default function MatchingHub() {
     }
   }, []);
 
+  const loadJoinedPosts = useCallback(async () => {
+    try {
+      const res = await matchingApi.getJoinedPosts();
+      setJoinedPosts(Array.isArray(res) ? res : []);
+    } catch (err) {
+      console.error('Load joined posts error', err);
+    }
+  }, []);
+
   useEffect(() => {
     loadPosts();
   }, [loadPosts]);
 
   useEffect(() => {
     if (tab === 'my') loadMyPosts();
-  }, [tab, loadMyPosts]);
+    if (tab === 'joined') loadJoinedPosts();
+  }, [tab, loadMyPosts, loadJoinedPosts]);
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -90,7 +101,7 @@ export default function MatchingHub() {
 
           {/* ── Header Bar ── */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '20px' }}>
-            <div style={{ display: 'flex', gap: '8px', backgroundColor: '#fff', padding: '6px', borderRadius: '16px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', border: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', gap: '8px', backgroundColor: '#fff', padding: '6px', borderRadius: '16px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', border: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
                 <button
                   style={{ padding: '10px 24px', borderRadius: '12px', border: 'none', fontWeight: '700', fontSize: '15px', transition: 'all 0.2s', backgroundColor: tab === 'all' ? '#e8f5ee' : 'transparent', color: tab === 'all' ? '#097E52' : '#64748b' }}
                   onClick={() => setTab('all')}
@@ -102,6 +113,12 @@ export default function MatchingHub() {
                   onClick={() => setTab('my')}
                 >
                   Bài đăng của tôi
+                </button>
+                <button
+                  style={{ padding: '10px 24px', borderRadius: '12px', border: 'none', fontWeight: '700', fontSize: '15px', transition: 'all 0.2s', backgroundColor: tab === 'joined' ? '#e8f5ee' : 'transparent', color: tab === 'joined' ? '#097E52' : '#64748b' }}
+                  onClick={() => setTab('joined')}
+                >
+                  Bài post đã tham gia
                 </button>
             </div>
             
@@ -180,7 +197,9 @@ export default function MatchingHub() {
               <h5 style={{ fontWeight: '700', color: '#1e293b', margin: 0 }}>
                 {tab === 'all' 
                   ? (total > 0 ? `Đang hiển thị ${total} bài đăng tuyển người` : '') 
-                  : (myPosts.length > 0 ? `Bạn đã tạo ${myPosts.length} bài đăng` : '')
+                  : tab === 'my'
+                    ? (myPosts.length > 0 ? `Bạn đã tạo ${myPosts.length} bài đăng` : '')
+                    : (joinedPosts.length > 0 ? `Bạn đang tham gia ${joinedPosts.length} bài` : '')
                 }
               </h5>
           </div>
@@ -227,7 +246,7 @@ export default function MatchingHub() {
                     </div>
                   )}
                 </>
-              ) : (
+              ) : tab === 'my' ? (
                 /* ── My Posts Tab ── */
                 <>
                   {myPosts.length === 0 ? (
@@ -243,6 +262,26 @@ export default function MatchingHub() {
                     <div className="row">
                       {myPosts.map((p) => (
                         <MatchingPostCard key={p.id} post={p} viewMode={viewMode} onJoined={loadMyPosts} />
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* ── Joined posts tab ── */
+                <>
+                  {joinedPosts.length === 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 20px', backgroundColor: '#fff', borderRadius: '24px', border: '1px dashed #cbd5e1' }}>
+                      <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏸</div>
+                      <h3 style={{ fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>Chưa có bài nào bạn đã tham gia</h3>
+                      <p style={{ color: '#64748b', fontWeight: '600', marginBottom: '24px' }}>Vào tab &quot;Tất cả bài đăng&quot; để xin tham gia nhóm nhé!</p>
+                      <button type="button" className="btn btn-primary" style={{ borderRadius: '14px', fontWeight: '700', padding: '12px 28px' }} onClick={() => setTab('all')}>
+                        Xem bảng tin
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="row">
+                      {joinedPosts.map((p) => (
+                        <MatchingPostCard key={p.id} post={p} viewMode={viewMode} onJoined={loadJoinedPosts} />
                       ))}
                     </div>
                   )}

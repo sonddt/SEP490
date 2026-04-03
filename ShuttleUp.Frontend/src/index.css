@@ -1462,6 +1462,8 @@ optgroup {
 .matching-member-row:last-child, .matching-request-row:last-child { border-bottom: none; }
 .matching-member-info, .matching-request-info { display: flex; align-items: center; gap: 10px; }
 .matching-member-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+.matching-member-avatar-link { display: inline-block; line-height: 0; border-radius: 50%; }
+.matching-member-avatar-link:hover { opacity: 0.92; }
 .matching-member-name { font-size: 14px; font-weight: 600; color: #1e293b; }
 .matching-member-meta { display: flex; gap: 4px; margin-top: 2px; }
 .matching-request-msg { font-size: 12px; color: #64748b; font-style: italic; margin: 4px 0 0; }
