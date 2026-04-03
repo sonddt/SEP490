@@ -288,8 +288,8 @@ public class MatchingController : ControllerBase
             {
                 bookingItemId = i.BookingItemId,
                 courtName = i.BookingItem?.Court?.Name,
-                startTime = i.BookingItem?.StartTime,
-                endTime = i.BookingItem?.EndTime,
+                startTime = AsUtcForJson(i.BookingItem?.StartTime),
+                endTime = AsUtcForJson(i.BookingItem?.EndTime),
                 price = i.BookingItem?.FinalPrice
             }),
 

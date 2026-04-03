@@ -4,7 +4,9 @@ import matchingApi from '../../api/matchingApi';
 import MatchingMembers from '../../components/matching/MatchingMembers';
 import MatchingJoinRequests from '../../components/matching/MatchingJoinRequests';
 import MatchingComments from '../../components/matching/MatchingComments';
+import MatchingScheduleModal from '../../components/matching/MatchingScheduleModal';
 import { useAuth } from '../../context/AuthContext';
+import { parseSlotDate, buildScheduleSummary } from '../../utils/matchingScheduleSummary';
 
 function sameUserId(a, b) {
   if (a == null || b == null) return false;
@@ -23,6 +25,32 @@ const expenseLabels = {
   female_free: 'Nữ miễn phí', negotiable: 'Thỏa thuận',
 };
 
+const BOOKING_SLOTS_PREVIEW = 4;
+
+function formatHHmm(d) {
+  if (!d || Number.isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+/** CN, T2 … T7 theo lịch VN. */
+function vnWeekdayShort(d) {
+  if (!d || Number.isNaN(d.getTime())) return '';
+  const map = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+  return map[d.getDay()];
+}
+
+function formatBookingSlotDetail(item) {
+  const start = parseSlotDate(item.startTime);
+  const end = parseSlotDate(item.endTime);
+  const timeRange = `${formatHHmm(start)} - ${formatHHmm(end)}`.trim();
+  const wd = vnWeekdayShort(start);
+  const dateStr = Number.isNaN(start.getTime())
+    ? ''
+    : start.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  if (!dateStr) return timeRange;
+  return `${timeRange}, ${wd}, ${dateStr}`;
+}
+
 export default function MatchingPostDetail() {
   const { postId } = useParams();
   const navigate = useNavigate();
@@ -33,6 +61,8 @@ export default function MatchingPostDetail() {
   const [joinMessage, setJoinMessage] = useState('');
   const [showJoinForm, setShowJoinForm] = useState(false);
   const [hostTab, setHostTab] = useState('requests'); // 'requests' | 'members'
+  const [showAllBookingSlots, setShowAllBookingSlots] = useState(false);
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -46,6 +76,26 @@ export default function MatchingPostDetail() {
   }, [postId, navigate]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    setShowAllBookingSlots(false);
+    setScheduleModalOpen(false);
+  }, [postId]);
+
+  const sortedBookingItems = useMemo(() => {
+    const items = [...(post?.bookingItems || [])];
+    items.sort((a, b) => {
+      const ta = parseSlotDate(a.startTime).getTime();
+      const tb = parseSlotDate(b.startTime).getTime();
+      if (Number.isNaN(ta) && Number.isNaN(tb)) return 0;
+      if (Number.isNaN(ta)) return 1;
+      if (Number.isNaN(tb)) return -1;
+      return ta - tb;
+    });
+    return items;
+  }, [post?.bookingItems]);
+
+  const scheduleSummary = useMemo(() => buildScheduleSummary(post), [post]);
 
   const isInactive = post?.status === 'Inactive';
 
@@ -166,11 +216,6 @@ export default function MatchingPostDetail() {
     }
   };
 
-  const formatDate = (d) => {
-    if (!d) return '';
-    return new Date(d).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
-  };
-
   const formatPrice = (v) => {
     if (v == null) return 'Thỏa thuận';
     return Number(v).toLocaleString('vi-VN') + 'đ';
@@ -256,10 +301,27 @@ export default function MatchingPostDetail() {
                         <div style={{ width: '48px', height: '48px', borderRadius: '14px', backgroundColor: '#ffedd5', color: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <i className="feather-calendar" style={{ fontSize: '20px' }}></i>
                         </div>
-                        <div>
-                            <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Lịch chơi</div>
-                            <div style={{ fontSize: '16px', color: '#1e293b', fontWeight: '700', marginBottom: '2px' }}>{formatDate(post.playDate)}</div>
-                            <div style={{ fontSize: '14px', color: '#1e293b', fontWeight: '700' }}>{post.playStartTime} – {post.playEndTime}</div>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Lịch chơi</div>
+                            <button
+                              type="button"
+                              onClick={() => setScheduleModalOpen(true)}
+                              style={{
+                                display: 'inline',
+                                padding: 0,
+                                border: 'none',
+                                background: 'none',
+                                fontSize: '15px',
+                                fontWeight: '700',
+                                color: '#097E52',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                textDecoration: 'underline',
+                                textUnderlineOffset: '3px',
+                              }}
+                            >
+                              Bấm vào xem lịch
+                            </button>
                         </div>
                     </div>
 
@@ -295,21 +357,37 @@ export default function MatchingPostDetail() {
                   </div>
                 )}
                 
-                {post.bookingItems && post.bookingItems.length > 0 && (
+                {sortedBookingItems.length > 0 && (
                   <div style={{ borderTop: '1px dashed #e2e8f0', padding: '24px 32px' }}>
                       <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}><i className="feather-layers me-2"></i>Danh sách ca chơi ghép</div>
-                      {post.bookingItems.map((item, i) => (
-                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#f8fafc', borderRadius: '12px', marginBottom: '8px', border: '1px solid #f1f5f9' }}>
-                          <div>
-                            <span style={{ fontWeight: '700', color: '#1e293b', marginRight: '12px' }}>{item.courtName}</span>
-                            <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}>
-                              {item.startTime && new Date(item.startTime).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit' })} {' - '} 
-                              {item.endTime && new Date(item.endTime).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
+                      {(showAllBookingSlots ? sortedBookingItems : sortedBookingItems.slice(0, BOOKING_SLOTS_PREVIEW)).map((item) => (
+                        <div
+                          key={item.bookingItemId || `${item.startTime}-${item.courtName}`}
+                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '12px 16px', backgroundColor: '#f8fafc', borderRadius: '12px', marginBottom: '8px', border: '1px solid #f1f5f9' }}
+                        >
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: '700', color: '#1e293b', marginBottom: '4px' }}>{item.courtName}</div>
+                            <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600', lineHeight: 1.45 }}>
+                              {formatBookingSlotDetail(item)}
+                            </div>
                           </div>
-                          <span style={{ fontWeight: '700', color: '#097E52' }}>{formatPrice(item.price)}</span>
+                          <span style={{ fontWeight: '700', color: '#097E52', flexShrink: 0 }}>{formatPrice(item.price)}</span>
                         </div>
                       ))}
+                      {sortedBookingItems.length > BOOKING_SLOTS_PREVIEW && (
+                        <div style={{ textAlign: 'center', marginTop: '12px' }}>
+                          <button
+                            type="button"
+                            className="btn btn-link"
+                            style={{ fontWeight: '700', color: '#097E52', textDecoration: 'none' }}
+                            onClick={() => setShowAllBookingSlots((v) => !v)}
+                          >
+                            {showAllBookingSlots
+                              ? `Thu gọn (hiện ${BOOKING_SLOTS_PREVIEW} ca)`
+                              : `Xem thêm (${sortedBookingItems.length - BOOKING_SLOTS_PREVIEW} ca)`}
+                          </button>
+                        </div>
+                      )}
                   </div>
                 )}
               </div>
@@ -491,6 +569,13 @@ export default function MatchingPostDetail() {
           </div>
         </div>
       </div>
+
+      <MatchingScheduleModal
+        open={scheduleModalOpen}
+        onClose={() => setScheduleModalOpen(false)}
+        range={scheduleSummary.range}
+        courtsText={scheduleSummary.courtsText}
+      />
     </div>
   );
 }

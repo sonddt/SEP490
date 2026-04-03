@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import matchingApi from '../../api/matchingApi';
+import MatchingScheduleModal from './MatchingScheduleModal';
+import { buildScheduleSummary } from '../../utils/matchingScheduleSummary';
 import { useAuth } from '../../context/AuthContext';
 
 function sameUserId(a, b) {
@@ -24,11 +26,28 @@ const expenseLabels = {
   negotiable: 'Thỏa thuận',
 };
 
+const scheduleLinkBtnStyle = {
+  display: 'inline',
+  padding: 0,
+  border: 'none',
+  background: 'none',
+  fontWeight: '700',
+  color: '#097E52',
+  cursor: 'pointer',
+  textDecoration: 'underline',
+  textUnderlineOffset: '3px',
+  textAlign: 'inherit',
+};
+
 export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) {
   const { user } = useAuth();
   const [joinBusy, setJoinBusy] = useState(false);
   const [joinNotice, setJoinNotice] = useState(null);
   const noticeTimer = useRef(null);
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [scheduleModalLoading, setScheduleModalLoading] = useState(false);
+  const [scheduleModalData, setScheduleModalData] = useState(null);
+  const [scheduleModalError, setScheduleModalError] = useState(null);
 
   useEffect(() => {
     return () => {
@@ -41,12 +60,6 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
   const slotsLeft = Math.max(totalSlots - filled, 0);
   const progressPct = totalSlots > 0 ? Math.round((filled / totalSlots) * 100) : 0;
 
-  const formatDate = (d) => {
-    if (!d) return '';
-    const date = new Date(d);
-    return date.toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
-  };
-
   const formatPrice = (v) => {
     if (v == null) return 'Thỏa thuận';
     return Number(v).toLocaleString('vi-VN') + 'đ';
@@ -54,6 +67,28 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
 
   const isPostOwner = post.isHost === true || sameUserId(user?.id, post.host?.id);
   const canQuickJoin = post.canRequestJoin === true && post.status !== 'Inactive';
+
+  const closeScheduleModal = useCallback(() => {
+    setScheduleModalOpen(false);
+    setScheduleModalLoading(false);
+    setScheduleModalData(null);
+    setScheduleModalError(null);
+  }, []);
+
+  const openScheduleModal = useCallback(async () => {
+    setScheduleModalOpen(true);
+    setScheduleModalLoading(true);
+    setScheduleModalError(null);
+    setScheduleModalData(null);
+    try {
+      const detail = await matchingApi.getPostDetail(post.id);
+      setScheduleModalData(buildScheduleSummary(detail));
+    } catch {
+      setScheduleModalError('Không tải được lịch. Bạn thử lại sau.');
+    } finally {
+      setScheduleModalLoading(false);
+    }
+  }, [post.id]);
 
   const handleQuickJoin = async () => {
     if (!canQuickJoin || joinBusy) return;
@@ -75,6 +110,7 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
 
   if (viewMode === 'list') {
     return (
+      <>
       <div className="col-12 mb-4">
         <div style={{ display: 'flex', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', overflow: 'hidden', transition: 'all 0.3s' }}>
           {/* Image Side */}
@@ -118,13 +154,14 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
                   )}
                 </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b', marginBottom: '4px' }}>
-                  {formatDate(post.playDate)}
-                </div>
-                <div style={{ fontSize: '13px', fontWeight: '700', color: '#64748b', backgroundColor: '#f1f5f9', padding: '4px 10px', borderRadius: '8px', display: 'inline-block' }}>
-                  <i className="feather-clock me-1"></i> {post.playStartTime} – {post.playEndTime}
-                </div>
+              <div style={{ textAlign: 'right', alignSelf: 'flex-start' }}>
+                <button
+                  type="button"
+                  onClick={openScheduleModal}
+                  style={{ ...scheduleLinkBtnStyle, fontSize: '14px' }}
+                >
+                  Bấm vào xem lịch
+                </button>
               </div>
             </div>
 
@@ -182,11 +219,21 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
           </div>
         </div>
       </div>
+      <MatchingScheduleModal
+        open={scheduleModalOpen}
+        onClose={closeScheduleModal}
+        range={scheduleModalData?.range}
+        courtsText={scheduleModalData?.courtsText}
+        loading={scheduleModalLoading}
+        errorMessage={scheduleModalError}
+      />
+      </>
     );
   }
 
   // Grid Mode (Default)
   return (
+    <>
     <div className="col-lg-4 col-md-6 mb-4">
       <div className="matching-post-card h-100 d-flex flex-column" style={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', overflow: 'hidden', backgroundColor: '#fff', transition: 'transform 0.2s' }}>
         {/* ── Image + Badges ── */}
@@ -246,10 +293,13 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
-            <div>
-               <div style={{ fontSize: '12px', fontWeight: '800', color: '#1e293b', marginBottom: '2px' }}>{formatDate(post.playDate)}</div>
-               <div style={{ fontSize: '12px', fontWeight: '700', color: '#64748b' }}>{post.playStartTime} – {post.playEndTime}</div>
-            </div>
+            <button
+              type="button"
+              onClick={openScheduleModal}
+              style={{ ...scheduleLinkBtnStyle, fontSize: '12px', textAlign: 'left' }}
+            >
+              Bấm vào xem lịch
+            </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <img src={post.host?.avatarUrl || '/assets/img/profiles/avatar-01.jpg'} alt={post.host?.fullName} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
             </div>
@@ -286,5 +336,14 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
         </div>
       </div>
     </div>
+    <MatchingScheduleModal
+      open={scheduleModalOpen}
+      onClose={closeScheduleModal}
+      range={scheduleModalData?.range}
+      courtsText={scheduleModalData?.courtsText}
+      loading={scheduleModalLoading}
+      errorMessage={scheduleModalError}
+    />
+    </>
   );
 }
