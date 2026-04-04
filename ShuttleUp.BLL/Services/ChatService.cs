@@ -66,7 +66,7 @@ public class ChatService : IChatService
             CreatedAt    = DateTime.UtcNow,
         };
 
-        var saved = await _chatRepo.SaveMessageAsync(message);
+        var saved = await _chatRepo.SaveMessageAsync(message, request.FileId);
         return MapMessage(saved);
     }
 

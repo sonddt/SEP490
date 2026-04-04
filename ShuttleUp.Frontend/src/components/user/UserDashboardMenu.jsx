@@ -6,7 +6,7 @@ const menuItems = [
   { to: '/user/social/search', icon: 'profile-icon.svg', label: 'Tìm bạn' },
   { to: '/user/social/friends', icon: 'request-icon.svg', label: 'Bạn bè' },
   { to: '/user/notifications', icon: 'subscribe.svg',  label: 'Thông báo' },
-  { to: '/user/chat',       icon: 'chat-icon.svg',      label: 'Trò chuyện' },
+  { to: '/chat',            icon: 'chat-icon.svg',      label: 'Trò chuyện' },
   { to: '/user/favorites', icon: 'court-icon.svg',     label: 'Sân yêu thích' },
   { to: '/user/invoices',   icon: 'invoice-icon.svg',   label: 'Hóa đơn' },
   { to: '/profile/edit',    icon: 'profile-icon.svg',   label: 'Cài đặt hồ sơ' },

@@ -89,6 +89,29 @@ public class FileService : IFileService
         return MapUploadResult(result);
     }
 
+    public async Task<FileUploadResult> UploadChatImageAsync(IFormFile file, Guid roomId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        var publicId = $"chat_{roomId:N}_{userId:N}_{Guid.NewGuid():N}";
+        var folder = ResolveFolder(_settings.ChatAttachmentFolder);
+
+        await using var stream = file.OpenReadStream();
+        var uploadParams = new ImageUploadParams
+        {
+            File = new FileDescription(file.FileName, stream),
+            Folder = folder,
+            PublicId = publicId,
+            Overwrite = false,
+            Transformation = new Transformation()
+                .Crop("limit")
+                .Width(1200)
+                .Height(1200)
+                .FetchFormat("webp")
+        };
+
+        var result = await _cloudinary.UploadAsync(uploadParams, cancellationToken);
+        return MapUploadResult(result);
+    }
+
     private static FileUploadResult MapUploadResult(ImageUploadResult result)
     {
         if (result == null)

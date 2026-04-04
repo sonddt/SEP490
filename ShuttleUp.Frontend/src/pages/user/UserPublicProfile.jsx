@@ -112,6 +112,8 @@ export default function UserPublicProfile() {
                       initialState={payload.relationshipState}
                       initialRequestId={payload.pendingRequestId}
                       onChanged={load}
+                      chatPeerFullName={u.fullName}
+                      chatPeerAvatarUrl={u.avatarUrl}
                     />
                     {shareUrl && (
                       <div className="mt-4 d-md-none">

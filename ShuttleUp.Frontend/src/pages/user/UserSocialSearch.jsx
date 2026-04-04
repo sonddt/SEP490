@@ -266,7 +266,11 @@ export default function UserSocialSearch() {
                               )}
                               <strong>{name}</strong>
                             </Link>
-                            <RelationshipActions otherUserId={id} />
+                            <RelationshipActions
+                              otherUserId={id}
+                              chatPeerFullName={name}
+                              chatPeerAvatarUrl={av}
+                            />
                           </div>
                         </li>
                       );
