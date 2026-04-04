@@ -214,217 +214,273 @@ export default function ManagerCoupons() {
 
   return (
     <div className="container-fluid px-0 px-md-3">
-      <div className="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
+
+      {/* ── Page header ── */}
+      <div className="d-flex align-items-center justify-content-between mb-4">
         <div className="d-flex align-items-center gap-3">
-          <Link to={`/manager/venues/${venueId}/courts`} className="btn btn-light shadow-sm d-flex align-items-center justify-content-center" style={{ width: 44, height: 44, borderRadius: 12 }}>
-            <i className="feather-arrow-left fs-5" />
+          <Link
+            to={`/manager/venues/${venueId}/courts`}
+            className="d-flex align-items-center justify-content-center"
+            style={{ width: 40, height: 40, borderRadius: 10, border: '1.5px solid #e2e8f0', background: '#fff', color: '#64748b', flexShrink: 0, textDecoration: 'none', transition: 'all .15s' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#097E52'; e.currentTarget.style.color = '#097E52'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#64748b'; }}
+          >
+            <i className="feather-arrow-left" style={{ fontSize: 18 }} />
           </Link>
           <div>
-            <h3 className="mb-0 fw-bold text-dark">Quản lý Khuyến Mãi (Voucher)</h3>
-            <p className="text-secondary mb-0 mt-1" style={{ fontSize: 14 }}>Tạo và phát hành mã giảm giá cho khách đặt sân</p>
+            <h3 className="mb-0 fw-bold" style={{ fontSize: 20, color: '#1e293b', letterSpacing: '-.02em' }}>Quản lý Khuyến Mãi</h3>
+            <p className="mb-0 mt-1" style={{ fontSize: 13, color: '#64748b' }}>Tạo và phát hành mã giảm giá cho khách đặt sân</p>
           </div>
         </div>
-        <button onClick={openAdd} className="btn btn-primary d-flex align-items-center gap-2 fw-medium shadow" style={{ borderRadius: 10, padding: '10px 20px', background: '#097E52', borderColor: '#097E52' }}>
-          <i className="feather-plus-circle" />
+        <button
+          onClick={openAdd}
+          className="d-flex align-items-center gap-2 fw-semibold"
+          style={{ borderRadius: 10, padding: '9px 20px', background: '#097E52', borderColor: '#097E52', border: 'none', color: '#fff', fontSize: 14, cursor: 'pointer', boxShadow: '0 2px 10px rgba(9,126,82,.3)', transition: 'all .15s' }}
+          onMouseEnter={e => e.currentTarget.style.background = '#065f3f'}
+          onMouseLeave={e => e.currentTarget.style.background = '#097E52'}
+        >
+          <i className="feather-plus" style={{ fontSize: 16 }} />
           Tạo mã mới
         </button>
       </div>
 
+      {/* ── Default discount card ── */}
       <div className="row mb-4">
-        <div className="col-12 col-md-8 col-xl-6">
-          <div className="card shadow-sm border-0 rounded-4" style={{ background: 'linear-gradient(to right, #f8fafc, #f1f5f9)' }}>
-            <div className="card-body p-4">
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <div className="d-flex align-items-center gap-2">
-                  <div className="bg-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style={{ width: 40, height: 40 }}>
-                    <i className="feather-clock text-primary fs-5" />
-                  </div>
-                  <div>
-                    <h6 className="mb-0 fw-bold text-dark">Giảm giá mặc định (Tự động)</h6>
-                    <small className="text-secondary">Giảm giá cho khách đặt sân theo Tuần hoặc Tháng</small>
-                  </div>
+        <div className="col-12 col-lg-8 col-xl-6">
+          <div className="rounded-4 p-4" style={{ background: 'linear-gradient(135deg, #f0fdf8 0%, #e8f5ee 100%)', border: '1.5px solid #b6e2cc' }}>
+            <div className="d-flex align-items-start justify-content-between gap-3">
+              <div className="d-flex align-items-center gap-3">
+                <div className="d-flex align-items-center justify-content-center rounded-3" style={{ width: 42, height: 42, background: 'rgba(9,126,82,.12)', flexShrink: 0 }}>
+                  <i className="feather-repeat" style={{ fontSize: 18, color: '#097E52' }} />
                 </div>
-                {!isEditingDefault ? (
-                  <button onClick={() => setIsEditingDefault(true)} className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 rounded-pill px-3">
-                    <i className="feather-edit-2" /> Thiết lập
-                  </button>
-                ) : null}
+                <div>
+                  <p className="mb-0 fw-bold" style={{ fontSize: 14, color: '#1e293b' }}>Giảm giá tự động theo kỳ</p>
+                  <p className="mb-0" style={{ fontSize: 12, color: '#64748b' }}>Áp dụng khi khách đặt sân theo Tuần hoặc Tháng</p>
+                </div>
               </div>
-
-              {!isEditingDefault ? (
-                <div className="d-flex flex-wrap gap-3 mt-4">
-                  <div className="bg-white px-4 py-2 rounded-3 shadow-sm border" style={{ flex: 1, minWidth: 150 }}>
-                    <div className="text-muted small mb-1">Giảm khi đặt theo Tuần</div>
-                    <div className="fw-bold fs-5 text-primary">{defaultDiscountForm.weeklyDiscountPercent ? `${defaultDiscountForm.weeklyDiscountPercent}%` : '0%'}</div>
-                  </div>
-                  <div className="bg-white px-4 py-2 rounded-3 shadow-sm border" style={{ flex: 1, minWidth: 150 }}>
-                    <div className="text-muted small mb-1">Giảm khi đặt theo Tháng</div>
-                    <div className="fw-bold fs-5 text-primary">{defaultDiscountForm.monthlyDiscountPercent ? `${defaultDiscountForm.monthlyDiscountPercent}%` : '0%'}</div>
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-4 p-3 bg-white rounded-3 border">
-                  <div className="row g-3">
-                    <div className="col-12 col-sm-6">
-                      <label className="form-label small fw-semibold text-dark">Giảm giá đặt theo Tuần (%)</label>
-                      <input type="number" min="0" max="100" className="form-control" placeholder="VD: 5" value={defaultDiscountForm.weeklyDiscountPercent} onChange={e => setDefaultDiscountForm(p => ({ ...p, weeklyDiscountPercent: e.target.value }))} />
-                    </div>
-                    <div className="col-12 col-sm-6">
-                      <label className="form-label small fw-semibold text-dark">Giảm giá đặt theo Tháng (%)</label>
-                      <input type="number" min="0" max="100" className="form-control" placeholder="VD: 15" value={defaultDiscountForm.monthlyDiscountPercent} onChange={e => setDefaultDiscountForm(p => ({ ...p, monthlyDiscountPercent: e.target.value }))} />
-                    </div>
-                    <div className="col-12 d-flex gap-2 justify-content-end mt-3">
-                      <button className="btn btn-light btn-sm px-3" onClick={() => {
-                        setIsEditingDefault(false);
-                        setDefaultDiscountForm({
-                          weeklyDiscountPercent: venue.weeklyDiscountPercent || venue.WeeklyDiscountPercent || '',
-                          monthlyDiscountPercent: venue.monthlyDiscountPercent || venue.MonthlyDiscountPercent || ''
-                        });
-                      }}>Hủy</button>
-                      <button className="btn btn-primary btn-sm px-4" onClick={handleSaveDefaultDiscount} disabled={savingDefault}>
-                        {savingDefault ? 'Đang lưu...' : 'Lưu lại'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
+              {!isEditingDefault && (
+                <button
+                  onClick={() => setIsEditingDefault(true)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 8, border: '1.5px solid #097E52', background: '#fff', color: '#097E52', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}
+                >
+                  <i className="feather-edit-2" style={{ fontSize: 13 }} /> Thiết lập
+                </button>
               )}
             </div>
+
+            {!isEditingDefault ? (
+              <div className="d-flex flex-wrap gap-3 mt-4">
+                {[
+                  { label: 'Đặt theo Tuần', val: defaultDiscountForm.weeklyDiscountPercent, icon: 'feather-calendar' },
+                  { label: 'Đặt theo Tháng', val: defaultDiscountForm.monthlyDiscountPercent, icon: 'feather-clock' },
+                ].map(item => (
+                  <div key={item.label} className="rounded-3 px-4 py-3" style={{ flex: '1 1 140px', background: '#fff', border: '1px solid #d1f0e0' }}>
+                    <p className="mb-1" style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}><i className={`${item.icon} me-1`} />{item.label}</p>
+                    <p className="mb-0 fw-bold" style={{ fontSize: 22, color: '#097E52', letterSpacing: '-.02em', lineHeight: 1.2 }}>
+                      {item.val ? `${item.val}%` : <span style={{ fontSize: 16, color: '#94a3b8' }}>Chưa đặt</span>}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-4 p-4 rounded-3" style={{ background: '#fff', border: '1px solid #d1f0e0' }}>
+                <div className="row g-3">
+                  <div className="col-12 col-sm-6">
+                    <label className="form-label" style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Giảm giá đặt theo Tuần (%)</label>
+                    <input type="number" min="0" max="100" className="form-control" style={{ fontSize: 14 }} placeholder="VD: 5" value={defaultDiscountForm.weeklyDiscountPercent} onChange={e => setDefaultDiscountForm(p => ({ ...p, weeklyDiscountPercent: e.target.value }))} />
+                  </div>
+                  <div className="col-12 col-sm-6">
+                    <label className="form-label" style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Giảm giá đặt theo Tháng (%)</label>
+                    <input type="number" min="0" max="100" className="form-control" style={{ fontSize: 14 }} placeholder="VD: 15" value={defaultDiscountForm.monthlyDiscountPercent} onChange={e => setDefaultDiscountForm(p => ({ ...p, monthlyDiscountPercent: e.target.value }))} />
+                  </div>
+                  <div className="col-12 d-flex gap-2 justify-content-end mt-2">
+                    <button
+                      className="btn btn-light btn-sm px-3 fw-medium"
+                      style={{ fontSize: 13 }}
+                      onClick={() => {
+                        setIsEditingDefault(false);
+                        setDefaultDiscountForm({
+                          weeklyDiscountPercent: venue?.weeklyDiscountPercent || venue?.WeeklyDiscountPercent || '',
+                          monthlyDiscountPercent: venue?.monthlyDiscountPercent || venue?.MonthlyDiscountPercent || ''
+                        });
+                      }}
+                    >Hủy</button>
+                    <button
+                      className="btn btn-sm px-4 fw-semibold"
+                      style={{ fontSize: 13, background: '#097E52', borderColor: '#097E52', color: '#fff' }}
+                      onClick={handleSaveDefaultDiscount}
+                      disabled={savingDefault}
+                    >
+                      {savingDefault ? 'Đang lưu...' : 'Lưu lại'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="card shadow-sm border-0 rounded-4 mb-4">
-        <div className="card-body p-0">
-          <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0">
-              <thead className="table-light" style={{ height: 60 }}>
-                <tr>
-                  <th className="ps-4 fw-semibold text-muted text-nowrap" style={{ fontSize: 13 }}>MÃ COUPON</th>
-                  <th className="fw-semibold text-muted text-nowrap" style={{ fontSize: 13 }}>LOẠI GIẢM GIÁ</th>
-                  <th className="fw-semibold text-muted text-nowrap" style={{ fontSize: 13 }}>THỜI GIAN ÁP DỤNG</th>
-                  <th className="fw-semibold text-muted text-nowrap" style={{ fontSize: 14 }}>LƯỢT DÙNG</th>
-                  <th className="fw-semibold text-muted text-nowrap" style={{ fontSize: 13 }}>TRẠNG THÁI</th>
-                  <th className="text-center fw-semibold text-muted text-nowrap pe-4" style={{ fontSize: 13 }}>THAO TÁC</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan="6" className="text-center py-5">
-                      <div className="spinner-border text-primary" role="status"><span className="visually-hidden">Loading...</span></div>
-                    </td>
-                  </tr>
-                ) : coupons.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="text-center py-5">
-                      <div className="p-4 bg-light rounded-circle d-inline-flex mb-3">
-                        <i className="feather-percent text-secondary" style={{ fontSize: 32 }} />
-                      </div>
-                      <h5 className="fw-semibold text-dark">Chưa có mã khuyến mãi</h5>
-                      <p className="text-muted">Bạn chưa tạo mã khuyến mãi nào cho cụm sân này.</p>
-                      <button onClick={openAdd} className="btn btn-outline-primary fw-medium rounded-3 px-4">Tạo mã đầu tiên</button>
-                    </td>
-                  </tr>
-                ) : (
-                  coupons.map((cp) => {
-                    const id = cp.id || cp.Id;
-                    const code = cp.code || cp.Code;
-                    const cType = cp.discountType || cp.DiscountType;
-                    const cValue = cp.discountValue || cp.DiscountValue;
-                    const maxD = cp.maxDiscountAmount || cp.MaxDiscountAmount;
-                    const minB = cp.minBookingValue || cp.MinBookingValue;
-                    const start = cp.startDate || cp.StartDate;
-                    const end = cp.endDate || cp.EndDate;
-                    const used = cp.usedCount || cp.UsedCount || 0;
-                    const limit = cp.usageLimit || cp.UsageLimit;
-                    const active = cp.isActive !== undefined ? cp.isActive : cp.IsActive;
-                    const isExhausted = limit && used >= limit;
-
-                    return (
-                      <tr key={id}>
-                        <td className="ps-4 py-3">
-                          <span className="badge bg-dark fs-6 d-inline-flex align-items-center gap-1 px-3 py-2" style={{ letterSpacing: 1 }}>
-                            <i className="feather-tag fs-6" /> {code}
-                          </span>
-                        </td>
-                        <td>
-                          {cType === 'PERCENT' ? (
-                            <div>
-                              <div className="fw-bold text-dark">Giảm {cValue}%</div>
-                              {maxD > 0 && <small className="text-muted d-block">Tối đa {Number(maxD || 0).toLocaleString()}đ</small>}
-                            </div>
-                          ) : (
-                            <div className="fw-bold text-dark">Giảm {Number(cValue || 0).toLocaleString()}đ</div>
-                          )}
-                          <small className="text-muted d-block">Đơn tối thiểu {Number(minB || 0).toLocaleString()}đ</small>
-                        </td>
-                        <td>
-                          <div className="text-dark"><i className="feather-calendar me-1 text-muted" /> {new Date(start).toLocaleDateString('vi-VN')}</div>
-                          <div className="text-dark mt-1"><i className="feather-calendar me-1 text-muted" /> {new Date(end).toLocaleDateString('vi-VN')}</div>
-                        </td>
-                        <td style={{ minWidth: 120 }}>
-                          <div className="d-flex align-items-baseline gap-2 flex-wrap">
-                            <span
-                              className="fw-bold"
-                              style={{
-                                fontSize: 22,
-                                lineHeight: 1.15,
-                                letterSpacing: '-0.02em',
-                                color: isExhausted ? '#ef4444' : '#0f172a',
-                              }}
-                            >
-                              {used}
-                            </span>
-                            <span className="text-muted" style={{ fontSize: 17, fontWeight: 500 }}>
-                              / {limit ?? '∞'}
-                            </span>
-                          </div>
-                          {isExhausted && (
-                            <span className="d-inline-block mt-1" style={{ fontSize: 13, color: '#ef4444', fontWeight: 700 }}>
-                              Đã hết lượt
-                            </span>
-                          )}
-                        </td>
-                        <td>
-                          {active ? (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 14px', borderRadius: 20, fontSize: 13, fontWeight: 600, background: '#e8f5ee', color: '#097E52', border: '1px solid #b6e2cc' }}>
-                              <i className="feather-check-circle" style={{ fontSize: 13 }} /> Hoạt động
-                            </span>
-                          ) : (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 14px', borderRadius: 20, fontSize: 13, fontWeight: 600, background: '#fff1f2', color: '#ef4444', border: '1px solid #fecaca' }}>
-                              <i className="feather-x-circle" style={{ fontSize: 13 }} /> Tạm ngưng
-                            </span>
-                          )}
-                        </td>
-                        <td className="text-center pe-4">
-                          <div className="d-flex align-items-center justify-content-center gap-2">
-                            <button
-                              onClick={() => openEdit(cp)}
-                              title="Sửa"
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 8, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#475569', cursor: 'pointer', transition: 'all .18s ease' }}
-                              onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#097E52'; e.currentTarget.style.color = '#097E52'; }}
-                              onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#475569'; }}
-                            >
-                              <i className="feather-edit-3" style={{ fontSize: 15 }} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(id)}
-                              title="Xóa"
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 8, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#ef4444', cursor: 'pointer', transition: 'all .18s ease' }}
-                              onMouseEnter={e => { e.currentTarget.style.background = '#fff1f2'; e.currentTarget.style.borderColor = '#fecaca'; }}
-                              onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
-                            >
-                              <i className="feather-trash-2" style={{ fontSize: 15 }} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+      {/* ── Coupon table ── */}
+      <div className="rounded-4 overflow-hidden mb-4" style={{ border: '1.5px solid #e2e8f0', background: '#fff', boxShadow: '0 2px 12px rgba(15,23,42,.06)' }}>
+        {/* table header row */}
+        <div className="d-flex align-items-center justify-content-between px-4 py-3" style={{ borderBottom: '1.5px solid #f1f5f9' }}>
+          <div>
+            <p className="mb-0 fw-bold" style={{ fontSize: 15, color: '#1e293b' }}>Danh sách mã coupon</p>
+            <p className="mb-0" style={{ fontSize: 12, color: '#94a3b8' }}>{coupons.length} mã đang được quản lý</p>
           </div>
+        </div>
+        <div className="table-responsive">
+          <table className="table align-middle mb-0" style={{ minWidth: 700 }}>
+            <thead>
+              <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #f1f5f9' }}>
+                <th className="ps-4 py-3 text-nowrap" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#94a3b8', textTransform: 'uppercase', border: 0 }}>Mã Coupon</th>
+                <th className="py-3 text-nowrap" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#94a3b8', textTransform: 'uppercase', border: 0 }}>Ưu đãi</th>
+                <th className="py-3 text-nowrap" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#94a3b8', textTransform: 'uppercase', border: 0 }}>Thời gian</th>
+                <th className="py-3 text-nowrap" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#94a3b8', textTransform: 'uppercase', border: 0 }}>Lượt dùng</th>
+                <th className="py-3 text-nowrap" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#94a3b8', textTransform: 'uppercase', border: 0 }}>Trạng thái</th>
+                <th className="py-3 pe-4 text-nowrap text-center" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#94a3b8', textTransform: 'uppercase', border: 0 }}>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan="6" className="text-center py-5" style={{ border: 0 }}>
+                    <div className="spinner-border" style={{ color: '#097E52' }} role="status"><span className="visually-hidden">Loading...</span></div>
+                  </td>
+                </tr>
+              ) : coupons.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="text-center py-5" style={{ border: 0 }}>
+                    <div className="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style={{ width: 64, height: 64, background: '#f0fdf8' }}>
+                      <i className="feather-percent" style={{ fontSize: 28, color: '#097E52', opacity: .6 }} />
+                    </div>
+                    <h6 className="fw-bold" style={{ color: '#1e293b' }}>Chưa có mã khuyến mãi</h6>
+                    <p className="text-muted mb-4" style={{ fontSize: 13 }}>Bạn chưa tạo mã khuyến mãi nào cho cụm sân này.</p>
+                    <button
+                      onClick={openAdd}
+                      style={{ padding: '8px 24px', borderRadius: 8, border: '1.5px solid #097E52', background: '#fff', color: '#097E52', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      <i className="feather-plus me-1" />Tạo mã đầu tiên
+                    </button>
+                  </td>
+                </tr>
+              ) : (
+                coupons.map((cp) => {
+                  const id = cp.id || cp.Id;
+                  const code = cp.code || cp.Code;
+                  const cType = cp.discountType || cp.DiscountType;
+                  const cValue = cp.discountValue || cp.DiscountValue;
+                  const maxD = cp.maxDiscountAmount || cp.MaxDiscountAmount;
+                  const minB = cp.minBookingValue || cp.MinBookingValue;
+                  const start = cp.startDate || cp.StartDate;
+                  const end = cp.endDate || cp.EndDate;
+                  const used = cp.usedCount || cp.UsedCount || 0;
+                  const limit = cp.usageLimit || cp.UsageLimit;
+                  const active = cp.isActive !== undefined ? cp.isActive : cp.IsActive;
+                  const isExhausted = limit && used >= limit;
+
+                  return (
+                    <tr key={id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background .12s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#fafcfb'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      {/* Coupon code badge — green */}
+                      <td className="ps-4 py-3" style={{ border: 0 }}>
+                        <div
+                          className="d-inline-flex align-items-center gap-2"
+                          style={{ padding: '5px 12px 5px 10px', borderRadius: 8, background: 'linear-gradient(135deg, #e8f5ee 0%, #d1f0e0 100%)', border: '1.5px solid #b6e2cc' }}
+                        >
+                          <i className="feather-tag" style={{ fontSize: 13, color: '#097E52' }} />
+                          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.06em', color: '#065f3f' }}>{code}</span>
+                        </div>
+                      </td>
+
+                      {/* Discount info */}
+                      <td style={{ border: 0 }}>
+                        {cType === 'PERCENT' ? (
+                          <>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
+                              Giảm <span style={{ color: '#097E52' }}>{cValue}%</span>
+                            </div>
+                            {maxD > 0 && <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>Tối đa {Number(maxD).toLocaleString('vi-VN')}đ</div>}
+                          </>
+                        ) : (
+                          <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
+                            Giảm <span style={{ color: '#097E52' }}>{Number(cValue || 0).toLocaleString('vi-VN')}đ</span>
+                          </div>
+                        )}
+                        <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>Đơn tối thiểu {Number(minB || 0).toLocaleString('vi-VN')}đ</div>
+                      </td>
+
+                      {/* Date range */}
+                      <td style={{ border: 0 }}>
+                        <div style={{ fontSize: 13, color: '#475569', display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <i className="feather-log-in" style={{ fontSize: 12, color: '#097E52' }} />
+                          {new Date(start).toLocaleDateString('vi-VN')}
+                        </div>
+                        <div style={{ fontSize: 13, color: '#475569', display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}>
+                          <i className="feather-log-out" style={{ fontSize: 12, color: '#ef4444' }} />
+                          {new Date(end).toLocaleDateString('vi-VN')}
+                        </div>
+                      </td>
+
+                      {/* Usage */}
+                      <td style={{ border: 0, minWidth: 110 }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                          <span style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.2, letterSpacing: '-.02em', color: isExhausted ? '#ef4444' : '#097E52' }}>{used}</span>
+                          <span style={{ fontSize: 14, color: '#94a3b8', fontWeight: 500 }}>/ {limit ?? '∞'}</span>
+                        </div>
+                        {limit && (
+                          <div style={{ marginTop: 4, height: 4, borderRadius: 4, background: '#f1f5f9', overflow: 'hidden', width: 80 }}>
+                            <div style={{ height: '100%', borderRadius: 4, width: `${Math.min(100, (used / limit) * 100)}%`, background: isExhausted ? '#ef4444' : '#097E52', transition: 'width .3s' }} />
+                          </div>
+                        )}
+                        {isExhausted && <span style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', marginTop: 2, display: 'block' }}>Đã hết lượt</span>}
+                      </td>
+
+                      {/* Status */}
+                      <td style={{ border: 0 }}>
+                        {active ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: '#e8f5ee', color: '#097E52', border: '1px solid #b6e2cc' }}>
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#097E52', flexShrink: 0 }} />Hoạt động
+                          </span>
+                        ) : (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: '#fff1f2', color: '#ef4444', border: '1px solid #fecaca' }}>
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />Tạm ngưng
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="text-center pe-4" style={{ border: 0 }}>
+                        <div className="d-flex align-items-center justify-content-center gap-2">
+                          <button
+                            onClick={() => openEdit(cp)}
+                            title="Sửa"
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#475569', cursor: 'pointer', transition: 'all .15s' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#f0fdf8'; e.currentTarget.style.borderColor = '#097E52'; e.currentTarget.style.color = '#097E52'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#475569'; }}
+                          >
+                            <i className="feather-edit-3" style={{ fontSize: 14 }} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(id)}
+                            title="Xóa"
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#ef4444', cursor: 'pointer', transition: 'all .15s' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#fff1f2'; e.currentTarget.style.borderColor = '#fecaca'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                          >
+                            <i className="feather-trash-2" style={{ fontSize: 14 }} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
