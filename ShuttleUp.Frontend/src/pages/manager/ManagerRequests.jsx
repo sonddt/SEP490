@@ -15,6 +15,7 @@ function Pagination({ page, totalPages, onChange }) {
         type="button"
         disabled={page <= 1}
         onClick={() => onChange(page - 1)}
+        className="mgr-btn-lift"
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px',
           border: '1.5px solid #e2e8f0', borderRadius: 8, background: '#fff', fontSize: 13,
@@ -30,6 +31,7 @@ function Pagination({ page, totalPages, onChange }) {
           key={p}
           type="button"
           onClick={() => onChange(p)}
+          className="mgr-btn-lift"
           style={{
             width: 38, height: 38, borderRadius: 8, border: 'none',
             background: page === p ? 'var(--mgr-accent)' : '#f1f5f9',
@@ -47,6 +49,7 @@ function Pagination({ page, totalPages, onChange }) {
         type="button"
         disabled={page >= totalPages}
         onClick={() => onChange(page + 1)}
+        className="mgr-btn-lift"
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px',
           border: '1.5px solid #e2e8f0', borderRadius: 8, background: '#fff', fontSize: 13,

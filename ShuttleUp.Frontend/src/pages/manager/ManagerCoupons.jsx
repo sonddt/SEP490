@@ -310,8 +310,7 @@ export default function ManagerCoupons() {
                       }}
                     >Hủy</button>
                     <button
-                      className="btn btn-sm px-4 fw-semibold"
-                      style={{ fontSize: 13, background: '#097E52', borderColor: '#097E52', color: '#fff' }}
+                      className="btn btn-primary btn-sm px-4 fw-semibold"
                       onClick={handleSaveDefaultDiscount}
                       disabled={savingDefault}
                     >
@@ -363,6 +362,7 @@ export default function ManagerCoupons() {
                     <p className="text-muted mb-4" style={{ fontSize: 13 }}>Bạn chưa tạo mã khuyến mãi nào cho cụm sân này.</p>
                     <button
                       onClick={openAdd}
+                      className="mgr-btn-lift"
                       style={{ padding: '8px 24px', borderRadius: 8, border: '1.5px solid #097E52', background: '#fff', color: '#097E52', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                     >
                       <i className="feather-plus me-1" />Tạo mã đầu tiên
@@ -467,8 +467,8 @@ export default function ManagerCoupons() {
                             onClick={() => openEdit(cp)}
                             title="Sửa"
                             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#475569', cursor: 'pointer', transition: 'all .15s' }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#f0fdf8'; e.currentTarget.style.borderColor = '#097E52'; e.currentTarget.style.color = '#097E52'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#475569'; }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#f0fdf8'; e.currentTarget.style.borderColor = '#097E52'; e.currentTarget.style.color = '#097E52'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(9,126,82,.25)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#475569'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
                           >
                             <i className="feather-edit-3" style={{ fontSize: 14 }} />
                           </button>
@@ -476,8 +476,8 @@ export default function ManagerCoupons() {
                             onClick={() => handleDelete(id)}
                             title="Xóa"
                             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#ef4444', cursor: 'pointer', transition: 'all .15s' }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#fff1f2'; e.currentTarget.style.borderColor = '#fecaca'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#fff1f2'; e.currentTarget.style.borderColor = '#fecaca'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(239,68,68,.25)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
                           >
                             <i className="feather-trash-2" style={{ fontSize: 14 }} />
                           </button>
@@ -670,7 +670,7 @@ export default function ManagerCoupons() {
                 </div>
                 <div className="modal-footer border-top-0 pt-0 pb-4 px-4 px-md-5 d-flex gap-3">
                   <button type="button" className="btn btn-light fw-bold px-4 py-2" onClick={() => setShowModal(false)}>Hủy</button>
-                  <button type="submit" disabled={submitting} className="btn btn-primary fw-bold px-5 py-2 shadow-sm" style={{ background: '#097E52', borderColor: '#097E52' }}>{submitting ? 'ĐANG LƯU...' : 'LƯU KHUYẾN MÃI'}</button>
+                  <button type="submit" disabled={submitting} className="btn btn-primary fw-bold px-5 py-2 shadow-sm">{submitting ? 'ĐANG LƯU...' : 'LƯU KHUYẾN MÃI'}</button>
                 </div>
               </form>
             </div>

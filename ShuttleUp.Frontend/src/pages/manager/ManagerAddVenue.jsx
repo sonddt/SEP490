@@ -487,7 +487,7 @@ export default function ManagerAddVenue() {
           <Link to="/manager/venues" className="btn btn-light fw-bold px-4 py-3 shadow-sm" style={{ borderRadius: 12 }}>
             Hủy bỏ
           </Link>
-          <button type="submit" className="btn btn-primary fw-bold px-5 py-3 shadow" disabled={submitting} style={{ borderRadius: 12, background: '#097E52', borderColor: '#097E52' }}>
+          <button type="submit" className="btn btn-primary fw-bold px-5 py-3 shadow" disabled={submitting} style={{ borderRadius: 12 }}>
             {submitting ? 'ĐANG LƯU...' : 'LƯU VÀ XUẤT BẢN'}
           </button>
         </div>
