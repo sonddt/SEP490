@@ -1,0 +1,49 @@
+---
+description: Font & icon conventions — avoid Vietnamese rendering bugs
+globs: "**/*.{jsx,tsx,css}"
+alwaysApply: false
+---
+
+# Font & Icon Rules (ShuttleUp Frontend)
+
+## Text Font
+
+- The project uses **"Be Vietnam Pro"** (Google Font, Vietnamese-optimized) loaded via `style.css` template.
+- Manager layout: `var(--mgr-font)` = `'Be Vietnam Pro', 'Segoe UI', system-ui, -apple-system, sans-serif`.
+- Admin layout: `var(--adm-font)` — same stack.
+- **NEVER** add a custom `font-family` declaration in new CSS. Let elements inherit from their layout ancestor, or use the CSS variable (`var(--mgr-font)`, `var(--adm-font)`).
+
+```css
+/* ❌ BAD — overrides Be Vietnam Pro, breaks Vietnamese diacritics */
+.my-component {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ✅ GOOD — inherits Be Vietnam Pro from parent */
+.my-component {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* ✅ GOOD — explicit variable when needed */
+.my-component {
+  font-family: var(--mgr-font);
+}
+```
+
+## Icons
+
+| Context | Library | How it's loaded |
+|---------|---------|-----------------|
+| Manager / Admin pages | **Feather** icons (`feather-*` classes) | `<link>` to `/assets/css/feather.css` in `index.html` |
+| Player / Landing pages | **FontAwesome** (`fa-*`, `fas`, `far`, `fab` classes) | `<link>` to `/assets/plugins/fontawesome/css/all.min.css` in `index.html` |
+
+- **NEVER** install `@fortawesome/fontawesome-free` (or any FontAwesome package) via npm. The npm bundle injects `@font-face` rules through Vite that override Vietnamese font rendering.
+- FontAwesome is loaded as a **static CSS file** from `public/assets/plugins/` — this keeps it outside the Vite bundle and avoids font conflicts.
+- If you need a new icon, pick from Feather (Manager/Admin) or FontAwesome (Player/Landing) — do not add a third icon library.
+
+## Modal z-index
+
+- `.mgr-topbar` has `z-index: 1030` with `position: sticky`.
+- `.mgr-page` creates a stacking context at `z-index: 1`.
+- Any modal inside Manager/Admin layout **must** use `createPortal(..., document.body)` and `z-index >= 1100` to appear above the topbar.

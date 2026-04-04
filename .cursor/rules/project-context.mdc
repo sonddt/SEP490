@@ -1,0 +1,18 @@
+---
+description: Core project conventions — always read memory.md first
+alwaysApply: true
+---
+
+# ShuttleUp Project Context
+
+Before making changes, read `docs/memory.md` for development history and fixed rules.
+
+## Key Conventions
+
+- **Vietnamese UI**: All user-facing text is Vietnamese. Font must be "Be Vietnam Pro" — never override with system fonts.
+- **No npm FontAwesome**: FontAwesome is loaded from a static file in `public/assets/plugins/`, NOT from npm. See `.cursor/rules/font-and-icon-rules.mdc`.
+- **Validation**: Inline near inputs, friendly tone ("Oops…"), no browser alerts.
+- **Manager layout**: Floating card design, Emerald Green accent (`#097E52`), Feather icons.
+- **Admin layout**: Indigo/Navy accent, Feather icons.
+- **Player/Landing**: Template CSS + FontAwesome (static file).
+- **Modals in Manager/Admin**: Use `createPortal(…, document.body)` with `z-index >= 1100` to escape `.mgr-page` stacking context.

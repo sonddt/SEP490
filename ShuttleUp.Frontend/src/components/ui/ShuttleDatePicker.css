@@ -129,7 +129,6 @@
   font-weight: 800;
   letter-spacing: 0.02em;
   color: var(--su-text);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
 .shuttle-cal__dow-row {
@@ -167,7 +166,6 @@
   color: var(--su-text);
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
 .shuttle-cal__day:hover:not(:disabled) {

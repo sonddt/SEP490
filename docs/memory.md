@@ -116,5 +116,23 @@ Kết bạn & quan hệ xã hội (Player):
 
 ---
 
+## 4 tháng 4, 2026 (Coupon Modal & Font Configuration Fix)
+
+1. **Quản lý mã khuyến mãi (`ManagerCoupons.jsx`)**:
+   - Sửa modal "Tạo mã khuyến mãi" bị `.mgr-topbar` (z-index 1030) che phần đầu: dùng `createPortal(..., document.body)` để render modal ra ngoài `.mgr-page` stacking context; CSS class `.mgr-coupon-modal` (`position: fixed`, `z-index: 1100`, `overflow-y: auto`).
+   - Thống nhất typography toàn modal: bỏ `form-control-lg` / `form-select-lg` / inline `fontSize: 18px`; tất cả label 13px, input 14px; section title uppercase 13px; tiêu đề modal 18px.
+   - Mã Code cho phép chữ hoa + thường + số (bỏ `toUpperCase()`, `text-uppercase`); regex `^[A-Za-z0-9]+$`.
+2. **Sửa lỗi cấu hình font (quan trọng)**:
+   - **Gỡ `@fortawesome/fontawesome-free` khỏi npm**: xóa import trong `main.jsx`, chạy `npm uninstall`. Package npm này khi bundle qua Vite sẽ chèn `@font-face` + CSS reset gây lỗi render tiếng Việt (dấu bị méo hoặc font fallback sai).
+   - **Load FontAwesome từ file template local**: thêm `<link>` trong `index.html` trỏ tới `public/assets/plugins/fontawesome/css/all.min.css` (v7.1.0, file tĩnh không qua Vite bundle). Các trang Player/landing vẫn dùng class `fa-*` nên cần file này.
+   - **Xóa `font-family` ghi đè trong `ShuttleDatePicker.css`**: 2 chỗ đặt `font-family: system-ui, ...` trên `.shuttle-cal__title` và `.shuttle-cal__day` đã bị bỏ — giờ thừa hưởng "Be Vietnam Pro" từ layout cha.
+3. **Quy tắc font cố định**:
+   - Font chữ chính: **"Be Vietnam Pro"** (Google Font, hỗ trợ tiếng Việt tốt) — load qua `style.css` template.
+   - Icon Manager/Admin: **Feather** (`feather.css`, load qua `<link>` trong `index.html`).
+   - Icon Player/landing: **FontAwesome** (file tĩnh `public/assets/plugins/fontawesome/css/all.min.css`, load qua `<link>` trong `index.html`). **KHÔNG dùng npm package**.
+   - **KHÔNG** thêm `font-family` tùy chỉnh (system-ui, Roboto, v.v.) vào CSS mới — luôn để `inherit` hoặc dùng CSS variable `var(--mgr-font)` / `var(--adm-font)`.
+
+---
+
 *Cập nhật: gom theo ngày, bỏ trùng lặp và định dạng lại cho dễ đọc.*
 
