@@ -27,6 +27,22 @@ const expenseLabels = {
 
 const BOOKING_SLOTS_PREVIEW = 4;
 
+const bookingSlotSortOptions = [
+  { value: 'time_asc', label: 'Thời gian (sớm → muộn)' },
+  { value: 'time_desc', label: 'Thời gian (muộn → sớm)' },
+  { value: 'court_asc', label: 'Tên sân (A → Z)' },
+  { value: 'court_desc', label: 'Tên sân (Z → A)' },
+  { value: 'price_asc', label: 'Giá tăng dần' },
+  { value: 'price_desc', label: 'Giá giảm dần' },
+];
+
+function bookingItemPriceNum(item) {
+  const n = item?.price;
+  if (n == null || n === '') return null;
+  const x = Number(n);
+  return Number.isNaN(x) ? null : x;
+}
+
 function formatHHmm(d) {
   if (!d || Number.isNaN(d.getTime())) return '';
   return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -63,6 +79,8 @@ export default function MatchingPostDetail() {
   const [hostTab, setHostTab] = useState('requests'); // 'requests' | 'members'
   const [showAllBookingSlots, setShowAllBookingSlots] = useState(false);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [bookingSlotQuery, setBookingSlotQuery] = useState('');
+  const [bookingSlotSort, setBookingSlotSort] = useState('time_asc');
 
   const load = useCallback(async () => {
     try {
@@ -80,6 +98,8 @@ export default function MatchingPostDetail() {
   useEffect(() => {
     setShowAllBookingSlots(false);
     setScheduleModalOpen(false);
+    setBookingSlotQuery('');
+    setBookingSlotSort('time_asc');
   }, [postId]);
 
   const sortedBookingItems = useMemo(() => {
@@ -94,6 +114,61 @@ export default function MatchingPostDetail() {
     });
     return items;
   }, [post?.bookingItems]);
+
+  const filteredBookingSlots = useMemo(() => {
+    let items = [...sortedBookingItems];
+    const q = bookingSlotQuery.trim().toLowerCase();
+    if (q) {
+      items = items.filter((item) => {
+        const blob = [
+          item.courtName,
+          formatBookingSlotDetail(item),
+          item.price != null ? String(item.price) : '',
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        return blob.includes(q);
+      });
+    }
+    const sortKey = bookingSlotSort || 'time_asc';
+    items.sort((a, b) => {
+      switch (sortKey) {
+        case 'time_desc': {
+          const ta = parseSlotDate(a.startTime).getTime();
+          const tb = parseSlotDate(b.startTime).getTime();
+          if (Number.isNaN(ta) && Number.isNaN(tb)) return 0;
+          if (Number.isNaN(ta)) return 1;
+          if (Number.isNaN(tb)) return -1;
+          return tb - ta;
+        }
+        case 'court_asc':
+          return String(a.courtName || '').localeCompare(String(b.courtName || ''), 'vi', { sensitivity: 'base' });
+        case 'court_desc':
+          return String(b.courtName || '').localeCompare(String(a.courtName || ''), 'vi', { sensitivity: 'base' });
+        case 'price_asc': {
+          const pa = bookingItemPriceNum(a);
+          const pb = bookingItemPriceNum(b);
+          return (pa ?? Number.POSITIVE_INFINITY) - (pb ?? Number.POSITIVE_INFINITY);
+        }
+        case 'price_desc': {
+          const pa = bookingItemPriceNum(a);
+          const pb = bookingItemPriceNum(b);
+          return (pb ?? Number.NEGATIVE_INFINITY) - (pa ?? Number.NEGATIVE_INFINITY);
+        }
+        case 'time_asc':
+        default: {
+          const ta = parseSlotDate(a.startTime).getTime();
+          const tb = parseSlotDate(b.startTime).getTime();
+          if (Number.isNaN(ta) && Number.isNaN(tb)) return 0;
+          if (Number.isNaN(ta)) return 1;
+          if (Number.isNaN(tb)) return -1;
+          return ta - tb;
+        }
+      }
+    });
+    return items;
+  }, [sortedBookingItems, bookingSlotQuery, bookingSlotSort]);
 
   const scheduleSummary = useMemo(() => buildScheduleSummary(post), [post]);
 
@@ -360,33 +435,81 @@ export default function MatchingPostDetail() {
                 {sortedBookingItems.length > 0 && (
                   <div style={{ borderTop: '1px dashed #e2e8f0', padding: '24px 32px' }}>
                       <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}><i className="feather-layers me-2"></i>Danh sách ca chơi ghép</div>
-                      {(showAllBookingSlots ? sortedBookingItems : sortedBookingItems.slice(0, BOOKING_SLOTS_PREVIEW)).map((item) => (
-                        <div
-                          key={item.bookingItemId || `${item.startTime}-${item.courtName}`}
-                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '12px 16px', backgroundColor: '#f8fafc', borderRadius: '12px', marginBottom: '8px', border: '1px solid #f1f5f9' }}
-                        >
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ fontWeight: '700', color: '#1e293b', marginBottom: '4px' }}>{item.courtName}</div>
-                            <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600', lineHeight: 1.45 }}>
-                              {formatBookingSlotDetail(item)}
-                            </div>
-                          </div>
-                          <span style={{ fontWeight: '700', color: '#097E52', flexShrink: 0 }}>{formatPrice(item.price)}</span>
+                      <div className="row g-2 g-lg-3 mb-3">
+                        <div className="col-12 col-md-7">
+                          <label style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', marginBottom: '6px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                            <i className="feather-search me-1"></i> Tìm trong danh sách (theo từng ký tự)
+                          </label>
+                          <input
+                            type="search"
+                            className="form-control"
+                            placeholder="Sân, giờ, ngày, giá…"
+                            style={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontWeight: '600', padding: '10px 14px' }}
+                            value={bookingSlotQuery}
+                            onChange={(e) => {
+                              setBookingSlotQuery(e.target.value);
+                              setShowAllBookingSlots(false);
+                            }}
+                            autoComplete="off"
+                          />
                         </div>
-                      ))}
-                      {sortedBookingItems.length > BOOKING_SLOTS_PREVIEW && (
-                        <div style={{ textAlign: 'center', marginTop: '12px' }}>
-                          <button
-                            type="button"
-                            className="btn btn-link"
-                            style={{ fontWeight: '700', color: '#097E52', textDecoration: 'none' }}
-                            onClick={() => setShowAllBookingSlots((v) => !v)}
+                        <div className="col-12 col-md-5">
+                          <label style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', marginBottom: '6px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                            <i className="feather-bar-chart-2 me-1"></i> Sắp xếp
+                          </label>
+                          <select
+                            className="form-select"
+                            style={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontWeight: '700', padding: '10px 14px' }}
+                            value={bookingSlotSort}
+                            onChange={(e) => {
+                              setBookingSlotSort(e.target.value);
+                              setShowAllBookingSlots(false);
+                            }}
                           >
-                            {showAllBookingSlots
-                              ? `Thu gọn (hiện ${BOOKING_SLOTS_PREVIEW} ca)`
-                              : `Xem thêm (${sortedBookingItems.length - BOOKING_SLOTS_PREVIEW} ca)`}
+                            {bookingSlotSortOptions.map((o) => (
+                              <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      {filteredBookingSlots.length === 0 ? (
+                        <div style={{ padding: '20px', backgroundColor: '#fffbeb', borderRadius: '12px', border: '1px solid #fde68a', textAlign: 'center' }}>
+                          <div style={{ fontWeight: '700', color: '#b45309', marginBottom: '8px' }}>Không có ca nào khớp tìm kiếm</div>
+                          <button type="button" className="btn btn-sm btn-outline-secondary" style={{ fontWeight: '700', borderRadius: '10px' }} onClick={() => setBookingSlotQuery('')}>
+                            Xóa ô tìm kiếm
                           </button>
                         </div>
+                      ) : (
+                        <>
+                          {(showAllBookingSlots ? filteredBookingSlots : filteredBookingSlots.slice(0, BOOKING_SLOTS_PREVIEW)).map((item) => (
+                            <div
+                              key={item.bookingItemId || `${item.startTime}-${item.courtName}`}
+                              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '12px 16px', backgroundColor: '#f8fafc', borderRadius: '12px', marginBottom: '8px', border: '1px solid #f1f5f9' }}
+                            >
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontWeight: '700', color: '#1e293b', marginBottom: '4px' }}>{item.courtName}</div>
+                                <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600', lineHeight: 1.45 }}>
+                                  {formatBookingSlotDetail(item)}
+                                </div>
+                              </div>
+                              <span style={{ fontWeight: '700', color: '#097E52', flexShrink: 0 }}>{formatPrice(item.price)}</span>
+                            </div>
+                          ))}
+                          {filteredBookingSlots.length > BOOKING_SLOTS_PREVIEW && (
+                            <div style={{ textAlign: 'center', marginTop: '12px' }}>
+                              <button
+                                type="button"
+                                className="btn btn-link"
+                                style={{ fontWeight: '700', color: '#097E52', textDecoration: 'none' }}
+                                onClick={() => setShowAllBookingSlots((v) => !v)}
+                              >
+                                {showAllBookingSlots
+                                  ? `Thu gọn (hiện ${BOOKING_SLOTS_PREVIEW} ca)`
+                                  : `Xem thêm (${filteredBookingSlots.length - BOOKING_SLOTS_PREVIEW} ca)`}
+                              </button>
+                            </div>
+                          )}
+                        </>
                       )}
                   </div>
                 )}

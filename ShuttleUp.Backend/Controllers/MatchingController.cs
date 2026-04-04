@@ -83,6 +83,7 @@ public class MatchingController : ControllerBase
         [FromQuery] string? province,
         [FromQuery] DateOnly? playDate,
         [FromQuery] string? sort,
+        [FromQuery] string? q,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 12)
     {
@@ -111,12 +112,22 @@ public class MatchingController : ControllerBase
             query = query.Where(p => p.PlayDate == playDate);
         if (!string.IsNullOrWhiteSpace(province))
             query = query.Where(p => p.Venue != null && p.Venue.Address.Contains(province));
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var term = q.Trim();
+            query = query.Where(p =>
+                (p.Title != null && p.Title.Contains(term))
+                || (p.Venue != null && p.Venue.Address != null && p.Venue.Address.Contains(term))
+                || (p.CreatorUser != null && p.CreatorUser.FullName != null && p.CreatorUser.FullName.Contains(term)));
+        }
 
         // Sort
         query = sort switch
         {
             "price_asc" => query.OrderBy(p => p.PricePerSlot),
+            "price_desc" => query.OrderByDescending(p => p.PricePerSlot),
             "soonest" => query.OrderBy(p => p.PlayDate).ThenBy(p => p.PlayStartTime),
+            "oldest" => query.OrderBy(p => p.CreatedAt),
             _ => query.OrderByDescending(p => p.CreatedAt)
         };
 
@@ -147,25 +158,47 @@ public class MatchingController : ControllerBase
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
 
-        return Ok(list.Select(p => new
+        return Ok(list.Select(p =>
         {
-            id = p.Id,
-            title = p.Title,
-            playDate = p.PlayDate,
-            playStartTime = p.PlayStartTime?.ToString("HH:mm"),
-            playEndTime = p.PlayEndTime?.ToString("HH:mm"),
-            venueName = p.Venue?.Name,
-            venueAddress = p.Venue?.Address,
-            courtName = p.CourtName,
-            pricePerSlot = p.PricePerSlot,
-            requiredPlayers = p.RequiredPlayers,
-            skillLevel = p.SkillLevel,
-            genderPref = p.GenderPref,
-            expenseSharing = p.ExpenseSharing,
-            status = p.Status,
-            membersCount = p.MatchingMembers.Count,
-            pendingRequests = p.MatchingJoinRequests.Count(r => r.Status == "PENDING"),
-            createdAt = p.CreatedAt
+            var filled = p.MatchingMembers.Count;
+            var totalSlots = (p.RequiredPlayers ?? 0) + 1;
+            var slotsLeft = Math.Max(totalSlots - filled, 0);
+            var isHost = p.CreatorUserId == me;
+            var isMember = p.MatchingMembers.Any(m => m.UserId == me);
+            var isPending = p.MatchingJoinRequests.Any(r => r.UserId == me && r.Status == "PENDING");
+            var canRequestJoin = !isHost && !isMember && !isPending && p.Status == "OPEN" && slotsLeft > 0
+                && !IsInactiveStatus(p.Status);
+            return new
+            {
+                id = p.Id,
+                title = p.Title,
+                playDate = p.PlayDate,
+                playStartTime = p.PlayStartTime?.ToString("HH:mm"),
+                playEndTime = p.PlayEndTime?.ToString("HH:mm"),
+                venueName = p.Venue?.Name,
+                venueAddress = p.Venue?.Address,
+                courtName = p.CourtName,
+                pricePerSlot = p.PricePerSlot,
+                requiredPlayers = p.RequiredPlayers,
+                skillLevel = p.SkillLevel,
+                genderPref = p.GenderPref,
+                expenseSharing = p.ExpenseSharing,
+                status = p.Status,
+                membersCount = filled,
+                pendingRequests = p.MatchingJoinRequests.Count(r => r.Status == "PENDING"),
+                createdAt = p.CreatedAt,
+                isHost,
+                isMember,
+                isPending,
+                canRequestJoin,
+                host = new
+                {
+                    id = p.CreatorUser?.Id,
+                    fullName = p.CreatorUser?.FullName,
+                    avatarUrl = p.CreatorUser?.AvatarFile?.FileUrl,
+                    skillLevel = p.CreatorUser?.SkillLevel
+                }
+            };
         }));
     }
 
@@ -189,25 +222,47 @@ public class MatchingController : ControllerBase
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
 
-        return Ok(list.Select(p => new
+        return Ok(list.Select(p =>
         {
-            id = p.Id,
-            title = p.Title,
-            playDate = p.PlayDate,
-            playStartTime = p.PlayStartTime?.ToString("HH:mm"),
-            playEndTime = p.PlayEndTime?.ToString("HH:mm"),
-            venueName = p.Venue?.Name,
-            venueAddress = p.Venue?.Address,
-            courtName = p.CourtName,
-            pricePerSlot = p.PricePerSlot,
-            requiredPlayers = p.RequiredPlayers,
-            skillLevel = p.SkillLevel,
-            genderPref = p.GenderPref,
-            expenseSharing = p.ExpenseSharing,
-            status = p.Status,
-            membersCount = p.MatchingMembers.Count,
-            pendingRequests = p.MatchingJoinRequests.Count(r => r.Status == "PENDING"),
-            createdAt = p.CreatedAt
+            var filled = p.MatchingMembers.Count;
+            var totalSlots = (p.RequiredPlayers ?? 0) + 1;
+            var slotsLeft = Math.Max(totalSlots - filled, 0);
+            var isHost = p.CreatorUserId == me;
+            var isMember = p.MatchingMembers.Any(m => m.UserId == me);
+            var isPending = p.MatchingJoinRequests.Any(r => r.UserId == me && r.Status == "PENDING");
+            var canRequestJoin = !isHost && !isMember && !isPending && p.Status == "OPEN" && slotsLeft > 0
+                && !IsInactiveStatus(p.Status);
+            return new
+            {
+                id = p.Id,
+                title = p.Title,
+                playDate = p.PlayDate,
+                playStartTime = p.PlayStartTime?.ToString("HH:mm"),
+                playEndTime = p.PlayEndTime?.ToString("HH:mm"),
+                venueName = p.Venue?.Name,
+                venueAddress = p.Venue?.Address,
+                courtName = p.CourtName,
+                pricePerSlot = p.PricePerSlot,
+                requiredPlayers = p.RequiredPlayers,
+                skillLevel = p.SkillLevel,
+                genderPref = p.GenderPref,
+                expenseSharing = p.ExpenseSharing,
+                status = p.Status,
+                membersCount = filled,
+                pendingRequests = p.MatchingJoinRequests.Count(r => r.Status == "PENDING"),
+                createdAt = p.CreatedAt,
+                isHost,
+                isMember,
+                isPending,
+                canRequestJoin,
+                host = new
+                {
+                    id = p.CreatorUser?.Id,
+                    fullName = p.CreatorUser?.FullName,
+                    avatarUrl = p.CreatorUser?.AvatarFile?.FileUrl,
+                    skillLevel = p.CreatorUser?.SkillLevel
+                }
+            };
         }));
     }
 
