@@ -32,7 +32,8 @@ export default function ManagerCoupons() {
     startDate: '',
     endDate: '',
     usageLimit: '',
-    isActive: true
+    isActive: true,
+    oneUsePerUser: true
   });
 
   const loadData = async () => {
@@ -100,7 +101,8 @@ export default function ManagerCoupons() {
       startDate: '',
       endDate: '',
       usageLimit: '',
-      isActive: true
+      isActive: true,
+      oneUsePerUser: true
     });
     setShowModal(true);
   };
@@ -116,7 +118,8 @@ export default function ManagerCoupons() {
       startDate: (cp.startDate || cp.StartDate || '').substring(0, 16),
       endDate: (cp.endDate || cp.EndDate || '').substring(0, 16),
       usageLimit: cp.usageLimit || cp.UsageLimit || '',
-      isActive: cp.isActive !== undefined ? cp.isActive : cp.IsActive !== undefined ? cp.IsActive : true
+      isActive: cp.isActive !== undefined ? cp.isActive : cp.IsActive !== undefined ? cp.IsActive : true,
+      oneUsePerUser: cp.oneUsePerUser !== undefined ? cp.oneUsePerUser : cp.OneUsePerUser !== undefined ? cp.OneUsePerUser : true
     });
     setShowModal(true);
   };
@@ -175,7 +178,8 @@ export default function ManagerCoupons() {
       startDate: start.toISOString(),
       endDate: end.toISOString(),
       usageLimit: form.usageLimit ? Number(form.usageLimit) : null,
-      isActive: form.isActive
+      isActive: form.isActive,
+      oneUsePerUser: form.oneUsePerUser
     };
 
     try {
@@ -379,6 +383,7 @@ export default function ManagerCoupons() {
                   const limit = cp.usageLimit || cp.UsageLimit;
                   const active = cp.isActive !== undefined ? cp.isActive : cp.IsActive;
                   const isExhausted = limit && used >= limit;
+                  const oneUsePerUser = cp.oneUsePerUser !== undefined ? cp.oneUsePerUser : cp.OneUsePerUser !== undefined ? cp.OneUsePerUser : true;
 
                   return (
                     <tr key={id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background .12s' }}
@@ -393,6 +398,9 @@ export default function ManagerCoupons() {
                         >
                           <i className="feather-tag" style={{ fontSize: 13, color: '#097E52' }} />
                           <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.06em', color: '#065f3f' }}>{code}</span>
+                        </div>
+                        <div style={{ fontSize: 11, color: '#64748b', marginTop: 6, maxWidth: 160 }}>
+                          {oneUsePerUser ? '1 lần / tài khoản' : 'Nhiều lần / tài khoản'}
                         </div>
                       </td>
 
@@ -577,6 +585,24 @@ export default function ManagerCoupons() {
                         value={form.usageLimit}
                         onChange={e => setField('usageLimit', e.target.value)}
                       />
+                    </div>
+
+                    <div className="col-12">
+                      <div className="form-check rounded-3 px-3 py-3" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                        <input
+                          className="form-check-input"
+                          type="checkbox"
+                          id="mgr-coupon-one-use-per-user"
+                          checked={form.oneUsePerUser}
+                          onChange={(e) => setField('oneUsePerUser', e.target.checked)}
+                        />
+                        <label className="form-check-label fw-semibold" htmlFor="mgr-coupon-one-use-per-user" style={{ fontSize: 13, color: '#334155' }}>
+                          Mỗi tài khoản chỉ được dùng mã này một lần
+                        </label>
+                        <p className="mb-0 mt-1 small text-muted" style={{ paddingLeft: '1.5rem', fontSize: 12 }}>
+                          Bật để tránh một người dùng lặp lại mã. Đơn đã huỷ không tính — khách có thể dùng lại sau khi huỷ.
+                        </p>
+                      </div>
                     </div>
 
                     <div className="col-12 border-top pt-4 mt-2">

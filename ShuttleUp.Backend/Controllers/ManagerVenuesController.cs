@@ -1036,6 +1036,8 @@ public class ManagerVenuesController : ControllerBase
         public DateTime EndDate { get; set; }
         public int? UsageLimit { get; set; }
         public bool IsActive { get; set; } = true;
+        /// <summary>Mỗi tài khoản chỉ được dùng mã một lần (đơn chưa huỷ).</summary>
+        public bool OneUsePerUser { get; set; } = true;
     }
 
     /// <summary>Lấy danh sách coupon của venue.</summary>
@@ -1054,7 +1056,7 @@ public class ManagerVenuesController : ControllerBase
             {
                 c.Id, c.Code, c.DiscountType, c.DiscountValue,
                 c.MinBookingValue, c.MaxDiscountAmount,
-                c.StartDate, c.EndDate, c.UsageLimit, c.UsedCount, c.IsActive, c.CreatedAt
+                c.StartDate, c.EndDate, c.UsageLimit, c.UsedCount, c.IsActive, c.OneUsePerUser, c.CreatedAt
             })
             .ToListAsync();
 
@@ -1087,6 +1089,7 @@ public class ManagerVenuesController : ControllerBase
             UsageLimit = dto.UsageLimit,
             UsedCount = 0,
             IsActive = dto.IsActive,
+            OneUsePerUser = dto.OneUsePerUser,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -1095,7 +1098,7 @@ public class ManagerVenuesController : ControllerBase
 
         return Ok(new { coupon.Id, coupon.Code, coupon.DiscountType, coupon.DiscountValue,
             coupon.MinBookingValue, coupon.MaxDiscountAmount, coupon.StartDate, coupon.EndDate,
-            coupon.UsageLimit, coupon.UsedCount, coupon.IsActive, coupon.CreatedAt });
+            coupon.UsageLimit, coupon.UsedCount, coupon.IsActive, coupon.OneUsePerUser, coupon.CreatedAt });
     }
 
     /// <summary>Cập nhật coupon.</summary>
@@ -1123,6 +1126,7 @@ public class ManagerVenuesController : ControllerBase
         coupon.EndDate = dto.EndDate;
         coupon.UsageLimit = dto.UsageLimit;
         coupon.IsActive = dto.IsActive;
+        coupon.OneUsePerUser = dto.OneUsePerUser;
 
         await _dbContext.SaveChangesAsync();
         return Ok(new { message = "Cập nhật coupon thành công." });

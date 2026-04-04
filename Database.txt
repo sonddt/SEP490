@@ -298,6 +298,7 @@ CREATE TABLE venue_coupons (
     usage_limit INT NULL,
     used_count INT DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
+    one_use_per_user BOOLEAN NOT NULL DEFAULT TRUE COMMENT 'TRUE: mỗi user chỉ dùng mã 1 lần (đơn không huỷ)',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE,
     UNIQUE KEY uq_venue_coupon (venue_id, code)
@@ -1312,6 +1313,10 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'player_received_file_id');
 SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN player_received_file_id CHAR(36) NULL', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venue_coupons' AND column_name = 'one_use_per_user');
+SET @sql := IF(@col = 0, 'ALTER TABLE venue_coupons ADD COLUMN one_use_per_user TINYINT(1) NOT NULL DEFAULT 1 COMMENT ''TRUE: mỗi user chỉ dùng mã 1 lần (đơn không huỷ)''', 'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- ======================================================================

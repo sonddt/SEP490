@@ -40,10 +40,7 @@ export default function ChatDock() {
   const vw = useWindowWidth();
   const railPad = useRailPad();
 
-  if (pathname.startsWith('/manager') || pathname.startsWith('/admin')) {
-    return null;
-  }
-
+  // Hooks phải gọi trước mọi return — không được return sớm rồi mới gọi useMemo (lỗi Rules of Hooks khi đổi route).
   const { boxWidth, ordered } = useMemo(() => {
     const n = windows.length;
     const orderedInner = [...windows].sort((a, b) => b.z - a.z);
@@ -53,6 +50,10 @@ export default function ChatDock() {
     const boxW = Math.max(MIN_W, Math.min(BASE_W, raw));
     return { boxWidth: boxW, ordered: orderedInner };
   }, [windows, vw, railPad]);
+
+  if (pathname.startsWith('/manager') || pathname.startsWith('/admin')) {
+    return null;
+  }
 
   return (
     <>
