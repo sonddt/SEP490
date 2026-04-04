@@ -822,6 +822,30 @@ public partial class ShuttleUpDbContext : DbContext
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.BookingId).HasColumnName("booking_id");
+            entity.Property(e => e.ReasonCode)
+                .HasMaxLength(50)
+                .HasDefaultValue("PLAYER_CANCEL")
+                .HasColumnName("reason_code");
+            entity.Property(e => e.RequestedAmount)
+                .HasPrecision(15, 2)
+                .HasColumnName("requested_amount");
+            entity.Property(e => e.PaidAmount)
+                .HasPrecision(15, 2)
+                .HasColumnName("paid_amount");
+            entity.Property(e => e.RefundBankName)
+                .HasMaxLength(100)
+                .HasColumnName("refund_bank_name");
+            entity.Property(e => e.RefundAccountNumber)
+                .HasMaxLength(50)
+                .HasColumnName("refund_account_number");
+            entity.Property(e => e.RefundAccountHolder)
+                .HasMaxLength(255)
+                .HasColumnName("refund_account_holder");
+            entity.Property(e => e.PlayerNote).HasColumnName("player_note");
+            entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason");
+            entity.Property(e => e.ManagerNote).HasColumnName("manager_note");
+            entity.Property(e => e.ManagerEvidenceFileId).HasColumnName("manager_evidence_file_id");
+            entity.Property(e => e.PlayerReceivedFileId).HasColumnName("player_received_file_id");
             entity.Property(e => e.ProcessedAt)
                 .HasColumnType("datetime")
                 .HasColumnName("processed_at");
@@ -847,6 +871,14 @@ public partial class ShuttleUpDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.RefundRequestUsers)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("refund_requests_ibfk_2");
+
+            entity.HasOne(d => d.ManagerEvidenceFile).WithMany()
+                .HasForeignKey(d => d.ManagerEvidenceFileId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(d => d.PlayerReceivedFile).WithMany()
+                .HasForeignKey(d => d.PlayerReceivedFileId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasMany(d => d.Files).WithMany(p => p.RefundRequests)
                 .UsingEntity<Dictionary<string, object>>(

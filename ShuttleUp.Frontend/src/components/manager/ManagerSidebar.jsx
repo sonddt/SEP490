@@ -14,6 +14,7 @@ const NAV_SECTIONS = [
     items: [
       { to: '/manager/venues',        icon: 'feather-map-pin',      label: 'Cụm sân' },
       { to: '/manager/bookings',      icon: 'feather-calendar',     label: 'Đặt sân' },
+      { to: '/manager/refunds',       icon: 'feather-rotate-ccw',   label: 'Hoàn tiền' },
       { to: '/manager/notifications', icon: 'feather-bell',         label: 'Thông báo', badgeKey: 'notifications' },
     ],
   },

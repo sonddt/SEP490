@@ -185,12 +185,39 @@ public class ManagerBookingsController : ControllerBase
             if (booking.Status != "PENDING" && booking.Status != "CONFIRMED")
                 return BadRequest(new { message = "Không thể huỷ đơn ở trạng thái này." });
 
-            booking.Status = "CANCELLED";
             booking.ManagerStatusNote = string.IsNullOrWhiteSpace(dto.Reason)
                 ? null
                 : dto.Reason.Trim();
+
+            var hasConfirmedPayment = booking.Payments.Any(p =>
+                p.Status != null && p.Status.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase));
+            var paidAmount = booking.Payments
+                .Where(p => p.Status != null && p.Status.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase))
+                .Sum(p => p.Amount ?? 0);
+
+            if (hasConfirmedPayment && paidAmount > 0)
+            {
+                booking.Status = "PENDING_REFUND";
+                var refundReq = new RefundRequest
+                {
+                    Id = Guid.NewGuid(),
+                    BookingId = booking.Id,
+                    UserId = booking.UserId,
+                    ReasonCode = "MANAGER_CANCEL",
+                    Status = "PENDING_REFUND",
+                    RequestedAmount = paidAmount,
+                    PaidAmount = paidAmount,
+                    RequestedAt = DateTime.UtcNow,
+                };
+                _dbContext.RefundRequests.Add(refundReq);
+            }
+            else
+            {
+                booking.Status = "CANCELLED";
+            }
+
             foreach (var item in booking.BookingItems)
-                item.Status = "CANCELLED";
+                item.Status = booking.Status == "CANCELLED" ? "CANCELLED" : item.Status;
 
             foreach (var p in booking.Payments.Where(p =>
                          p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase)))

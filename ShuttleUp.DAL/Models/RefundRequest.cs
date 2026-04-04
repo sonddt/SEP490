@@ -11,7 +11,29 @@ public partial class RefundRequest
 
     public Guid? UserId { get; set; }
 
+    public string ReasonCode { get; set; } = "PLAYER_CANCEL";
+
     public string? Status { get; set; }
+
+    public decimal? RequestedAmount { get; set; }
+
+    public decimal? PaidAmount { get; set; }
+
+    public string? RefundBankName { get; set; }
+
+    public string? RefundAccountNumber { get; set; }
+
+    public string? RefundAccountHolder { get; set; }
+
+    public string? PlayerNote { get; set; }
+
+    public string? RejectionReason { get; set; }
+
+    public string? ManagerNote { get; set; }
+
+    public Guid? ManagerEvidenceFileId { get; set; }
+
+    public Guid? PlayerReceivedFileId { get; set; }
 
     public DateTime? RequestedAt { get; set; }
 
@@ -26,6 +48,10 @@ public partial class RefundRequest
     public virtual ICollection<RefundTransaction> RefundTransactions { get; set; } = new List<RefundTransaction>();
 
     public virtual User? User { get; set; }
+
+    public virtual File? ManagerEvidenceFile { get; set; }
+
+    public virtual File? PlayerReceivedFile { get; set; }
 
     public virtual ICollection<File> Files { get; set; } = new List<File>();
 }

@@ -406,13 +406,28 @@ CREATE TABLE refund_requests (
     id CHAR(36) PRIMARY KEY,
     booking_id CHAR(36),
     user_id CHAR(36),
-    status VARCHAR(50) DEFAULT 'PENDING',
+    reason_code VARCHAR(50) NOT NULL DEFAULT 'PLAYER_CANCEL' COMMENT 'PLAYER_CANCEL|MANAGER_CANCEL|ADMIN',
+    status VARCHAR(50) DEFAULT 'PENDING' COMMENT 'PENDING_RECONCILIATION|PENDING_REFUND|COMPLETED|REJECTED',
+    requested_amount DECIMAL(15,2) NULL COMMENT 'Số tiền hoàn dự kiến theo snapshot',
+    paid_amount DECIMAL(15,2) NULL COMMENT 'Số tiền đã thu (snapshot lúc tạo yêu cầu)',
+    refund_bank_name VARCHAR(100) NULL COMMENT 'NH nhận hoàn (Player nhập)',
+    refund_account_number VARCHAR(50) NULL,
+    refund_account_holder VARCHAR(255) NULL,
+    player_note TEXT NULL,
+    rejection_reason TEXT NULL,
+    manager_note TEXT NULL,
+    manager_evidence_file_id CHAR(36) NULL COMMENT 'Ảnh bill CK hoàn từ Manager',
+    player_received_file_id CHAR(36) NULL COMMENT 'Ảnh xác nhận nhận tiền từ Player (tùy chọn)',
     requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     processed_by CHAR(36),
     processed_at DATETIME,
     FOREIGN KEY (booking_id) REFERENCES bookings(id),
     FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (processed_by) REFERENCES users(id)
+    FOREIGN KEY (processed_by) REFERENCES users(id),
+    FOREIGN KEY (manager_evidence_file_id) REFERENCES files(id) ON DELETE SET NULL,
+    FOREIGN KEY (player_received_file_id) REFERENCES files(id) ON DELETE SET NULL,
+    INDEX idx_refund_requests_status (status),
+    INDEX idx_refund_requests_booking (booking_id)
 );
 
 CREATE TABLE refund_transactions (
@@ -1250,6 +1265,54 @@ INSERT IGNORE INTO matching_post_comments (id, post_id, user_id, content, create
 ('df000003-0000-0000-0000-000000000001', 'd1000001-0000-0000-0000-000000000001', 'b0000002-0000-0000-0000-000000000002', 'Ok bạn!', NOW() - INTERVAL 10 MINUTE);
 
 UPDATE matching_post_comments SET parent_comment_id = 'df000002-0000-0000-0000-000000000001' WHERE id = 'df000003-0000-0000-0000-000000000001';
+
+-- ======================================================================
+-- MIGRATION: refund_requests mở rộng (hoàn tiền thủ công)
+-- ======================================================================
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'reason_code');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN reason_code VARCHAR(50) NOT NULL DEFAULT ''PLAYER_CANCEL''', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'requested_amount');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN requested_amount DECIMAL(15,2) NULL', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'paid_amount');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN paid_amount DECIMAL(15,2) NULL', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'refund_bank_name');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN refund_bank_name VARCHAR(100) NULL', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'refund_account_number');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN refund_account_number VARCHAR(50) NULL', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'refund_account_holder');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN refund_account_holder VARCHAR(255) NULL', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'player_note');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN player_note TEXT NULL', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'rejection_reason');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN rejection_reason TEXT NULL', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'manager_note');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN manager_note TEXT NULL', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'manager_evidence_file_id');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN manager_evidence_file_id CHAR(36) NULL', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'player_received_file_id');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN player_received_file_id CHAR(36) NULL', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- ======================================================================
 -- Kiểm tra kết quả
