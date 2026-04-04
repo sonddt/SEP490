@@ -6,6 +6,7 @@ Tài liệu ghi lại các mốc làm việc theo thời gian. Đọc từ trên
 
 ## Nguyên tắc cố định (áp dụng xuyên suốt)
 
+- Database: chỉ `Database.txt` — không thêm file `.sql` rời trong repo; sửa schema + dữ liệu mẫu trong file đó, chạy full script khi cần DB sạch (xem `.cursor/rules/project-context.mdc`).
 - Giọng điệu giao diện: vui vẻ, cởi mở. Tránh nhãn kiểu “Lỗi” cứng nhắc; ưu tiên thông điệp thân thiện (“Oops…”, “Tuyệt vời…”).
 - Validation: không dùng alert toàn trang hay alert trình duyệt; hiển thị gần ô nhập. Ưu tiên số thay chữ (“3 file” thay vì “ba file”) khi phù hợp.
 - Sân (Venue): luồng Draft → Active; không publish nếu thiếu sân hoặc cấu hình giá. `VenueService` đã phản ánh rule này.
@@ -65,14 +66,14 @@ Tài liệu ghi lại các mốc làm việc theo thời gian. Đọc từ trên
 
 Kết bạn & quan hệ xã hội (Player):
 
-- Database: `user_privacy_settings`, `friend_requests`, `friendships`, `user_blocks` (trong `Database.txt`; script bổ sung: `docs/migration_friends_social.sql` cho DB đang chạy).
+- Database: `user_privacy_settings`, `friend_requests`, `friendships`, `user_blocks` (trong `Database.txt`).
 - Backend: `SocialController` (`/api/social`) — privacy, tìm exact/name, lời mời, bạn bè, chặn, `GET relationship/{id}`; thông báo `FRIEND_REQUEST` / `FRIEND_ACCEPTED` + `deepLink` trong metadata; `ProfileController`: `GET /api/profile/{userId}` (hồ sơ tối thiểu, `relationshipState`, `pendingRequestId` khi `PENDING_IN`).
 - Frontend: `/user/social/search`, `/user/social/friends` (tab Bạn bè / Đã nhận / Đã gửi), `/user/profile/:userId`; `RelationshipActions`, `socialApi`; QR (`qrcode.react`) + đọc ảnh QR (`jsqr`); `VITE_PUBLIC_APP_URL` (fallback `window.location.origin`); menu Tìm bạn / Bạn bè; `notificationTypes` + `notificationNavigation`.
 - Personalization: cho phép vào `/user/social/*` và `/user/profile/{guid}` dù chưa xong onboarding (theo kế hoạch tính năng xã hội).
 - Bình luận matching: sửa lệch giờ sau F5 (MySQL `datetime` → JSON có `Z` qua `AsUtcForJson` trong `MatchingController` GET/POST comments); giới hạn 1 comment / 0,5s / user / post (HTTP 429); `MatchingComments.jsx` parse ISO không offset như UTC + cooldown client + hiển thị `message` từ API; UI chỉ hiện 5 bình luận đầu, nút **Xem thêm** gọi một lần `pageSize = total` để tải hết.
 - Bình luận matching (quyền & xóa mềm): bảng `matching_post_comments` thêm `is_deleted`, `deleted_at`, `deleted_by_user_id`, `updated_at`; GET chỉ trả comment chưa xóa; `PATCH .../comments/{id}` (tác giả sửa), `DELETE .../comments/{id}` xóa mềm (chủ bài hoặc tác giả); FE nút Sửa/Gỡ + `isHost` từ `MatchingPostDetail`.
-- Trả lời bình luận matching (1 cấp): cột `parent_comment_id` (FK `ON DELETE SET NULL`), POST body `parentCommentId` chỉ trỏ tới bình luận gốc; GET/PATCH trả `replyToFullName`; FE banner “Đang trả lời…”, nút **Trả lời** trên bình luận gốc, dòng reply thụt + nhãn “Trả lời {tên}”; migration: `docs/migration_matching_post_comment_replies.sql`.
-- Bình luận matching (mở rộng theo roadmap): API chỉ trả **bình luận gốc** phân trang + `replyCount`, `totalAll`; `GET .../comments/{rootId}/replies` lazy-load phản hồi; `sort=newest|oldest|popular`; upload ảnh `POST .../comments/upload-image` + cột `attachment_file_id` (`Database.txt`, `docs/migration_matching_post_comment_attachment.sql`); `PostComment` thông báo host + (reply) chủ comment gốc — `MATCHING_NEW_COMMENT` / `MATCHING_COMMENT_REPLY` + `deepLink`; FE `MatchingComments.jsx`: textarea, `CommentRichText` (xuống dòng, link, @mention thành viên), ảnh, “Xem N phản hồi”, phân trang gốc; `notificationTypes.js` + `notificationNavigation` (`postId`).
+- Trả lời bình luận matching (1 cấp): cột `parent_comment_id` (FK `ON DELETE SET NULL`), POST body `parentCommentId` chỉ trỏ tới bình luận gốc; GET/PATCH trả `replyToFullName`; FE banner “Đang trả lời…”, nút **Trả lời** trên bình luận gốc, dòng reply thụt + nhãn “Trả lời {tên}” (schema trong `Database.txt`).
+- Bình luận matching (mở rộng theo roadmap): API chỉ trả **bình luận gốc** phân trang + `replyCount`, `totalAll`; `GET .../comments/{rootId}/replies` lazy-load phản hồi; `sort=newest|oldest|popular`; upload ảnh `POST .../comments/upload-image` + cột `attachment_file_id` (trong `Database.txt`); `PostComment` thông báo host + (reply) chủ comment gốc — `MATCHING_NEW_COMMENT` / `MATCHING_COMMENT_REPLY` + `deepLink`; FE `MatchingComments.jsx`: textarea, `CommentRichText` (xuống dòng, link, @mention thành viên), ảnh, “Xem N phản hồi”, phân trang gốc; `notificationTypes.js` + `notificationNavigation` (`postId`).
 
 ---
 

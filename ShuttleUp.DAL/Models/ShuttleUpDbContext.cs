@@ -36,6 +36,8 @@ public partial class ShuttleUpDbContext : DbContext
 
     public virtual DbSet<FavoriteVenue> FavoriteVenues { get; set; }
 
+    public virtual DbSet<FeaturedPost> FeaturedPosts { get; set; }
+
     public virtual DbSet<File> Files { get; set; }
 
     public virtual DbSet<MatchingJoinRequest> MatchingJoinRequests { get; set; }
@@ -512,6 +514,46 @@ public partial class ShuttleUpDbContext : DbContext
             entity.HasOne(d => d.Venue).WithMany(p => p.FavoriteVenues)
                 .HasForeignKey(d => d.VenueId)
                 .HasConstraintName("favorite_venues_ibfk_2");
+        });
+
+        modelBuilder.Entity<FeaturedPost>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("featured_posts");
+
+            entity.HasIndex(e => new { e.IsPublished, e.DisplayFrom, e.DisplayUntil }, "idx_featured_posts_published_dates");
+            entity.HasIndex(e => e.AuthorUserId, "idx_featured_posts_author");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Title).HasMaxLength(255).HasColumnName("title");
+            entity.Property(e => e.Excerpt).HasMaxLength(500).HasColumnName("excerpt");
+            entity.Property(e => e.Body).HasColumnType("text").HasColumnName("body");
+            entity.Property(e => e.CoverImageUrl).HasMaxLength(2048).HasColumnName("cover_image_url");
+            entity.Property(e => e.LinkUrl).HasMaxLength(2048).HasColumnName("link_url");
+            entity.Property(e => e.IsPublished).HasColumnName("is_published");
+            entity.Property(e => e.DisplayFrom).HasColumnType("datetime").HasColumnName("display_from");
+            entity.Property(e => e.DisplayUntil).HasColumnType("datetime").HasColumnName("display_until");
+            entity.Property(e => e.SortOrder).HasColumnName("sort_order");
+            entity.Property(e => e.AuthorUserId).HasColumnName("author_user_id");
+            entity.Property(e => e.AuthorRole).HasMaxLength(20).HasColumnName("author_role");
+            entity.Property(e => e.VenueId).HasColumnName("venue_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
+                .HasColumnType("datetime")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.AuthorUser).WithMany()
+                .HasForeignKey(d => d.AuthorUserId)
+                .HasConstraintName("featured_posts_ibfk_author");
+
+            entity.HasOne(d => d.Venue).WithMany()
+                .HasForeignKey(d => d.VenueId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("featured_posts_ibfk_venue");
         });
 
         modelBuilder.Entity<File>(entity =>

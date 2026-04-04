@@ -9,6 +9,7 @@ Before making changes, read `docs/memory.md` for development history and fixed r
 
 ## Key Conventions
 
+- **Database (`Database.txt` only)**: **Không** tạo thêm file `.sql` mới trong repo cho bất kỳ bảng nào. Mọi thay đổi schema (CREATE/ALTER logic thể hiện qua bảng đầy đủ sau DROP) và dữ liệu mẫu (`INSERT IGNORE`…) đều cập nhật **trực tiếp** trong `Database.txt`, đúng thứ tự phụ thuộc FK. Người dev muốn DB sạch: copy bản mới và chạy **cả file từ đầu đến cuối** (sau `CREATE DATABASE` / `USE`).
 - **Vietnamese UI**: All user-facing text is Vietnamese. Font must be "Be Vietnam Pro" — never override with system fonts.
 - **No npm FontAwesome**: FontAwesome is loaded from a static file in `public/assets/plugins/`, NOT from npm. See `.cursor/rules/font-and-icon-rules.mdc`.
 - **Validation**: Inline near inputs, friendly tone ("Oops…"), no browser alerts.

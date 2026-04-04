@@ -5,12 +5,14 @@
 -- (xem ShuttleUp.Backend/appsettings.json). Có thể ghi đè bằng biến môi trường
 -- ConnectionStrings__DefaultConnection khi chạy Docker/IIS.
 --
--- Nếu API báo "Unknown column 'm.parent_comment_id'":
---   1) MySQL phải là ĐÚNG server/DB mà API dùng (không phải instance khác).
---   2) Chạy: USE shuttle_up; rồi xem docs/verify_shuttle_up_matching_comments.sql
---   3) Nếu cột thiếu: chạy docs/migration_matching_post_comment_replies.sql (sau USE shuttle_up).
--- Workbench: khi chỉ bôi đen một đoạn script, DATABASE() có thể không phải shuttle_up —
--- luôn USE shuttle_up; trước, hoặc chọn schema shuttle_up ở panel bên trái.
+-- Schema + dữ liệu mẫu: CHỈ sửa file này — không dùng thêm file .sql rời trong repo.
+-- Khi cần DB sạch đồng bộ code: chạy lại TOÀN BỘ script từ dòng CREATE DATABASE trở xuống.
+-- Nếu API báo "Unknown column ...":
+--   1) Xác nhận backend đang trỏ đúng server/DB (mặc định shuttle_up).
+--   2) Chạy lại full Database.txt; tránh chỉ chạy nửa file nếu chưa rà soát thứ tự DROP/CREATE.
+-- Workbench: bôi đen một đoạn thì DATABASE() có thể lệch — luôn USE shuttle_up; hoặc chọn schema ở panel trái.
+-- Trang /featured trống: phải có bảng featured_posts + INSERT mẫu (phần FEATURED POSTS MẪU). Nếu chạy lại script mà thiếu DROP featured_posts
+-- thì CREATE TABLE featured_posts có thể lỗi "already exists" và phần sau không chạy — đã có DROP featured_posts trong khối VENUE.
 -- ======================================================================
 CREATE DATABASE IF NOT EXISTS shuttle_up;
 USE shuttle_up;
@@ -60,6 +62,7 @@ DROP TABLE IF EXISTS booking_series;
 
 -- VENUE
 DROP TABLE IF EXISTS venue_coupons;
+DROP TABLE IF EXISTS featured_posts;
 DROP TABLE IF EXISTS court_prices;
 DROP TABLE IF EXISTS venue_open_hours;
 DROP TABLE IF EXISTS courts;
@@ -267,6 +270,30 @@ CREATE TABLE venue_open_hours (
     close_time TIME,
     FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE
 );
+
+-- Bài đăng trang Nổi bật (Admin + Manager quảng cáo)
+CREATE TABLE featured_posts (
+    id CHAR(36) PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    excerpt VARCHAR(500) NULL,
+    body TEXT NULL,
+    cover_image_url VARCHAR(2048) NULL,
+    link_url VARCHAR(2048) NULL,
+    is_published TINYINT(1) NOT NULL DEFAULT 0,
+    display_from DATETIME NULL COMMENT 'NULL = không giới hạn đầu',
+    display_until DATETIME NULL COMMENT 'NULL = không giới hạn cuối',
+    sort_order INT NOT NULL DEFAULT 0,
+    author_user_id CHAR(36) NOT NULL,
+    author_role VARCHAR(20) NOT NULL COMMENT 'ADMIN | MANAGER',
+    venue_id CHAR(36) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (author_user_id) REFERENCES users(id),
+    FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE SET NULL,
+    INDEX idx_featured_posts_published_dates (is_published, display_from, display_until),
+    INDEX idx_featured_posts_author (author_user_id)
+);
+-- Dữ liệu mẫu featured_posts: xem phần FEATURED POSTS MẪU (sau VENUES MẪU)
 
 CREATE TABLE court_prices (
     id CHAR(36) PRIMARY KEY,
@@ -782,6 +809,61 @@ INSERT IGNORE INTO venues (id, owner_user_id, name, address, lat, lng, is_active
 ('c0000004-0000-0000-0000-000000000004', 'b0000006-0000-0000-0000-000000000006', 'Arena Badminton Q.3',    '20 Võ Văn Tần, Q.3, TP.HCM',               10.7756, 106.6861, FALSE, NOW() - INTERVAL 3 DAY),
 ('c0000005-0000-0000-0000-000000000005', 'a0000002-0000-0000-0000-000000000002', 'ShuttleUp Tân Bình',     '55 Hoàng Văn Thụ, Q.Tân Bình, TP.HCM',    10.8000, 106.6500, FALSE, NOW() - INTERVAL 1 DAY),
 ('c0000006-0000-0000-0000-000000000006', 'b0000006-0000-0000-0000-000000000006', 'Cầu lông Thủ Đức',      '30 Kha Vạn Cân, TP.Thủ Đức, TP.HCM',      10.8500, 106.7700, FALSE, NOW() - INTERVAL 20 DAY);
+
+-- ======================================================================
+-- FEATURED POSTS MẪU (trang Nổi bật — sau users + venues)
+-- INSERT IGNORE: chạy lại an toàn nếu trùng id
+-- ======================================================================
+
+INSERT IGNORE INTO featured_posts (
+    id, title, excerpt, body, cover_image_url, link_url,
+    is_published, display_from, display_until, sort_order,
+    author_user_id, author_role, venue_id, created_at, updated_at
+) VALUES
+(
+    'f0000001-0000-0000-0000-000000000001',
+    'ShuttleUp — Đặt sân cầu lông trong vài phút',
+    'Tìm sân theo khu vực, xem giờ trống và đặt lịch trực tuyến mọi lúc.',
+    'Nền tảng hỗ trợ người chơi và chủ sân kết nối minh bạch. Khám phá danh sách sân và bản đồ để chọn đúng nơi bạn cần.',
+    '/assets/img/venues/venues-07.jpg',
+    '/venues',
+    1, NULL, NULL, 30,
+    'a0000003-0000-0000-0000-000000000003', 'ADMIN', NULL,
+    NOW() - INTERVAL 2 DAY, NOW() - INTERVAL 2 DAY
+),
+(
+    'f0000002-0000-0000-0000-000000000002',
+    'Ưu đãi giờ vàng tại ShuttleUp Quận 7',
+    'Giảm giá các khung giờ trong tuần — số lượng có hạn.',
+    'Liên hệ sân hoặc đặt trực tiếp trên ShuttleUp để áp dụng ưu đãi. Chi tiết xem trang sân.',
+    '/assets/img/venues/venues-08.jpg',
+    '/venue-details/c0000001-0000-0000-0000-000000000001',
+    1, NULL, NULL, 20,
+    'a0000002-0000-0000-0000-000000000002', 'MANAGER', 'c0000001-0000-0000-0000-000000000001',
+    NOW() - INTERVAL 1 DAY, NOW() - INTERVAL 1 DAY
+),
+(
+    'f0000003-0000-0000-0000-000000000003',
+    'Tìm kèo và chat — chơi cầu không cô đơn',
+    'Ghép đôi theo trình độ, nhắn tin với đối thủ / đồng đội ngay trên hệ thống.',
+    'Đăng bài tìm kèo, nhận phản hồi và sắp lịch thi đấu giao hữu. Tính năng Chat hỗ trợ trao đổi nhanh sau khi đăng nhập.',
+    '/assets/img/venues/venues-09.jpg',
+    '/matching',
+    1, NULL, NULL, 10,
+    'a0000003-0000-0000-0000-000000000003', 'ADMIN', NULL,
+    NOW() - INTERVAL 12 HOUR, NOW() - INTERVAL 12 HOUR
+),
+(
+    'f0000004-0000-0000-0000-000000000004',
+    'ShuttleUp Bình Thạnh mở thêm sân mới',
+    'Thêm sân chất lượng, đèn LED chuẩn thi đấu — đặt thử hôm nay.',
+    'Cụm sân tại Đinh Tiên Hoàng đã mở rộng. Xem lịch trống và giá theo khung giờ trên ShuttleUp.',
+    '/assets/img/venues/venues-07.jpg',
+    '/venue-details/c0000002-0000-0000-0000-000000000002',
+    1, NULL, NULL, 5,
+    'a0000003-0000-0000-0000-000000000003', 'ADMIN', 'c0000002-0000-0000-0000-000000000002',
+    NOW() - INTERVAL 6 HOUR, NOW() - INTERVAL 6 HOUR
+);
 
 -- ======================================================================
 -- COURTS MẪU
@@ -1331,6 +1413,7 @@ SELECT 'Venues',              COUNT(*)          FROM venues     UNION ALL
 SELECT 'Courts',              COUNT(*)          FROM courts     UNION ALL
 SELECT 'Files',               COUNT(*)          FROM files      UNION ALL
 SELECT 'VenueFiles',          COUNT(*)          FROM venue_files UNION ALL
+SELECT 'FeaturedPosts',       COUNT(*)          FROM featured_posts UNION ALL
 SELECT 'Reviews',             COUNT(*)          FROM venue_reviews;
 
 SET FOREIGN_KEY_CHECKS = 1;

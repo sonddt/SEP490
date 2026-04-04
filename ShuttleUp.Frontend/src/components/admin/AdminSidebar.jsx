@@ -13,6 +13,7 @@ const NAV_SECTIONS = [
     items: [
       { to: '/admin/accounts',         icon: 'feather-users',        label: 'Tài khoản' },
       { to: '/admin/manager-requests',  icon: 'feather-user-check',   label: 'Duyệt Chủ sân' },
+      { to: '/admin/featured-posts',   icon: 'feather-star',         label: 'Nổi bật' },
     ],
   },
   {

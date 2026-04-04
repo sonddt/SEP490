@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const TEAM = [
@@ -25,14 +25,32 @@ const TESTIMONIALS = [
   { title: 'Chuyên nghiệp xuất sắc', text: 'Sự chuyên nghiệp và chất lượng dịch vụ của ShuttleUp để lại ấn tượng tích cực. Rất đáng dùng cho thuê sân và đặt lịch.', avatar: '/assets/img/profiles/avatar-03.jpg', author: 'Elinor Dunn', tag: 'Cầu lông' },
 ];
 
-const NEWS = [
-  { img: '/assets/img/venues/venues-07.jpg', tag: 'Cầu lông', author: 'Orlando Waters', avatar: '/assets/img/profiles/avatar-01.jpg', date: '15 Tháng 5 2023', title: 'Hướng dẫn trang bị cầu lông: Thiết bị cần có cho mọi người chơi', likes: 45, comments: 45, readTime: '10 phút' },
-  { img: '/assets/img/venues/venues-08.jpg', tag: 'Hoạt động thể thao', author: 'Claire Nichols', avatar: '/assets/img/profiles/avatar-06.jpg', date: '16 Tháng 6 2023', title: 'Kỹ thuật cầu lông: Làm chủ cú đập, cắt và đánh cao', likes: 35, comments: 35, readTime: '12 phút' },
-  { img: '/assets/img/venues/venues-09.jpg', tag: 'Luật chơi', author: 'Joanna Le', avatar: '/assets/img/profiles/avatar-02.jpg', date: '11 Tháng 5 2023', title: 'Sự phát triển của cầu lông: Từ sân sau đến Olympic', likes: 25, comments: 25, readTime: '14 phút' },
-];
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' });
+}
 
 const About = () => {
   const [earnTab, setEarnTab] = useState('venue');
+  const [featuredNews, setFeaturedNews] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/featured-posts');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data)) {
+          setFeaturedNews(data.slice(0, 3));
+        }
+      } catch {
+        // silent fail — section sẽ ẩn nếu không có bài
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <div className="main-wrapper content-below-header">
@@ -40,10 +58,10 @@ const About = () => {
       <section className="breadcrumb breadcrumb-list mb-0">
         <span className="primary-right-round"></span>
         <div className="container">
-          <h1 className="text-white">Nổi bật</h1>
+          <h1 className="text-white">Giới thiệu</h1>
           <ul>
             <li><Link to="/">Trang chủ</Link></li>
-            <li>Nổi bật</li>
+            <li>Giới thiệu</li>
           </ul>
         </div>
       </section>
@@ -198,63 +216,49 @@ const About = () => {
           </div>
         </section>
 
-        {/* Latest News */}
-        <section className="section featured-venues latest-news">
-          <div className="container">
-            <div className="section-heading">
-              <h2>Tin tức <span>mới nhất</span></h2>
-              <p className="sub-title">Cập nhật tin tức từ thế giới cầu lông — luôn cập nhật và truyền cảm hứng.</p>
-            </div>
-            <div className="row g-4">
-              {NEWS.map((item, i) => (
-                <div key={i} className="col-12 col-sm-6 col-lg-3">
-                  <div className="featured-venues-item">
-                    <div className="listing-item mb-0">
-                      <div className="listing-img">
-                        <Link to="/blog">
-                          <img src={item.img} className="img-fluid" alt="" />
-                        </Link>
-                        <div className="fav-item-venues news-sports">
-                          <span className="tag tag-blue">{item.tag}</span>
-                          <div className="list-reviews coche-star">
-                            <a href="#/" className="fav-icon" onClick={(e) => e.preventDefault()}>
-                              <i className="feather-heart"></i>
-                            </a>
+        {/* Latest Featured Posts — ẩn nếu không có bài */}
+        {featuredNews.length > 0 && (
+          <section className="section featured-venues latest-news">
+            <div className="container">
+              <div className="section-heading">
+                <h2>Bài đăng <span>nổi bật</span></h2>
+                <p className="sub-title">Những tin tức và ưu đãi mới nhất từ ShuttleUp.</p>
+              </div>
+              <div className="row g-4">
+                {featuredNews.map((post) => (
+                  <div key={post.id} className="col-12 col-sm-6 col-lg-4">
+                    <div className="featured-venues-item">
+                      <div className="listing-item mb-0">
+                        {post.coverImageUrl && (
+                          <div className="listing-img">
+                            <Link to={post.linkUrl || '/featured'}>
+                              <img src={post.coverImageUrl} className="img-fluid" alt={post.title} style={{ height: 200, objectFit: 'cover', width: '100%' }} />
+                            </Link>
                           </div>
-                        </div>
-                      </div>
-                      <div className="listing-content news-content">
-                        <div className="listing-venue-owner">
-                          <div className="navigation">
-                            <img src={item.avatar} className="img-fluid" alt="" />
-                            {item.author}
-                            <span><i className="feather-calendar"></i> {item.date}</span>
+                        )}
+                        <div className="listing-content news-content">
+                          <h3 className="listing-title">
+                            <Link to={post.linkUrl || '/featured'}>{post.title}</Link>
+                          </h3>
+                          {post.excerpt && <p className="text-muted small mb-2">{post.excerpt}</p>}
+                          <div className="listing-button read-new">
+                            <span><i className="feather-calendar me-1"></i>{fmtDate(post.createdAt)}</span>
                           </div>
-                        </div>
-                        <h3 className="listing-title">
-                          <Link to="/blog">{item.title}</Link>
-                        </h3>
-                        <div className="listing-button read-new">
-                          <ul className="nav">
-                            <li><i className="feather-heart"></i> {item.likes}</li>
-                            <li><i className="feather-message-square"></i> {item.comments}</li>
-                          </ul>
-                          <span><img src="/assets/img/icons/clock.svg" className="img-fluid" alt="" /> {item.readTime} đọc</span>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+              <div className="view-all text-center mt-4">
+                <Link to="/featured" className="btn btn-secondary btn-icon">
+                  Xem tất cả bài đăng
+                  <i className="feather-arrow-right-circle ms-2"></i>
+                </Link>
+              </div>
             </div>
-            <div className="view-all text-center mt-4">
-              <Link to="/blog" className="btn btn-secondary btn-icon">
-                Xem tất cả tin tức
-                <i className="feather-arrow-right-circle ms-2"></i>
-              </Link>
-            </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* Earn Money Section (from HomePage) */}
         <section className="section earn-money">
