@@ -28,8 +28,6 @@ public partial class FeaturedPost
     /// <summary>Hiển thị đến hết thời điểm này (null = không giới hạn cuối).</summary>
     public DateTime? DisplayUntil { get; set; }
 
-    public int SortOrder { get; set; }
-
     public Guid AuthorUserId { get; set; }
 
     /// <summary>ADMIN hoặc MANAGER.</summary>

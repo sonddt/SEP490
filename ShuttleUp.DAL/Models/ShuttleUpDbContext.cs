@@ -533,7 +533,6 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.IsPublished).HasColumnName("is_published");
             entity.Property(e => e.DisplayFrom).HasColumnType("datetime").HasColumnName("display_from");
             entity.Property(e => e.DisplayUntil).HasColumnType("datetime").HasColumnName("display_until");
-            entity.Property(e => e.SortOrder).HasColumnName("sort_order");
             entity.Property(e => e.AuthorUserId).HasColumnName("author_user_id");
             entity.Property(e => e.AuthorRole).HasMaxLength(20).HasColumnName("author_role");
             entity.Property(e => e.VenueId).HasColumnName("venue_id");

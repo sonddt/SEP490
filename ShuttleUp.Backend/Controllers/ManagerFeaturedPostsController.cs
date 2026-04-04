@@ -85,7 +85,6 @@ public class ManagerFeaturedPostsController : ControllerBase
             IsPublished = dto.IsPublished,
             DisplayFrom = dto.DisplayFrom,
             DisplayUntil = dto.DisplayUntil,
-            SortOrder = 0,
             AuthorUserId = managerId,
             AuthorRole = "MANAGER",
             VenueId = dto.VenueId,
@@ -131,7 +130,6 @@ public class ManagerFeaturedPostsController : ControllerBase
         post.IsPublished = dto.IsPublished;
         post.DisplayFrom = dto.DisplayFrom;
         post.DisplayUntil = dto.DisplayUntil;
-        post.SortOrder = 0;
         post.VenueId = dto.VenueId;
         post.UpdatedAt = DateTime.UtcNow;
 

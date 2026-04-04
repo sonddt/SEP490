@@ -285,7 +285,7 @@ CREATE TABLE venue_open_hours (
     FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE
 );
 
--- Bài đăng trang Nổi bật (Admin + Manager quảng cáo)
+-- Bài đăng trang Nổi bật (Admin + Manager quảng cáo). Thứ tự công khai: created_at giảm dần.
 CREATE TABLE featured_posts (
     id CHAR(36) PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
@@ -296,7 +296,6 @@ CREATE TABLE featured_posts (
     is_published TINYINT(1) NOT NULL DEFAULT 0,
     display_from DATETIME NULL COMMENT 'NULL = không giới hạn đầu',
     display_until DATETIME NULL COMMENT 'NULL = không giới hạn cuối',
-    sort_order INT NOT NULL DEFAULT 0 COMMENT 'legacy; API sắp xếp theo created_at DESC',
     author_user_id CHAR(36) NOT NULL,
     author_role VARCHAR(20) NOT NULL COMMENT 'ADMIN | MANAGER',
     venue_id CHAR(36) NULL,
@@ -831,7 +830,7 @@ INSERT IGNORE INTO venues (id, owner_user_id, name, address, lat, lng, is_active
 
 INSERT IGNORE INTO featured_posts (
     id, title, excerpt, body, cover_image_url, link_url,
-    is_published, display_from, display_until, sort_order,
+    is_published, display_from, display_until,
     author_user_id, author_role, venue_id, created_at, updated_at
 ) VALUES
 (
@@ -841,7 +840,7 @@ INSERT IGNORE INTO featured_posts (
     'Nền tảng hỗ trợ người chơi và chủ sân kết nối minh bạch. Khám phá danh sách sân và bản đồ để chọn đúng nơi bạn cần.',
     '/assets/img/venues/venues-07.jpg',
     '/venues',
-    1, NULL, NULL, 30,
+    1, NULL, NULL,
     'a0000003-0000-0000-0000-000000000003', 'ADMIN', NULL,
     NOW() - INTERVAL 2 DAY, NOW() - INTERVAL 2 DAY
 ),
@@ -852,7 +851,7 @@ INSERT IGNORE INTO featured_posts (
     'Liên hệ sân hoặc đặt trực tiếp trên ShuttleUp để áp dụng ưu đãi. Chi tiết xem trang sân.',
     '/assets/img/venues/venues-08.jpg',
     '/venue-details/c0000001-0000-0000-0000-000000000001',
-    1, NULL, NULL, 20,
+    1, NULL, NULL,
     'a0000002-0000-0000-0000-000000000002', 'MANAGER', 'c0000001-0000-0000-0000-000000000001',
     NOW() - INTERVAL 1 DAY, NOW() - INTERVAL 1 DAY
 ),
@@ -863,7 +862,7 @@ INSERT IGNORE INTO featured_posts (
     'Đăng bài tìm kèo, nhận phản hồi và sắp lịch thi đấu giao hữu. Tính năng Chat hỗ trợ trao đổi nhanh sau khi đăng nhập.',
     '/assets/img/venues/venues-09.jpg',
     '/matching',
-    1, NULL, NULL, 10,
+    1, NULL, NULL,
     'a0000003-0000-0000-0000-000000000003', 'ADMIN', NULL,
     NOW() - INTERVAL 12 HOUR, NOW() - INTERVAL 12 HOUR
 ),
@@ -874,7 +873,7 @@ INSERT IGNORE INTO featured_posts (
     'Cụm sân tại Đinh Tiên Hoàng đã mở rộng. Xem lịch trống và giá theo khung giờ trên ShuttleUp.',
     '/assets/img/venues/venues-07.jpg',
     '/venue-details/c0000002-0000-0000-0000-000000000002',
-    1, NULL, NULL, 5,
+    1, NULL, NULL,
     'a0000003-0000-0000-0000-000000000003', 'ADMIN', 'c0000002-0000-0000-0000-000000000002',
     NOW() - INTERVAL 6 HOUR, NOW() - INTERVAL 6 HOUR
 );
@@ -1444,6 +1443,11 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venue_coupons' AND column_name = 'one_use_per_user');
 SET @sql := IF(@col = 0, 'ALTER TABLE venue_coupons ADD COLUMN one_use_per_user TINYINT(1) NOT NULL DEFAULT 1 COMMENT ''TRUE: mỗi user chỉ dùng mã 1 lần (đơn không huỷ)''', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- featured_posts: bỏ sort_order (thứ tự chỉ theo created_at trong API)
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'featured_posts' AND column_name = 'sort_order');
+SET @sql := IF(@col > 0, 'ALTER TABLE featured_posts DROP COLUMN sort_order', 'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- ======================================================================
