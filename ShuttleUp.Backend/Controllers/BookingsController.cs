@@ -819,34 +819,165 @@ public class BookingsController : ControllerBase
             })
             .ToListAsync();
 
-        var withCode = rows.Select(b => new
+        var bookingIds = rows.Select(r => r.Id).ToList();
+        var refundMap = await _dbContext.RefundRequests
+            .AsNoTracking()
+            .Where(r => r.BookingId != null && bookingIds.Contains(r.BookingId.Value))
+            .GroupBy(r => r.BookingId!.Value)
+            .Select(g => g.OrderByDescending(r => r.RequestedAt).First())
+            .ToDictionaryAsync(r => r.BookingId!.Value);
+
+        var withCode = rows.Select(b =>
         {
-            b.Id,
-            bookingCode = "SU" + b.Id.ToString("N")[^6..].ToUpperInvariant(),
-            b.Status,
-            b.ManagerStatusNote,
-            b.TotalAmount,
-            b.FinalAmount,
-            b.CreatedAt,
-            b.SeriesId,
-            b.isLongTerm,
-            b.VenueName,
-            b.VenueAddress,
-            b.VenueId,
-            lastPaymentMethod = b.LastPaymentMethod,
-            hasValidPaymentProof = b.HasValidPaymentProof,
-            needsPaymentRetry = b.Status == "PENDING" && !b.HasValidPaymentProof,
-            b.Items
+            refundMap.TryGetValue(b.Id, out var refund);
+            return new
+            {
+                b.Id,
+                bookingCode = "SU" + b.Id.ToString("N")[^6..].ToUpperInvariant(),
+                b.Status,
+                b.ManagerStatusNote,
+                b.TotalAmount,
+                b.FinalAmount,
+                b.CreatedAt,
+                b.SeriesId,
+                b.isLongTerm,
+                b.VenueName,
+                b.VenueAddress,
+                b.VenueId,
+                lastPaymentMethod = b.LastPaymentMethod,
+                hasValidPaymentProof = b.HasValidPaymentProof,
+                needsPaymentRetry = b.Status == "PENDING" && !b.HasValidPaymentProof,
+                b.Items,
+                refundStatus = refund?.Status,
+                refundAmount = refund?.RequestedAmount,
+                refundBankName = refund?.RefundBankName,
+                refundAccountNumber = refund?.RefundAccountNumber,
+                refundAccountHolder = refund?.RefundAccountHolder,
+            };
         });
 
         return Ok(withCode);
     }
 
+    private (bool hasProof, bool paymentConfirmed, decimal paidAmount) AnalyzePaymentState(ICollection<Payment> payments)
+    {
+        var hasProof = payments.Any(p =>
+            p.GatewayReference != null
+            && p.GatewayReference.StartsWith("https", StringComparison.OrdinalIgnoreCase));
+        var paymentConfirmed = payments.Any(p =>
+            p.Status != null && p.Status.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase));
+        var paidAmount = payments
+            .Where(p => p.Status != null && p.Status.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase))
+            .Sum(p => p.Amount ?? 0);
+        return (hasProof, paymentConfirmed, paidAmount);
+    }
+
     /// <summary>
-    /// Người chơi tự huỷ đơn (chờ duyệt hoặc đã được xác nhận).
+    /// Preview trước khi hủy: hiển thị chính sách, phí phạt, số tiền hoàn.
+    /// </summary>
+    [HttpGet("{id:guid}/cancel-preview")]
+    public async Task<IActionResult> CancelPreview([FromRoute] Guid id)
+    {
+        if (!TryGetCurrentUserId(out var userId))
+            return Unauthorized(new { message = "Không xác định được người dùng." });
+
+        var booking = await _dbContext.Bookings
+            .AsNoTracking()
+            .Include(b => b.BookingItems)
+            .Include(b => b.Payments)
+            .Include(b => b.Venue)
+            .FirstOrDefaultAsync(b => b.Id == id && b.UserId == userId);
+
+        if (booking == null)
+            return NotFound(new { message = "Không tìm thấy đơn đặt." });
+
+        var policy = ParsePolicyOrDefault(booking.CancellationPolicySnapshotJson);
+        var (hasProof, paymentConfirmed, paidAmount) = AnalyzePaymentState(booking.Payments);
+        var finalAmount = booking.FinalAmount ?? booking.TotalAmount ?? 0;
+
+        var starts = booking.BookingItems
+            .Where(bi => bi.StartTime != null)
+            .Select(bi => bi.StartTime!.Value)
+            .ToList();
+        var minStart = starts.Count > 0 ? starts.Select(ToUtcComparable).Min() : (DateTime?)null;
+        var withinDeadline = minStart == null || DateTime.UtcNow <= minStart.Value.AddMinutes(-policy.CancelBeforeMinutes);
+
+        string cancelBranch;
+        if (paymentConfirmed) cancelBranch = "PAID";
+        else if (hasProof) cancelBranch = "PROOF_UPLOADED";
+        else cancelBranch = "NO_PAYMENT";
+
+        decimal refundAmount = 0;
+        decimal penaltyAmount = 0;
+        if (cancelBranch == "PAID" && withinDeadline && policy.AllowCancel)
+        {
+            refundAmount = policy.RefundType switch
+            {
+                "FULL" => paidAmount,
+                "PERCENT" when policy.RefundPercent.HasValue => Math.Round(paidAmount * policy.RefundPercent.Value / 100m, 0),
+                _ => 0,
+            };
+            penaltyAmount = paidAmount - refundAmount;
+        }
+
+        return Ok(new
+        {
+            bookingId = booking.Id,
+            bookingCode = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant(),
+            bookingStatus = booking.Status,
+            venueName = booking.Venue?.Name,
+            isLongTerm = booking.SeriesId != null,
+            cancelBranch,
+            canCancel = policy.AllowCancel && withinDeadline && booking.Status is "PENDING" or "CONFIRMED",
+            disableReason = !policy.AllowCancel
+                ? "Sân này không cho phép hủy trên app."
+                : !withinDeadline
+                    ? $"Đã quá hạn hủy (phải hủy trước {policy.CancelBeforeMinutes} phút)."
+                    : booking.Status is not ("PENDING" or "CONFIRMED")
+                        ? "Đơn không ở trạng thái có thể hủy."
+                        : null,
+            policy = new
+            {
+                allowCancel = policy.AllowCancel,
+                cancelBeforeMinutes = policy.CancelBeforeMinutes,
+                refundType = policy.RefundType,
+                refundPercent = policy.RefundPercent,
+            },
+            payment = new
+            {
+                hasProof,
+                paymentConfirmed,
+                paidAmount,
+                finalAmount,
+            },
+            refund = new
+            {
+                refundAmount,
+                penaltyAmount,
+                policyDescription = policy.RefundType switch
+                {
+                    "FULL" => $"Hủy trước {policy.CancelBeforeMinutes} phút → hoàn 100%.",
+                    "PERCENT" when policy.RefundPercent.HasValue =>
+                        $"Hủy trước {policy.CancelBeforeMinutes} phút → hoàn {policy.RefundPercent}%.",
+                    _ => "Sân này không hỗ trợ hoàn tiền khi hủy.",
+                },
+            },
+        });
+    }
+
+    public class CancelBookingBody
+    {
+        public string? RefundBankName { get; set; }
+        public string? RefundAccountNumber { get; set; }
+        public string? RefundAccountHolder { get; set; }
+        public string? PlayerNote { get; set; }
+    }
+
+    /// <summary>
+    /// Người chơi tự huỷ đơn — tự động tạo refund_request theo nhánh.
     /// </summary>
     [HttpPatch("{id:guid}/cancel")]
-    public async Task<IActionResult> CancelMyBooking([FromRoute] Guid id)
+    public async Task<IActionResult> CancelMyBooking([FromRoute] Guid id, [FromBody] CancelBookingBody? body)
     {
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized(new { message = "Không xác định được người dùng." });
@@ -859,8 +990,8 @@ public class BookingsController : ControllerBase
         if (booking == null)
             return NotFound(new { message = "Không tìm thấy đơn đặt." });
 
-        if (booking.Status == "CANCELLED")
-            return BadRequest(new { message = "Đơn đã bị huỷ trước đó." });
+        if (booking.Status is "CANCELLED" or "PENDING_RECONCILIATION" or "PENDING_REFUND" or "REFUNDED")
+            return BadRequest(new { message = "Đơn đã bị huỷ hoặc đang xử lý hoàn tiền." });
 
         if (booking.Status is not ("PENDING" or "CONFIRMED"))
             return BadRequest(new { message = "Không thể huỷ đơn ở trạng thái này." });
@@ -886,41 +1017,156 @@ public class BookingsController : ControllerBase
             }
         }
 
-        booking.Status = "CANCELLED";
-        foreach (var item in booking.BookingItems)
-            item.Status = "CANCELLED";
+        var (hasProof, paymentConfirmed, paidAmount) = AnalyzePaymentState(booking.Payments);
+        var finalAmount = booking.FinalAmount ?? booking.TotalAmount ?? 0;
 
-        foreach (var p in booking.Payments.Where(p =>
-                     p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase)))
-            p.Status = "CANCELLED";
+        string cancelBranch;
+        string newBookingStatus;
+        string? refundRequestStatus = null;
+
+        if (paymentConfirmed)
+        {
+            cancelBranch = "PAID";
+            newBookingStatus = "PENDING_REFUND";
+            refundRequestStatus = "PENDING_REFUND";
+        }
+        else if (hasProof)
+        {
+            cancelBranch = "PROOF_UPLOADED";
+            newBookingStatus = "PENDING_RECONCILIATION";
+            refundRequestStatus = "PENDING_RECONCILIATION";
+        }
+        else
+        {
+            cancelBranch = "NO_PAYMENT";
+            newBookingStatus = "CANCELLED";
+        }
+
+        booking.Status = newBookingStatus;
+        foreach (var item in booking.BookingItems)
+            item.Status = newBookingStatus == "CANCELLED" ? "CANCELLED" : item.Status;
+
+        if (newBookingStatus == "CANCELLED")
+        {
+            foreach (var p in booking.Payments.Where(p =>
+                         p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase)))
+                p.Status = "CANCELLED";
+        }
 
         if (booking.SeriesId is { } seriesId)
         {
             var series = await _dbContext.BookingSeries.FirstOrDefaultAsync(s => s.Id == seriesId);
             if (series != null)
-                series.Status = "CANCELLED";
+                series.Status = newBookingStatus == "CANCELLED" ? "CANCELLED" : "CANCELLING";
+        }
+
+        RefundRequest? refundReq = null;
+        if (refundRequestStatus != null)
+        {
+            decimal refundAmount = 0;
+            if (cancelBranch == "PAID")
+            {
+                refundAmount = policy.RefundType switch
+                {
+                    "FULL" => paidAmount,
+                    "PERCENT" when policy.RefundPercent.HasValue => Math.Round(paidAmount * policy.RefundPercent.Value / 100m, 0),
+                    _ => 0,
+                };
+            }
+
+            refundReq = new RefundRequest
+            {
+                Id = Guid.NewGuid(),
+                BookingId = booking.Id,
+                UserId = userId,
+                ReasonCode = "PLAYER_CANCEL",
+                Status = refundRequestStatus,
+                RequestedAmount = refundAmount,
+                PaidAmount = cancelBranch == "PAID" ? paidAmount : null,
+                RefundBankName = body?.RefundBankName?.Trim(),
+                RefundAccountNumber = body?.RefundAccountNumber?.Trim(),
+                RefundAccountHolder = body?.RefundAccountHolder?.Trim().ToUpperInvariant(),
+                PlayerNote = body?.PlayerNote?.Trim(),
+                RequestedAt = DateTime.UtcNow,
+            };
+            _dbContext.RefundRequests.Add(refundReq);
         }
 
         await _dbContext.SaveChangesAsync();
 
         await _matchingPostLifecycle.CancelPostsByBookingAsync(booking, cancelledBy: "người chơi", HttpContext.RequestAborted);
 
-        var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
-        var pol = ParsePolicyOrDefault(booking.CancellationPolicySnapshotJson);
-        var refundHint = pol.RefundType switch
+        if (booking.VenueId.HasValue)
         {
-            "FULL" => "Theo chính sách lúc đặt: có thể hoàn tiền (thủ công qua chủ sân).",
-            "PERCENT" when pol.RefundPercent.HasValue => $"Theo chính sách lúc đặt: có thể hoàn khoảng {pol.RefundPercent}% (thủ công qua chủ sân).",
-            _ => "Theo chính sách lúc đặt: không hoàn tiền tự động. Liên hệ chủ sân nếu cần.",
-        };
+            var ownerId = await _dbContext.Venues
+                .Where(v => v.Id == booking.VenueId)
+                .Select(v => v.OwnerUserId)
+                .FirstOrDefaultAsync();
+            if (ownerId.HasValue)
+            {
+                var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
+                var title = cancelBranch switch
+                {
+                    "PAID" => "Yêu cầu hoàn tiền mới",
+                    "PROOF_UPLOADED" => "Đơn hủy cần đối soát",
+                    _ => "Đơn đặt sân bị hủy",
+                };
+                var notifBody = $"Đơn #{code} đã bị người chơi hủy" + cancelBranch switch
+                {
+                    "PAID" => " — vui lòng xử lý hoàn tiền.",
+                    "PROOF_UPLOADED" => " — có chứng từ CK cần đối soát.",
+                    _ => ".",
+                };
+                await _notify.NotifyUserAsync(
+                    ownerId.Value,
+                    NotificationTypes.RefundRequest,
+                    title, notifBody,
+                    new { bookingId = booking.Id, status = newBookingStatus, entityType = "refund", deepLink = "/manager/refunds" },
+                    sendEmail: false,
+                    cancellationToken: HttpContext.RequestAborted);
+            }
+        }
+
         return Ok(new
         {
-            message = "Đã huỷ đặt sân thành công.",
+            message = cancelBranch switch
+            {
+                "PAID" => "Đã hủy đơn. Yêu cầu hoàn tiền đã được gửi đến chủ sân.",
+                "PROOF_UPLOADED" => "Đã hủy đơn. Vui lòng chờ chủ sân đối soát biên lai trước khi xử lý hoàn tiền.",
+                _ => "Đã huỷ đặt sân thành công.",
+            },
             bookingId = booking.Id,
-            bookingCode = code,
-            status = booking.Status,
-            refundHint,
+            bookingCode = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant(),
+            status = newBookingStatus,
+            cancelBranch,
+            refundRequestId = refundReq?.Id,
         });
+    }
+
+    /// <summary>
+    /// Player gửi / cập nhật thông tin ngân hàng nhận hoàn tiền.
+    /// </summary>
+    [HttpPatch("{id:guid}/refund-bank-info")]
+    public async Task<IActionResult> UpdateRefundBankInfo([FromRoute] Guid id, [FromBody] CancelBookingBody body)
+    {
+        if (!TryGetCurrentUserId(out var userId))
+            return Unauthorized(new { message = "Không xác định được người dùng." });
+
+        var refund = await _dbContext.RefundRequests
+            .FirstOrDefaultAsync(r => r.BookingId == id && r.UserId == userId
+                                      && r.Status != "COMPLETED" && r.Status != "REJECTED");
+        if (refund == null)
+            return NotFound(new { message = "Không tìm thấy yêu cầu hoàn tiền." });
+
+        if (!string.IsNullOrWhiteSpace(body.RefundBankName))
+            refund.RefundBankName = body.RefundBankName.Trim();
+        if (!string.IsNullOrWhiteSpace(body.RefundAccountNumber))
+            refund.RefundAccountNumber = body.RefundAccountNumber.Trim();
+        if (!string.IsNullOrWhiteSpace(body.RefundAccountHolder))
+            refund.RefundAccountHolder = body.RefundAccountHolder.Trim().ToUpperInvariant();
+
+        await _dbContext.SaveChangesAsync();
+        return Ok(new { message = "Đã cập nhật thông tin nhận hoàn tiền." });
     }
 
     /// <summary>

@@ -116,5 +116,39 @@ Kết bạn & quan hệ xã hội (Player):
 
 ---
 
+## 4 tháng 4, 2026 (Hủy sân & Hoàn tiền thủ công)
+
+1. **Database Schema (`Database.txt`)**:
+   - Mở rộng `refund_requests`: thêm `reason_code`, `requested_amount`, `paid_amount`, `refund_bank_name`, `refund_account_number`, `refund_account_holder`, `player_note`, `rejection_reason`, `manager_note`, `manager_evidence_file_id`, `player_received_file_id`.
+   - Migration có điều kiện (ALTER IF NOT EXISTS) cho DB đang chạy.
+   - Booking statuses mới: `PENDING_RECONCILIATION`, `PENDING_REFUND`, `REFUNDED`.
+
+2. **Backend API**:
+   - `GET /api/bookings/{id}/cancel-preview`: Preview trước khi hủy — trả chính sách snapshot, phí phạt, số tiền hoàn, trạng thái thanh toán, nhánh xử lý (`NO_PAYMENT` / `PROOF_UPLOADED` / `PAID`).
+   - `PATCH /api/bookings/{id}/cancel`: Cải tiến — tự tạo `refund_request` theo nhánh; nhận thông tin bank nhận hoàn trong body; set booking status tương ứng; gửi notification cho Manager.
+   - `PATCH /api/bookings/{id}/refund-bank-info`: Player cập nhật STK nhận hoàn sau khi hủy.
+   - `GET /api/manager/refunds`: Danh sách yêu cầu hoàn tiền cho venue của Manager.
+   - `PATCH /api/manager/refunds/{id}/reconcile`: Đối soát — Manager xác nhận đã nhận CK hoặc từ chối kèm lý do.
+   - `PATCH /api/manager/refunds/{id}/complete`: Đánh dấu đã CK hoàn tiền xong.
+   - `POST /api/manager/refunds/{id}/upload-evidence`: Upload ảnh bill CK hoàn.
+   - `ManagerBookingsController`: Khi Manager hủy đơn CONFIRMED đã thu tiền → tự tạo refund_request `PENDING_REFUND`.
+   - Notification types mới: `REFUND_REQUEST`, `REFUND_COMPLETED`, `REFUND_REJECTED`, `REFUND_RECONCILED`.
+
+3. **Frontend — Player (`UserBookings.jsx`)**:
+   - Cancel Preview Modal: gọi `cancel-preview` API, hiển thị chính sách sân (snapshot), tính toán minh bạch (đã trả / phí phạt / được hoàn), checkbox đồng ý.
+   - Nhánh PAID: form nhập STK/QR nhận hoàn ngay trong modal trước khi xác nhận hủy.
+   - Nhánh PROOF_UPLOADED: alert chờ đối soát.
+   - Tab mới "Hoàn tiền" hiển thị đơn `PENDING_RECONCILIATION`, `PENDING_REFUND`, `REFUNDED`.
+   - Bank Info Modal: cho phép cập nhật STK nhận hoàn sau khi đã hủy.
+
+4. **Frontend — Manager (`ManagerRefunds.jsx`)**:
+   - Trang quản lý hoàn tiền mới: danh sách tab lọc theo status, bảng chi tiết.
+   - Đối soát (Nhánh 2): nút "Đã nhận tiền" / "Từ chối" kèm lý do.
+   - Hoàn tiền (Nhánh 3): hiển thị STK Player, upload ảnh bill, bấm "Đã chuyển khoản hoàn tiền".
+   - Sidebar Manager: thêm mục "Hoàn tiền" với icon `feather-rotate-ccw`.
+   - Route `/manager/refunds` trong `App.jsx`.
+
+---
+
 *Cập nhật: gom theo ngày, bỏ trùng lặp và định dạng lại cho dễ đọc.*
 

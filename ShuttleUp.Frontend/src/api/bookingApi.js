@@ -38,8 +38,18 @@ export function getMyBookings() {
 }
 
 /** @param {string} bookingId */
-export function cancelBooking(bookingId) {
-  return axiosClient.patch(`/bookings/${bookingId}/cancel`);
+export function getCancelPreview(bookingId) {
+  return axiosClient.get(`/bookings/${bookingId}/cancel-preview`);
+}
+
+/** @param {string} bookingId @param {object} [body] */
+export function cancelBooking(bookingId, body = {}) {
+  return axiosClient.patch(`/bookings/${bookingId}/cancel`, body);
+}
+
+/** @param {string} bookingId @param {object} bankInfo */
+export function updateRefundBankInfo(bookingId, bankInfo) {
+  return axiosClient.patch(`/bookings/${bookingId}/refund-bank-info`, bankInfo);
 }
 
 /** @param {string} venueId @param {{ amount?: number, addInfo?: string }} [params] */

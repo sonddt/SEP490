@@ -67,6 +67,7 @@ import ManagerEarnings from './pages/manager/ManagerEarnings';
 import ManagerPaymentSettings from './pages/manager/ManagerPaymentSettings';
 import ManagerAvailability from './pages/manager/ManagerAvailability';
 import ManagerProfile from './pages/manager/ManagerProfile';
+import ManagerRefunds from './pages/manager/ManagerRefunds';
 
 // Admin — Layout + Pages
 import AdminLayout from './layouts/AdminLayout';
@@ -208,6 +209,7 @@ function App() {
 
             {/* Bookings */}
             <Route path="bookings" element={<ManagerBookings />} />
+            <Route path="refunds" element={<ManagerRefunds />} />
 
             {/* Notifications */}
             <Route path="notifications" element={<ManagerNotifications />} />

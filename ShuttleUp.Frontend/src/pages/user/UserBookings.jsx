@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import UserDashboardMenu from '../../components/user/UserDashboardMenu';
-import { getMyBookings, cancelBooking } from '../../api/bookingApi';
+import { getMyBookings, cancelBooking, getCancelPreview, updateRefundBankInfo } from '../../api/bookingApi';
 
 function pad2(n) {
   return String(n).padStart(2, '0');
@@ -17,6 +17,8 @@ function formatPaymentMethodLabel(method) {
 
 function mapUserBookingTabStatus(apiStatus, items) {
   if (apiStatus === 'CANCELLED') return 'CANCELLED';
+  if (apiStatus === 'PENDING_RECONCILIATION' || apiStatus === 'PENDING_REFUND') return 'REFUND';
+  if (apiStatus === 'REFUNDED') return 'REFUND';
   if (apiStatus === 'PENDING') return 'PENDING';
   if (apiStatus === 'CONFIRMED') {
     const ends = (items || []).map((i) => new Date(i.endTime).getTime()).filter(Number.isFinite);
@@ -70,6 +72,7 @@ function mapApiRowToBooking(api) {
   return {
     id: api.id,
     code: api.bookingCode,
+    rawStatus: api.status,
     isLongTerm: api.isLongTerm === true || !!api.seriesId,
     needsPaymentRetry: !!api.needsPaymentRetry,
     managerStatusNote: (api.managerStatusNote || '').trim(),
@@ -83,6 +86,11 @@ function mapApiRowToBooking(api) {
     status: mapUserBookingTabStatus(api.status, items),
     sortTime: new Date(api.createdAt).getTime(),
     filterDate: start,
+    refundStatus: api.refundStatus || null,
+    refundAmount: api.refundAmount ?? null,
+    refundBankName: api.refundBankName || '',
+    refundAccountNumber: api.refundAccountNumber || '',
+    refundAccountHolder: api.refundAccountHolder || '',
   };
 }
 
@@ -90,15 +98,37 @@ const TABS = [
   { key: 'PENDING',   label: 'Chờ duyệt',  color: 'warning' },
   { key: 'UPCOMING',  label: 'Sắp tới',    color: 'primary' },
   { key: 'COMPLETED', label: 'Hoàn thành', color: 'success' },
+  { key: 'REFUND',    label: 'Hoàn tiền',  color: 'info'    },
   { key: 'CANCELLED', label: 'Đã huỷ',     color: 'danger'  },
 ];
 
-const STATUS_BADGE = {
-  PENDING:   <span className="badge bg-warning text-dark">Chờ duyệt</span>,
-  UPCOMING:  <span className="badge bg-primary">Sắp tới</span>,
-  COMPLETED: <span className="badge bg-success">Hoàn thành</span>,
-  CANCELLED: <span className="badge bg-danger">Đã huỷ</span>,
+const REFUND_STATUS_LABEL = {
+  PENDING_RECONCILIATION: { text: 'Chờ đối soát', color: 'warning' },
+  PENDING_REFUND:         { text: 'Chờ hoàn tiền', color: 'info'    },
+  COMPLETED:              { text: 'Đã hoàn tiền',  color: 'success' },
+  REJECTED:               { text: 'Từ chối hoàn',  color: 'danger'  },
+  REFUNDED:               { text: 'Đã hoàn tiền',  color: 'success' },
 };
+
+function StatusBadge({ b }) {
+  if (b.status === 'REFUND') {
+    const r = REFUND_STATUS_LABEL[b.rawStatus] || REFUND_STATUS_LABEL[b.refundStatus] || { text: 'Hoàn tiền', color: 'info' };
+    return <span className={`badge bg-${r.color}${r.color === 'warning' ? ' text-dark' : ''}`}>{r.text}</span>;
+  }
+  const map = {
+    PENDING:   <span className="badge bg-warning text-dark">Chờ duyệt</span>,
+    UPCOMING:  <span className="badge bg-primary">Sắp tới</span>,
+    COMPLETED: <span className="badge bg-success">Hoàn thành</span>,
+    CANCELLED: <span className="badge bg-danger">Đã huỷ</span>,
+  };
+  return map[b.status] || null;
+}
+
+const BANKS = [
+  'Vietcombank', 'BIDV', 'VietinBank', 'Techcombank', 'MB Bank',
+  'ACB', 'Sacombank', 'VP Bank', 'TPBank', 'HD Bank',
+  'SHB', 'OCB', 'SeABank', 'LPBank', 'Eximbank', 'Khác',
+];
 
 export default function UserBookings() {
   const navigate = useNavigate();
@@ -112,6 +142,12 @@ export default function UserBookings() {
   const [loading,       setLoading]       = useState(true);
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
+  const [cancelPreview, setCancelPreview] = useState(null);
+  const [cancelPreviewLoading, setCancelPreviewLoading] = useState(false);
+  const [policyAgreed, setPolicyAgreed] = useState(false);
+  const [bankForm, setBankForm] = useState({ refundBankName: '', refundAccountNumber: '', refundAccountHolder: '' });
+  const [showBankForm, setShowBankForm] = useState(null);
+  const [bankSubmitting, setBankSubmitting] = useState(false);
 
   const loadBookings = useCallback(async () => {
     setLoading(true);
@@ -176,15 +212,44 @@ export default function UserBookings() {
     setTimeout(() => setToastMsg(null), 4000);
   };
 
+  const openCancelPreview = async (b) => {
+    setCancelTarget(b);
+    setCancelPreviewLoading(true);
+    setPolicyAgreed(false);
+    try {
+      const data = await getCancelPreview(b.id);
+      setCancelPreview(data);
+    } catch (e) {
+      const msg = e?.response?.data?.message || 'Không thể tải thông tin hủy.';
+      showToast(msg, true);
+      setCancelTarget(null);
+    } finally {
+      setCancelPreviewLoading(false);
+    }
+  };
+
   const confirmCancel = async () => {
-    if (!cancelTarget) return;
+    if (!cancelTarget || !cancelPreview) return;
     setCancelSubmitting(true);
     try {
-      await cancelBooking(cancelTarget.id);
+      const body = cancelPreview.cancelBranch === 'PAID'
+        ? { refundBankName: bankForm.refundBankName, refundAccountNumber: bankForm.refundAccountNumber, refundAccountHolder: bankForm.refundAccountHolder }
+        : {};
+      const result = await cancelBooking(cancelTarget.id, body);
       setCancelTarget(null);
+      setCancelPreview(null);
       setDetailBooking(null);
-      showToast('Đã huỷ lịch đặt sân thành công nha.');
-      setActiveTab('CANCELLED');
+
+      if (result.cancelBranch === 'PAID') {
+        showToast(result.message || 'Đã hủy — yêu cầu hoàn tiền đã được gửi.');
+        setActiveTab('REFUND');
+      } else if (result.cancelBranch === 'PROOF_UPLOADED') {
+        showToast(result.message || 'Đã hủy — chờ chủ sân đối soát.');
+        setActiveTab('REFUND');
+      } else {
+        showToast(result.message || 'Đã huỷ lịch đặt sân thành công.');
+        setActiveTab('CANCELLED');
+      }
       await loadBookings();
     } catch (e) {
       const body = e?.response?.data;
@@ -195,6 +260,25 @@ export default function UserBookings() {
       showToast(message, true);
     } finally {
       setCancelSubmitting(false);
+    }
+  };
+
+  const submitBankInfo = async () => {
+    if (!showBankForm) return;
+    if (!bankForm.refundBankName || !bankForm.refundAccountNumber || !bankForm.refundAccountHolder) {
+      showToast('Vui lòng điền đầy đủ thông tin ngân hàng.', true);
+      return;
+    }
+    setBankSubmitting(true);
+    try {
+      await updateRefundBankInfo(showBankForm.id, bankForm);
+      showToast('Đã cập nhật thông tin nhận hoàn tiền.');
+      setShowBankForm(null);
+      await loadBookings();
+    } catch (e) {
+      showToast(e?.response?.data?.message || 'Cập nhật thất bại.', true);
+    } finally {
+      setBankSubmitting(false);
     }
   };
 
@@ -392,7 +476,7 @@ export default function UserBookings() {
                                   {b.paymentMethod}
                                 </span>
                               </td>
-                              <td>{STATUS_BADGE[b.status]}</td>
+                              <td><StatusBadge b={b} /></td>
                               {/* Detail btn */}
                               <td>
                                 <button
@@ -432,9 +516,20 @@ export default function UserBookings() {
                                         <button
                                           type="button"
                                           className="dropdown-item text-danger"
-                                          onClick={() => setCancelTarget(b)}
+                                          onClick={() => openCancelPreview(b)}
                                         >
                                           <i className="feather-x-circle me-2" />Huỷ lịch
+                                        </button>
+                                      </li>
+                                    )}
+                                    {b.status === 'REFUND' && !b.refundAccountNumber && (
+                                      <li>
+                                        <button
+                                          type="button"
+                                          className="dropdown-item text-info"
+                                          onClick={() => { setBankForm({ refundBankName: '', refundAccountNumber: '', refundAccountHolder: '' }); setShowBankForm(b); }}
+                                        >
+                                          <i className="feather-credit-card me-2" />Nhập STK nhận hoàn
                                         </button>
                                       </li>
                                     )}
@@ -491,7 +586,7 @@ export default function UserBookings() {
                   </div>
                   <div className="col-6">
                     <small className="text-muted d-block">Trạng thái</small>
-                    {STATUS_BADGE[detailBooking.status]}
+                    <StatusBadge b={detailBooking} />
                   </div>
                   <div className="col-6">
                     <small className="text-muted d-block">Ngày</small>
@@ -530,10 +625,23 @@ export default function UserBookings() {
                   <button
                     type="button"
                     className="btn btn-outline-danger me-auto"
-                    onClick={() => { setDetailBooking(null); setCancelTarget(detailBooking); }}
+                    onClick={() => { setDetailBooking(null); openCancelPreview(detailBooking); }}
                   >
                     <i className="feather-x-circle me-1" />Huỷ lịch
                   </button>
+                )}
+                {detailBooking.status === 'REFUND' && (
+                  <div className="me-auto">
+                    {detailBooking.refundAmount != null && (
+                      <span className="badge bg-info me-2">Hoàn: {Number(detailBooking.refundAmount).toLocaleString('vi-VN')} ₫</span>
+                    )}
+                    {!detailBooking.refundAccountNumber && (
+                      <button type="button" className="btn btn-outline-info btn-sm"
+                        onClick={() => { setDetailBooking(null); setBankForm({ refundBankName: '', refundAccountNumber: '', refundAccountHolder: '' }); setShowBankForm(detailBooking); }}>
+                        <i className="feather-credit-card me-1" />Nhập STK nhận hoàn
+                      </button>
+                    )}
+                  </div>
                 )}
                 <button type="button" className="btn btn-outline-secondary" onClick={() => setDetailBooking(null)}>
                   Đóng
@@ -544,43 +652,167 @@ export default function UserBookings() {
         </div>
       )}
 
-      {/* ── Cancel Confirm Modal ────────────────────────────────────────── */}
+      {/* ── Cancel Preview Modal ────────────────────────────────────────── */}
       {cancelTarget && (
         <div
           className="modal fade show d-block"
           style={{ background: 'rgba(0,0,0,0.5)' }}
-          onClick={() => setCancelTarget(null)}
+          onClick={() => { setCancelTarget(null); setCancelPreview(null); setPolicyAgreed(false); }}
         >
-          <div className="modal-dialog modal-dialog-centered modal-sm" onClick={e => e.stopPropagation()}>
-            <div className="modal-content text-center p-4">
-              <div style={{ fontSize: 44, marginBottom: 8 }}>⚠️</div>
-              <h5 className="mb-2">Xác nhận huỷ lịch?</h5>
-              <p className="text-muted small mb-4">
-                Bạn có chắc muốn huỷ lịch đặt sân <strong>{cancelTarget.court}</strong> ngày{' '}
-                <strong>{cancelTarget.date}</strong>, {cancelTarget.time}?
-                <br />Hành động này không thể hoàn tác.
-                {cancelTarget.isLongTerm && (
+          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
+            <div className="modal-content">
+              <div className="modal-header" style={{ background: '#fef2f2', borderBottom: '1px solid #fca5a5' }}>
+                <h5 className="modal-title text-danger"><i className="feather-alert-triangle me-2" />Xác nhận huỷ đặt sân</h5>
+                <button type="button" className="btn-close" onClick={() => { setCancelTarget(null); setCancelPreview(null); setPolicyAgreed(false); }} />
+              </div>
+              <div className="modal-body">
+                {cancelPreviewLoading && (
+                  <div className="text-center py-4">
+                    <div className="spinner-border text-secondary" role="status" />
+                    <div className="text-muted mt-2">Đang tải chính sách…</div>
+                  </div>
+                )}
+                {!cancelPreviewLoading && cancelPreview && (
                   <>
-                    <br />
-                    <strong className="text-danger">Đơn lịch dài hạn: huỷ sẽ áp dụng cho toàn bộ các buổi trong chuỗi.</strong>
+                    <div className="mb-3">
+                      <strong>{cancelTarget.court}</strong>
+                      <div className="text-muted small">{cancelTarget.date} — {cancelTarget.time}</div>
+                      {cancelTarget.isLongTerm && (
+                        <div className="text-danger small fw-semibold mt-1">
+                          <i className="feather-alert-circle me-1" />Lịch dài hạn: huỷ áp dụng cho toàn bộ chuỗi.
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-3 rounded mb-3" style={{ background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+                      <div className="fw-semibold mb-1" style={{ color: '#1e40af' }}>
+                        <i className="feather-shield me-1" />Chính sách sân (áp dụng lúc đặt)
+                      </div>
+                      <div className="small" style={{ color: '#1e40af' }}>
+                        {cancelPreview.refund?.policyDescription}
+                      </div>
+                    </div>
+
+                    <div className="row g-2 mb-3">
+                      <div className="col-4 text-center">
+                        <small className="text-muted d-block">Đã thanh toán</small>
+                        <strong>{Number(cancelPreview.payment?.paidAmount || 0).toLocaleString('vi-VN')} ₫</strong>
+                      </div>
+                      <div className="col-4 text-center">
+                        <small className="text-muted d-block">Phí phạt</small>
+                        <strong className="text-danger">{Number(cancelPreview.refund?.penaltyAmount || 0).toLocaleString('vi-VN')} ₫</strong>
+                      </div>
+                      <div className="col-4 text-center">
+                        <small className="text-muted d-block">Được hoàn</small>
+                        <strong className="text-success">{Number(cancelPreview.refund?.refundAmount || 0).toLocaleString('vi-VN')} ₫</strong>
+                      </div>
+                    </div>
+
+                    {cancelPreview.cancelBranch === 'PROOF_UPLOADED' && (
+                      <div className="alert alert-warning small mb-3">
+                        <i className="feather-clock me-1" />Bạn đã gửi chứng từ chuyển khoản nhưng chủ sân chưa xác nhận. Sau khi hủy, chủ sân sẽ đối soát để xử lý hoàn tiền.
+                      </div>
+                    )}
+
+                    {cancelPreview.cancelBranch === 'PAID' && (
+                      <div className="card border-0 shadow-sm mb-3">
+                        <div className="card-body">
+                          <h6 className="mb-3"><i className="feather-credit-card me-2" />Thông tin nhận hoàn tiền</h6>
+                          <div className="mb-2">
+                            <label className="form-label small fw-semibold">Ngân hàng <span className="text-danger">*</span></label>
+                            <select className="form-select form-select-sm" value={bankForm.refundBankName}
+                              onChange={e => setBankForm(p => ({ ...p, refundBankName: e.target.value }))}>
+                              <option value="">-- Chọn --</option>
+                              {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
+                            </select>
+                          </div>
+                          <div className="mb-2">
+                            <label className="form-label small fw-semibold">Số tài khoản <span className="text-danger">*</span></label>
+                            <input type="text" className="form-control form-control-sm" placeholder="0123456789"
+                              value={bankForm.refundAccountNumber}
+                              onChange={e => setBankForm(p => ({ ...p, refundAccountNumber: e.target.value }))} />
+                          </div>
+                          <div>
+                            <label className="form-label small fw-semibold">Chủ tài khoản <span className="text-danger">*</span></label>
+                            <input type="text" className="form-control form-control-sm text-uppercase" placeholder="NGUYEN VAN A"
+                              value={bankForm.refundAccountHolder}
+                              onChange={e => setBankForm(p => ({ ...p, refundAccountHolder: e.target.value.toUpperCase() }))} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {!cancelPreview.canCancel && (
+                      <div className="alert alert-danger small mb-3">
+                        <i className="feather-x-circle me-1" />{cancelPreview.disableReason}
+                      </div>
+                    )}
+
+                    {cancelPreview.canCancel && (
+                      <div className="form-check mb-0">
+                        <input className="form-check-input" type="checkbox" id="policyAgree"
+                          checked={policyAgreed} onChange={e => setPolicyAgreed(e.target.checked)} />
+                        <label className="form-check-label small" htmlFor="policyAgree">
+                          Tôi đã đọc và đồng ý với chính sách huỷ sân
+                        </label>
+                      </div>
+                    )}
                   </>
                 )}
-              </p>
-              <div className="d-flex gap-2 justify-content-center">
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary"
-                  onClick={() => setCancelTarget(null)}
-                >
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-secondary"
+                  onClick={() => { setCancelTarget(null); setCancelPreview(null); setPolicyAgreed(false); }}>
                   Giữ lại
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  disabled={cancelSubmitting}
-                  onClick={confirmCancel}
-                >
-                  {cancelSubmitting ? 'Đang xử lý…' : 'Huỷ lịch'}
+                {cancelPreview?.canCancel && (
+                  <button type="button" className="btn btn-danger"
+                    disabled={cancelSubmitting || !policyAgreed || (cancelPreview.cancelBranch === 'PAID' && (!bankForm.refundBankName || !bankForm.refundAccountNumber || !bankForm.refundAccountHolder))}
+                    onClick={confirmCancel}>
+                    {cancelSubmitting ? 'Đang xử lý…' : 'Xác nhận huỷ'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bank Info Modal (for existing refund requests) ────────────── */}
+      {showBankForm && (
+        <div className="modal fade show d-block" style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setShowBankForm(null)}>
+          <div className="modal-dialog modal-dialog-centered modal-sm" onClick={e => e.stopPropagation()}>
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title"><i className="feather-credit-card me-2" />Thông tin nhận hoàn tiền</h5>
+                <button type="button" className="btn-close" onClick={() => setShowBankForm(null)} />
+              </div>
+              <div className="modal-body">
+                <p className="text-muted small mb-3">Nhập thông tin tài khoản để chủ sân chuyển khoản hoàn tiền cho bạn.</p>
+                <div className="mb-2">
+                  <label className="form-label small fw-semibold">Ngân hàng</label>
+                  <select className="form-select form-select-sm" value={bankForm.refundBankName}
+                    onChange={e => setBankForm(p => ({ ...p, refundBankName: e.target.value }))}>
+                    <option value="">-- Chọn --</option>
+                    {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </div>
+                <div className="mb-2">
+                  <label className="form-label small fw-semibold">Số tài khoản</label>
+                  <input type="text" className="form-control form-control-sm" value={bankForm.refundAccountNumber}
+                    onChange={e => setBankForm(p => ({ ...p, refundAccountNumber: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="form-label small fw-semibold">Chủ tài khoản</label>
+                  <input type="text" className="form-control form-control-sm text-uppercase" value={bankForm.refundAccountHolder}
+                    onChange={e => setBankForm(p => ({ ...p, refundAccountHolder: e.target.value.toUpperCase() }))} />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setShowBankForm(null)}>Hủy</button>
+                <button type="button" className="btn btn-primary btn-sm" disabled={bankSubmitting} onClick={submitBankInfo}>
+                  {bankSubmitting ? 'Đang gửi…' : 'Lưu'}
                 </button>
               </div>
             </div>

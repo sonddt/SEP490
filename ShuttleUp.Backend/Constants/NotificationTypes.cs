@@ -21,4 +21,10 @@ public static class NotificationTypes
     public const string MatchingPostCancelled = "MATCHING_POST_CANCELLED";
     public const string MatchingNewComment = "MATCHING_NEW_COMMENT";
     public const string MatchingCommentReply = "MATCHING_COMMENT_REPLY";
+
+    // ── Refund ───────────────────────────────────────────────────────
+    public const string RefundRequest = "REFUND_REQUEST";
+    public const string RefundCompleted = "REFUND_COMPLETED";
+    public const string RefundRejected = "REFUND_REJECTED";
+    public const string RefundReconciled = "REFUND_RECONCILED";
 }
