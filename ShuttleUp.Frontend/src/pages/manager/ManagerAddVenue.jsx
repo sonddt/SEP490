@@ -2,6 +2,19 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
 
+export const AMENITIES_LIST = [
+  { key: 'parking',       label: 'Bãi đỗ xe',                  icon: 'feather-map-pin' },
+  { key: 'water',         label: 'Nước uống',                   icon: 'feather-droplet' },
+  { key: 'locker',        label: 'Tủ đồ & phòng thay đồ',      icon: 'feather-briefcase' },
+  { key: 'bathroom',      label: 'Phòng tắm & nhà vệ sinh',     icon: 'feather-wind' },
+  { key: 'lighting',      label: 'Đèn chiếu sáng',             icon: 'feather-sun' },
+  { key: 'security',      label: 'Camera an ninh',              icon: 'feather-camera' },
+  { key: 'wifi',          label: 'WiFi',                        icon: 'feather-wifi' },
+  { key: 'rental_racket', label: 'Cho thuê vợt',                icon: 'feather-activity' },
+  { key: 'buy_shuttle',   label: 'Mua cầu tại sân',            icon: 'feather-shopping-bag' },
+  { key: 'canteen',       label: 'Căn tin / Quầy ăn uống',     icon: 'feather-coffee' },
+];
+
 function SectionHeader({ icon, iconBg, iconColor, title, subtitle }) {
   return (
     <div className="d-flex align-items-center gap-3 mb-4">
@@ -12,6 +25,49 @@ function SectionHeader({ icon, iconBg, iconColor, title, subtitle }) {
         <h5 style={{ margin: 0, fontWeight: 600, color: '#1e293b' }}>{title}</h5>
         {subtitle && <span style={{ fontSize: 13, color: '#64748b', marginTop: 2, display: 'block' }}>{subtitle}</span>}
       </div>
+    </div>
+  );
+}
+
+function EditableList({ items, onChange, placeholder, addLabel }) {
+  const addItem = () => onChange([...items, '']);
+  const removeItem = (idx) => onChange(items.filter((_, i) => i !== idx));
+  const updateItem = (idx, val) => onChange(items.map((it, i) => i === idx ? val : it));
+
+  return (
+    <div>
+      {items.length === 0 && (
+        <p className="text-muted mb-3" style={{ fontSize: 13 }}>Chưa có mục nào. Nhấn nút bên dưới để thêm.</p>
+      )}
+      {items.map((item, idx) => (
+        <div key={idx} className="d-flex align-items-center gap-2 mb-2">
+          <input
+            type="text"
+            className="form-control bg-light border-0"
+            style={{ fontSize: 14 }}
+            placeholder={placeholder}
+            value={item}
+            onChange={(e) => updateItem(idx, e.target.value)}
+          />
+          <button
+            type="button"
+            onClick={() => removeItem(idx)}
+            className="btn btn-light d-flex align-items-center justify-content-center flex-shrink-0"
+            style={{ width: 38, height: 38, borderRadius: 8, color: '#ef4444' }}
+          >
+            <i className="feather-x" style={{ fontSize: 16 }} />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={addItem}
+        className="btn d-flex align-items-center justify-content-center gap-2 w-100 mt-2"
+        style={{ borderRadius: 10, border: '1.5px dashed #cbd5e1', height: 40, background: 'transparent', color: '#64748b', fontSize: 13, fontWeight: 600 }}
+      >
+        <i className="feather-plus" style={{ fontSize: 15 }} />
+        {addLabel}
+      </button>
     </div>
   );
 }
@@ -28,9 +84,13 @@ export default function ManagerAddVenue() {
     lat: '',
     lng: '',
     weeklyDiscountPercent: '',
-    monthlyDiscountPercent: ''
+    monthlyDiscountPercent: '',
+    description: '',
+    includes: [],
+    rules: [],
+    amenities: [],
   });
-  
+
   const DAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
   const TIME_SLOTS = [];
   for (let h = 5; h <= 23; h++) {
@@ -38,7 +98,7 @@ export default function ManagerAddVenue() {
     TIME_SLOTS.push(`${String(h).padStart(2, '0')}:30`);
   }
   const [dayHours, setDayHours] = useState(DAYS.map(() => ({ open: '06:00', close: '22:00', enabled: true })));
-  
+
   const [thumbnailFiles, setThumbnailFiles] = useState([]);
   const [galleryFiles, setGalleryFiles] = useState([]);
 
@@ -61,6 +121,15 @@ export default function ManagerAddVenue() {
   const setField = (key, val) => setForm((p) => ({ ...p, [key]: val }));
   const toggleDay = (i, key, val) => setDayHours((p) => p.map((d, idx) => idx === i ? { ...d, [key]: val } : d));
 
+  const toggleAmenity = (key) => {
+    setForm(p => ({
+      ...p,
+      amenities: p.amenities.includes(key)
+        ? p.amenities.filter(k => k !== key)
+        : [...p.amenities, key],
+    }));
+  };
+
   useEffect(() => {
     if (!venueId) return;
     let mounted = true;
@@ -78,7 +147,11 @@ export default function ManagerAddVenue() {
           lat: res?.lat || res?.Lat || '',
           lng: res?.lng || res?.Lng || '',
           weeklyDiscountPercent: res?.weeklyDiscountPercent || res?.WeeklyDiscountPercent || '',
-          monthlyDiscountPercent: res?.monthlyDiscountPercent || res?.MonthlyDiscountPercent || ''
+          monthlyDiscountPercent: res?.monthlyDiscountPercent || res?.MonthlyDiscountPercent || '',
+          description: res?.description || res?.Description || '',
+          includes: Array.isArray(res?.includes) ? res.includes : (Array.isArray(res?.Includes) ? res.Includes : []),
+          rules: Array.isArray(res?.rules) ? res.rules : (Array.isArray(res?.Rules) ? res.Rules : []),
+          amenities: Array.isArray(res?.amenities) ? res.amenities : (Array.isArray(res?.Amenities) ? res.Amenities : []),
         }));
       } catch (err) {
         console.error('Failed to load venue', err);
@@ -114,7 +187,11 @@ export default function ManagerAddVenue() {
         contactName: form.contactName,
         contactPhone: form.contactPhone,
         weeklyDiscountPercent: form.weeklyDiscountPercent ? Number(form.weeklyDiscountPercent) : null,
-        monthlyDiscountPercent: form.monthlyDiscountPercent ? Number(form.monthlyDiscountPercent) : null
+        monthlyDiscountPercent: form.monthlyDiscountPercent ? Number(form.monthlyDiscountPercent) : null,
+        description: form.description?.trim() || null,
+        includes: form.includes.filter(s => s.trim()),
+        rules: form.rules.filter(s => s.trim()),
+        amenities: form.amenities,
       };
 
       if (venueId) {
@@ -166,16 +243,17 @@ export default function ManagerAddVenue() {
             <span className="fw-medium">{errorMsg}</span>
           </div>
         )}
+
+        {/* ===== ROW 1: Basic Info + Media/Schedule ===== */}
         <div className="row g-4">
-          
-          {/* ================= LEFT COLUMN ================= */}
+
+          {/* LEFT COLUMN */}
           <div className="col-12 col-lg-6 d-flex flex-column gap-4">
-            
+
             {/* Basic Info Card */}
             <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
               <div className="card-body p-4 p-md-5">
-                <SectionHeader icon="feather-map" iconBg="#e8f5ee" iconColor="#097E52" title="1. Thông tin cơ bản" subtitle="Tên, địa chỉ và thông báo liên hệ" />
-                
+                <SectionHeader icon="feather-map" iconBg="#e8f5ee" iconColor="#097E52" title="1. Thông tin cơ bản" subtitle="Tên, địa chỉ và thông tin liên hệ" />
                 <div className="row g-4">
                   <div className="col-12">
                     <label className="form-label fw-semibold text-dark mb-2">Tên cụm sân <span className="text-danger">*</span></label>
@@ -209,7 +287,7 @@ export default function ManagerAddVenue() {
               </div>
             </div>
 
-            {/* Location / Meta Card */}
+            {/* Location Card */}
             <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
               <div className="card-body p-4 p-md-5">
                 <SectionHeader icon="feather-map-pin" iconBg="#eff6ff" iconColor="#2563eb" title="2. Tọa độ bản đồ" subtitle="Lấy từ Google Maps (Tùy chọn)" />
@@ -230,14 +308,13 @@ export default function ManagerAddVenue() {
 
           </div>
 
-          {/* ================= RIGHT COLUMN ================= */}
+          {/* RIGHT COLUMN */}
           <div className="col-12 col-lg-6 d-flex flex-column gap-4">
-            
-             {/* Media Card */}
-             <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
+
+            {/* Media Card */}
+            <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
               <div className="card-body p-4 p-md-5">
                 <SectionHeader icon="feather-image" iconBg="#fce7f3" iconColor="#db2777" title="3. Hình ảnh đại diện" subtitle="Tải lên ảnh đẹp nhất để thu hút khách" />
-                
                 <div className="position-relative bg-light rounded-4 d-flex align-items-center justify-content-center border" style={{ height: 260, borderStyle: 'dashed !important' }}>
                   <input type="file" className="position-absolute top-0 start-0 w-100 h-100 opacity-0 cursor-pointer" accept="image/*" onChange={(e) => setThumbnailFiles(Array.from(e.target.files || []))} />
                   {thumbnailFiles.length > 0 ? (
@@ -245,7 +322,7 @@ export default function ManagerAddVenue() {
                   ) : (
                     <div className="text-center text-muted">
                       <div className="bg-white shadow-sm d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style={{ width: 64, height: 64 }}>
-                         <i className="feather-upload-cloud text-primary" style={{ fontSize: 28 }} />
+                        <i className="feather-upload-cloud text-primary" style={{ fontSize: 28 }} />
                       </div>
                       <h6 className="fw-semibold text-dark">Nhấn hoặc Kéo thả ảnh vào đây</h6>
                       <span className="small text-secondary">Hỗ trợ JPG, PNG (Tối đa 5MB)</span>
@@ -259,24 +336,20 @@ export default function ManagerAddVenue() {
             <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
               <div className="card-body p-4 p-md-5">
                 <SectionHeader icon="feather-clock" iconBg="#fef3c7" iconColor="#d97706" title="4. Lịch hoạt động chung" subtitle="Cài đặt khung giờ làm việc tiêu chuẩn" />
-                
                 <div className="px-2">
                   {DAYS.map((day, i) => (
-                    <div key={day} className="row align-items-center py-3 border-bottom" style={{ opacity: dayHours[i].enabled ? 1 : 0.6, transition: '0.2s' }}>
-                      <div className="col-3 col-sm-2 fw-bold text-dark">{day}</div>
-                      
+                    <div key={day} className="row align-items-center py-3 border-bottom" style={{ opacity: dayHours[i].enabled ? 1 : 0.5, transition: '0.2s' }}>
+                      <div className="col-3 col-sm-2 fw-bold text-dark" style={{ fontSize: 13 }}>{day}</div>
                       <div className="col-3 col-sm-4 px-1">
                         <select className="form-select form-select-sm bg-light border-0" value={dayHours[i].open} disabled={!dayHours[i].enabled} onChange={(e) => toggleDay(i, 'open', e.target.value)}>
                           {TIME_SLOTS.map((ts) => <option key={ts} value={ts}>{ts}</option>)}
                         </select>
                       </div>
-                      
                       <div className="col-3 col-sm-4 px-1">
                         <select className="form-select form-select-sm bg-light border-0" value={dayHours[i].close} disabled={!dayHours[i].enabled} onChange={(e) => toggleDay(i, 'close', e.target.value)}>
                           {TIME_SLOTS.map((ts) => <option key={ts} value={ts}>{ts}</option>)}
                         </select>
                       </div>
-
                       <div className="col-3 col-sm-2 text-end">
                         <div className="form-check form-switch d-inline-block m-0" style={{ transform: 'scale(1.1)' }}>
                           <input className="form-check-input m-0 cursor-pointer" type="checkbox" checked={dayHours[i].enabled} onChange={(e) => toggleDay(i, 'enabled', e.target.checked)} />
@@ -291,13 +364,131 @@ export default function ManagerAddVenue() {
           </div>
         </div>
 
+        {/* ===== ROW 2: Content sections ===== */}
+        <div className="row g-4 mt-0">
+
+          {/* Section 5: Description - full width */}
+          <div className="col-12">
+            <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
+              <div className="card-body p-4 p-md-5">
+                <SectionHeader
+                  icon="feather-file-text"
+                  iconBg="#f0fdf4"
+                  iconColor="#16a34a"
+                  title="5. Mô tả sân"
+                  subtitle="Giới thiệu về cơ sở — hiển thị ở tab Tổng quan trang chi tiết sân"
+                />
+                <textarea
+                  className="form-control bg-light border-0"
+                  rows={5}
+                  style={{ fontSize: 14, resize: 'vertical', lineHeight: 1.8 }}
+                  placeholder="Ví dụ: Cụm sân cầu lông tiêu chuẩn thi đấu, hệ thống đèn LED cao cấp, thảm PVC chuyên dụng. Phù hợp cho cả người mới bắt đầu và vận động viên chuyên nghiệp. Đội ngũ hỗ trợ chuyên nghiệp, sẵn sàng phục vụ 7 ngày trong tuần..."
+                  value={form.description}
+                  onChange={(e) => setField('description', e.target.value)}
+                />
+                <div className="d-flex justify-content-end mt-2">
+                  <span style={{ fontSize: 12, color: '#94a3b8' }}>{form.description.length} ký tự</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 6: Includes + Section 7: Rules - 2 columns */}
+          <div className="col-12 col-lg-6">
+            <div className="card border-0 shadow-sm h-100" style={{ borderRadius: 16 }}>
+              <div className="card-body p-4 p-md-5">
+                <SectionHeader
+                  icon="feather-check-square"
+                  iconBg="#ecfdf5"
+                  iconColor="#059669"
+                  title="6. Bao gồm"
+                  subtitle="Những gì khách được sử dụng khi thuê sân"
+                />
+                <EditableList
+                  items={form.includes}
+                  onChange={(val) => setField('includes', val)}
+                  placeholder="VD: Vợt cầu lông miễn phí"
+                  addLabel="Thêm hạng mục"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="col-12 col-lg-6">
+            <div className="card border-0 shadow-sm h-100" style={{ borderRadius: 16 }}>
+              <div className="card-body p-4 p-md-5">
+                <SectionHeader
+                  icon="feather-alert-octagon"
+                  iconBg="#fff7ed"
+                  iconColor="#ea580c"
+                  title="7. Quy định"
+                  subtitle="Các quy tắc khách cần tuân thủ tại cơ sở"
+                />
+                <EditableList
+                  items={form.rules}
+                  onChange={(val) => setField('rules', val)}
+                  placeholder="VD: Mang giày chuyên dụng khi vào sân"
+                  addLabel="Thêm quy định"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 8: Amenities - full width */}
+          <div className="col-12">
+            <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
+              <div className="card-body p-4 p-md-5">
+                <SectionHeader
+                  icon="feather-star"
+                  iconBg="#eff6ff"
+                  iconColor="#3b82f6"
+                  title="8. Tiện ích"
+                  subtitle="Chọn các cơ sở vật chất & dịch vụ hiện có tại cơ sở"
+                />
+                <div className="row g-3">
+                  {AMENITIES_LIST.map((a) => {
+                    const selected = form.amenities.includes(a.key);
+                    return (
+                      <div key={a.key} className="col-6 col-md-4 col-xl-3">
+                        <div
+                          role="button"
+                          onClick={() => toggleAmenity(a.key)}
+                          className="d-flex align-items-center gap-2 p-3 rounded-3"
+                          style={{
+                            border: `1.5px solid ${selected ? '#097E52' : '#e2e8f0'}`,
+                            background: selected ? '#f0fdf4' : '#f8fafc',
+                            cursor: 'pointer',
+                            transition: 'all .15s',
+                            userSelect: 'none',
+                            minHeight: 52,
+                          }}
+                        >
+                          <i className={a.icon} style={{ fontSize: 17, color: selected ? '#097E52' : '#94a3b8', flexShrink: 0 }} />
+                          <span style={{ fontSize: 13, fontWeight: 600, color: selected ? '#065f3f' : '#475569', flex: 1 }}>{a.label}</span>
+                          {selected && <i className="feather-check" style={{ fontSize: 14, color: '#097E52', flexShrink: 0 }} />}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {form.amenities.length > 0 && (
+                  <p className="mb-0 mt-3" style={{ fontSize: 12, color: '#64748b' }}>
+                    Đã chọn <strong>{form.amenities.length}</strong> tiện ích
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+        </div>
+
         {/* Action Buttons */}
         <div className="d-flex justify-content-end gap-3 mt-4 mb-4">
           <Link to="/manager/venues" className="btn btn-light fw-bold px-4 py-3 shadow-sm" style={{ borderRadius: 12 }}>
             Hủy bỏ
           </Link>
           <button type="submit" className="btn btn-primary fw-bold px-5 py-3 shadow" disabled={submitting} style={{ borderRadius: 12, background: '#097E52', borderColor: '#097E52' }}>
-             {submitting ? 'ĐANG LƯU...' : 'LƯU VÀ XUẤT BẢN'}
+            {submitting ? 'ĐANG LƯU...' : 'LƯU VÀ XUẤT BẢN'}
           </button>
         </div>
 
