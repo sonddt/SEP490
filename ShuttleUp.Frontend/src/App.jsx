@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './context/AuthContext';
 import Header from './components/layout/Header';
@@ -251,6 +252,8 @@ function App() {
       </div>
 
       {showHeaderFooter && !isBookingPage && <Footer />}
+
+      <ToastContainer position="top-right" autoClose={3000} />
     </>
   );
 }

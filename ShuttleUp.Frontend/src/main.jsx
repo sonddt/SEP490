@@ -3,8 +3,14 @@ import { BrowserRouter } from 'react-router-dom';
 
 // Bootstrap is loaded from the template in index.html to preserve the CSS cascading order.
 
+// Font Awesome (local bundle — avoids third-party CDN / tracking-prevention warnings)
+import '@fortawesome/fontawesome-free/css/all.min.css';
+
 // AOS globally (init is done per-page)
 import 'aos/dist/aos.css';
+
+// Toast notifications (used e.g. ManagerCoupons)
+import 'react-toastify/dist/ReactToastify.css';
 
 // Swiper CSS (required for slider rendering)
 import 'swiper/css';
