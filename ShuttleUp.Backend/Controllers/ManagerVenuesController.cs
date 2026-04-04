@@ -992,6 +992,30 @@ public class ManagerVenuesController : ControllerBase
         if (venue.OwnerUserId != managerId)
             return Forbid();
 
+        // ── Validate bank/account (only when any bank field is provided) ──
+        var bankName = dto.PaymentBankName?.Trim();
+        var bankBin = dto.PaymentBankBin?.Trim();
+        var acctNum = dto.PaymentAccountNumber?.Trim();
+        var acctHolder = dto.PaymentAccountHolder?.Trim().ToUpperInvariant();
+        var noteTemplate = dto.PaymentTransferNoteTemplate?.Trim();
+
+        var hasBankData = !string.IsNullOrWhiteSpace(bankName)
+                          || !string.IsNullOrWhiteSpace(acctNum)
+                          || !string.IsNullOrWhiteSpace(acctHolder);
+
+        if (hasBankData)
+        {
+            if (string.IsNullOrWhiteSpace(bankName))
+                return BadRequest(new { message = "Vui lòng chọn hoặc nhập tên ngân hàng." });
+            if (string.IsNullOrWhiteSpace(acctNum))
+                return BadRequest(new { message = "Vui lòng nhập số tài khoản." });
+            if (!System.Text.RegularExpressions.Regex.IsMatch(acctNum, @"^\d{6,19}$"))
+                return BadRequest(new { message = "Số tài khoản chỉ được chứa chữ số và dài từ 6 đến 19 ký tự." });
+            if (string.IsNullOrWhiteSpace(acctHolder))
+                return BadRequest(new { message = "Vui lòng nhập tên chủ tài khoản." });
+        }
+
+        // ── Validate cancellation policy ──
         var refundType = string.IsNullOrWhiteSpace(dto.RefundType)
             ? "NONE"
             : dto.RefundType.Trim().ToUpperInvariant();
@@ -1009,13 +1033,12 @@ public class ManagerVenuesController : ControllerBase
                 return BadRequest(new { message = "refundPercent phải từ 0 đến 100." });
         }
 
-        venue.PaymentBankName = string.IsNullOrWhiteSpace(dto.PaymentBankName) ? null : dto.PaymentBankName.Trim();
-        venue.PaymentBankBin = string.IsNullOrWhiteSpace(dto.PaymentBankBin) ? null : dto.PaymentBankBin.Trim();
-        venue.PaymentAccountNumber = string.IsNullOrWhiteSpace(dto.PaymentAccountNumber) ? null : dto.PaymentAccountNumber.Trim();
-        venue.PaymentAccountHolder = string.IsNullOrWhiteSpace(dto.PaymentAccountHolder) ? null : dto.PaymentAccountHolder.Trim().ToUpperInvariant();
-        venue.PaymentTransferNoteTemplate = string.IsNullOrWhiteSpace(dto.PaymentTransferNoteTemplate)
-            ? null
-            : dto.PaymentTransferNoteTemplate.Trim();
+        // ── Persist ──
+        venue.PaymentBankName = string.IsNullOrWhiteSpace(bankName) ? null : bankName;
+        venue.PaymentBankBin = string.IsNullOrWhiteSpace(bankBin) ? null : bankBin;
+        venue.PaymentAccountNumber = string.IsNullOrWhiteSpace(acctNum) ? null : acctNum;
+        venue.PaymentAccountHolder = string.IsNullOrWhiteSpace(acctHolder) ? null : acctHolder;
+        venue.PaymentTransferNoteTemplate = string.IsNullOrWhiteSpace(noteTemplate) ? null : noteTemplate;
         venue.CancelAllowed = dto.CancelAllowed;
         venue.CancelBeforeMinutes = dto.CancelBeforeMinutes;
         venue.RefundType = refundType;

@@ -27,7 +27,8 @@ const NAV_SECTIONS = [
   {
     label: 'Cài đặt',
     items: [
-      { to: '/manager/payment-settings',  icon: 'feather-credit-card',  label: 'Thanh toán' },
+      { to: '/manager/payment-settings',      icon: 'feather-credit-card',  label: 'Thanh toán' },
+      { to: '/manager/venue-policy-settings', icon: 'feather-shield',       label: 'Chính sách sân và hoàn tiền' },
     ],
   },
 ];

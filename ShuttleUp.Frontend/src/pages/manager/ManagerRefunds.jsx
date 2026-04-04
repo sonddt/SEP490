@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { getManagerRefunds, reconcileRefund, completeRefund, uploadRefundEvidence } from '../../api/managerRefundsApi';
 
 const STATUS_TABS = [
@@ -16,36 +17,61 @@ const STATUS_BADGE = {
   REJECTED:               { text: 'Từ chối',       cls: 'bg-danger'           },
 };
 
+/* ─── Toast (portal) ──────────────────────────────────────────────── */
+function Toast({ msg, type = 'success', onClose }) {
+  useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t); }, [onClose]);
+  const isErr = type === 'error';
+  return createPortal(
+    <div style={{
+      position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
+      background: isErr ? '#991b1b' : '#166534', color: '#fff',
+      padding: '12px 20px', borderRadius: 10, fontSize: 14, fontWeight: 500,
+      display: 'flex', alignItems: 'center', gap: 8,
+      boxShadow: '0 4px 16px rgba(0,0,0,0.18)', maxWidth: 420,
+    }}>
+      <i className={isErr ? 'feather-x-circle' : 'feather-check-circle'} style={{ fontSize: 17 }} />
+      <span>{msg}</span>
+    </div>,
+    document.body,
+  );
+}
+
 export default function ManagerRefunds() {
   const [tab, setTab] = useState('');
   const [refunds, setRefunds] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [detail, setDetail] = useState(null);
-  const [toastMsg, setToastMsg] = useState(null);
+  const [toast, setToast] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [rejectError, setRejectError] = useState('');
   const [showReject, setShowReject] = useState(null);
   const [managerNote, setManagerNote] = useState('');
   const [evidenceFile, setEvidenceFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [evidenceUploaded, setEvidenceUploaded] = useState(false);
 
-  const showToast = (msg, err = false) => {
-    setToastMsg({ msg, err });
-    setTimeout(() => setToastMsg(null), 4000);
-  };
+  const showToast = useCallback((msg, type = 'success') => setToast({ msg, type }), []);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    setLoading(true); setLoadError(false);
     try {
       const data = await getManagerRefunds(tab ? { status: tab } : {});
       setRefunds(Array.isArray(data) ? data : []);
     } catch {
-      setRefunds([]);
+      setRefunds([]); setLoadError(true);
     } finally {
       setLoading(false);
     }
   }, [tab]);
 
   useEffect(() => { load(); }, [load]);
+
+  const openDetail = (r) => {
+    setDetail(r); setManagerNote(''); setEvidenceFile(null);
+    setEvidenceUploaded(false);
+  };
 
   const handleReconcileConfirm = async (r) => {
     setSubmitting(true);
@@ -55,41 +81,50 @@ export default function ManagerRefunds() {
       setDetail(null);
       await load();
     } catch (e) {
-      showToast(e?.response?.data?.message || 'Thất bại.', true);
+      showToast(e?.response?.data?.message || 'Thất bại.', 'error');
     } finally { setSubmitting(false); }
   };
 
   const handleReconcileReject = async () => {
     if (!showReject) return;
+    if (!rejectReason.trim()) {
+      setRejectError('Vui lòng nhập lý do từ chối.');
+      return;
+    }
+    setRejectError('');
     setSubmitting(true);
     try {
       await reconcileRefund(showReject.refundRequestId, { confirmed: false, reason: rejectReason });
       showToast('Đã từ chối — đơn chuyển sang Đã hủy.');
-      setShowReject(null);
-      setRejectReason('');
-      setDetail(null);
+      setShowReject(null); setRejectReason(''); setDetail(null);
       await load();
     } catch (e) {
-      showToast(e?.response?.data?.message || 'Thất bại.', true);
+      showToast(e?.response?.data?.message || 'Thất bại.', 'error');
     } finally { setSubmitting(false); }
   };
 
   const handleComplete = async (r) => {
     setSubmitting(true);
     try {
-      if (evidenceFile) {
-        const fd = new FormData();
-        fd.append('file', evidenceFile);
-        await uploadRefundEvidence(r.refundRequestId, fd);
+      if (evidenceFile && !evidenceUploaded) {
+        setUploading(true);
+        try {
+          const fd = new FormData();
+          fd.append('file', evidenceFile);
+          await uploadRefundEvidence(r.refundRequestId, fd);
+          setEvidenceUploaded(true);
+        } catch (uploadErr) {
+          showToast(uploadErr?.response?.data?.message || 'Tải ảnh bill thất bại. Vui lòng thử lại.', 'error');
+          setSubmitting(false); setUploading(false);
+          return;
+        } finally { setUploading(false); }
       }
       await completeRefund(r.refundRequestId, { managerNote });
       showToast('Đã hoàn tiền thành công.');
-      setDetail(null);
-      setManagerNote('');
-      setEvidenceFile(null);
+      setDetail(null); setManagerNote(''); setEvidenceFile(null); setEvidenceUploaded(false);
       await load();
     } catch (e) {
-      showToast(e?.response?.data?.message || 'Thất bại.', true);
+      showToast(e?.response?.data?.message || 'Hoàn tất thất bại.', 'error');
     } finally { setSubmitting(false); }
   };
 
@@ -98,17 +133,13 @@ export default function ManagerRefunds() {
     return <span className={`badge ${s.cls}`}>{s.text}</span>;
   };
 
-  const hasRefundEvidenceForComplete = !!(detail?.managerEvidenceUrl || evidenceFile);
+  const hasEvidence = !!(detail?.managerEvidenceUrl || evidenceFile || evidenceUploaded);
 
   return (
     <div className="mgr-page">
-      {toastMsg && (
-        <div className={`alert ${toastMsg.err ? 'alert-danger' : 'alert-success'} shadow-sm`}
-          style={{ position: 'fixed', top: 88, right: 16, zIndex: 9999, minWidth: 280 }} role="alert">
-          {toastMsg.msg}
-        </div>
-      )}
+      {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
+      {/* Header */}
       <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
         <div>
           <h1 className="mb-1" style={{ fontSize: 24, fontWeight: 700, color: '#1e293b' }}>Quản lý hoàn tiền</h1>
@@ -119,6 +150,7 @@ export default function ManagerRefunds() {
         </button>
       </div>
 
+      {/* Status tabs */}
       <div className="d-flex flex-wrap gap-2 mb-4">
         {STATUS_TABS.map(t => (
           <button key={t.key} type="button"
@@ -130,70 +162,87 @@ export default function ManagerRefunds() {
         ))}
       </div>
 
-      <div className="card border-0 shadow-sm" style={{ borderRadius: 12 }}>
-        <div className="card-body p-0">
-          <div className="table-responsive">
-            <table className="table table-hover mb-0">
-              <thead style={{ background: '#f8fafc' }}>
-                <tr>
-                  <th style={{ padding: '14px 16px' }}>Mã đơn</th>
-                  <th>Sân</th>
-                  <th>Người chơi</th>
-                  <th className="text-end">Đã thu</th>
-                  <th className="text-end">Hoàn</th>
-                  <th>Trạng thái</th>
-                  <th>Ngày yêu cầu</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {loading && (
-                  <tr><td colSpan={8} className="text-center text-muted py-5">
-                    <div className="spinner-border spinner-border-sm text-secondary mb-2" role="status" />
-                    <div>Đang tải…</div>
-                  </td></tr>
-                )}
-                {!loading && refunds.length === 0 && (
-                  <tr><td colSpan={8} className="text-center text-muted py-5">
-                    <i className="feather-inbox" style={{ fontSize: 32, display: 'block', marginBottom: 8, opacity: 0.4 }} />
-                    Không có yêu cầu hoàn tiền
-                  </td></tr>
-                )}
-                {!loading && refunds.map(r => (
-                  <tr key={r.refundRequestId} style={{ cursor: 'pointer' }} onClick={() => { setDetail(r); setManagerNote(''); setEvidenceFile(null); }}>
-                    <td style={{ padding: '14px 16px' }}>
-                      <span className="badge" style={{ background: '#f0fdf4', color: 'var(--primary-color)', border: '1px solid #6ee7b7', fontFamily: 'monospace', fontSize: '0.8rem' }}>
-                        #{r.bookingCode}
-                      </span>
-                    </td>
-                    <td>{r.venueName}</td>
-                    <td>
-                      <div>{r.playerName}</div>
-                      <small className="text-muted">{r.playerPhone}</small>
-                    </td>
-                    <td className="text-end">{Number(r.paidAmount || r.finalAmount || 0).toLocaleString('vi-VN')} ₫</td>
-                    <td className="text-end fw-semibold text-success">{Number(r.requestedAmount || 0).toLocaleString('vi-VN')} ₫</td>
-                    <td>{badge(r.refundStatus)}</td>
-                    <td><small className="text-muted">{r.requestedAt ? new Date(r.requestedAt).toLocaleDateString('vi-VN') : '—'}</small></td>
-                    <td>
-                      <button type="button" className="btn btn-sm btn-outline-primary" onClick={e => { e.stopPropagation(); setDetail(r); setManagerNote(''); setEvidenceFile(null); }}>
-                        <i className="feather-eye" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* ── Load Error State ────────────────────────────────────────────── */}
+      {loadError && !loading && (
+        <div className="card border-0 shadow-sm" style={{ borderRadius: 12 }}>
+          <div className="card-body text-center py-5">
+            <i className="feather-wifi-off" style={{ fontSize: 40, color: '#94a3b8', display: 'block', marginBottom: 12 }} />
+            <h5 style={{ color: '#334155' }}>Không tải được danh sách hoàn tiền</h5>
+            <p className="text-muted small mb-3">Vui lòng kiểm tra kết nối hoặc thử lại.</p>
+            <button className="btn btn-primary btn-sm" onClick={load}>
+              <i className="feather-refresh-cw me-1" />Thử lại
+            </button>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* ── Detail / Action Modal ──────────────────────────────────────── */}
-      {detail && (
-        <div className="modal fade show d-block" style={{ background: 'rgba(0,0,0,0.5)' }}
+      {/* ── Table ───────────────────────────────────────────────────────── */}
+      {!loadError && (
+        <div className="card border-0 shadow-sm" style={{ borderRadius: 12 }}>
+          <div className="card-body p-0">
+            <div className="table-responsive">
+              <table className="table table-hover mb-0">
+                <thead style={{ background: '#f8fafc' }}>
+                  <tr>
+                    <th style={{ padding: '14px 16px' }}>Mã đơn</th>
+                    <th>Sân</th>
+                    <th>Người chơi</th>
+                    <th className="text-end">Đã thu</th>
+                    <th className="text-end">Hoàn</th>
+                    <th>Trạng thái</th>
+                    <th>Ngày yêu cầu</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading && (
+                    <tr><td colSpan={8} className="text-center text-muted py-5">
+                      <div className="spinner-border spinner-border-sm text-secondary mb-2" role="status" />
+                      <div>Đang tải…</div>
+                    </td></tr>
+                  )}
+                  {!loading && refunds.length === 0 && (
+                    <tr><td colSpan={8} className="text-center text-muted py-5">
+                      <i className="feather-inbox" style={{ fontSize: 32, display: 'block', marginBottom: 8, opacity: 0.4 }} />
+                      Không có yêu cầu hoàn tiền
+                    </td></tr>
+                  )}
+                  {!loading && refunds.map(r => (
+                    <tr key={r.refundRequestId} style={{ cursor: 'pointer' }} onClick={() => openDetail(r)}>
+                      <td style={{ padding: '14px 16px' }}>
+                        <span className="badge" style={{ background: '#f0fdf4', color: 'var(--primary-color)', border: '1px solid #6ee7b7', fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                          #{r.bookingCode}
+                        </span>
+                      </td>
+                      <td>{r.venueName}</td>
+                      <td>
+                        <div>{r.playerName}</div>
+                        <small className="text-muted">{r.playerPhone}</small>
+                      </td>
+                      <td className="text-end">{Number(r.paidAmount || r.finalAmount || 0).toLocaleString('vi-VN')} ₫</td>
+                      <td className="text-end fw-semibold text-success">{Number(r.requestedAmount || 0).toLocaleString('vi-VN')} ₫</td>
+                      <td>{badge(r.refundStatus)}</td>
+                      <td><small className="text-muted">{r.requestedAt ? new Date(r.requestedAt).toLocaleDateString('vi-VN') : '—'}</small></td>
+                      <td>
+                        <button type="button" className="btn btn-sm btn-outline-primary" onClick={e => { e.stopPropagation(); openDetail(r); }}>
+                          <i className="feather-eye" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Detail / Action Modal (portal) ─────────────────────────────── */}
+      {detail && createPortal(
+        <div className="modal fade show d-block" style={{ background: 'rgba(0,0,0,0.5)', zIndex: 1100 }}
           onClick={() => setDetail(null)}>
           <div className="modal-dialog modal-dialog-centered modal-lg" onClick={e => e.stopPropagation()}>
-            <div className="modal-content">
+            <div className="modal-content" style={{ borderRadius: 14 }}>
               <div className="modal-header">
                 <h5 className="modal-title">Chi tiết hoàn tiền — #{detail.bookingCode}</h5>
                 <button type="button" className="btn-close" onClick={() => setDetail(null)} />
@@ -263,23 +312,23 @@ export default function ManagerRefunds() {
 
                 <hr />
 
-                {/* Actions for PENDING_RECONCILIATION */}
+                {/* ── Reconciliation ──────────────────────────────────────── */}
                 {detail.refundStatus === 'PENDING_RECONCILIATION' && (
                   <div className="p-3 rounded" style={{ background: '#fefce8', border: '1px solid #fde68a' }}>
                     <h6 className="mb-2" style={{ color: '#92400e' }}><i className="feather-alert-circle me-1" />Đối soát chuyển khoản</h6>
-                    <p className="small text-muted mb-3">Kiểm tra xem bạn đã nhận được khoản chuyển khoản từ người chơi chưa. Nếu đã nhận, bấm "Đã nhận tiền" để tiếp tục xử lý hoàn. Nếu không, bấm "Từ chối".</p>
+                    <p className="small text-muted mb-3">Kiểm tra xem bạn đã nhận được khoản chuyển khoản từ người chơi chưa. Nếu đã nhận, bấm &quot;Đã nhận tiền&quot;. Nếu không, bấm &quot;Từ chối&quot;.</p>
                     <div className="d-flex gap-2">
                       <button className="btn btn-success btn-sm" disabled={submitting} onClick={() => handleReconcileConfirm(detail)}>
                         {submitting ? '…' : <><i className="feather-check me-1" />Đã nhận tiền</>}
                       </button>
-                      <button className="btn btn-outline-danger btn-sm" onClick={() => { setShowReject(detail); setRejectReason(''); }}>
+                      <button className="btn btn-outline-danger btn-sm" onClick={() => { setShowReject(detail); setRejectReason(''); setRejectError(''); }}>
                         <i className="feather-x me-1" />Từ chối
                       </button>
                     </div>
                   </div>
                 )}
 
-                {/* Actions for PENDING_REFUND */}
+                {/* ── Complete refund ─────────────────────────────────────── */}
                 {detail.refundStatus === 'PENDING_REFUND' && (
                   <div className="p-3 rounded" style={{ background: '#eff6ff', border: '1px solid #bfdbfe' }}>
                     <h6 className="mb-2" style={{ color: '#1e40af' }}><i className="feather-dollar-sign me-1" />Hoàn tiền cho người chơi</h6>
@@ -288,20 +337,28 @@ export default function ManagerRefunds() {
                       {detail.refundBankName ? ` ${detail.refundBankName} — ${detail.refundAccountNumber} (${detail.refundAccountHolder})` : ' tài khoản người chơi đã cung cấp'}.
                       Tải ảnh bill CK hoàn tiền, sau đó bấm &quot;Đã chuyển khoản hoàn tiền&quot;.
                     </p>
+
+                    {/* Evidence upload */}
                     <div className="mb-3">
                       <label className="form-label small fw-semibold">Ảnh bill CK hoàn <span className="text-danger">*</span></label>
-                      <input type="file" accept="image/*" className="form-control form-control-sm"
-                        onChange={e => setEvidenceFile(e.target.files?.[0] || null)} />
-                      {!hasRefundEvidenceForComplete && (
-                        <div className="small text-danger mt-1">Oops… Cần có ảnh bill trước khi hoàn tất.</div>
+                      {evidenceUploaded ? (
+                        <div className="small text-success"><i className="feather-check-circle me-1" />Ảnh bill đã được tải lên thành công.</div>
+                      ) : (
+                        <>
+                          <input type="file" accept="image/*" className="form-control form-control-sm"
+                            onChange={e => { setEvidenceFile(e.target.files?.[0] || null); setEvidenceUploaded(false); }} />
+                          {uploading && <div className="small text-info mt-1"><span className="spinner-border spinner-border-sm me-1" />Đang tải ảnh lên…</div>}
+                          {!hasEvidence && <div className="small text-danger mt-1">Oops… Cần có ảnh bill trước khi hoàn tất.</div>}
+                        </>
                       )}
                     </div>
+
                     <div className="mb-3">
                       <label className="form-label small fw-semibold">Ghi chú (tùy chọn)</label>
                       <input type="text" className="form-control form-control-sm" placeholder="VD: Đã CK lúc 14:30"
                         value={managerNote} onChange={e => setManagerNote(e.target.value)} />
                     </div>
-                    <button className="btn btn-primary btn-sm" disabled={submitting || !hasRefundEvidenceForComplete} onClick={() => handleComplete(detail)}>
+                    <button className="btn btn-primary btn-sm" disabled={submitting || !hasEvidence} onClick={() => handleComplete(detail)}>
                       {submitting ? 'Đang xử lý…' : <><i className="feather-check-circle me-1" />Đã chuyển khoản hoàn tiền</>}
                     </button>
                   </div>
@@ -312,22 +369,25 @@ export default function ManagerRefunds() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
-      {/* ── Reject Reason Modal ────────────────────────────────────────── */}
-      {showReject && (
-        <div className="modal fade show d-block" style={{ background: 'rgba(0,0,0,0.5)', zIndex: 1060 }}
+      {/* ── Reject Reason Modal (portal) ────────────────────────────────── */}
+      {showReject && createPortal(
+        <div className="modal fade show d-block" style={{ background: 'rgba(0,0,0,0.5)', zIndex: 1200 }}
           onClick={() => setShowReject(null)}>
           <div className="modal-dialog modal-dialog-centered modal-sm" onClick={e => e.stopPropagation()}>
-            <div className="modal-content">
+            <div className="modal-content" style={{ borderRadius: 14 }}>
               <div className="modal-header">
-                <h5 className="modal-title">Lý do từ chối</h5>
+                <h5 className="modal-title"><i className="feather-x-circle me-2 text-danger" />Lý do từ chối</h5>
                 <button type="button" className="btn-close" onClick={() => setShowReject(null)} />
               </div>
               <div className="modal-body">
-                <textarea className="form-control" rows={3} placeholder="VD: Không nhận được chuyển khoản nào…"
-                  value={rejectReason} onChange={e => setRejectReason(e.target.value)} />
+                <p className="small text-muted mb-2">Người chơi sẽ nhận được lý do này trong thông báo.</p>
+                <textarea className={`form-control ${rejectError ? 'is-invalid' : ''}`} rows={3} placeholder="VD: Không nhận được chuyển khoản nào…"
+                  value={rejectReason} onChange={e => { setRejectReason(e.target.value); setRejectError(''); }} />
+                {rejectError && <div className="invalid-feedback d-block">{rejectError}</div>}
               </div>
               <div className="modal-footer">
                 <button className="btn btn-outline-secondary btn-sm" onClick={() => setShowReject(null)}>Hủy</button>
@@ -337,7 +397,8 @@ export default function ManagerRefunds() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

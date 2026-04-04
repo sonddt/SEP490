@@ -170,8 +170,11 @@ public class ManagerRefundsController : ControllerBase
         }
         else
         {
+            if (string.IsNullOrWhiteSpace(dto.Reason))
+                return BadRequest(new { message = "Vui lòng nhập lý do từ chối để người chơi được biết." });
+
             refund.Status = "REJECTED";
-            refund.RejectionReason = string.IsNullOrWhiteSpace(dto.Reason) ? "Không nhận được chuyển khoản." : dto.Reason.Trim();
+            refund.RejectionReason = dto.Reason.Trim();
             refund.ProcessedBy = managerId;
             refund.ProcessedAt = DateTime.UtcNow;
             refund.Booking!.Status = "CANCELLED";

@@ -66,6 +66,7 @@ import ManagerBookings from './pages/manager/ManagerBookings';
 import ManagerNotifications from './pages/manager/ManagerNotifications';
 import ManagerEarnings from './pages/manager/ManagerEarnings';
 import ManagerPaymentSettings from './pages/manager/ManagerPaymentSettings';
+import ManagerVenuePolicySettings from './pages/manager/ManagerVenuePolicySettings';
 import ManagerAvailability from './pages/manager/ManagerAvailability';
 import ManagerProfile from './pages/manager/ManagerProfile';
 import ManagerRefunds from './pages/manager/ManagerRefunds';
@@ -219,6 +220,7 @@ function App() {
             {/* Finance */}
             <Route path="earnings" element={<ManagerEarnings />} />
             <Route path="payment-settings" element={<ManagerPaymentSettings />} />
+            <Route path="venue-policy-settings" element={<ManagerVenuePolicySettings />} />
             
             {/* Manager Profile */}
             <Route path="profile" element={<ManagerProfile />} />
