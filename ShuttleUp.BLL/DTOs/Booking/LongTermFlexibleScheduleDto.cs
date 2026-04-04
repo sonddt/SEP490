@@ -6,4 +6,6 @@ public class LongTermFlexibleScheduleDto
     public Guid VenueId { get; set; }
 
     public List<CreateBookingItemDto> Items { get; set; } = new();
+
+    public string? CouponCode { get; set; }
 }

@@ -139,7 +139,14 @@ export default function LongTermConfirm() {
                 <li>Giờ: {sessionStartTime} – {sessionEndTime}</li>
                 <li>
                   {preview.sessionCount} buổi · {preview.slotCount} ô × 30 phút ·{' '}
-                  <strong className="text-success">{Number(preview.totalAmount).toLocaleString('vi-VN')} VNĐ</strong>
+                  {preview.discountInfo?.discountAmount > 0 ? (
+                    <>
+                      <span className="text-decoration-line-through text-muted me-2">{Number(preview.totalAmount).toLocaleString('vi-VN')} đ</span>
+                      <strong className="text-success">{Number(preview.discountInfo.finalAmount || preview.totalAmount).toLocaleString('vi-VN')} VNĐ</strong>
+                    </>
+                  ) : (
+                    <strong className="text-success">{Number(preview.totalAmount).toLocaleString('vi-VN')} VNĐ</strong>
+                  )}
                 </li>
               </ul>
             </div>

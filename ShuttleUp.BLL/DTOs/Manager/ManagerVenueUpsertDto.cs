@@ -8,5 +8,7 @@ public class ManagerVenueUpsertDto
     public decimal? Lng { get; set; }
     public string? ContactName { get; set; }
     public string? ContactPhone { get; set; }
+    public decimal? WeeklyDiscountPercent { get; set; }
+    public decimal? MonthlyDiscountPercent { get; set; }
 }
 

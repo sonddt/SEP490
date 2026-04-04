@@ -23,6 +23,10 @@ public partial class Venue
 
     public string? Description { get; set; }
 
+    public decimal? WeeklyDiscountPercent { get; set; }
+
+    public decimal? MonthlyDiscountPercent { get; set; }
+
     /// <summary>Tên ngân hàng hiển thị (VD: Vietcombank).</summary>
     public string? PaymentBankName { get; set; }
 
@@ -57,6 +61,8 @@ public partial class Venue
     public virtual ICollection<FavoriteVenue> FavoriteVenues { get; set; } = new List<FavoriteVenue>();
 
     public virtual User? OwnerUser { get; set; }
+
+    public virtual ICollection<VenueCoupon> VenueCoupons { get; set; } = new List<VenueCoupon>();
 
 
 

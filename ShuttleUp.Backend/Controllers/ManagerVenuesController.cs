@@ -71,7 +71,9 @@ public class ManagerVenuesController : ControllerBase
             Lat = request.Lat,
             Lng = request.Lng,
             ContactName = request.ContactName,
-            ContactPhone = request.ContactPhone
+            ContactPhone = request.ContactPhone,
+            WeeklyDiscountPercent = request.WeeklyDiscountPercent,
+            MonthlyDiscountPercent = request.MonthlyDiscountPercent
         };
 
         await _venueService.CreateAsync(venue);
@@ -120,6 +122,8 @@ public class ManagerVenuesController : ControllerBase
         venue.Lng = request.Lng;
         venue.ContactName = request.ContactName;
         venue.ContactPhone = request.ContactPhone;
+        venue.WeeklyDiscountPercent = request.WeeklyDiscountPercent;
+        venue.MonthlyDiscountPercent = request.MonthlyDiscountPercent;
 
         await _venueService.UpdateAsync(venue);
 
@@ -344,6 +348,7 @@ public class ManagerVenuesController : ControllerBase
         {
             VenueId = venueId,
             Name = request.Name,
+            GroupName = request.GroupName,
             Status = request.Status,
             Surface = request.Surface,
             MaxGuest = request.MaxGuests,
@@ -476,6 +481,7 @@ public class ManagerVenuesController : ControllerBase
             return NotFound(new { message = "Court không tồn tại trong venue này." });
 
         court.Name = request.Name;
+        court.GroupName = request.GroupName;
         court.Status = request.Status;
         court.Surface = request.Surface;
         court.MaxGuest = request.MaxGuests;
@@ -784,6 +790,7 @@ public class ManagerVenuesController : ControllerBase
         {
             court.Id,
             court.Name,
+            court.GroupName,
             court.Status,
             court.Surface,
             court.MaxGuest,
@@ -912,6 +919,7 @@ public class ManagerVenuesController : ControllerBase
                 id = c.Id,
                 venueId = c.VenueId,
                 name = c.Name,
+                groupName = c.GroupName,
                 type = c.Status,
                 surface = c.Surface,
                 pricePerHour = (c.CourtPrices
@@ -1011,6 +1019,129 @@ public class ManagerVenuesController : ControllerBase
             message = "Đã lưu cài đặt thanh toán & huỷ đặt.",
             venueId = venue.Id,
         });
+    }
+
+    // =====================================================================
+    // COUPON CRUD
+    // =====================================================================
+
+    public class CouponUpsertDto
+    {
+        public string Code { get; set; } = null!;
+        public string DiscountType { get; set; } = "PERCENT"; // PERCENT | FIXED
+        public decimal DiscountValue { get; set; }
+        public decimal? MinBookingValue { get; set; }
+        public decimal? MaxDiscountAmount { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public int? UsageLimit { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+
+    /// <summary>Lấy danh sách coupon của venue.</summary>
+    [HttpGet("{venueId:guid}/coupons")]
+    public async Task<IActionResult> GetCoupons([FromRoute] Guid venueId)
+    {
+        var managerId = GetCurrentUserId();
+        var venue = await _dbContext.Venues.FirstOrDefaultAsync(v => v.Id == venueId && v.OwnerUserId == managerId);
+        if (venue == null) return NotFound(new { message = "Không tìm thấy sân hoặc bạn không có quyền." });
+
+        var coupons = await _dbContext.VenueCoupons
+            .AsNoTracking()
+            .Where(c => c.VenueId == venueId)
+            .OrderByDescending(c => c.CreatedAt)
+            .Select(c => new
+            {
+                c.Id, c.Code, c.DiscountType, c.DiscountValue,
+                c.MinBookingValue, c.MaxDiscountAmount,
+                c.StartDate, c.EndDate, c.UsageLimit, c.UsedCount, c.IsActive, c.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(coupons);
+    }
+
+    /// <summary>Tạo coupon mới cho venue.</summary>
+    [HttpPost("{venueId:guid}/coupons")]
+    public async Task<IActionResult> CreateCoupon([FromRoute] Guid venueId, [FromBody] CouponUpsertDto dto)
+    {
+        var managerId = GetCurrentUserId();
+        var venue = await _dbContext.Venues.FirstOrDefaultAsync(v => v.Id == venueId && v.OwnerUserId == managerId);
+        if (venue == null) return NotFound(new { message = "Không tìm thấy sân hoặc bạn không có quyền." });
+
+        // Kiểm tra trùng mã
+        var exists = await _dbContext.VenueCoupons.AnyAsync(c => c.VenueId == venueId && c.Code == dto.Code.Trim().ToUpper());
+        if (exists) return BadRequest(new { message = "Mã coupon này đã tồn tại cho sân." });
+
+        var coupon = new VenueCoupon
+        {
+            Id = Guid.NewGuid(),
+            VenueId = venueId,
+            Code = dto.Code.Trim().ToUpper(),
+            DiscountType = dto.DiscountType,
+            DiscountValue = dto.DiscountValue,
+            MinBookingValue = dto.MinBookingValue,
+            MaxDiscountAmount = dto.MaxDiscountAmount,
+            StartDate = dto.StartDate,
+            EndDate = dto.EndDate,
+            UsageLimit = dto.UsageLimit,
+            UsedCount = 0,
+            IsActive = dto.IsActive,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _dbContext.VenueCoupons.Add(coupon);
+        await _dbContext.SaveChangesAsync();
+
+        return Ok(new { coupon.Id, coupon.Code, coupon.DiscountType, coupon.DiscountValue,
+            coupon.MinBookingValue, coupon.MaxDiscountAmount, coupon.StartDate, coupon.EndDate,
+            coupon.UsageLimit, coupon.UsedCount, coupon.IsActive, coupon.CreatedAt });
+    }
+
+    /// <summary>Cập nhật coupon.</summary>
+    [HttpPut("{venueId:guid}/coupons/{couponId:guid}")]
+    public async Task<IActionResult> UpdateCoupon([FromRoute] Guid venueId, [FromRoute] Guid couponId, [FromBody] CouponUpsertDto dto)
+    {
+        var managerId = GetCurrentUserId();
+        var venue = await _dbContext.Venues.FirstOrDefaultAsync(v => v.Id == venueId && v.OwnerUserId == managerId);
+        if (venue == null) return NotFound(new { message = "Không tìm thấy sân hoặc bạn không có quyền." });
+
+        var coupon = await _dbContext.VenueCoupons.FirstOrDefaultAsync(c => c.Id == couponId && c.VenueId == venueId);
+        if (coupon == null) return NotFound(new { message = "Không tìm thấy coupon." });
+
+        // Kiểm tra trùng mã (bỏ qua chính nó)
+        var duplicate = await _dbContext.VenueCoupons.AnyAsync(c =>
+            c.VenueId == venueId && c.Code == dto.Code.Trim().ToUpper() && c.Id != couponId);
+        if (duplicate) return BadRequest(new { message = "Mã coupon này đã tồn tại cho sân." });
+
+        coupon.Code = dto.Code.Trim().ToUpper();
+        coupon.DiscountType = dto.DiscountType;
+        coupon.DiscountValue = dto.DiscountValue;
+        coupon.MinBookingValue = dto.MinBookingValue;
+        coupon.MaxDiscountAmount = dto.MaxDiscountAmount;
+        coupon.StartDate = dto.StartDate;
+        coupon.EndDate = dto.EndDate;
+        coupon.UsageLimit = dto.UsageLimit;
+        coupon.IsActive = dto.IsActive;
+
+        await _dbContext.SaveChangesAsync();
+        return Ok(new { message = "Cập nhật coupon thành công." });
+    }
+
+    /// <summary>Xoá coupon.</summary>
+    [HttpDelete("{venueId:guid}/coupons/{couponId:guid}")]
+    public async Task<IActionResult> DeleteCoupon([FromRoute] Guid venueId, [FromRoute] Guid couponId)
+    {
+        var managerId = GetCurrentUserId();
+        var venue = await _dbContext.Venues.FirstOrDefaultAsync(v => v.Id == venueId && v.OwnerUserId == managerId);
+        if (venue == null) return NotFound(new { message = "Không tìm thấy sân hoặc bạn không có quyền." });
+
+        var coupon = await _dbContext.VenueCoupons.FirstOrDefaultAsync(c => c.Id == couponId && c.VenueId == venueId);
+        if (coupon == null) return NotFound(new { message = "Không tìm thấy coupon." });
+
+        _dbContext.VenueCoupons.Remove(coupon);
+        await _dbContext.SaveChangesAsync();
+        return Ok(new { message = "Xoá coupon thành công." });
     }
 
     private Guid GetCurrentUserId()

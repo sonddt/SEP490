@@ -126,6 +126,12 @@ public class BookingsController : ControllerBase
             return Conflict(new { message = "Một số khung giờ đang bị khóa bởi chủ sân." });
 
         var total = normalizedItems.Sum(x => x.Price);
+        var minStart = normalizedItems.Min(x => x.Start);
+        var maxEnd = normalizedItems.Max(x => x.End);
+        var daysDuration = (maxEnd.Date - minStart.Date).Days + 1;
+
+        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg) = await CalculateDiscountAsync(dto.VenueId, total, daysDuration, dto.CouponCode);
+        if (errorMsg != null) return BadRequest(new { message = errorMsg });
 
         var policySnapshot = new CancellationPolicySnapshot
         {
@@ -142,8 +148,9 @@ public class BookingsController : ControllerBase
             VenueId = dto.VenueId,
             Status = "PENDING",
             TotalAmount = total,
-            DiscountAmount = 0,
-            FinalAmount = total,
+            DiscountAmount = discountAmount,
+            FinalAmount = finalAmount,
+            CouponId = couponId,
             ContactName = dto.ContactName.Trim(),
             ContactPhone = dto.ContactPhone.Trim(),
             GuestNote = string.IsNullOrWhiteSpace(dto.Note) ? null : dto.Note.Trim(),
@@ -170,6 +177,11 @@ public class BookingsController : ControllerBase
         await using var trx = await _dbContext.Database.BeginTransactionAsync();
         try
         {
+            if (couponToUpdate != null)
+            {
+                couponToUpdate.UsedCount = (couponToUpdate.UsedCount ?? 0) + 1;
+                _dbContext.VenueCoupons.Update(couponToUpdate);
+            }
             _dbContext.Bookings.Add(booking);
             await _dbContext.SaveChangesAsync();
             await trx.CommitAsync();
@@ -295,6 +307,12 @@ public class BookingsController : ControllerBase
             return BadRequest(new { message = "Cơ sở không tồn tại hoặc chưa mở đặt sân." });
 
         var total = built.NormalizedItems!.Sum(x => x.Price);
+        var minStart = built.NormalizedItems!.Min(x => x.Start);
+        var maxEnd = built.NormalizedItems!.Max(x => x.End);
+        var daysDuration = (maxEnd.Date - minStart.Date).Days + 1;
+
+        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg) = await CalculateDiscountAsync(dto.VenueId, total, daysDuration, dto.CouponCode);
+        if (errorMsg != null) return BadRequest(new { message = errorMsg });
         var policySnapshot = new CancellationPolicySnapshot
         {
             AllowCancel = venuePolicy.CancelAllowed,
@@ -332,8 +350,9 @@ public class BookingsController : ControllerBase
             SeriesId = series.Id,
             Status = "PENDING",
             TotalAmount = total,
-            DiscountAmount = 0,
-            FinalAmount = total,
+            DiscountAmount = discountAmount,
+            FinalAmount = finalAmount,
+            CouponId = couponId,
             ContactName = dto.ContactName.Trim(),
             ContactPhone = dto.ContactPhone.Trim(),
             GuestNote = string.IsNullOrWhiteSpace(dto.Note) ? null : dto.Note.Trim(),
@@ -357,6 +376,11 @@ public class BookingsController : ControllerBase
         await using var trx = await _dbContext.Database.BeginTransactionAsync();
         try
         {
+            if (couponToUpdate != null)
+            {
+                couponToUpdate.UsedCount = (couponToUpdate.UsedCount ?? 0) + 1;
+                _dbContext.VenueCoupons.Update(couponToUpdate);
+            }
             _dbContext.BookingSeries.Add(series);
             _dbContext.Bookings.Add(booking);
             await _dbContext.SaveChangesAsync();
@@ -494,6 +518,12 @@ public class BookingsController : ControllerBase
 
         var normalizedItems = built.NormalizedItems!;
         var total = normalizedItems.Sum(x => x.Price);
+        var minStart = normalizedItems.Min(x => x.Start);
+        var maxEnd = normalizedItems.Max(x => x.End);
+        var daysDuration = (maxEnd.Date - minStart.Date).Days + 1;
+
+        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg) = await CalculateDiscountAsync(dto.VenueId, total, daysDuration, dto.CouponCode);
+        if (errorMsg != null) return BadRequest(new { message = errorMsg });
         var policySnapshot = new CancellationPolicySnapshot
         {
             AllowCancel = venuePolicy.CancelAllowed,
@@ -528,8 +558,9 @@ public class BookingsController : ControllerBase
             SeriesId = series.Id,
             Status = "PENDING",
             TotalAmount = total,
-            DiscountAmount = 0,
-            FinalAmount = total,
+            DiscountAmount = discountAmount,
+            FinalAmount = finalAmount,
+            CouponId = couponId,
             ContactName = dto.ContactName.Trim(),
             ContactPhone = dto.ContactPhone.Trim(),
             GuestNote = string.IsNullOrWhiteSpace(dto.Note) ? null : dto.Note.Trim(),
@@ -553,6 +584,11 @@ public class BookingsController : ControllerBase
         await using var trx = await _dbContext.Database.BeginTransactionAsync();
         try
         {
+            if (couponToUpdate != null)
+            {
+                couponToUpdate.UsedCount = (couponToUpdate.UsedCount ?? 0) + 1;
+                _dbContext.VenueCoupons.Update(couponToUpdate);
+            }
             _dbContext.BookingSeries.Add(series);
             _dbContext.Bookings.Add(booking);
             await _dbContext.SaveChangesAsync();
@@ -1068,4 +1104,97 @@ public class BookingsController : ControllerBase
             bookingCode
         });
     }
+
+    [HttpPost("preview-discount")]
+    public async Task<IActionResult> PreviewDiscount([FromBody] PreviewDiscountDto dto)
+    {
+        if (dto.BaseAmount <= 0)
+            return BadRequest(new { message = "BaseAmount phải lớn hơn 0." });
+
+        if (dto.DaysDuration < 1) dto.DaysDuration = 1;
+
+        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg) = await CalculateDiscountAsync(dto.VenueId, dto.BaseAmount, dto.DaysDuration, dto.CouponCode);
+
+        // We don't block the request if there is an error in calculating coupon (e.g. invalid coupon), 
+        // we just return the errorMsg in response so FE can handle it (show text "Mã không hợp lệ" etc).
+        // If errorMsg is purely "Venue not found", we can return BadRequest.
+        if (errorMsg == "Venue not found")
+            return BadRequest(new { message = "Cơ sở không tồn tại." });
+
+        return Ok(new
+        {
+            baseAmount = dto.BaseAmount,
+            discountAmount,
+            finalAmount,
+            isValidCoupon = couponId != null,
+            errorMsg
+        });
+    }
+
+    private async Task<(decimal DiscountAmount, decimal FinalAmount, Guid? CouponId, ShuttleUp.DAL.Models.VenueCoupon? CouponToUpdate, string? ErrorMsg)> CalculateDiscountAsync(
+        Guid venueId, 
+        decimal totalAmount, 
+        int daysDuration, 
+        string? couponCode)
+    {
+        var venue = await _dbContext.Venues.AsNoTracking().FirstOrDefaultAsync(v => v.Id == venueId);
+        if (venue == null) return (0, totalAmount, null, null, "Venue not found");
+
+        decimal autoDiscountAmount = 0;
+        
+        if (daysDuration >= 30 && venue.MonthlyDiscountPercent > 0)
+        {
+            autoDiscountAmount = totalAmount * (venue.MonthlyDiscountPercent.Value / 100m);
+        }
+        else if (daysDuration >= 7 && venue.WeeklyDiscountPercent > 0)
+        {
+            autoDiscountAmount = totalAmount * (venue.WeeklyDiscountPercent.Value / 100m);
+        }
+
+        decimal discountAmount = autoDiscountAmount;
+        decimal finalAmount = totalAmount - discountAmount;
+        Guid? couponId = null;
+        ShuttleUp.DAL.Models.VenueCoupon? couponToUpdate = null;
+
+        if (!string.IsNullOrWhiteSpace(couponCode))
+        {
+            var coupon = await _dbContext.VenueCoupons.FirstOrDefaultAsync(c => c.VenueId == venueId && c.Code == couponCode && c.IsActive == true);
+            if (coupon == null)
+                return (0, totalAmount, null, null, "Mã giảm giá không hợp lệ hoặc đã bị khóa.");
+
+            var now = DateTime.UtcNow;
+            if (now < coupon.StartDate || now > coupon.EndDate)
+                return (0, totalAmount, null, null, "Mã giảm giá không trong thời gian sử dụng.");
+
+            if (coupon.MinBookingValue > 0 && finalAmount < coupon.MinBookingValue)
+                return (0, totalAmount, null, null, $"Mã giảm giá yêu cầu giá trị đơn tối thiểu {coupon.MinBookingValue:N0} VNĐ (sau khi đã trừ tự động).");
+
+            if (coupon.UsageLimit.HasValue && (coupon.UsedCount ?? 0) >= coupon.UsageLimit.Value)
+                return (0, totalAmount, null, null, "Mã giảm giá đã hết lượt sử dụng.");
+
+            decimal couponDiscount = 0;
+            if (coupon.DiscountType == "PERCENT")
+            {
+                couponDiscount = finalAmount * (coupon.DiscountValue / 100m);
+                if (coupon.MaxDiscountAmount.HasValue && couponDiscount > coupon.MaxDiscountAmount.Value)
+                {
+                    couponDiscount = coupon.MaxDiscountAmount.Value;
+                }
+            }
+            else
+            {
+                couponDiscount = coupon.DiscountValue;
+            }
+
+            if (couponDiscount > finalAmount) couponDiscount = finalAmount;
+
+            discountAmount += couponDiscount;
+            finalAmount -= couponDiscount;
+            couponId = coupon.Id;
+            couponToUpdate = coupon;
+        }
+
+        return (discountAmount, finalAmount, couponId, couponToUpdate, null);
+    }
 }
+    

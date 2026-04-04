@@ -11,6 +11,8 @@ public partial class Court
 
     public string Name { get; set; } = null!;
 
+    public string? GroupName { get; set; }
+
     public string? Surface { get; set; }
 
     public int? MaxGuest { get; set; }

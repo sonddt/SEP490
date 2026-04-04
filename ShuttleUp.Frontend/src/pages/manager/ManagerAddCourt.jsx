@@ -28,7 +28,8 @@ export default function ManagerAddCourt() {
     maxGuests: 4,
     priceWeekday: '',
     priceWeekend: '',
-    description: ''
+    description: '',
+    groupName: ''
   });
 
   const DAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
@@ -91,7 +92,8 @@ export default function ManagerAddCourt() {
           maxGuests: maxGuest,
           priceWeekday: typeof pWeek === 'number' ? String(pWeek) : '',
           priceWeekend: typeof pEnd === 'number' ? String(pEnd) : '',
-          description: res?.description || res?.Description || ''
+          description: res?.description || res?.Description || '',
+          groupName: res?.groupName || res?.GroupName || ''
         }));
         
         setDayHours(mappedHours);
@@ -149,7 +151,8 @@ export default function ManagerAddCourt() {
         status: "ACTIVE", // based on new BE plan
         isActive: true,
         priceSlots,
-        openHours
+        openHours,
+        groupName: form.groupName
       };
 
       let savedCourtId = courtId;
@@ -238,6 +241,10 @@ export default function ManagerAddCourt() {
                     <label className="form-label fw-semibold text-dark mb-2">Khuyến cáo số người tối đa</label>
                     <input type="number" min={1} max={20} className={`form-control form-control-lg bg-light border-0 ${getFieldError('maxGuests') ? 'is-invalid' : ''}`} placeholder="4" value={form.maxGuests} onChange={(e) => setField('maxGuests', e.target.value)} />
                     {getFieldError('maxGuests') && <div className="invalid-feedback">{getFieldError('maxGuests')}</div>}
+                  </div>
+                  <div className="col-12 col-md-6">
+                    <label className="form-label fw-semibold text-dark mb-2">Tên nhóm (Tùy chọn)</label>
+                    <input type="text" className="form-control form-control-lg bg-light border-0" placeholder="VD: Cụm Vip / Trong nhà" value={form.groupName} onChange={(e) => setField('groupName', e.target.value)} />
                   </div>
                 </div>
               </div>

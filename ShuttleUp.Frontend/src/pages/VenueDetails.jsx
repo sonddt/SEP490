@@ -61,25 +61,27 @@ export default function VenueDetails() {
   };
 
   const handleBooking = () => {
-    navigate('/booking', {
-      state: {
+    const payload = {
         venueId: venue.id,
         venueName: venue.name,
         venueAddress: venue.address,
         pricePerSlot: venue.startingPrice,
         currency: venue.currency,
-      },
-    });
+    };
+    sessionStorage.setItem('booking_venue_context', JSON.stringify(payload));
+    navigate('/booking', { state: payload });
   };
 
   const handleLongTermBooking = () => {
-    navigate('/booking/long-term', {
-      state: {
+    const payload = {
         venueId: venue.id,
         venueName: venue.name,
         venueAddress: venue.address,
-      },
-    });
+        weeklyDiscountPercent: venue.weeklyDiscountPercent,
+        monthlyDiscountPercent: venue.monthlyDiscountPercent
+    };
+    sessionStorage.setItem('booking_venue_context', JSON.stringify(payload));
+    navigate('/booking/long-term', { state: payload });
   };
 
   useEffect(() => {
@@ -110,6 +112,8 @@ export default function VenueDetails() {
           reviewCount: data.reviewCount ?? 0,
           lat: data.lat,
           lng: data.lng,
+          weeklyDiscountPercent: data.weeklyDiscountPercent || data.WeeklyDiscountPercent || 0,
+          monthlyDiscountPercent: data.monthlyDiscountPercent || data.MonthlyDiscountPercent || 0,
         });
       } catch (err) {
         setError(err.message || 'Oops... Có lỗi nảy sinh khi tải thông tin sân.');
@@ -240,6 +244,25 @@ export default function VenueDetails() {
         on={{ backdropClick: () => setLightboxOpen(false) }}
         styles={{ root: { '--yarl__color_backdrop': 'rgba(0, 0, 0, 0.75)' } }}
       />
+
+      {(venue.weeklyDiscountPercent > 0 || venue.monthlyDiscountPercent > 0) && (
+        <div className="container mt-4 mb-2">
+          <div className="alert d-flex align-items-center mb-0" style={{ backgroundColor: '#fff7ed', borderLeft: '4px solid #ea580c', color: '#9a3412', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+            <i className="feather-gift me-3 fs-3" style={{ color: '#ea580c' }}></i>
+            <div>
+              <strong className="d-block mb-1 fs-5">Mừng Giờ Vàng - Ưu Đãi Đặt Lịch Dài Hạn!</strong>
+              <span>
+                Cơ sở đang áp dụng chiết khấu 
+                {venue.weeklyDiscountPercent > 0 && <strong className="mx-1">{venue.weeklyDiscountPercent}%</strong>} 
+                {venue.weeklyDiscountPercent > 0 && venue.monthlyDiscountPercent > 0 && 'và'} 
+                {venue.monthlyDiscountPercent > 0 && <strong className="mx-1">{venue.monthlyDiscountPercent}%</strong>} 
+                khi Quý khách đăng ký khung giờ thuê cố định theo <strong>Tuần</strong> hoặc <strong>Tháng</strong>. 
+                Hãy đặt lịch ngay để được hưởng giá ưu đãi tự động trong hệ thống!
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Venue header info */}
       <section className="venue-info white-bg d-block">

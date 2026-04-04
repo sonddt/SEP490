@@ -228,6 +228,15 @@ export default function BookingTimeline() {
   const [loadCourts, setLoadCourts] = useState({ loading: false, error: '' });
   const [loadAvail, setLoadAvail] = useState({ loading: false, error: '' });
 
+  const groupedCourts = useMemo(() => {
+    return courts.reduce((acc, court) => {
+      const groupName = court.groupName || 'Khu Vực Chung';
+      if (!acc[groupName]) acc[groupName] = [];
+      acc[groupName].push(court);
+      return acc;
+    }, {});
+  }, [courts]);
+
   // Drag refs — distinguish click vs drag
   const isDraggingRef  = useRef(false);
   const hasDraggedRef  = useRef(false);
@@ -635,8 +644,30 @@ export default function BookingTimeline() {
           </div>
 
           {/* Court rows */}
-          {courts.map(court => (
-            <div key={court.id} className="d-flex" style={{ borderBottom: '1px solid #e5e7eb' }}>
+          {Object.entries(groupedCourts).map(([groupName, groupCourts]) => (
+            <React.Fragment key={groupName}>
+              {/* Group Header Row */}
+              {Object.keys(groupedCourts).length > 1 && (
+                <div
+                  className="d-flex align-items-center"
+                  style={{
+                    backgroundColor: '#e0f2fe',
+                    borderBottom: '1px solid #bae6fd',
+                    padding: '6px 12px',
+                    position: 'sticky',
+                    left: 0,
+                    zIndex: 15,
+                    fontSize: '13px',
+                    fontWeight: 'bold',
+                    color: '#0369a1',
+                    width: '100%'
+                  }}
+                >
+                  <i className="feather-layers me-2"></i> {groupName}
+                </div>
+              )}
+              {groupCourts.map(court => (
+                <div key={court.id} className="d-flex" style={{ borderBottom: '1px solid #e5e7eb' }}>
 
               {/* Court name — sticky */}
               <div style={{
@@ -687,7 +718,9 @@ export default function BookingTimeline() {
                   </div>
                 );
               })}
-            </div>
+                </div>
+              ))}
+            </React.Fragment>
           ))}
         </div>
       </div>

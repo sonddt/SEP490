@@ -126,9 +126,14 @@ export default function ManagerVenueCourts() {
             </p>
           </div>
         </div>
-        <Link to={`/manager/venues/${venueId}/courts/add`} className="btn btn-secondary vc-hero__cta">
-          <i className="feather-plus-circle" /> Thêm sân mới
-        </Link>
+        <div className="d-flex gap-2">
+          <Link to={`/manager/venues/${venueId}/coupons`} className="btn fw-semibold" style={{ background: '#fef3c7', color: '#d97706', border: 'none' }}>
+            <i className="feather-tag" /> Quản lý Voucher
+          </Link>
+          <Link to={`/manager/venues/${venueId}/courts/add`} className="btn btn-secondary vc-hero__cta">
+            <i className="feather-plus-circle" /> Thêm sân mới
+          </Link>
+        </div>
       </div>
 
       {/* ── Stat Cards ──────────────────────────────── */}

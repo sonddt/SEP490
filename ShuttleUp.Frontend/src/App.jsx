@@ -59,6 +59,7 @@ import ManagerVenueList from './pages/manager/ManagerVenueList';
 import ManagerAddVenue from './pages/manager/ManagerAddVenue';
 import ManagerVenueCourts from './pages/manager/ManagerVenueCourts';
 import ManagerAddCourt from './pages/manager/ManagerAddCourt';
+import ManagerCoupons from './pages/manager/ManagerCoupons';
 import ManagerBookings from './pages/manager/ManagerBookings';
 import ManagerNotifications from './pages/manager/ManagerNotifications';
 import ManagerEarnings from './pages/manager/ManagerEarnings';
@@ -200,6 +201,9 @@ function App() {
             <Route path="venues/:venueId/courts" element={<ManagerVenueCourts />} />
             <Route path="venues/:venueId/courts/add" element={<ManagerAddCourt />} />
             <Route path="venues/:venueId/courts/:courtId/edit" element={<ManagerAddCourt />} />
+
+            {/* Coupons */}
+            <Route path="venues/:venueId/coupons" element={<ManagerCoupons />} />
 
             {/* Bookings */}
             <Route path="bookings" element={<ManagerBookings />} />

@@ -246,7 +246,14 @@ export default function LongTermFlexible() {
   }, []);
 
   // Venue info passed from VenueDetails
-  const venueState = location.state ?? {};
+  let venueState = location.state;
+  if (!venueState) {
+    try {
+      const cached = sessionStorage.getItem('booking_venue_context');
+      if (cached) venueState = JSON.parse(cached);
+    } catch { }
+  }
+  venueState = venueState || {};
   const venueName    = venueState.venueName    ?? 'Chọn sân';
   const venueAddress = venueState.venueAddress ?? '';
   const venueId      = venueState.venueId      ?? null;
@@ -672,8 +679,27 @@ export default function LongTermFlexible() {
         </button>
       </div>
 
+      {/* ── Banner Discount ────────────────────────────────────────────── */}
+      {(venueState.weeklyDiscountPercent > 0 || venueState.monthlyDiscountPercent > 0) && (
+        <div className="alert alert-success d-flex flex-column mx-4 mt-4 mb-2 border-success bg-white shadow-sm" style={{ borderLeft: '4px solid #198754' }}>
+           <div className="d-flex align-items-center mb-1">
+             <i className="feather-star me-2 fs-5 text-success" />
+             <strong className="text-success" style={{ fontSize: '1.05rem' }}>Ưu đãi áp dụng tự động cho đặt lịch dài hạn:</strong>
+           </div>
+           <div className="ps-4 ms-2 mt-1">
+             {venueState.weeklyDiscountPercent > 0 && (
+               <div className="mb-1"><i className="feather-check-circle me-1 text-success small" /> Giảm <strong>{venueState.weeklyDiscountPercent}%</strong> khi ngày bắt đầu và kết thúc cách nhau từ 7 ngày trở lên.</div>
+             )}
+             {venueState.monthlyDiscountPercent > 0 && (
+               <div className="mb-1"><i className="feather-check-circle me-1 text-success small" /> Giảm <strong>{venueState.monthlyDiscountPercent}%</strong> khi ngày bắt đầu và kết thúc cách nhau từ 30 ngày trở lên.</div>
+             )}
+             <div className="text-muted small mt-2"><i className="feather-info me-1" /> Lưu ý: Hệ thống chỉ tự động áp dụng 1 mức giảm giá cao nhất dựa theo khoảng cách thời gian từ ngày đầu tiên tới ngày cuối cùng trong đơn liền mạch này.</div>
+           </div>
+        </div>
+      )}
+
       {/* ── Legend ─────────────────────────────────────────────────────── */}
-      <div className="d-flex align-items-center flex-wrap gap-3 bg-white px-4 py-2 border-bottom">
+      <div className="d-flex align-items-center flex-wrap gap-3 bg-white px-4 py-2 border-bottom mt-2">
         {[
           { color: '#ffffff', border: '#ccc', label: 'Trống' },
           { color: '#ef4444', label: 'Đã đặt' },

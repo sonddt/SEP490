@@ -6,7 +6,15 @@ const teal = '#0d9488';
 
 export default function LongTermGateway() {
   const location = useLocation();
-  const state = location.state ?? {};
+  let state = location.state;
+  if (!state) {
+    try {
+      const cached = sessionStorage.getItem('booking_venue_context');
+      if (cached) state = JSON.parse(cached);
+    } catch { }
+  }
+  state = state || {};
+  
   const venueName = state.venueName ?? 'Cơ sở';
   const venueAddress = state.venueAddress ?? '';
 
@@ -23,6 +31,8 @@ export default function LongTermGateway() {
     venueId: state.venueId,
     venueName: state.venueName,
     venueAddress: state.venueAddress,
+    weeklyDiscountPercent: state.weeklyDiscountPercent,
+    monthlyDiscountPercent: state.monthlyDiscountPercent
   };
 
   return (

@@ -14,6 +14,8 @@ public partial class Booking
     /// <summary>Đơn thuộc lịch dài hạn (nếu có).</summary>
     public Guid? SeriesId { get; set; }
 
+    public Guid? CouponId { get; set; }
+
     public string? Status { get; set; }
 
     public decimal? TotalAmount { get; set; }
@@ -50,6 +52,8 @@ public partial class Booking
     public virtual Venue? Venue { get; set; }
 
     public virtual BookingSeries? Series { get; set; }
+
+    public virtual VenueCoupon? VenueCoupon { get; set; }
 
     public virtual ICollection<VenueReview> VenueReviews { get; set; } = new List<VenueReview>();
 }

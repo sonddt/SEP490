@@ -26,7 +26,9 @@ export default function ManagerAddVenue() {
     contactName: '',
     contactPhone: '',
     lat: '',
-    lng: ''
+    lng: '',
+    weeklyDiscountPercent: '',
+    monthlyDiscountPercent: ''
   });
   
   const DAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
@@ -74,7 +76,9 @@ export default function ManagerAddVenue() {
           contactName: res?.contactName || res?.ContactName || '',
           contactPhone: res?.contactPhone || res?.ContactPhone || '',
           lat: res?.lat || res?.Lat || '',
-          lng: res?.lng || res?.Lng || ''
+          lng: res?.lng || res?.Lng || '',
+          weeklyDiscountPercent: res?.weeklyDiscountPercent || res?.WeeklyDiscountPercent || '',
+          monthlyDiscountPercent: res?.monthlyDiscountPercent || res?.MonthlyDiscountPercent || ''
         }));
       } catch (err) {
         console.error('Failed to load venue', err);
@@ -108,7 +112,9 @@ export default function ManagerAddVenue() {
         lat: form.lat ? Number(form.lat) : null,
         lng: form.lng ? Number(form.lng) : null,
         contactName: form.contactName,
-        contactPhone: form.contactPhone
+        contactPhone: form.contactPhone,
+        weeklyDiscountPercent: form.weeklyDiscountPercent ? Number(form.weeklyDiscountPercent) : null,
+        monthlyDiscountPercent: form.monthlyDiscountPercent ? Number(form.monthlyDiscountPercent) : null
       };
 
       if (venueId) {
@@ -190,6 +196,14 @@ export default function ManagerAddVenue() {
                     <label className="form-label fw-semibold text-dark mb-2">Số điện thoại</label>
                     <input type="tel" className={`form-control form-control-lg bg-light border-0 ${getFieldError('contactPhone') ? 'is-invalid' : ''}`} placeholder="0901234567" value={form.contactPhone} onChange={(e) => setField('contactPhone', e.target.value)} />
                     {getFieldError('contactPhone') && <div className="invalid-feedback">{getFieldError('contactPhone')}</div>}
+                  </div>
+                  <div className="col-12 col-md-6">
+                    <label className="form-label fw-semibold text-dark mb-2">Tỉ lệ Giảm giá Tuần (%)</label>
+                    <input type="number" min="0" max="100" className="form-control form-control-lg bg-light border-0" placeholder="VD: 10" value={form.weeklyDiscountPercent} onChange={(e) => setField('weeklyDiscountPercent', e.target.value)} />
+                  </div>
+                  <div className="col-12 col-md-6">
+                    <label className="form-label fw-semibold text-dark mb-2">Tỉ lệ Giảm giá Tháng (%)</label>
+                    <input type="number" min="0" max="100" className="form-control form-control-lg bg-light border-0" placeholder="VD: 20" value={form.monthlyDiscountPercent} onChange={(e) => setField('monthlyDiscountPercent', e.target.value)} />
                   </div>
                 </div>
               </div>

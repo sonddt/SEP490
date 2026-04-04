@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import LongTermBookingSteps from '../components/booking/LongTermBookingSteps';
 import { useAuth } from '../context/AuthContext';
 import { profileApi } from '../api/profileApi';
-import { createLongTermFlexible } from '../api/bookingApi';
+import { createLongTermFlexible, previewDiscount } from '../api/bookingApi';
 
 function formatDateVN(isoDate) {
   if (!isoDate) return '';
@@ -59,6 +59,23 @@ export default function LongTermFlexibleConfirm() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  
+  const [discountInfo, setDiscountInfo] = useState(null);
+
+  useEffect(() => {
+    if (!venueId || !totalPrice || !selectedSlots.length) return;
+    const sortedDates = selectedSlots.map(s => s.dateIso || date).sort();
+    const dStart = new Date(sortedDates[0]);
+    const dEnd = new Date(sortedDates[sortedDates.length - 1]);
+    const dDuration = Math.round(Math.abs(dEnd - dStart) / (1000 * 60 * 60 * 24)) + 1;
+
+    previewDiscount({
+      venueId,
+      baseAmount: totalPrice,
+      daysDuration: dDuration,
+      couponCode: ''
+    }).then(res => setDiscountInfo(res)).catch(() => {});
+  }, [venueId, totalPrice, selectedSlots, date]);
 
   useEffect(() => {
     if (!localStorage.getItem('token')) return;
@@ -188,8 +205,8 @@ export default function LongTermFlexibleConfirm() {
                       <small className="text-muted">Tổng giờ</small>
                     </div>
                     <div className="text-center">
-                      <h4 className="primary-text mb-0">{Number(totalPrice).toLocaleString('vi-VN')} VNĐ</h4>
-                      <small className="text-muted">Tổng tiền</small>
+                      <h4 className="primary-text mb-0">{Number(discountInfo?.finalAmount || totalPrice).toLocaleString('vi-VN')} VNĐ</h4>
+                      <small className="text-muted">Tổng thanh toán</small>
                     </div>
                   </div>
                 </div>
@@ -339,9 +356,21 @@ export default function LongTermFlexibleConfirm() {
                   <span>Tổng giờ</span>
                   <strong>{totalHours}</strong>
                 </div>
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <span>Tổng tiền gốc</span>
+                  <strong className={discountInfo?.discountAmount > 0 ? "text-decoration-line-through text-muted" : "primary-text"}>
+                    {Number(totalPrice).toLocaleString('vi-VN')} VNĐ
+                  </strong>
+                </div>
+                {discountInfo?.discountAmount > 0 && (
+                  <div className="d-flex justify-content-between align-items-center mb-2 text-success">
+                    <span><i className="feather-tag me-1" /> Giảm giá đặt dài hạn</span>
+                    <strong>- {Number(discountInfo.discountAmount).toLocaleString('vi-VN')} VNĐ</strong>
+                  </div>
+                )}
                 <div className="d-flex justify-content-between align-items-center mb-3">
-                  <span>Tổng tiền</span>
-                  <strong className="primary-text fs-5">{Number(totalPrice).toLocaleString('vi-VN')} VNĐ</strong>
+                  <span className="fw-bold">Thành tiền</span>
+                  <strong className="primary-text fs-5">{Number(discountInfo?.finalAmount || totalPrice).toLocaleString('vi-VN')} VNĐ</strong>
                 </div>
                 <div className="d-grid">
                   <button

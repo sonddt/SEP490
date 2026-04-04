@@ -36,6 +36,8 @@ public class VenuesController : ControllerBase
                 v.Address,
                 v.Lat,
                 v.Lng,
+                v.WeeklyDiscountPercent,
+                v.MonthlyDiscountPercent,
                 OwnerName = v.OwnerUser != null ? v.OwnerUser.FullName : null,
                 OwnerEmail = v.OwnerUser != null ? v.OwnerUser.Email : null,
                 OwnerPhone = v.OwnerUser != null ? v.OwnerUser.PhoneNumber : null,

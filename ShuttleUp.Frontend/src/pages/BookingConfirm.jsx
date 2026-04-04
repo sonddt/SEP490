@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import BookingSteps from '../components/booking/BookingSteps';
 import { useAuth } from '../context/AuthContext';
 import { profileApi } from '../api/profileApi';
+import { previewDiscount } from '../api/bookingApi';
 
 function formatDateVN(isoDate) {
   if (!isoDate) return '';
@@ -53,6 +54,12 @@ export default function BookingConfirm() {
   });
   const [errors, setErrors] = useState({});
 
+  const [discountInfo, setDiscountInfo] = useState(null);
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState('');
+  const [couponError, setCouponError] = useState('');
+  const [previewingDiscount, setPreviewingDiscount] = useState(false);
+
   useEffect(() => {
     if (!localStorage.getItem('token')) return;
     profileApi
@@ -74,6 +81,41 @@ export default function BookingConfirm() {
       })
       .catch(() => {});
   }, []);
+
+  const fetchPreview = async (code) => {
+    setPreviewingDiscount(true);
+    setCouponError('');
+    try {
+      const resp = await previewDiscount({
+        venueId,
+        baseAmount: totalPrice,
+        daysDuration: 1,
+        couponCode: code
+      });
+      setDiscountInfo(resp);
+      setAppliedCoupon(code);
+    } catch (e) {
+      setCouponError(e.response?.data?.message || 'Mã giảm giá không hợp lệ hoặc không áp dụng được.');
+      setDiscountInfo(null);
+      setAppliedCoupon('');
+    } finally {
+      setPreviewingDiscount(false);
+    }
+  };
+
+  const handleApplyCoupon = () => {
+    if (!couponCode.trim()) {
+      setCouponError('Vui lòng nhập mã giảm giá');
+      return;
+    }
+    fetchPreview(couponCode.trim());
+  };
+
+  const handleRemoveCoupon = () => {
+    setCouponCode('');
+    setAppliedCoupon('');
+    setDiscountInfo(null);
+  };
 
   const validate = () => {
     const e = {};
@@ -99,6 +141,8 @@ export default function BookingConfirm() {
         customerName:  form.name,
         customerPhone: form.phone,
         note:          form.note,
+        couponCode:    appliedCoupon || null,
+        discountInfo:  discountInfo || null,
       },
     });
   };
@@ -257,7 +301,45 @@ export default function BookingConfirm() {
             {/* Right: order summary sidebar */}
             <div className="col-12 col-lg-4">
               <aside className="card booking-details sticky-top" style={{ top: '110px' }}>
-                <h3 className="border-bottom">Tóm tắt đơn</h3>
+                <h3 className="border-bottom">Mã giảm giá</h3>
+                <div className="mb-4">
+                  {appliedCoupon && discountInfo ? (
+                    <div className="alert alert-success d-flex align-items-center justify-content-between p-2 mb-0">
+                      <div>
+                        <i className="feather-check-circle me-1" /> Đã áp dụng mã <strong>{appliedCoupon}</strong>
+                      </div>
+                      <button className="btn btn-sm btn-outline-danger p-1" onClick={handleRemoveCoupon} title="Xóa mã">
+                        <i className="feather-x" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="input-group">
+                        <input
+                          type="text"
+                          className={`form-control ${couponError ? 'is-invalid' : ''}`}
+                          placeholder="Nhập mã voucher (nếu có)"
+                          value={couponCode}
+                          onChange={e => {
+                            setCouponCode(e.target.value);
+                            setCouponError('');
+                          }}
+                        />
+                        <button
+                          className="btn btn-primary"
+                          type="button"
+                          onClick={handleApplyCoupon}
+                          disabled={previewingDiscount || !couponCode.trim()}
+                        >
+                          {previewingDiscount ? <i className="fas fa-spinner fa-spin" /> : 'Áp dụng'}
+                        </button>
+                      </div>
+                      {couponError && <div className="text-danger small mt-1">{couponError}</div>}
+                    </>
+                  )}
+                </div>
+
+                <h3 className="border-bottom mt-2">Tóm tắt đơn</h3>
                 <ul className="list-unstyled">
                   <li className="mb-2">
                     <i className="fa-regular fa-building me-2 text-primary" />
@@ -286,10 +368,32 @@ export default function BookingConfirm() {
                   <span>Tổng giờ</span>
                   <strong>{totalHours}</strong>
                 </div>
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <span>Tổng tiền</span>
-                  <strong className="primary-text fs-5">{totalPrice.toLocaleString('vi-VN')} VNĐ</strong>
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <span>Giá gốc</span>
+                  <strong className={discountInfo ? "text-decoration-line-through text-muted" : "primary-text fs-5"}>
+                    {totalPrice.toLocaleString('vi-VN')} VNĐ
+                  </strong>
                 </div>
+                {discountInfo && (
+                  <>
+                    {discountInfo.discountAmount > 0 && (
+                      <div className="d-flex justify-content-between align-items-center mb-2 text-success">
+                        <span>Giảm giá</span>
+                        <strong>-{(discountInfo.discountAmount).toLocaleString('vi-VN')} VNĐ</strong>
+                      </div>
+                    )}
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <span className="fw-bold">Thành tiền</span>
+                      <strong className="primary-text fs-4">{(discountInfo.finalAmount || discountInfo.finalPrice).toLocaleString('vi-VN')} VNĐ</strong>
+                    </div>
+                  </>
+                )}
+                {!discountInfo && (
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <span className="fw-bold">Thành tiền</span>
+                    <strong className="primary-text fs-4">{totalPrice.toLocaleString('vi-VN')} VNĐ</strong>
+                  </div>
+                )}
                 <div className="d-grid">
                   <button
                     type="button"

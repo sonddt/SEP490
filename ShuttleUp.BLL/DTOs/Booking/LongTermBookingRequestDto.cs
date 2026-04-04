@@ -8,4 +8,6 @@ public class LongTermBookingRequestDto : LongTermScheduleDto
     public string ContactPhone { get; set; } = string.Empty;
 
     public string? Note { get; set; }
+
+    public string? CouponCode { get; set; }
 }

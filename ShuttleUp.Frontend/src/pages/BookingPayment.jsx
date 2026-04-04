@@ -66,6 +66,8 @@ export default function BookingPayment() {
     customerName: initial.customerName ?? '',
     customerPhone: initial.customerPhone ?? '',
     note: initial.note ?? '',
+    couponCode: initial.couponCode ?? null,
+    discountInfo: initial.discountInfo ?? null,
   });
 
   /** Chỉ nộp CK (đã có booking — thanh toán lại) */
@@ -121,8 +123,9 @@ export default function BookingPayment() {
     (async () => {
       setLoadingCheckout(true);
       try {
+        const finalPrice = pay.discountInfo ? (pay.discountInfo.finalAmount || pay.discountInfo.finalPrice) : pay.totalPrice;
         const data = await getVenueCheckoutSettings(pay.venueId, {
-          amount: pay.totalPrice,
+          amount: finalPrice,
           addInfo: transferNote,
         });
         if (!cancelled) setCheckoutSettings(data);
@@ -133,7 +136,7 @@ export default function BookingPayment() {
       }
     })();
     return () => { cancelled = true; };
-  }, [pay.venueId, pay.totalPrice, transferNote]);
+  }, [pay.venueId, pay.totalPrice, pay.discountInfo, transferNote]);
 
   const bankInfo = useMemo(() => {
     if (checkoutSettings?.bankName) {
@@ -255,6 +258,7 @@ export default function BookingPayment() {
           contactName: pay.customerName,
           contactPhone: pay.customerPhone,
           note: pay.note || undefined,
+          couponCode: pay.couponCode || undefined,
         });
 
         bookingId = created.bookingId ?? created.BookingId;
@@ -316,8 +320,9 @@ export default function BookingPayment() {
 
   const {
     venueName, venueAddress, date, selectedSlots, totalPrice, totalHours,
-    customerName, customerPhone, note,
+    customerName, customerPhone, note, discountInfo
   } = pay;
+  const finalPriceToDisplay = discountInfo ? (discountInfo.finalAmount || discountInfo.finalPrice) : totalPrice;
 
   if (loadingContext) {
     return (
@@ -526,7 +531,7 @@ export default function BookingPayment() {
                         </span>
                       </p>
                       <p className="mb-1"><strong>Chủ TK:</strong> {bankInfo.name}</p>
-                      <p className="mb-1"><strong>Số tiền:</strong> <span className="primary-text fw-semibold">{totalPrice.toLocaleString('vi-VN')} VNĐ</span></p>
+                      <p className="mb-1"><strong>Số tiền:</strong> <span className="primary-text fw-semibold">{finalPriceToDisplay.toLocaleString('vi-VN')} VNĐ</span></p>
                       <p className="mb-0 text-muted">{bankInfo.note}</p>
                     </div>
                   )}
@@ -547,7 +552,7 @@ export default function BookingPayment() {
                           Chưa cấu hình STK/BIN đủ để tạo QR. Chủ sân cần cập nhật tại Cài đặt thanh toán.
                         </div>
                       )}
-                      <p className="mt-2 mb-0 primary-text fw-semibold">{totalPrice.toLocaleString('vi-VN')} VNĐ</p>
+                      <p className="mt-2 mb-0 primary-text fw-semibold">{finalPriceToDisplay.toLocaleString('vi-VN')} VNĐ</p>
                       <p className="text-muted mt-1 mb-0" style={{ fontSize: '11px' }}>{bankInfo.note}</p>
                     </div>
                   )}
@@ -626,6 +631,12 @@ export default function BookingPayment() {
                     <span>Tạm tính</span>
                     <span>{totalPrice.toLocaleString('vi-VN')} VNĐ</span>
                   </li>
+                  {discountInfo && discountInfo.discountAmount > 0 && (
+                    <li className="d-flex justify-content-between mb-2 text-success">
+                      <span>Giảm giá</span>
+                      <span>-{(discountInfo.discountAmount).toLocaleString('vi-VN')} VNĐ</span>
+                    </li>
+                  )}
                   <li className="d-flex justify-content-between mb-2">
                     <span>Phí dịch vụ</span>
                     <span>0 VNĐ</span>
@@ -633,7 +644,7 @@ export default function BookingPayment() {
                 </ul>
                 <div className="order-total d-flex justify-content-between align-items-center mb-3">
                   <h5 className="mb-0">Tổng cộng</h5>
-                  <h5 className="mb-0 primary-text">{totalPrice.toLocaleString('vi-VN')} VNĐ</h5>
+                  <h5 className="mb-0 primary-text">{finalPriceToDisplay.toLocaleString('vi-VN')} VNĐ</h5>
                 </div>
 
                 <div className="form-check d-flex align-items-start gap-2 policy mb-3">
@@ -661,7 +672,7 @@ export default function BookingPayment() {
                   >
                     {loading
                       ? <><span className="spinner-border spinner-border-sm me-2" />Đang xử lý...</>
-                      : (resumeBookingId ? `Gửi minh chứng — ${totalPrice.toLocaleString('vi-VN')} VNĐ` : `Xác nhận đặt sân — ${totalPrice.toLocaleString('vi-VN')} VNĐ`)
+                      : (resumeBookingId ? `Gửi minh chứng — ${finalPriceToDisplay.toLocaleString('vi-VN')} VNĐ` : `Xác nhận đặt sân — ${finalPriceToDisplay.toLocaleString('vi-VN')} VNĐ`)
                     }
                   </button>
                 </div>

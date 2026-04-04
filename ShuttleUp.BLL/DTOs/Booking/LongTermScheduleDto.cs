@@ -16,4 +16,6 @@ public class LongTermScheduleDto
     public string SessionEndTime { get; set; } = string.Empty;
 
     public List<int> DaysOfWeek { get; set; } = new();
+
+    public string? CouponCode { get; set; }
 }

@@ -51,3 +51,11 @@ export function getVenueCheckoutSettings(venueId, params) {
 export function getBookingPaymentContext(bookingId) {
   return axiosClient.get(`/bookings/${bookingId}/payment-context`);
 }
+
+/** 
+ * @param {object} payload 
+ * { venueId, baseAmount, daysDuration, couponCode }
+ */
+export function previewDiscount(payload) {
+  return axiosClient.post('/bookings/preview-discount', payload);
+}

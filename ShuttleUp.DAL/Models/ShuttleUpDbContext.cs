@@ -62,6 +62,8 @@ public partial class ShuttleUpDbContext : DbContext
 
     public virtual DbSet<Venue> Venues { get; set; }
 
+    public virtual DbSet<VenueCoupon> VenueCoupons { get; set; }
+
 
     public virtual DbSet<VenueOpenHour> VenueOpenHours { get; set; }
 
@@ -137,6 +139,7 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.VenueId).HasColumnName("venue_id");
             entity.Property(e => e.SeriesId).HasColumnName("series_id");
+            entity.Property(e => e.CouponId).HasColumnName("coupon_id");
             entity.Property(e => e.CancellationPolicySnapshotJson)
                 .HasColumnType("text")
                 .HasColumnName("cancellation_policy_snapshot_json");
@@ -153,6 +156,11 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasForeignKey(d => d.SeriesId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("bookings_series_fk");
+
+            entity.HasOne(d => d.VenueCoupon).WithMany(p => p.Bookings)
+                .HasForeignKey(d => d.CouponId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("bookings_ibfk_coupon");
         });
 
         modelBuilder.Entity<BookingSeries>(entity =>
@@ -349,6 +357,9 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.Name)
                 .HasMaxLength(100)
                 .HasColumnName("name");
+            entity.Property(e => e.GroupName)
+                .HasMaxLength(100)
+                .HasColumnName("group_name");
             entity.Property(e => e.Surface)
                 .HasMaxLength(50)
                 .HasColumnName("surface");
@@ -1079,6 +1090,14 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.Description)
                 .HasColumnType("text")
                 .HasColumnName("description");
+            entity.Property(e => e.WeeklyDiscountPercent)
+                .HasPrecision(5, 2)
+                .HasDefaultValueSql("'0.00'")
+                .HasColumnName("weekly_discount_percent");
+            entity.Property(e => e.MonthlyDiscountPercent)
+                .HasPrecision(5, 2)
+                .HasDefaultValueSql("'0.00'")
+                .HasColumnName("monthly_discount_percent");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime")
@@ -1148,7 +1167,33 @@ public partial class ShuttleUpDbContext : DbContext
                     });
         });
 
+        modelBuilder.Entity<VenueCoupon>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
 
+            entity.ToTable("venue_coupons");
+
+            entity.HasIndex(e => new { e.VenueId, e.Code }, "uq_venue_coupon").IsUnique();
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.VenueId).HasColumnName("venue_id");
+            entity.Property(e => e.Code).HasMaxLength(50).HasColumnName("code");
+            entity.Property(e => e.DiscountType).HasMaxLength(20).HasDefaultValueSql("'PERCENT'").HasColumnName("discount_type");
+            entity.Property(e => e.DiscountValue).HasPrecision(15, 2).HasColumnName("discount_value");
+            entity.Property(e => e.MinBookingValue).HasPrecision(15, 2).HasDefaultValueSql("'0.00'").HasColumnName("min_booking_value");
+            entity.Property(e => e.MaxDiscountAmount).HasPrecision(15, 2).HasColumnName("max_discount_amount");
+            entity.Property(e => e.StartDate).HasColumnType("datetime").HasColumnName("start_date");
+            entity.Property(e => e.EndDate).HasColumnType("datetime").HasColumnName("end_date");
+            entity.Property(e => e.UsageLimit).HasColumnName("usage_limit");
+            entity.Property(e => e.UsedCount).HasDefaultValueSql("0").HasColumnName("used_count");
+            entity.Property(e => e.IsActive).HasDefaultValueSql("true").HasColumnName("is_active");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP").HasColumnType("datetime").HasColumnName("created_at");
+
+            entity.HasOne(d => d.Venue).WithMany(p => p.VenueCoupons)
+                .HasForeignKey(d => d.VenueId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("venue_coupons_ibfk_1");
+        });
 
         modelBuilder.Entity<VenueOpenHour>(entity =>
         {

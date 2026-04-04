@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import LongTermBookingSteps from '../components/booking/LongTermBookingSteps';
-import { getVenueCourts, previewLongTermBooking } from '../api/bookingApi';
+import { getVenueCourts, previewLongTermBooking, previewDiscount } from '../api/bookingApi';
 
 const DAY_OPTS = [
   { v: 0, label: 'CN' },
@@ -21,7 +21,14 @@ function todayIso() {
 export default function LongTermBooking() {
   const navigate = useNavigate();
   const location = useLocation();
-  const venueState = location.state ?? {};
+  let venueState = location.state;
+  if (!venueState) {
+    try {
+      const cached = sessionStorage.getItem('booking_venue_context');
+      if (cached) venueState = JSON.parse(cached);
+    } catch { }
+  }
+  venueState = venueState || {};
 
   const venueId = venueState.venueId ?? null;
   const venueName = venueState.venueName ?? 'Cơ sở';
@@ -104,7 +111,27 @@ export default function LongTermBooking() {
     try {
       // axiosClient interceptor returns response.data directly (no nested .data)
       const result = await previewLongTermBooking(schedulePayload);
-      setPreview(result);
+      
+      let finalDiscount = null;
+      if (result && result.items && result.items.length > 0) {
+        const dStart = new Date(rangeStart);
+        const dEnd = new Date(rangeEnd);
+        const daysDuration = Math.round(Math.abs(dEnd - dStart) / (1000 * 60 * 60 * 24)) + 1;
+        
+        try {
+          const discountData = await previewDiscount({
+            venueId: venueId,
+            baseAmount: result.totalAmount,
+            daysDuration: daysDuration,
+            couponCode: ''
+          });
+          finalDiscount = discountData;
+        } catch (err) {
+          console.error("Failed to load discount info", err);
+        }
+      }
+
+      setPreview({ ...result, discountInfo: finalDiscount });
     } catch (e) {
       const msg =
         e.response?.data?.message
@@ -135,6 +162,7 @@ export default function LongTermBooking() {
           slotCount: preview.slotCount,
           sessionCount: preview.sessionCount,
           totalAmount: preview.totalAmount,
+          discountInfo: preview.discountInfo,
         },
       },
     });
@@ -172,6 +200,24 @@ export default function LongTermBooking() {
               </p>
             </div>
           </div>
+
+          {(venueState.weeklyDiscountPercent > 0 || venueState.monthlyDiscountPercent > 0) && (
+            <div className="alert alert-success d-flex flex-column mb-4 border-success bg-white shadow-sm" style={{ borderLeft: '4px solid #198754' }}>
+               <div className="d-flex align-items-center mb-1">
+                 <i className="feather-star me-2 fs-5 text-success" />
+                 <strong className="text-success" style={{ fontSize: '1.05rem' }}>Ưu đãi áp dụng tự động cho đặt lịch dài hạn:</strong>
+               </div>
+               <div className="ps-4 ms-2 mt-1">
+                 {venueState.weeklyDiscountPercent > 0 && (
+                   <div className="mb-1"><i className="feather-check-circle me-1 text-success small" /> Giảm <strong>{venueState.weeklyDiscountPercent}%</strong> khi ngày bắt đầu và kết thúc cách nhau từ 7 ngày trở lên.</div>
+                 )}
+                 {venueState.monthlyDiscountPercent > 0 && (
+                   <div className="mb-1"><i className="feather-check-circle me-1 text-success small" /> Giảm <strong>{venueState.monthlyDiscountPercent}%</strong> khi ngày bắt đầu và kết thúc cách nhau từ 30 ngày trở lên.</div>
+                 )}
+                 <div className="text-muted small mt-2"><i className="feather-info me-1" /> Lưu ý: Hệ thống chỉ tự động áp dụng 1 mức giảm giá cao nhất phù hợp liền mạch với kỳ hạn đặt sân.</div>
+               </div>
+            </div>
+          )}
 
           <div className="card mb-4">
             <div className="card-body">
@@ -268,9 +314,34 @@ export default function LongTermBooking() {
                 <h5 className="border-bottom pb-2">Kết quả xem trước</h5>
                 <p>
                   <strong>{preview.sessionCount}</strong> buổi ·{' '}
-                  <strong>{preview.slotCount}</strong> ô × 30 phút ·{' '}
-                  Tổng: <strong className="text-success">{Number(preview.totalAmount).toLocaleString('vi-VN')} VNĐ</strong>
+                  <strong>{preview.slotCount}</strong> ô × 30 phút
                 </p>
+                
+                <div className="bg-light p-3 rounded mb-3 border">
+                   <div className="d-flex justify-content-between mb-2">
+                      <span className="text-muted">Tổng phụ (chưa giảm):</span>
+                      <span className={preview.discountInfo?.discountAmount > 0 ? "text-decoration-line-through text-muted" : "fw-bold"}>
+                        {Number(preview.totalAmount).toLocaleString('vi-VN')} đ
+                      </span>
+                   </div>
+                   
+                   {preview.discountInfo?.discountAmount > 0 && (
+                     <div className="d-flex justify-content-between mb-2">
+                        <span className="text-success"><i className="feather-tag me-1" /> Giảm giá đặt dài hạn:</span>
+                        <span className="text-success fw-bold">
+                          - {Number(preview.discountInfo.discountAmount).toLocaleString('vi-VN')} đ
+                        </span>
+                     </div>
+                   )}
+
+                   <div className="d-flex justify-content-between border-top pt-2 mt-2">
+                      <span className="fw-bold">Thành tiền:</span>
+                      <span className="fw-bold text-success fs-5">
+                        {Number(preview.discountInfo?.finalAmount || preview.totalAmount).toLocaleString('vi-VN')} đ
+                      </span>
+                   </div>
+                </div>
+
                 <div className="table-responsive" style={{ maxHeight: '320px' }}>
                   <table className="table table-sm table-bordered">
                     <thead>
