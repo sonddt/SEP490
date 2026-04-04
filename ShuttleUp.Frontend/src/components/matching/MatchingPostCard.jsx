@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import matchingApi from '../../api/matchingApi';
+import MatchingScheduleModal from './MatchingScheduleModal';
+import { buildScheduleSummary } from '../../utils/matchingScheduleSummary';
 import { useAuth } from '../../context/AuthContext';
 
 function sameUserId(a, b) {
@@ -24,11 +26,69 @@ const expenseLabels = {
   negotiable: 'Thỏa thuận',
 };
 
+/** Nhãn trạng thái góc ảnh: FULL trắng, OPEN xanh lá, CLOSED/Inactive đỏ. */
+function getMatchingPostStatusBadge(status) {
+  const u = status == null ? '' : String(status).trim().toUpperCase();
+  if (u === 'FULL') {
+    return {
+      label: 'Đã đầy',
+      style: {
+        backgroundColor: '#ffffff',
+        color: '#1e293b',
+        border: '1px solid rgba(226, 232, 240, 0.95)',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
+      },
+    };
+  }
+  if (u === 'OPEN') {
+    return {
+      label: 'Đang mở',
+      style: {
+        backgroundColor: '#097E52',
+        color: '#ffffff',
+      },
+    };
+  }
+  if (u === 'INACTIVE' || u === 'CLOSED') {
+    return {
+      label: 'Đã đóng',
+      style: {
+        backgroundColor: '#dc2626',
+        color: '#ffffff',
+      },
+    };
+  }
+  return {
+    label: 'Đã đóng',
+    style: {
+      backgroundColor: '#dc2626',
+      color: '#ffffff',
+    },
+  };
+}
+
+const scheduleLinkBtnStyle = {
+  display: 'inline',
+  padding: 0,
+  border: 'none',
+  background: 'none',
+  fontWeight: '700',
+  color: '#097E52',
+  cursor: 'pointer',
+  textDecoration: 'underline',
+  textUnderlineOffset: '3px',
+  textAlign: 'inherit',
+};
+
 export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) {
   const { user } = useAuth();
   const [joinBusy, setJoinBusy] = useState(false);
   const [joinNotice, setJoinNotice] = useState(null);
   const noticeTimer = useRef(null);
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [scheduleModalLoading, setScheduleModalLoading] = useState(false);
+  const [scheduleModalData, setScheduleModalData] = useState(null);
+  const [scheduleModalError, setScheduleModalError] = useState(null);
 
   useEffect(() => {
     return () => {
@@ -41,12 +101,6 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
   const slotsLeft = Math.max(totalSlots - filled, 0);
   const progressPct = totalSlots > 0 ? Math.round((filled / totalSlots) * 100) : 0;
 
-  const formatDate = (d) => {
-    if (!d) return '';
-    const date = new Date(d);
-    return date.toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
-  };
-
   const formatPrice = (v) => {
     if (v == null) return 'Thỏa thuận';
     return Number(v).toLocaleString('vi-VN') + 'đ';
@@ -54,6 +108,29 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
 
   const isPostOwner = post.isHost === true || sameUserId(user?.id, post.host?.id);
   const canQuickJoin = post.canRequestJoin === true && post.status !== 'Inactive';
+  const statusBadge = getMatchingPostStatusBadge(post.status);
+
+  const closeScheduleModal = useCallback(() => {
+    setScheduleModalOpen(false);
+    setScheduleModalLoading(false);
+    setScheduleModalData(null);
+    setScheduleModalError(null);
+  }, []);
+
+  const openScheduleModal = useCallback(async () => {
+    setScheduleModalOpen(true);
+    setScheduleModalLoading(true);
+    setScheduleModalError(null);
+    setScheduleModalData(null);
+    try {
+      const detail = await matchingApi.getPostDetail(post.id);
+      setScheduleModalData(buildScheduleSummary(detail));
+    } catch {
+      setScheduleModalError('Không tải được lịch. Bạn thử lại sau.');
+    } finally {
+      setScheduleModalLoading(false);
+    }
+  }, [post.id]);
 
   const handleQuickJoin = async () => {
     if (!canQuickJoin || joinBusy) return;
@@ -75,6 +152,7 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
 
   if (viewMode === 'list') {
     return (
+      <>
       <div className="col-12 mb-4">
         <div style={{ display: 'flex', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', overflow: 'hidden', transition: 'all 0.3s' }}>
           {/* Image Side */}
@@ -89,6 +167,23 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
                 </span>
               )}
             </div>
+            <span
+              style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                zIndex: 5,
+                padding: '5px 11px',
+                borderRadius: '8px',
+                fontSize: '11px',
+                fontWeight: '800',
+                letterSpacing: '0.02em',
+                pointerEvents: 'none',
+                ...statusBadge.style,
+              }}
+            >
+              {statusBadge.label}
+            </span>
             {post.status === 'Inactive' && (
               <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '700', fontSize: '15px', zIndex: 2, textAlign: 'center', padding: '8px' }}>
                 Đã kết thúc
@@ -106,48 +201,43 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
 
           {/* Content Side */}
           <div style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-              <div>
-                <h4 style={{ fontSize: '20px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>
-                  <Link to={`/matching/${post.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{post.title}</Link>
-                </h4>
-                <div style={{ display: 'flex', gap: '16px', color: '#64748b', fontSize: '14px', fontWeight: '600' }}>
-                  <span><i className="feather-map-pin me-1" style={{ color: '#097E52' }}></i> {post.venueName}{post.courtName ? ` — ${post.courtName}` : ''}</span>
-                  {post.expenseSharing && (
-                    <span><i className="feather-pie-chart me-1" style={{ color: '#097E52' }}></i> {expenseLabels[post.expenseSharing] || post.expenseSharing}</span>
-                  )}
-                </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b', marginBottom: '4px' }}>
-                  {formatDate(post.playDate)}
-                </div>
-                <div style={{ fontSize: '13px', fontWeight: '700', color: '#64748b', backgroundColor: '#f1f5f9', padding: '4px 10px', borderRadius: '8px', display: 'inline-block' }}>
-                  <i className="feather-clock me-1"></i> {post.playStartTime} – {post.playEndTime}
-                </div>
+            <div style={{ marginBottom: '16px' }}>
+              <h4 style={{ fontSize: '20px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>
+                <Link to={`/matching/${post.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{post.title}</Link>
+              </h4>
+              <div style={{ display: 'flex', gap: '16px', color: '#64748b', fontSize: '14px', fontWeight: '600', flexWrap: 'wrap' }}>
+                <span><i className="feather-map-pin me-1" style={{ color: '#097E52' }}></i> {post.venueName}{post.courtName ? ` — ${post.courtName}` : ''}</span>
+                {post.expenseSharing && (
+                  <span><i className="feather-pie-chart me-1" style={{ color: '#097E52' }}></i> {expenseLabels[post.expenseSharing] || post.expenseSharing}</span>
+                )}
               </div>
             </div>
 
-            <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <img src={post.host?.avatarUrl || '/assets/img/profiles/avatar-01.jpg'} alt={post.host?.fullName} style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #e2e8f0' }} />
-                  <div>
-                    <div style={{ fontSize: '11px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Chủ nhóm</div>
-                    <div style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>{post.host?.fullName}</div>
-                  </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '16px', paddingTop: '4px', borderTop: '1px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                <img src={post.host?.avatarUrl || '/assets/img/profiles/avatar-01.jpg'} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #e2e8f0', flexShrink: 0 }} />
+                <div style={{ textAlign: 'left', minWidth: 0 }}>
+                  <div style={{ fontSize: '11px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Chủ bài</div>
+                  <div style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={post.host?.fullName || ''}>{post.host?.fullName || '—'}</div>
                 </div>
+              </div>
+              <button
+                type="button"
+                onClick={openScheduleModal}
+                style={{ ...scheduleLinkBtnStyle, fontSize: '14px', textAlign: 'right', flexShrink: 0 }}
+              >
+                Bấm vào xem lịch
+              </button>
+            </div>
 
-                <div style={{ height: '32px', width: '1px', backgroundColor: '#e2e8f0' }}></div>
-
-                <div>
-                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                     <span style={{ fontSize: '13px', fontWeight: '700', color: '#1e293b' }}>👥 {filled}/{totalSlots} người</span>
-                     <span style={{ fontSize: '13px', fontWeight: '700', color: slotsLeft <= 1 ? '#ef4444' : '#097E52' }}>{slotsLeft > 0 ? `Còn ${slotsLeft} chỗ` : 'Đã đủ'}</span>
-                   </div>
-                   <div style={{ width: '140px', height: '6px', backgroundColor: '#f1f5f9', borderRadius: '3px', overflow: 'hidden' }}>
-                     <div style={{ width: `${progressPct}%`, height: '100%', backgroundColor: slotsLeft <= 1 ? '#ef4444' : '#097E52', borderRadius: '3px' }}></div>
-                   </div>
+            <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '700', color: '#1e293b' }}>👥 {filled}/{totalSlots} người</span>
+                  <span style={{ fontSize: '13px', fontWeight: '700', color: slotsLeft <= 1 ? '#ef4444' : '#097E52' }}>{slotsLeft > 0 ? `Còn ${slotsLeft} chỗ` : 'Đã đủ'}</span>
+                </div>
+                <div style={{ width: '140px', height: '6px', backgroundColor: '#f1f5f9', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ width: `${progressPct}%`, height: '100%', backgroundColor: slotsLeft <= 1 ? '#ef4444' : '#097E52', borderRadius: '3px' }}></div>
                 </div>
               </div>
 
@@ -182,11 +272,21 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
           </div>
         </div>
       </div>
+      <MatchingScheduleModal
+        open={scheduleModalOpen}
+        onClose={closeScheduleModal}
+        range={scheduleModalData?.range}
+        courtsText={scheduleModalData?.courtsText}
+        loading={scheduleModalLoading}
+        errorMessage={scheduleModalError}
+      />
+      </>
     );
   }
 
   // Grid Mode (Default)
   return (
+    <>
     <div className="col-lg-4 col-md-6 mb-4">
       <div className="matching-post-card h-100 d-flex flex-column" style={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', overflow: 'hidden', backgroundColor: '#fff', transition: 'transform 0.2s' }}>
         {/* ── Image + Badges ── */}
@@ -201,6 +301,23 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
                </span>
             )}
           </div>
+          <span
+            style={{
+              position: 'absolute',
+              top: '12px',
+              right: '12px',
+              zIndex: 5,
+              padding: '5px 11px',
+              borderRadius: '8px',
+              fontSize: '11px',
+              fontWeight: '800',
+              letterSpacing: '0.02em',
+              pointerEvents: 'none',
+              ...statusBadge.style,
+            }}
+          >
+            {statusBadge.label}
+          </span>
           {post.status === 'Inactive' && (
             <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '800', fontSize: '15px', zIndex: 3, textAlign: 'center', padding: '8px' }}>
               Đã kết thúc
@@ -245,14 +362,26 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
-            <div>
-               <div style={{ fontSize: '12px', fontWeight: '800', color: '#1e293b', marginBottom: '2px' }}>{formatDate(post.playDate)}</div>
-               <div style={{ fontSize: '12px', fontWeight: '700', color: '#64748b' }}>{post.playStartTime} – {post.playEndTime}</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+              <img src={post.host?.avatarUrl || '/assets/img/profiles/avatar-01.jpg'} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #e2e8f0', flexShrink: 0 }} />
+              <div style={{ textAlign: 'left', minWidth: 0 }}>
+                <div style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.35px', marginBottom: '2px' }}>Chủ bài</div>
+                <div
+                  style={{ fontSize: '12px', fontWeight: '700', color: '#1e293b', lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 'min(160px, 42vw)' }}
+                  title={post.host?.fullName || ''}
+                >
+                  {post.host?.fullName || '—'}
+                </div>
+              </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <img src={post.host?.avatarUrl || '/assets/img/profiles/avatar-01.jpg'} alt={post.host?.fullName} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
-            </div>
+            <button
+              type="button"
+              onClick={openScheduleModal}
+              style={{ ...scheduleLinkBtnStyle, fontSize: '12px', textAlign: 'right', flexShrink: 0 }}
+            >
+              Bấm vào xem lịch
+            </button>
           </div>
         </div>
 
@@ -286,5 +415,14 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
         </div>
       </div>
     </div>
+    <MatchingScheduleModal
+      open={scheduleModalOpen}
+      onClose={closeScheduleModal}
+      range={scheduleModalData?.range}
+      courtsText={scheduleModalData?.courtsText}
+      loading={scheduleModalLoading}
+      errorMessage={scheduleModalError}
+    />
+    </>
   );
 }

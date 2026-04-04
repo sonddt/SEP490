@@ -1,7 +1,63 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import matchingApi from '../../api/matchingApi';
 import MatchingPostCard from '../../components/matching/MatchingPostCard';
+
+const sortOptions = [
+  { value: 'newest', label: 'Mới nhất' },
+  { value: 'oldest', label: 'Cũ nhất' },
+  { value: 'price_asc', label: 'Giá tăng dần' },
+  { value: 'price_desc', label: 'Giá giảm dần' },
+  { value: 'soonest', label: 'Sắp diễn ra' },
+];
+
+function clientSortCompare(a, b, sort) {
+  const priceNum = (p) => (p.pricePerSlot != null && p.pricePerSlot !== '' ? Number(p.pricePerSlot) : null);
+  switch (sort) {
+    case 'price_asc': {
+      const pa = priceNum(a);
+      const pb = priceNum(b);
+      return (pa ?? Number.POSITIVE_INFINITY) - (pb ?? Number.POSITIVE_INFINITY);
+    }
+    case 'price_desc': {
+      const pa = priceNum(a);
+      const pb = priceNum(b);
+      return (pb ?? Number.NEGATIVE_INFINITY) - (pa ?? Number.NEGATIVE_INFINITY);
+    }
+    case 'soonest': {
+      const da = new Date(a.playDate).getTime();
+      const db = new Date(b.playDate).getTime();
+      const na = Number.isNaN(da) ? 0 : da;
+      const nb = Number.isNaN(db) ? 0 : db;
+      if (na !== nb) return na - nb;
+      return String(a.playStartTime || '').localeCompare(String(b.playStartTime || ''));
+    }
+    case 'oldest': {
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    }
+    case 'newest':
+    default:
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  }
+}
+
+/** Lọc theo chuỗi: tiêu đề, địa chỉ sân, tên chủ bài — dùng cho tab Của tôi / Đã tham gia. */
+function applyClientListFilterSort(items, search, sort) {
+  let list = Array.isArray(items) ? [...items] : [];
+  const q = (search || '').trim().toLowerCase();
+  if (q) {
+    list = list.filter((p) => {
+      const blob = [p.title, p.venueAddress, p.host?.fullName]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return blob.includes(q);
+    });
+  }
+  const key = sort || 'newest';
+  list.sort((a, b) => clientSortCompare(a, b, key));
+  return list;
+}
 
 const skillOptions = [
   { value: '', label: 'Tất cả trình độ' },
@@ -23,6 +79,7 @@ export default function MatchingHub() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({ skillLevel: '', playDate: '', province: '', sort: 'newest' });
+  const [searchText, setSearchText] = useState('');
 
   const loadPosts = useCallback(async () => {
     setLoading(true);
@@ -32,6 +89,8 @@ export default function MatchingHub() {
       if (filters.playDate) params.playDate = filters.playDate;
       if (filters.province) params.province = filters.province;
       if (filters.sort) params.sort = filters.sort;
+      const q = searchText.trim();
+      if (q) params.q = q;
 
       const res = await matchingApi.getPosts(params);
       setPosts(res.items || []);
@@ -41,7 +100,17 @@ export default function MatchingHub() {
     } finally {
       setLoading(false);
     }
-  }, [page, filters]);
+  }, [page, filters, searchText]);
+
+  const filteredMyPosts = useMemo(
+    () => applyClientListFilterSort(myPosts, searchText, filters.sort),
+    [myPosts, searchText, filters.sort]
+  );
+
+  const filteredJoinedPosts = useMemo(
+    () => applyClientListFilterSort(joinedPosts, searchText, filters.sort),
+    [joinedPosts, searchText, filters.sort]
+  );
 
   const loadMyPosts = useCallback(async () => {
     try {
@@ -77,6 +146,12 @@ export default function MatchingHub() {
   
   const handleResetFilters = () => {
     setFilters({ skillLevel: '', playDate: '', province: '', sort: 'newest' });
+    setSearchText('');
+    setPage(1);
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchText(e.target.value);
     setPage(1);
   };
 
@@ -131,6 +206,20 @@ export default function MatchingHub() {
           {tab === 'all' && (
             <div style={{ backgroundColor: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', padding: '24px', marginBottom: '32px' }}>
               <div className="row align-items-center">
+                  <div className="col-12 mb-3">
+                    <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block' }}>
+                      <i className="feather-search me-1"></i> Tìm kiếm (theo từng ký tự)
+                    </label>
+                    <input
+                      type="search"
+                      className="form-control"
+                      placeholder="Tiêu đề, địa chỉ sân, tên chủ bài…"
+                      style={{ borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '600', color: '#1e293b' }}
+                      value={searchText}
+                      onChange={handleSearchChange}
+                      autoComplete="off"
+                    />
+                  </div>
                   <div className="col-lg-8">
                      {/* Modern Filter Inputs */}
                      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
@@ -181,9 +270,9 @@ export default function MatchingHub() {
                          <div style={{ minWidth: '160px' }}>
                             <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block' }}>Sắp xếp</label>
                             <select className="form-select" style={{ height: '48px', borderRadius: '12px', border: 'none', backgroundColor: '#f1f5f9', fontWeight: '700', color: '#1e293b' }} value={filters.sort || 'newest'} onChange={(e) => handleFilterChange('sort', e.target.value)}>
-                              <option value="newest">Mới nhất</option>
-                              <option value="price_asc">Giá tăng dần</option>
-                              <option value="soonest">Sắp diễn ra</option>
+                              {sortOptions.map((o) => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
+                              ))}
                             </select>
                          </div>
                      </div>
@@ -192,14 +281,70 @@ export default function MatchingHub() {
             </div>
           )}
 
+          {(tab === 'my' || tab === 'joined') && (
+            <div style={{ backgroundColor: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', padding: '24px', marginBottom: '32px' }}>
+              <div className="row align-items-end g-3">
+                <div className="col-12 col-lg-5">
+                  <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block' }}>
+                    <i className="feather-search me-1"></i> Tìm kiếm (theo từng ký tự)
+                  </label>
+                  <input
+                    type="search"
+                    className="form-control"
+                    placeholder="Tiêu đề, địa chỉ sân, tên chủ bài…"
+                    style={{ borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '600', color: '#1e293b' }}
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="col-6 col-md-4 col-lg-3">
+                  <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block' }}>Sắp xếp</label>
+                  <select className="form-select" style={{ height: '48px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '700', color: '#1e293b' }} value={filters.sort || 'newest'} onChange={(e) => handleFilterChange('sort', e.target.value)}>
+                    {sortOptions.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-12 col-md-4 col-lg-4 ms-lg-auto">
+                  <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block', textAlign: 'right' }}>Hiển thị</label>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', backgroundColor: '#f1f5f9', borderRadius: '12px', padding: '4px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('grid')}
+                      style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px', border: 'none', backgroundColor: viewMode === 'grid' ? '#fff' : 'transparent', boxShadow: viewMode === 'grid' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none', color: viewMode === 'grid' ? '#097E52' : '#94a3b8', transition: 'all 0.2s' }}
+                    >
+                      <i className="feather-grid" style={{ fontSize: '18px' }}></i>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('list')}
+                      style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px', border: 'none', backgroundColor: viewMode === 'list' ? '#fff' : 'transparent', boxShadow: viewMode === 'list' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none', color: viewMode === 'list' ? '#097E52' : '#94a3b8', transition: 'all 0.2s' }}
+                    >
+                      <i className="feather-list" style={{ fontSize: '20px' }}></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ── Grid/List Post Results ── */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h5 style={{ fontWeight: '700', color: '#1e293b', margin: 0 }}>
-                {tab === 'all' 
-                  ? (total > 0 ? `Đang hiển thị ${total} bài đăng tuyển người` : '') 
+                {tab === 'all'
+                  ? (total > 0 ? `Đang hiển thị ${total} bài đăng tuyển người` : '')
                   : tab === 'my'
-                    ? (myPosts.length > 0 ? `Bạn đã tạo ${myPosts.length} bài đăng` : '')
-                    : (joinedPosts.length > 0 ? `Bạn đang tham gia ${joinedPosts.length} bài` : '')
+                    ? (myPosts.length > 0
+                      ? (searchText.trim()
+                        ? `Hiển thị ${filteredMyPosts.length} / ${myPosts.length} bài đăng của bạn`
+                        : `Bạn đã tạo ${myPosts.length} bài đăng`)
+                      : '')
+                    : (joinedPosts.length > 0
+                      ? (searchText.trim()
+                        ? `Hiển thị ${filteredJoinedPosts.length} / ${joinedPosts.length} bài đã tham gia`
+                        : `Bạn đang tham gia ${joinedPosts.length} bài`)
+                      : '')
                 }
               </h5>
           </div>
@@ -211,11 +356,22 @@ export default function MatchingHub() {
                   {posts.length === 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 20px', backgroundColor: '#fff', borderRadius: '24px', border: '1px dashed #cbd5e1' }}>
                       <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏸</div>
-                      <h3 style={{ fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>Chưa có bài đăng nào trúng khớp</h3>
-                      <p style={{ color: '#64748b', fontWeight: '600', marginBottom: '24px' }}>Hãy thử điều chỉnh bộ lọc hoặc là người đầu tiên tạo bài!</p>
-                      <button onClick={handleResetFilters} className="btn btn-outline-secondary" style={{ borderRadius: '12px', fontWeight: '700', padding: '10px 24px' }}>
-                        Xoá bộ lọc
-                      </button>
+                      <h3 style={{ fontWeight: '700', color: '#1e293b', marginBottom: '8px', textAlign: 'center' }}>Chưa có bài đăng nào trúng khớp</h3>
+                      <p style={{ color: '#64748b', fontWeight: '600', marginBottom: '24px', textAlign: 'center', maxWidth: '420px' }}>
+                        {searchText.trim()
+                          ? 'Không có kết quả với từ khoá hoặc bộ lọc hiện tại. Thử đổi từ tìm hoặc xoá lọc.'
+                          : 'Hãy thử điều chỉnh bộ lọc hoặc là người đầu tiên tạo bài!'}
+                      </p>
+                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                        {searchText.trim() && (
+                          <button type="button" onClick={() => { setSearchText(''); setPage(1); }} className="btn btn-outline-primary" style={{ borderRadius: '12px', fontWeight: '700', padding: '10px 24px' }}>
+                            Xóa tìm kiếm
+                          </button>
+                        )}
+                        <button type="button" onClick={handleResetFilters} className="btn btn-outline-secondary" style={{ borderRadius: '12px', fontWeight: '700', padding: '10px 24px' }}>
+                          Xoá bộ lọc
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <div className="row">
@@ -258,9 +414,18 @@ export default function MatchingHub() {
                         <i className="feather-plus me-2"></i> Tạo bài đăng ngay
                       </Link>
                     </div>
+                  ) : filteredMyPosts.length === 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 20px', backgroundColor: '#fff', borderRadius: '24px', border: '1px dashed #cbd5e1' }}>
+                      <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔍</div>
+                      <h3 style={{ fontWeight: '700', color: '#1e293b', marginBottom: '8px', textAlign: 'center' }}>Không có bài nào khớp tìm kiếm</h3>
+                      <p style={{ color: '#64748b', fontWeight: '600', marginBottom: '20px', textAlign: 'center' }}>Thử bỏ bớt từ khoá hoặc kiểm tra chính tả.</p>
+                      <button type="button" onClick={() => setSearchText('')} className="btn btn-outline-secondary" style={{ borderRadius: '12px', fontWeight: '700', padding: '10px 24px' }}>
+                        Xóa ô tìm kiếm
+                      </button>
+                    </div>
                   ) : (
                     <div className="row">
-                      {myPosts.map((p) => (
+                      {filteredMyPosts.map((p) => (
                         <MatchingPostCard key={p.id} post={p} viewMode={viewMode} onJoined={loadMyPosts} />
                       ))}
                     </div>
@@ -278,9 +443,18 @@ export default function MatchingHub() {
                         Xem bảng tin
                       </button>
                     </div>
+                  ) : filteredJoinedPosts.length === 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 20px', backgroundColor: '#fff', borderRadius: '24px', border: '1px dashed #cbd5e1' }}>
+                      <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔍</div>
+                      <h3 style={{ fontWeight: '700', color: '#1e293b', marginBottom: '8px', textAlign: 'center' }}>Không có bài nào khớp tìm kiếm</h3>
+                      <p style={{ color: '#64748b', fontWeight: '600', marginBottom: '20px', textAlign: 'center' }}>Thử bỏ bớt từ khoá hoặc kiểm tra chính tả.</p>
+                      <button type="button" onClick={() => setSearchText('')} className="btn btn-outline-secondary" style={{ borderRadius: '12px', fontWeight: '700', padding: '10px 24px' }}>
+                        Xóa ô tìm kiếm
+                      </button>
+                    </div>
                   ) : (
                     <div className="row">
-                      {joinedPosts.map((p) => (
+                      {filteredJoinedPosts.map((p) => (
                         <MatchingPostCard key={p.id} post={p} viewMode={viewMode} onJoined={loadJoinedPosts} />
                       ))}
                     </div>
