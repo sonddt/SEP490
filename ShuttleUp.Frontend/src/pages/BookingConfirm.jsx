@@ -92,8 +92,14 @@ export default function BookingConfirm() {
         daysDuration: 1,
         couponCode: code
       });
-      setDiscountInfo(resp);
-      setAppliedCoupon(code);
+      if (resp.errorMsg || resp.isValidCoupon === false) {
+        setCouponError(resp.errorMsg || 'Mã giảm giá không hợp lệ.');
+        setDiscountInfo(null);
+        setAppliedCoupon('');
+      } else {
+        setDiscountInfo(resp);
+        setAppliedCoupon(code);
+      }
     } catch (e) {
       setCouponError(e.response?.data?.message || 'Mã giảm giá không hợp lệ hoặc không áp dụng được.');
       setDiscountInfo(null);
@@ -302,6 +308,10 @@ export default function BookingConfirm() {
             <div className="col-12 col-lg-4">
               <aside className="card booking-details sticky-top" style={{ top: '110px' }}>
                 <h3 className="border-bottom">Mã giảm giá</h3>
+                <p className="text-muted mb-3" style={{ fontSize: 12, lineHeight: 1.5 }}>
+                  <i className="feather-info me-1" style={{ fontSize: 11 }} />
+                  Bạn có thể theo dõi các chương trình khuyến mãi và giảm giá ở trang <Link to="/featured" className="fw-semibold" style={{ color: 'var(--primary-color)' }}>Nổi bật</Link>.
+                </p>
                 <div className="mb-4">
                   {appliedCoupon && discountInfo ? (
                     <div className="alert alert-success d-flex align-items-center justify-content-between p-2 mb-0">

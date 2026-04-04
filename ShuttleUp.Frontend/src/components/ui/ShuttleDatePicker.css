@@ -1,0 +1,361 @@
+/* Shuttle Up — date picker & time chip picker (đồng bộ theme #097E52) */
+
+:root {
+  --su-primary: #097e52;
+  --su-primary-dark: #065f3f;
+  --su-primary-soft: rgba(9, 126, 82, 0.12);
+  --su-primary-softer: rgba(9, 126, 82, 0.08);
+  --su-input-bg: #f4f7f5;
+  --su-input-border: #dfe7e3;
+  --su-text: #0f172a;
+  --su-muted: #64748b;
+}
+
+/* ── Trigger input ── */
+.shuttle-date-trigger {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.shuttle-date-trigger__input {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--su-input-border);
+  background: var(--su-input-bg);
+  padding: 9px 44px 9px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--su-text);
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.shuttle-date-trigger__input:hover {
+  border-color: rgba(9, 126, 82, 0.35);
+}
+
+.shuttle-date-trigger__input:focus {
+  outline: none;
+  border-color: var(--su-primary);
+  box-shadow: 0 0 0 3px var(--su-primary-soft);
+}
+
+.shuttle-date-trigger__input::placeholder {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.shuttle-date-trigger__icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+  color: var(--su-primary);
+  opacity: 0.9;
+}
+
+/* ── Calendar panel — không họa tiết nền mờ, viền accent xanh ── */
+.shuttle-cal {
+  width: min(100vw - 24px, 318px);
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid #e8eef0;
+  border-top: 3px solid var(--su-primary);
+  box-shadow:
+    0 12px 36px rgba(15, 23, 42, 0.1),
+    0 4px 12px rgba(9, 126, 82, 0.06);
+  overflow: hidden;
+  z-index: 10050;
+}
+
+.shuttle-cal__surface {
+  position: relative;
+  padding: 14px 14px 10px;
+  background: linear-gradient(180deg, #fafcfb 0%, #ffffff 48%);
+}
+
+.shuttle-cal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 0 2px;
+}
+
+.shuttle-cal__nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.shuttle-cal__nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--su-input-border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--su-primary);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+}
+
+.shuttle-cal__nav-btn:hover {
+  background: var(--su-primary-softer);
+  border-color: rgba(9, 126, 82, 0.35);
+}
+
+.shuttle-cal__nav-btn:active {
+  transform: scale(0.96);
+}
+
+.shuttle-cal__nav-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.shuttle-cal__title {
+  flex: 1;
+  text-align: center;
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--su-text);
+}
+
+.shuttle-cal__dow-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.shuttle-cal__dow-cell {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--su-muted);
+  padding: 4px 0;
+}
+
+.shuttle-cal__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.shuttle-cal__day {
+  aspect-ratio: 1;
+  max-height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--su-text);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+}
+
+.shuttle-cal__day:hover:not(:disabled) {
+  background: var(--su-primary-soft);
+  color: var(--su-primary-dark);
+}
+
+.shuttle-cal__day--muted {
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
+.shuttle-cal__day--muted:hover {
+  background: rgba(148, 163, 184, 0.1);
+  color: #94a3b8;
+}
+
+.shuttle-cal__day--selected {
+  background: linear-gradient(145deg, #0a9060 0%, var(--su-primary) 100%);
+  color: #fff !important;
+  box-shadow: 0 3px 10px rgba(9, 126, 82, 0.4);
+}
+
+.shuttle-cal__day--selected:hover {
+  background: linear-gradient(145deg, #0b9d68 0%, #0a8558 100%);
+  color: #fff;
+}
+
+.shuttle-cal__day--today:not(.shuttle-cal__day--selected) {
+  box-shadow: inset 0 0 0 2px rgba(9, 126, 82, 0.5);
+  color: var(--su-primary);
+  font-weight: 800;
+}
+
+/* Footer — đồng bộ nút với hệ thống */
+.shuttle-cal__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 10px;
+  padding: 12px 14px 14px;
+  margin: 6px -14px -10px;
+  border-top: 1px solid #eef2f0;
+  background: #fafcfb;
+}
+
+.shuttle-cal__action {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease, color 0.15s ease;
+}
+
+.shuttle-cal__action--ghost {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: var(--su-muted);
+}
+
+.shuttle-cal__action--ghost:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: var(--su-text);
+}
+
+.shuttle-cal__action--primary {
+  border: 1px solid var(--su-primary);
+  background: linear-gradient(180deg, #0a9060 0%, var(--su-primary) 100%);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(9, 126, 82, 0.25);
+}
+
+.shuttle-cal__action--primary:hover {
+  filter: brightness(1.05);
+}
+
+.shuttle-cal__action:active {
+  transform: scale(0.98);
+}
+
+/* ── Time chip picker ── */
+.shuttle-time-picker {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--su-input-border);
+  background: linear-gradient(180deg, #fafcfb 0%, #f6f9f7 100%);
+}
+
+.shuttle-time-picker__preview {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e8eef0;
+}
+
+.shuttle-time-picker__preview-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--su-muted);
+}
+
+.shuttle-time-picker__preview-time {
+  font-size: 1.125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--su-primary);
+  letter-spacing: 0.03em;
+}
+
+.shuttle-time-picker__block {
+  margin-bottom: 12px;
+}
+
+.shuttle-time-picker__block:last-child {
+  margin-bottom: 0;
+}
+
+.shuttle-time-picker__block-title {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--su-text);
+  margin-bottom: 8px;
+  letter-spacing: 0.02em;
+}
+
+.shuttle-time-picker__grid-hour {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+
+.shuttle-time-picker__row-min {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.shuttle-time-picker__chip {
+  min-height: 34px;
+  padding: 0 6px;
+  border: 1px solid var(--su-input-border);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--su-text);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+.shuttle-time-picker__chip:hover {
+  border-color: rgba(9, 126, 82, 0.4);
+  background: var(--su-primary-softer);
+  color: var(--su-primary-dark);
+}
+
+.shuttle-time-picker__chip--min {
+  min-width: 48px;
+  flex: 1;
+  min-height: 36px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.shuttle-time-picker__chip.is-active {
+  border-color: var(--su-primary);
+  background: linear-gradient(180deg, #0a9060 0%, var(--su-primary) 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(9, 126, 82, 0.3);
+}
+
+.shuttle-time-picker__chip.is-active:hover {
+  filter: brightness(1.06);
+  color: #fff;
+}
+
+@media (max-width: 400px) {
+  .shuttle-time-picker__grid-hour {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}

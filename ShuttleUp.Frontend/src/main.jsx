@@ -2,9 +2,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 
 // Bootstrap is loaded from the template in index.html to preserve the CSS cascading order.
-
-// Font Awesome (local bundle — avoids third-party CDN / tracking-prevention warnings)
-import '@fortawesome/fontawesome-free/css/all.min.css';
+// Font Awesome is loaded from public/assets/plugins via <link> in index.html (not npm).
 
 // AOS globally (init is done per-page)
 import 'aos/dist/aos.css';
