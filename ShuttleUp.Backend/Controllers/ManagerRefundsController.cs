@@ -144,12 +144,7 @@ public class ManagerRefundsController : ControllerBase
             }
 
             var policy = ParsePolicyOrDefault(refund.Booking.CancellationPolicySnapshotJson);
-            var refundAmount = policy.RefundType switch
-            {
-                "FULL" => paidAmount,
-                "PERCENT" when policy.RefundPercent.HasValue => Math.Round(paidAmount * policy.RefundPercent.Value / 100m, 0),
-                _ => 0,
-            };
+            var refundAmount = policy.ComputeRefundAmount(paidAmount);
 
             refund.Status = "PENDING_REFUND";
             refund.PaidAmount = paidAmount;
@@ -175,8 +170,11 @@ public class ManagerRefundsController : ControllerBase
         }
         else
         {
+            if (string.IsNullOrWhiteSpace(dto.Reason))
+                return BadRequest(new { message = "Vui lòng nhập lý do từ chối để người chơi được biết." });
+
             refund.Status = "REJECTED";
-            refund.RejectionReason = string.IsNullOrWhiteSpace(dto.Reason) ? "Không nhận được chuyển khoản." : dto.Reason.Trim();
+            refund.RejectionReason = dto.Reason.Trim();
             refund.ProcessedBy = managerId;
             refund.ProcessedAt = DateTime.UtcNow;
             refund.Booking!.Status = "CANCELLED";
@@ -229,6 +227,9 @@ public class ManagerRefundsController : ControllerBase
 
         if (refund.Status != "PENDING_REFUND")
             return BadRequest(new { message = "Yêu cầu không ở trạng thái chờ hoàn tiền." });
+
+        if (refund.ManagerEvidenceFileId == null)
+            return BadRequest(new { message = "Oops… Bạn cần tải ảnh biên lai chuyển khoản hoàn tiền trước khi đánh dấu hoàn tất." });
 
         refund.Status = "COMPLETED";
         refund.ProcessedBy = managerId;

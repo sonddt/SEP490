@@ -695,8 +695,16 @@ export default function UserBookings() {
 
                     <div className="row g-2 mb-3">
                       <div className="col-4 text-center">
-                        <small className="text-muted d-block">Đã thanh toán</small>
-                        <strong>{Number(cancelPreview.payment?.paidAmount || 0).toLocaleString('vi-VN')} ₫</strong>
+                        <small className="text-muted d-block">
+                          {cancelPreview.cancelBranch === 'PROOF_UPLOADED' ? 'Chờ đối soát (CK)' : 'Đã thanh toán'}
+                        </small>
+                        <strong>
+                          {Number(
+                            cancelPreview.cancelBranch === 'PROOF_UPLOADED'
+                              ? (cancelPreview.payment?.pendingPaymentAmount ?? 0)
+                              : (cancelPreview.payment?.paidAmount || 0)
+                          ).toLocaleString('vi-VN')} ₫
+                        </strong>
                       </div>
                       <div className="col-4 text-center">
                         <small className="text-muted d-block">Phí phạt</small>
@@ -707,6 +715,12 @@ export default function UserBookings() {
                         <strong className="text-success">{Number(cancelPreview.refund?.refundAmount || 0).toLocaleString('vi-VN')} ₫</strong>
                       </div>
                     </div>
+
+                    {cancelPreview.refund?.refundEstimateNote && (
+                      <div className="small text-muted mb-2">
+                        <i className="feather-info me-1" />{cancelPreview.refund.refundEstimateNote}
+                      </div>
+                    )}
 
                     {cancelPreview.cancelBranch === 'PROOF_UPLOADED' && (
                       <div className="alert alert-warning small mb-3">

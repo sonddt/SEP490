@@ -13,6 +13,7 @@ const PAGE_TITLES = {
   '/manager/notifications': { title: 'Thông báo', crumbs: [] },
   '/manager/earnings': { title: 'Doanh thu', crumbs: [] },
   '/manager/payment-settings': { title: 'Cài đặt thanh toán', crumbs: [] },
+  '/manager/venue-policy-settings': { title: 'Chính sách sân và hoàn tiền', crumbs: [] },
 };
 
 function getPageMeta(pathname) {

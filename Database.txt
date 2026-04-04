@@ -1,16 +1,30 @@
 -- ======================================================================
--- BƯỚC 1: RESET DATABASE
+-- SHUTTLE_UP — MỘT FILE, CHẠY MỘT LẦN (single source of truth)
 -- ======================================================================
--- Backend (.NET) mặc định: ConnectionStrings:DefaultConnection → database=shuttle_up
--- (xem ShuttleUp.Backend/appsettings.json). Có thể ghi đè bằng biến môi trường
--- ConnectionStrings__DefaultConnection khi chạy Docker/IIS.
+-- Chỉ cần script này: không chạy thêm file migration rời cho venues (includes / rules /
+-- amenities), payment VietQR, refund_requests, v.v. — tất cả đã gộp (CREATE + khối ALTER
+-- có điều kiện ở cuối).
 --
 -- Schema + dữ liệu mẫu: CHỈ sửa file này — không dùng thêm file .sql rời trong repo.
 -- Khi cần DB sạch đồng bộ code: chạy lại TOÀN BỘ script từ dòng CREATE DATABASE trở xuống.
+--
+-- Cách chạy:
+--   • MySQL Workbench: kết nối server → mở file này → Ctrl+A → Execute toàn bộ.
+--   • CLI: mysql -u ... -p < Database.txt   (hoặc: SOURCE đường_dẫn/Database.txt)
+--
+-- Lưu ý:
+--   • Script có DROP TABLE + CREATE + INSERT mẫu → phù hợp reset môi trường dev / DB mới.
+--   • Phần ALTER cuối file kiểm tra information_schema: cột đã có thì bỏ qua (an toàn
+--     nếu bạn chỉ paste chạy phần migration trên DB cũ cần giữ dữ liệu — nguồn chuẩn vẫn là file này).
+--   • Backend: ConnectionStrings:DefaultConnection → database=shuttle_up
+--     (ShuttleUp.Backend/appsettings.json); có thể ghi đè bằng biến môi trường.
+--   • Workbench: luôn USE shuttle_up; hoặc chọn schema shuttle_up ở panel trái; bôi đen một đoạn thì DATABASE() có thể lệch.
+--
 -- Nếu API báo "Unknown column ...":
 --   1) Xác nhận backend đang trỏ đúng server/DB (mặc định shuttle_up).
 --   2) Chạy lại full Database.txt; tránh chỉ chạy nửa file nếu chưa rà soát thứ tự DROP/CREATE.
--- Workbench: bôi đen một đoạn thì DATABASE() có thể lệch — luôn USE shuttle_up; hoặc chọn schema ở panel trái.
+--   Ví dụ matching (parent_comment_id, v.v.): migration nằm trong file này.
+--
 -- Trang /featured trống: phải có bảng featured_posts + INSERT mẫu (phần FEATURED POSTS MẪU). Nếu chạy lại script mà thiếu DROP featured_posts
 -- thì CREATE TABLE featured_posts có thể lỗi "already exists" và phần sau không chạy — đã có DROP featured_posts trong khối VENUE.
 -- ======================================================================
@@ -1210,6 +1224,34 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE venues ADD COLUMN refund_percent DECIMAL(5,2) NULL',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Nội dung chi tiết sân (JSON) — EF map includes / rules / amenities; DB cũ có thể thiếu → 500 khi query venues
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'includes'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN includes JSON NULL COMMENT ''Mảng chuỗi — những gì khách được sử dụng khi thuê sân''',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'rules'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN rules JSON NULL COMMENT ''Mảng chuỗi — các quy định tại cơ sở''',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'amenities'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN amenities JSON NULL COMMENT ''Mảng key chuỗi — tiện ích có tại cơ sở (parking, wifi, ...)''',
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
