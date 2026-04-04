@@ -1,16 +1,25 @@
 -- ======================================================================
--- BƯỚC 1: RESET DATABASE
+-- SHUTTLE_UP — MỘT FILE, CHẠY MỘT LẦN (single source of truth)
 -- ======================================================================
--- Backend (.NET) mặc định: ConnectionStrings:DefaultConnection → database=shuttle_up
--- (xem ShuttleUp.Backend/appsettings.json). Có thể ghi đè bằng biến môi trường
--- ConnectionStrings__DefaultConnection khi chạy Docker/IIS.
+-- Chỉ cần script này: không chạy thêm file migration rời cho venues (includes / rules /
+-- amenities), payment VietQR, refund_requests, v.v. — tất cả đã gộp (CREATE + khối ALTER
+-- có điều kiện ở cuối).
 --
--- Nếu API báo "Unknown column 'm.parent_comment_id'":
---   1) MySQL phải là ĐÚNG server/DB mà API dùng (không phải instance khác).
---   2) Chạy: USE shuttle_up; rồi xem docs/verify_shuttle_up_matching_comments.sql
---   3) Nếu cột thiếu: chạy docs/migration_matching_post_comment_replies.sql (sau USE shuttle_up).
--- Workbench: khi chỉ bôi đen một đoạn script, DATABASE() có thể không phải shuttle_up —
--- luôn USE shuttle_up; trước, hoặc chọn schema shuttle_up ở panel bên trái.
+-- Cách chạy:
+--   • MySQL Workbench: kết nối server → mở file này → Ctrl+A → Execute toàn bộ.
+--   • CLI: mysql -u ... -p < Database.txt   (hoặc: SOURCE đường_dẫn/Database.txt)
+--
+-- Lưu ý:
+--   • Script có DROP TABLE + CREATE + INSERT mẫu → phù hợp reset môi trường dev / DB mới.
+--   • Phần ALTER cuối file kiểm tra information_schema: cột đã có thì bỏ qua (an toàn
+--     nếu bạn chỉ paste chạy phần migration trên DB cũ cần giữ dữ liệu — nhưng nguồn
+--     chuẩn vẫn là file này).
+--   • Backend: ConnectionStrings:DefaultConnection → database=shuttle_up
+--     (ShuttleUp.Backend/appsettings.json); có thể ghi đè bằng biến môi trường.
+--   • Workbench: luôn thấy USE shuttle_up; ở đầu, hoặc chọn schema shuttle_up bên trái.
+--
+-- Nếu API báo thiếu cột matching (ví dụ parent_comment_id): dùng đúng DB shuttle_up;
+-- các migration matching nằm trong file này hoặc docs/migration_matching_*.sql nếu tách riêng.
 -- ======================================================================
 CREATE DATABASE IF NOT EXISTS shuttle_up;
 USE shuttle_up;
@@ -1128,6 +1137,34 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE venues ADD COLUMN refund_percent DECIMAL(5,2) NULL',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Nội dung chi tiết sân (JSON) — EF map includes / rules / amenities; DB cũ có thể thiếu → 500 khi query venues
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'includes'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN includes JSON NULL COMMENT ''Mảng chuỗi — những gì khách được sử dụng khi thuê sân''',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'rules'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN rules JSON NULL COMMENT ''Mảng chuỗi — các quy định tại cơ sở''',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'amenities'
+);
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE venues ADD COLUMN amenities JSON NULL COMMENT ''Mảng key chuỗi — tiện ích có tại cơ sở (parking, wifi, ...)''',
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 

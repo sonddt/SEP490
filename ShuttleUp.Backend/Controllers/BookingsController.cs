@@ -872,6 +872,11 @@ public class BookingsController : ControllerBase
         return (hasProof, paymentConfirmed, paidAmount);
     }
 
+    private static decimal SumPendingPaymentAmount(ICollection<Payment> payments) =>
+        payments
+            .Where(p => p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase))
+            .Sum(p => p.Amount ?? 0);
+
     /// <summary>
     /// Preview trước khi hủy: hiển thị chính sách, phí phạt, số tiền hoàn.
     /// </summary>
@@ -893,6 +898,7 @@ public class BookingsController : ControllerBase
 
         var policy = ParsePolicyOrDefault(booking.CancellationPolicySnapshotJson);
         var (hasProof, paymentConfirmed, paidAmount) = AnalyzePaymentState(booking.Payments);
+        var pendingPaymentAmount = SumPendingPaymentAmount(booking.Payments);
         var finalAmount = booking.FinalAmount ?? booking.TotalAmount ?? 0;
 
         var starts = booking.BookingItems
@@ -909,15 +915,23 @@ public class BookingsController : ControllerBase
 
         decimal refundAmount = 0;
         decimal penaltyAmount = 0;
-        if (cancelBranch == "PAID" && withinDeadline && policy.AllowCancel)
+        string? refundEstimateNote = null;
+
+        if (withinDeadline && policy.AllowCancel)
         {
-            refundAmount = policy.RefundType switch
+            if (cancelBranch == "PAID")
             {
-                "FULL" => paidAmount,
-                "PERCENT" when policy.RefundPercent.HasValue => Math.Round(paidAmount * policy.RefundPercent.Value / 100m, 0),
-                _ => 0,
-            };
-            penaltyAmount = paidAmount - refundAmount;
+                refundAmount = policy.ComputeRefundAmount(paidAmount);
+                penaltyAmount = paidAmount - refundAmount;
+            }
+            else if (cancelBranch == "PROOF_UPLOADED")
+            {
+                // Khớp với reconcile: sau khi chủ sân xác nhận, PENDING → COMPLETED rồi áp policy.
+                refundAmount = policy.ComputeRefundAmount(pendingPaymentAmount);
+                penaltyAmount = pendingPaymentAmount - refundAmount;
+                refundEstimateNote =
+                    "Số tiền hoàn là ước tính sau khi chủ sân xác nhận đã nhận đủ chuyển khoản (đối soát).";
+            }
         }
 
         return Ok(new
@@ -948,12 +962,14 @@ public class BookingsController : ControllerBase
                 hasProof,
                 paymentConfirmed,
                 paidAmount,
+                pendingPaymentAmount,
                 finalAmount,
             },
             refund = new
             {
                 refundAmount,
                 penaltyAmount,
+                refundEstimateNote,
                 policyDescription = policy.RefundType switch
                 {
                     "FULL" => $"Hủy trước {policy.CancelBeforeMinutes} phút → hoàn 100%.",
@@ -1065,14 +1081,7 @@ public class BookingsController : ControllerBase
         {
             decimal refundAmount = 0;
             if (cancelBranch == "PAID")
-            {
-                refundAmount = policy.RefundType switch
-                {
-                    "FULL" => paidAmount,
-                    "PERCENT" when policy.RefundPercent.HasValue => Math.Round(paidAmount * policy.RefundPercent.Value / 100m, 0),
-                    _ => 0,
-                };
-            }
+                refundAmount = policy.ComputeRefundAmount(paidAmount);
 
             refundReq = new RefundRequest
             {

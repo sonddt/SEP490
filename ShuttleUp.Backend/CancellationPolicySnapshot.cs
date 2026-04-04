@@ -16,4 +16,19 @@ public class CancellationPolicySnapshot
 
     [JsonPropertyName("refundPercent")]
     public decimal? RefundPercent { get; set; }
+
+    /// <summary>
+    /// Hoàn tiền theo snapshot (FULL / PERCENT / NONE). Dùng chung cho preview, hủy đơn và đối soát.
+    /// </summary>
+    public decimal ComputeRefundAmount(decimal baseAmount)
+    {
+        if (baseAmount <= 0) return 0;
+        var rt = string.IsNullOrWhiteSpace(RefundType) ? "NONE" : RefundType.Trim().ToUpperInvariant();
+        return rt switch
+        {
+            "FULL" => baseAmount,
+            "PERCENT" when RefundPercent.HasValue => Math.Round(baseAmount * RefundPercent.Value / 100m, 0),
+            _ => 0,
+        };
+    }
 }

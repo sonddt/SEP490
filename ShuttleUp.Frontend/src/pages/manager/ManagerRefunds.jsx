@@ -98,6 +98,8 @@ export default function ManagerRefunds() {
     return <span className={`badge ${s.cls}`}>{s.text}</span>;
   };
 
+  const hasRefundEvidenceForComplete = !!(detail?.managerEvidenceUrl || evidenceFile);
+
   return (
     <div className="mgr-page">
       {toastMsg && (
@@ -284,19 +286,22 @@ export default function ManagerRefunds() {
                     <p className="small text-muted mb-3">
                       Chuyển khoản <strong className="text-success">{Number(detail.requestedAmount || 0).toLocaleString('vi-VN')} ₫</strong> vào
                       {detail.refundBankName ? ` ${detail.refundBankName} — ${detail.refundAccountNumber} (${detail.refundAccountHolder})` : ' tài khoản người chơi đã cung cấp'}.
-                      Sau đó upload ảnh bill CK và bấm "Đã chuyển khoản hoàn tiền".
+                      Tải ảnh bill CK hoàn tiền, sau đó bấm &quot;Đã chuyển khoản hoàn tiền&quot;.
                     </p>
                     <div className="mb-3">
-                      <label className="form-label small fw-semibold">Ảnh bill CK hoàn (tùy chọn)</label>
+                      <label className="form-label small fw-semibold">Ảnh bill CK hoàn <span className="text-danger">*</span></label>
                       <input type="file" accept="image/*" className="form-control form-control-sm"
                         onChange={e => setEvidenceFile(e.target.files?.[0] || null)} />
+                      {!hasRefundEvidenceForComplete && (
+                        <div className="small text-danger mt-1">Oops… Cần có ảnh bill trước khi hoàn tất.</div>
+                      )}
                     </div>
                     <div className="mb-3">
                       <label className="form-label small fw-semibold">Ghi chú (tùy chọn)</label>
                       <input type="text" className="form-control form-control-sm" placeholder="VD: Đã CK lúc 14:30"
                         value={managerNote} onChange={e => setManagerNote(e.target.value)} />
                     </div>
-                    <button className="btn btn-primary btn-sm" disabled={submitting} onClick={() => handleComplete(detail)}>
+                    <button className="btn btn-primary btn-sm" disabled={submitting || !hasRefundEvidenceForComplete} onClick={() => handleComplete(detail)}>
                       {submitting ? 'Đang xử lý…' : <><i className="feather-check-circle me-1" />Đã chuyển khoản hoàn tiền</>}
                     </button>
                   </div>
