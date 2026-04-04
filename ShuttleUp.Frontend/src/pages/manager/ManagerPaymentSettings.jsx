@@ -2,15 +2,41 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { getVenueCheckoutSettings } from '../../api/bookingApi';
 import { getManagedVenues, putVenueCheckoutSettings } from '../../api/managerVenueApi';
 
+// Map bank name → BIN (for VietQR auto-generation)
+const BANK_BIN_MAP = {
+  'Vietcombank':  '970436',
+  'BIDV':         '970418',
+  'VietinBank':   '970415',
+  'Techcombank':  '970407',
+  'MB Bank':      '970422',
+  'ACB':          '970416',
+  'Sacombank':    '970403',
+  'VP Bank':      '970432',
+  'TPBank':       '970423',
+  'HD Bank':      '970437',
+  'SHB':          '970443',
+  'OCB':          '970448',
+  'SeABank':      '970440',
+  'LPBank':       '970449',
+  'Eximbank':     '970431',
+  'Agribank':     '970405',
+  'MSB':          '970426',
+  'Nam A Bank':   '970428',
+  'Bắc Á Bank':  '970409',
+  'VIB':          '970441',
+};
+
 const BANKS = [
   'Vietcombank', 'BIDV', 'VietinBank', 'Techcombank', 'MB Bank',
   'ACB', 'Sacombank', 'VP Bank', 'TPBank', 'HD Bank',
-  'SHB', 'OCB', 'SeABank', 'LPBank', 'Eximbank', 'Khác',
+  'SHB', 'OCB', 'SeABank', 'LPBank', 'Eximbank',
+  'Agribank', 'MSB', 'Nam A Bank', 'Bắc Á Bank', 'VIB',
+  'Khác',
 ];
 
 const REFUND_OPTIONS = [
-  { value: 'NONE', label: 'Không hoàn tiền khi huỷ đúng hạn' },
-  { value: 'FULL', label: 'Hoàn 100% (nếu huỷ trước hạn)' },
+  { value: 'NONE', label: 'Không hoàn tiền khi huỷ' },
+  { value: 'FULL', label: 'Hoàn 100% (nếu huỷ đúng hạn)' },
   { value: 'PERCENT', label: 'Hoàn một phần (%)' },
 ];
 
@@ -47,8 +73,13 @@ function mapCheckoutToForm(data) {
 
 function buildPutBody(form) {
   const refundType = (form.refundType || 'NONE').toUpperCase();
+  // Resolve actual bank name: if "Khác" was selected, use the customBankName
+  const bankName = form.paymentBankName === 'Khác'
+    ? (form.customBankName?.trim() || 'Khác')
+    : (form.paymentBankName?.trim() || null);
+
   return {
-    paymentBankName: form.paymentBankName?.trim() || null,
+    paymentBankName: bankName || null,
     paymentBankBin: form.paymentBankBin?.trim() || null,
     paymentAccountNumber: form.paymentAccountNumber?.trim() || null,
     paymentAccountHolder: (form.paymentAccountHolder?.trim() || '').toUpperCase() || null,
@@ -61,15 +92,41 @@ function buildPutBody(form) {
 }
 
 function showToastSuccess(msg) {
+  const existing = document.querySelector('.ps-toast-container');
+  const container = existing || (() => {
+    const el = document.createElement('div');
+    el.className = 'ps-toast-container';
+    el.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;';
+    document.body.appendChild(el);
+    return el;
+  })();
+
   const toast = document.createElement('div');
-  toast.className = 'bk-toast bk-toast--success';
-  toast.innerHTML = `<i class="feather-check-circle"></i> ${msg}`;
-  toast.style.position = 'fixed';
-  toast.style.bottom = '24px';
-  toast.style.right = '24px';
-  toast.style.zIndex = '9999';
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
+  toast.style.cssText = `
+    background:#166534;color:#fff;padding:12px 18px;border-radius:10px;
+    font-size:14px;font-weight:500;display:flex;align-items:center;gap:8px;
+    box-shadow:0 4px 16px rgba(0,0,0,0.18);animation:slideInRight .25s ease;
+  `;
+  toast.innerHTML = `<span style="font-size:18px">✓</span> ${msg}`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity .3s';
+    setTimeout(() => {
+      toast.remove();
+      if (!container.children.length) container.remove();
+    }, 300);
+  }, 3000);
+}
+
+// Simple debounce hook
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debouncedValue;
 }
 
 export default function ManagerPaymentSettings() {
@@ -78,11 +135,12 @@ export default function ManagerPaymentSettings() {
   const [loadingVenues, setLoadingVenues] = useState(true);
   const [loadingSettings, setLoadingSettings] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [savedForm, setSavedForm] = useState(emptyForm); // track last saved state
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [pageError, setPageError] = useState('');
-
   const [previewQr, setPreviewQr] = useState(null);
+  const [qrLoading, setQrLoading] = useState(false);
   const initialVenuePicked = useRef(false);
 
   const getFieldError = (name) => fieldErrors[name] || '';
@@ -91,6 +149,11 @@ export default function ManagerPaymentSettings() {
     setForm((p) => ({ ...p, [key]: val }));
     setFieldErrors((p) => ({ ...p, [key]: '' }));
   };
+
+  // Detect unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    return JSON.stringify(form) !== JSON.stringify(savedForm);
+  }, [form, savedForm]);
 
   useEffect(() => {
     let cancelled = false;
@@ -122,10 +185,13 @@ export default function ManagerPaymentSettings() {
     setPageError('');
     try {
       const data = await getVenueCheckoutSettings(id, { amount: 250000, addInfo: 'XEM_TRUOC' });
-      setForm(mapCheckoutToForm(data));
+      const mapped = mapCheckoutToForm(data);
+      setForm(mapped);
+      setSavedForm(mapped); // sync saved state
     } catch {
       setPageError('Không tải được cài đặt thanh toán (đã chạy migration DB chưa?).');
       setForm(emptyForm());
+      setSavedForm(emptyForm());
     } finally {
       setLoadingSettings(false);
     }
@@ -143,25 +209,31 @@ export default function ManagerPaymentSettings() {
       .replace('[Ngày]', '26/03/2026');
   }, [form.paymentTransferNoteTemplate]);
 
+  // Debounce the previewNote so we don't fire API on every keystroke
+  const debouncedPreviewNote = useDebounce(previewNote, 600);
+
   useEffect(() => {
     if (!venueId) {
       setPreviewQr(null);
       return;
     }
     let cancelled = false;
+    setQrLoading(true);
     (async () => {
       try {
         const data = await getVenueCheckoutSettings(venueId, {
           amount: 250000,
-          addInfo: previewNote,
+          addInfo: debouncedPreviewNote,
         });
         if (!cancelled) setPreviewQr(data?.vietQrImageUrl || null);
       } catch {
         if (!cancelled) setPreviewQr(null);
+      } finally {
+        if (!cancelled) setQrLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [venueId, previewNote]);
+  }, [venueId, debouncedPreviewNote]);
 
   const getInputStyle = (fieldName) => ({
     background: '#f8fafc',
@@ -171,14 +243,42 @@ export default function ManagerPaymentSettings() {
     boxShadow: 'none',
   });
 
+  // Handle venue change with unsaved-changes guard
+  const handleVenueChange = (newVenueId) => {
+    if (hasUnsavedChanges) {
+      const ok = window.confirm(
+        'Bạn có thay đổi chưa được lưu.\nNếu chuyển sang cụm sân khác, các thay đổi sẽ bị mất.\nBạn có muốn tiếp tục không?'
+      );
+      if (!ok) return;
+    }
+    setVenueId(newVenueId);
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     if (!venueId) return;
 
     const errors = {};
-    if (!form.paymentBankName?.trim()) errors.paymentBankName = 'Chọn hoặc nhập tên ngân hàng.';
-    if (!form.paymentAccountNumber?.trim()) errors.paymentAccountNumber = 'Nhập số tài khoản.';
+
+    // Resolve effective bank name for validation
+    const effectiveBankName = form.paymentBankName === 'Khác'
+      ? form.customBankName?.trim()
+      : form.paymentBankName?.trim();
+
+    if (!effectiveBankName) errors.paymentBankName = 'Chọn hoặc nhập tên ngân hàng.';
+
+    // Account number: digits only, 6–19 chars
+    const acctNum = form.paymentAccountNumber?.trim() || '';
+    if (!acctNum) {
+      errors.paymentAccountNumber = 'Nhập số tài khoản.';
+    } else if (!/^\d+$/.test(acctNum)) {
+      errors.paymentAccountNumber = 'Số tài khoản chỉ được chứa chữ số.';
+    } else if (acctNum.length < 6 || acctNum.length > 19) {
+      errors.paymentAccountNumber = 'Số tài khoản phải từ 6 đến 19 chữ số.';
+    }
+
     if (!form.paymentAccountHolder?.trim()) errors.paymentAccountHolder = 'Nhập tên chủ tài khoản.';
+
     const rt = (form.refundType || 'NONE').toUpperCase();
     if (rt === 'PERCENT') {
       const p = Number(form.refundPercent);
@@ -198,7 +298,7 @@ export default function ManagerPaymentSettings() {
       await putVenueCheckoutSettings(venueId, buildPutBody(form));
       setPageError('');
       showToastSuccess('Đã lưu cài đặt thanh toán & chính sách huỷ.');
-      await loadSettings(venueId);
+      await loadSettings(venueId); // này sẽ sync lại savedForm
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Lưu thất bại.';
       setPageError(msg);
@@ -208,6 +308,24 @@ export default function ManagerPaymentSettings() {
   };
 
   const selectedVenueName = venues.find((v) => v.id === venueId)?.name || '';
+
+  // Policy summary in plain language
+  const policySummary = useMemo(() => {
+    if (!form.cancelAllowed) return 'Người chơi không được phép tự huỷ đặt sân trên app.';
+    const mins = Number(form.cancelBeforeMinutes);
+    let timeStr = '';
+    if (mins >= 1440) timeStr = `${mins / 1440} ngày`;
+    else if (mins >= 60) timeStr = `${mins / 60} giờ`;
+    else timeStr = `${mins} phút`;
+
+    const refund = (form.refundType || 'NONE').toUpperCase();
+    let refundStr = '';
+    if (refund === 'NONE') refundStr = 'không hoàn tiền';
+    else if (refund === 'FULL') refundStr = 'hoàn 100%';
+    else if (refund === 'PERCENT') refundStr = `hoàn ${form.refundPercent ?? '?'}%`;
+
+    return `Người chơi được huỷ trước ${timeStr}, ${refundStr} số tiền đã cọc.`;
+  }, [form.cancelAllowed, form.cancelBeforeMinutes, form.refundType, form.refundPercent]);
 
   return (
     <div className="mgr-page">
@@ -220,6 +338,15 @@ export default function ManagerPaymentSettings() {
             Thông tin nhận tiền và chính sách huỷ cho từng cụm sân (theo venue).
           </p>
         </div>
+        {hasUnsavedChanges && (
+          <span style={{
+            background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a',
+            borderRadius: 8, padding: '5px 14px', fontSize: 13, fontWeight: 600,
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            <span>⚠</span> Có thay đổi chưa lưu
+          </span>
+        )}
       </div>
 
       {pageError && (
@@ -237,7 +364,7 @@ export default function ManagerPaymentSettings() {
           style={{ maxWidth: 480, borderRadius: 8 }}
           value={venueId}
           disabled={loadingVenues || venues.length === 0}
-          onChange={(e) => setVenueId(e.target.value)}
+          onChange={(e) => handleVenueChange(e.target.value)}
         >
           {venues.length === 0 && !loadingVenues && (
             <option value="">Chưa có cụm sân — hãy tạo venue trước</option>
@@ -254,11 +381,12 @@ export default function ManagerPaymentSettings() {
       <form onSubmit={handleSave} noValidate>
         <div className="row g-4 d-flex align-items-stretch">
           <div className="col-xl-8 col-lg-7 d-flex flex-column gap-4">
+            {/* Info banner */}
             <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
               <i className="feather-info" style={{ color: '#3b82f6', fontSize: 17, flexShrink: 0, marginTop: 2 }} />
               <div style={{ fontSize: 14, color: '#1e40af' }}>
-                Mã QR VietQR hiển thị cho người chơi được <strong>tạo tự động</strong> từ BIN ngân hàng + số TK + số tiền.
-                Nên điền đúng BIN (6 số) hoặc chọn đúng tên ngân hàng để nhận diện được.
+                Mã QR VietQR <strong>được tạo tự động</strong> từ thông tin tài khoản ngân hàng bạn nhập bên dưới — bạn <strong>không cần tải ảnh QR lên thủ công</strong>.
+                Người chơi sẽ thấy QR này khi thanh toán đặt sân.
               </div>
             </div>
 
@@ -270,6 +398,7 @@ export default function ManagerPaymentSettings() {
             )}
 
             <div className="row g-4 flex-grow-1">
+              {/* ===== Card: Bank Info ===== */}
               <div className="col-md-6 d-flex flex-column">
                 <div className="card flex-grow-1 border-0 shadow-sm" style={{ borderRadius: 12 }}>
                   <div className="card-header border-0 bg-transparent pt-4 pb-0">
@@ -285,6 +414,7 @@ export default function ManagerPaymentSettings() {
                     <hr className="mt-4 mb-0" style={{ borderColor: '#f1f5f9' }} />
                   </div>
                   <div className="card-body pt-4">
+                    {/* Bank select — auto-fills BIN */}
                     <div className="mb-4">
                       <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 8 }}>
                         Ngân hàng <span className="text-danger">*</span>
@@ -293,43 +423,84 @@ export default function ManagerPaymentSettings() {
                         className={`form-select ${getFieldError('paymentBankName') ? 'is-invalid' : ''}`}
                         style={getInputStyle('paymentBankName')}
                         value={form.paymentBankName}
-                        onChange={(e) => setField('paymentBankName', e.target.value)}
+                        onChange={(e) => {
+                          const bank = e.target.value;
+                          const autoBin = BANK_BIN_MAP[bank] || '';
+                          setForm((p) => ({ ...p, paymentBankName: bank, paymentBankBin: autoBin, customBankName: '' }));
+                          setFieldErrors((p) => ({ ...p, paymentBankName: '' }));
+                        }}
                       >
                         <option value="">-- Chọn ngân hàng --</option>
                         {BANKS.map((b) => <option key={b} value={b}>{b}</option>)}
                       </select>
                       {getFieldError('paymentBankName') && <div className="invalid-feedback d-block">{getFieldError('paymentBankName')}</div>}
                     </div>
-                    <div className="mb-4">
-                      <label style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>
-                        Mã BIN (6 số, tùy chọn)
-                      </label>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={8}
-                        className="form-control"
-                        style={getInputStyle('paymentBankBin')}
-                        placeholder="VD: 970436"
-                        value={form.paymentBankBin}
-                        onChange={(e) => setField('paymentBankBin', e.target.value.replace(/\D/g, '').slice(0, 8))}
-                      />
-                      <small className="text-muted">Dùng để tạo VietQR chính xác nếu tên NH không map được.</small>
-                    </div>
+
+                    {/* Custom bank name input when "Khác" is selected */}
+                    {form.paymentBankName === 'Khác' && (
+                      <div className="mb-4">
+                        <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 8 }}>
+                          Nhập tên ngân hàng <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          className={`form-control ${getFieldError('paymentBankName') ? 'is-invalid' : ''}`}
+                          style={getInputStyle('paymentBankName')}
+                          placeholder="VD: Bắc Á Bank, Agribank…"
+                          value={form.customBankName || ''}
+                          onChange={(e) => setField('customBankName', e.target.value)}
+                        />
+                        {/* Manual BIN input only when bank is not in the list */}
+                        <div className="mt-3">
+                          <label style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>
+                            Mã BIN ngân hàng <span className="text-muted fw-normal">(tùy chọn — dùng để tạo VietQR)</span>
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={8}
+                            className="form-control"
+                            style={getInputStyle('paymentBankBin')}
+                            placeholder="VD: 970436"
+                            value={form.paymentBankBin}
+                            onChange={(e) => setField('paymentBankBin', e.target.value.replace(/\D/g, '').slice(0, 8))}
+                          />
+                          <small className="text-muted">Tra mã BIN tại <a href="https://vietqr.io/danh-sach-ngan-hang" target="_blank" rel="noreferrer">vietqr.io</a> nếu ngân hàng của bạn chưa có trong danh sách.</small>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Show auto-filled BIN as readonly badge (not editable) */}
+                    {form.paymentBankName && form.paymentBankName !== 'Khác' && form.paymentBankBin && (
+                      <div className="mb-4">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#059669' }}>
+                          <i className="feather-check-circle" style={{ fontSize: 15 }} />
+                          <span>Mã BIN ngân hàng: <strong>{form.paymentBankBin}</strong> (tự động điền từ ngân hàng đã chọn)</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Account number — digits only */}
                     <div className="mb-4">
                       <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 8 }}>
                         Số tài khoản <span className="text-danger">*</span>
                       </label>
                       <input
                         type="text"
+                        inputMode="numeric"
                         className={`form-control ${getFieldError('paymentAccountNumber') ? 'is-invalid' : ''}`}
                         style={getInputStyle('paymentAccountNumber')}
                         placeholder="0123456789"
                         value={form.paymentAccountNumber}
-                        onChange={(e) => setField('paymentAccountNumber', e.target.value)}
+                        onChange={(e) => setField('paymentAccountNumber', e.target.value.replace(/\D/g, ''))}
                       />
-                      {getFieldError('paymentAccountNumber') && <div className="invalid-feedback">{getFieldError('paymentAccountNumber')}</div>}
+                      {getFieldError('paymentAccountNumber')
+                        ? <div className="invalid-feedback">{getFieldError('paymentAccountNumber')}</div>
+                        : <small className="text-muted">Chỉ nhập chữ số, không nhập dấu cách hoặc ký tự đặc biệt.</small>
+                      }
                     </div>
+
+                    {/* Account holder */}
                     <div className="mb-2">
                       <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 8 }}>
                         Chủ tài khoản <span className="text-danger">*</span>
@@ -344,6 +515,8 @@ export default function ManagerPaymentSettings() {
                       />
                       {getFieldError('paymentAccountHolder') && <div className="invalid-feedback">{getFieldError('paymentAccountHolder')}</div>}
                     </div>
+
+                    {/* Transfer note template */}
                     <div className="mb-0">
                       <label style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>
                         Mẫu nội dung chuyển khoản
@@ -361,6 +534,7 @@ export default function ManagerPaymentSettings() {
                 </div>
               </div>
 
+              {/* ===== Card: Cancellation Policy ===== */}
               <div className="col-md-6 d-flex flex-column">
                 <div className="card flex-grow-1 border-0 shadow-sm" style={{ borderRadius: 12 }}>
                   <div className="card-header border-0 bg-transparent pt-4 pb-0">
@@ -376,6 +550,7 @@ export default function ManagerPaymentSettings() {
                     <hr className="mt-4 mb-0" style={{ borderColor: '#f1f5f9' }} />
                   </div>
                   <div className="card-body pt-4">
+                    {/* Toggle */}
                     <div className="form-check form-switch mb-4">
                       <input
                         className="form-check-input"
@@ -389,72 +564,101 @@ export default function ManagerPaymentSettings() {
                       </label>
                     </div>
 
-                    <div className="mb-3">
-                      <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 8 }}>
-                        Phải huỷ trước giờ đá ít nhất
-                      </label>
-                      <div className="d-flex flex-wrap gap-2 mb-2">
-                        {CANCEL_PRESETS.map((m) => (
-                          <button
-                            key={m}
-                            type="button"
-                            className={`btn btn-sm ${form.cancelBeforeMinutes === m ? 'btn-primary' : 'btn-outline-secondary'}`}
-                            onClick={() => setField('cancelBeforeMinutes', m)}
+                    {/* Only show cancel policy details when cancelAllowed = true */}
+                    {form.cancelAllowed ? (
+                      <>
+                        {/* Cancel deadline presets */}
+                        <div className="mb-3">
+                          <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 8 }}>
+                            Phải huỷ trước giờ đá ít nhất
+                          </label>
+                          <div className="d-flex flex-wrap gap-2 mb-2">
+                            {CANCEL_PRESETS.map((m) => (
+                              <button
+                                key={m}
+                                type="button"
+                                className={`btn btn-sm ${form.cancelBeforeMinutes === m ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                onClick={() => setField('cancelBeforeMinutes', m)}
+                              >
+                                {m >= 1440 ? `${m / 1440} ngày` : m >= 60 ? `${m / 60}h` : `${m} phút`}
+                              </button>
+                            ))}
+                          </div>
+                          <input
+                            type="number"
+                            min={0}
+                            max={10080}
+                            className="form-control"
+                            style={getInputStyle('cancelBeforeMinutes')}
+                            value={form.cancelBeforeMinutes}
+                            onChange={(e) => setField('cancelBeforeMinutes', Number(e.target.value))}
+                          />
+                          <small className="text-muted">Tính theo phút trước giờ bắt đầu sân (tối đa 10080 = 7 ngày).</small>
+                        </div>
+
+                        {/* Refund type */}
+                        <div className="mb-3">
+                          <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 8 }}>
+                            Hoàn tiền khi huỷ đúng hạn
+                          </label>
+                          <select
+                            className="form-select"
+                            style={getInputStyle('refundType')}
+                            value={form.refundType}
+                            onChange={(e) => setField('refundType', e.target.value)}
                           >
-                            {m >= 1440 ? `${m / 1440} ngày` : `${m} phút`}
-                          </button>
-                        ))}
-                      </div>
-                      <input
-                        type="number"
-                        min={0}
-                        max={10080}
-                        className="form-control"
-                        style={getInputStyle('cancelBeforeMinutes')}
-                        value={form.cancelBeforeMinutes}
-                        onChange={(e) => setField('cancelBeforeMinutes', Number(e.target.value))}
-                      />
-                      <small className="text-muted">Tính theo phút trước giờ bắt đầu sân (tối đa 10080 = 7 ngày).</small>
-                    </div>
+                            {REFUND_OPTIONS.map((o) => (
+                              <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                          </select>
+                        </div>
 
-                    <div className="mb-3">
-                      <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 8 }}>
-                        Hoàn tiền khi huỷ đúng hạn
-                      </label>
-                      <select
-                        className="form-select"
-                        style={getInputStyle('refundType')}
-                        value={form.refundType}
-                        onChange={(e) => setField('refundType', e.target.value)}
-                      >
-                        {REFUND_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value}>{o.label}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {(form.refundType || '').toUpperCase() === 'PERCENT' && (
-                      <div className="mb-0">
-                        <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 8 }}>
-                          Phần trăm hoàn <span className="text-danger">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          step={1}
-                          className={`form-control ${getFieldError('refundPercent') ? 'is-invalid' : ''}`}
-                          style={getInputStyle('refundPercent')}
-                          value={form.refundPercent ?? ''}
-                          onChange={(e) => setField('refundPercent', e.target.value === '' ? null : Number(e.target.value))}
-                        />
-                        {getFieldError('refundPercent') && <div className="invalid-feedback">{getFieldError('refundPercent')}</div>}
+                        {/* Refund percent — only when PERCENT */}
+                        {(form.refundType || '').toUpperCase() === 'PERCENT' && (
+                          <div className="mb-0">
+                            <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 8 }}>
+                              Phần trăm hoàn <span className="text-danger">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              step={1}
+                              className={`form-control ${getFieldError('refundPercent') ? 'is-invalid' : ''}`}
+                              style={getInputStyle('refundPercent')}
+                              value={form.refundPercent ?? ''}
+                              onChange={(e) => setField('refundPercent', e.target.value === '' ? null : Number(e.target.value))}
+                            />
+                            {getFieldError('refundPercent') && <div className="invalid-feedback">{getFieldError('refundPercent')}</div>}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      // Disabled state explanation
+                      <div style={{
+                        background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,
+                        padding: '14px 16px', color: '#991b1b', fontSize: 13,
+                        display: 'flex', alignItems: 'flex-start', gap: 8,
+                      }}>
+                        <i className="feather-lock" style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }} />
+                        <span>Người chơi <strong>không thể tự huỷ</strong> đặt sân. Chỉ quản lý sân mới có quyền huỷ đơn.</span>
                       </div>
                     )}
+
+                    {/* Policy summary in plain language */}
+                    <div style={{
+                      marginTop: 20, background: '#f0fdf4', border: '1px dashed #86efac',
+                      borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#166534',
+                      display: 'flex', alignItems: 'flex-start', gap: 8,
+                    }}>
+                      <i className="feather-file-text" style={{ fontSize: 15, flexShrink: 0, marginTop: 1 }} />
+                      <span><strong>Tóm tắt:</strong> {policySummary}</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
+              {/* Submit button */}
               <div className="col-12 mt-2">
                 <button
                   type="submit"
@@ -473,6 +677,7 @@ export default function ManagerPaymentSettings() {
             </div>
           </div>
 
+          {/* ===== Preview Panel ===== */}
           <div className="col-xl-4 col-lg-5">
             <div className="card shadow-sm border-0" style={{ position: 'sticky', top: '24px', borderRadius: 12 }}>
               <div className="card-header border-0 bg-transparent pt-4 pb-0 text-center">
@@ -484,19 +689,35 @@ export default function ManagerPaymentSettings() {
                 </p>
                 <div className="p-4 rounded-3 d-flex flex-column align-items-center" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
                   <div className="text-center mb-3">
-                    <div className="bg-white p-3 rounded-4 d-inline-block shadow-sm" style={{ border: '1px solid #e2e8f0' }}>
-                      <img
-                        src={previewQr || '/assets/img/qr-placeholder.png'}
-                        alt="VietQR"
-                        style={{ width: '130px', height: '130px', objectFit: 'contain' }}
-                        onError={(e) => { e.target.src = '/assets/img/qr-placeholder.png'; }}
-                      />
+                    <div className="bg-white p-3 rounded-4 d-inline-block shadow-sm" style={{ border: '1px solid #e2e8f0', minWidth: 158, minHeight: 158, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {qrLoading ? (
+                        <div className="text-muted" style={{ fontSize: 13 }}>
+                          <span className="spinner-border spinner-border-sm me-1" role="status" />
+                          Đang tải…
+                        </div>
+                      ) : previewQr ? (
+                        <img
+                          src={previewQr}
+                          alt="VietQR"
+                          style={{ width: '130px', height: '130px', objectFit: 'contain' }}
+                          onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+                        />
+                      ) : (
+                        <div style={{ color: '#94a3b8', fontSize: 12, textAlign: 'center', padding: '10px' }}>
+                          <i className="feather-image" style={{ fontSize: 32, display: 'block', marginBottom: 6 }} />
+                          Chưa đủ thông tin<br />để tạo QR
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="mt-3 text-center" style={{ fontSize: '14px', color: '#166534', width: '100%' }}>
                     <div className="mb-2 d-flex justify-content-between w-100">
                       <span className="opacity-75">Ngân hàng:</span>
-                      <strong className="text-end">{form.paymentBankName || '…'}</strong>
+                      <strong className="text-end">
+                        {form.paymentBankName === 'Khác'
+                          ? (form.customBankName || '…')
+                          : (form.paymentBankName || '…')}
+                      </strong>
                     </div>
                     <div className="mb-2 d-flex justify-content-between w-100">
                       <span className="opacity-75">Số TK:</span>
