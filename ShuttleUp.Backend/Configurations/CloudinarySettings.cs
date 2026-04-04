@@ -20,4 +20,6 @@ public class CloudinarySettings
     public string MatchingCommentFolder { get; set; } = "matching_comments";
 
     public string ChatAttachmentFolder { get; set; } = "chat_attachments";
+
+    public string FeaturedPostImageFolder { get; set; } = "featured_posts";
 }

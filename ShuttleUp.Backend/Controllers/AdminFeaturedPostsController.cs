@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ShuttleUp.Backend.Services.Interfaces;
 using ShuttleUp.BLL.DTOs.Featured;
 using ShuttleUp.DAL.Models;
 
@@ -14,10 +15,12 @@ namespace ShuttleUp.Backend.Controllers;
 public class AdminFeaturedPostsController : ControllerBase
 {
     private readonly ShuttleUpDbContext _db;
+    private readonly IFileService _fileService;
 
-    public AdminFeaturedPostsController(ShuttleUpDbContext db)
+    public AdminFeaturedPostsController(ShuttleUpDbContext db, IFileService fileService)
     {
         _db = db;
+        _fileService = fileService;
     }
 
     [HttpGet]
@@ -138,6 +141,21 @@ public class AdminFeaturedPostsController : ControllerBase
         _db.FeaturedPosts.Remove(post);
         await _db.SaveChangesAsync();
         return NoContent();
+    }
+
+    [HttpPost("upload-image")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UploadImage(IFormFile file)
+    {
+        var adminId = GetCurrentUserId();
+        if (adminId == Guid.Empty)
+            return Unauthorized();
+
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "Không có file ảnh." });
+
+        var result = await _fileService.UploadFeaturedPostImageAsync(file, adminId, HttpContext.RequestAborted);
+        return Ok(new { url = result.SecureUrl });
     }
 
     private Guid GetCurrentUserId()
