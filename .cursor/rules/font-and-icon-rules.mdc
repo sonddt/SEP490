@@ -40,6 +40,8 @@ alwaysApply: false
 
 - **NEVER** install `@fortawesome/fontawesome-free` (or any FontAwesome package) via npm. The npm bundle injects `@font-face` rules through Vite that override Vietnamese font rendering.
 - FontAwesome is loaded as a **static CSS file** from `public/assets/plugins/` — this keeps it outside the Vite bundle and avoids font conflicts.
+- **Webfonts must exist**: The CSS references `../webfonts/*.woff2`. These files must be present at `public/assets/plugins/fontawesome/webfonts/`. **Without them icons show as blank squares (□)**. The woff2 files are committed to git (required static assets).
+  - To refresh webfonts: temporarily `npm install @fortawesome/fontawesome-free`, copy `node_modules/@fortawesome/fontawesome-free/webfonts/*.woff2` → `public/assets/plugins/fontawesome/webfonts/`, then `npm uninstall @fortawesome/fontawesome-free`.
 - If you need a new icon, pick from Feather (Manager/Admin) or FontAwesome (Player/Landing) — do not add a third icon library.
 
 ## Modal z-index

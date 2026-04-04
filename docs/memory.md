@@ -159,6 +159,7 @@ Kết bạn & quan hệ xã hội (Player):
 2. **Sửa lỗi cấu hình font (quan trọng)**:
    - **Gỡ `@fortawesome/fontawesome-free` khỏi npm**: xóa import trong `main.jsx`, chạy `npm uninstall`. Package npm này khi bundle qua Vite sẽ chèn `@font-face` + CSS reset gây lỗi render tiếng Việt (dấu bị méo hoặc font fallback sai).
    - **Load FontAwesome từ file template local**: thêm `<link>` trong `index.html` trỏ tới `public/assets/plugins/fontawesome/css/all.min.css` (v7.1.0, file tĩnh không qua Vite bundle). Các trang Player/landing vẫn dùng class `fa-*` nên cần file này.
+   - **Webfonts phải có trong `public/`**: CSS FontAwesome trỏ tới `../webfonts/*.woff2` → các file này phải tồn tại tại `public/assets/plugins/fontawesome/webfonts/`. Nếu thiếu, icon hiện thành hình vuông trắng (□). Cách copy: tạm install npm FA, copy `node_modules/@fortawesome/fontawesome-free/webfonts/*.woff2` vào thư mục trên, rồi uninstall npm. Các file woff2 được commit vào git (static asset cần thiết).
    - **Xóa `font-family` ghi đè trong `ShuttleDatePicker.css`**: 2 chỗ đặt `font-family: system-ui, ...` trên `.shuttle-cal__title` và `.shuttle-cal__day` đã bị bỏ — giờ thừa hưởng "Be Vietnam Pro" từ layout cha.
 3. **Quy tắc font cố định**:
    - Font chữ chính: **"Be Vietnam Pro"** (Google Font, hỗ trợ tiếng Việt tốt) — load qua `style.css` template.
