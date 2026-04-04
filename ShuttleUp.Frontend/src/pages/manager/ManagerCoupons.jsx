@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, Link } from 'react-router-dom';
 import { getVenueCoupons, createVenueCoupon, updateVenueCoupon, deleteVenueCoupon } from '../../api/managerCouponsApi';
 import { toast } from 'react-toastify';
 import axiosClient from '../../api/axiosClient';
+import ShuttleDateField, { ShuttleTimePicker, toYMD } from '../../components/ui/ShuttleDateField';
 
 export default function ManagerCoupons() {
   const { venueId } = useParams();
@@ -131,7 +133,7 @@ export default function ManagerCoupons() {
     const code = form.code.trim();
     if (!code) { setFormError('Mã khuyến mãi không được để trống.'); return; }
     if (code.length < 3) { setFormError('Mã khuyến mãi phải có ít nhất 3 ký tự.'); return; }
-    if (!/^[A-Za-z0-9_-]+$/.test(code)) { setFormError('Mã chỉ được chứa chữ cái, số, dấu gạch ngang hoặc gạch dưới.'); return; }
+    if (!/^[A-Za-z0-9]+$/.test(code)) { setFormError('Mã chỉ được chứa chữ cái (hoa hoặc thường) và số.'); return; }
 
     const discountVal = Number(form.discountValue);
     if (!form.discountValue || isNaN(discountVal) || discountVal <= 0) {
@@ -300,7 +302,7 @@ export default function ManagerCoupons() {
                   <th className="ps-4 fw-semibold text-muted text-nowrap" style={{ fontSize: 13 }}>MÃ COUPON</th>
                   <th className="fw-semibold text-muted text-nowrap" style={{ fontSize: 13 }}>LOẠI GIẢM GIÁ</th>
                   <th className="fw-semibold text-muted text-nowrap" style={{ fontSize: 13 }}>THỜI GIAN ÁP DỤNG</th>
-                  <th className="fw-semibold text-muted text-nowrap" style={{ fontSize: 13 }}>LƯỢT DÙNG</th>
+                  <th className="fw-semibold text-muted text-nowrap" style={{ fontSize: 14 }}>LƯỢT DÙNG</th>
                   <th className="fw-semibold text-muted text-nowrap" style={{ fontSize: 13 }}>TRẠNG THÁI</th>
                   <th className="text-center fw-semibold text-muted text-nowrap pe-4" style={{ fontSize: 13 }}>THAO TÁC</th>
                 </tr>
@@ -336,6 +338,7 @@ export default function ManagerCoupons() {
                     const used = cp.usedCount || cp.UsedCount || 0;
                     const limit = cp.usageLimit || cp.UsageLimit;
                     const active = cp.isActive !== undefined ? cp.isActive : cp.IsActive;
+                    const isExhausted = limit && used >= limit;
 
                     return (
                       <tr key={id}>
@@ -359,26 +362,61 @@ export default function ManagerCoupons() {
                           <div className="text-dark"><i className="feather-calendar me-1 text-muted" /> {new Date(start).toLocaleDateString('vi-VN')}</div>
                           <div className="text-dark mt-1"><i className="feather-calendar me-1 text-muted" /> {new Date(end).toLocaleDateString('vi-VN')}</div>
                         </td>
-                        <td>
-                          <div className="d-flex flex-column">
-                            <span className="fw-bold fs-5 text-primary mb-1">{used}</span>
-                            <span className="text-muted small">/{limit ? limit : 'Không giới hạn'}</span>
+                        <td style={{ minWidth: 120 }}>
+                          <div className="d-flex align-items-baseline gap-2 flex-wrap">
+                            <span
+                              className="fw-bold"
+                              style={{
+                                fontSize: 22,
+                                lineHeight: 1.15,
+                                letterSpacing: '-0.02em',
+                                color: isExhausted ? '#ef4444' : '#0f172a',
+                              }}
+                            >
+                              {used}
+                            </span>
+                            <span className="text-muted" style={{ fontSize: 17, fontWeight: 500 }}>
+                              / {limit ?? '∞'}
+                            </span>
                           </div>
+                          {isExhausted && (
+                            <span className="d-inline-block mt-1" style={{ fontSize: 13, color: '#ef4444', fontWeight: 700 }}>
+                              Đã hết lượt
+                            </span>
+                          )}
                         </td>
                         <td>
                           {active ? (
-                            <span className="badge bg-success-light text-success fw-medium px-3 py-2 rounded-pill"><i className="feather-check-circle me-1" /> Hoạt động</span>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 14px', borderRadius: 20, fontSize: 13, fontWeight: 600, background: '#e8f5ee', color: '#097E52', border: '1px solid #b6e2cc' }}>
+                              <i className="feather-check-circle" style={{ fontSize: 13 }} /> Hoạt động
+                            </span>
                           ) : (
-                            <span className="badge bg-danger-light text-danger fw-medium px-3 py-2 rounded-pill"><i className="feather-x-circle me-1" /> Tạm ngưng</span>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 14px', borderRadius: 20, fontSize: 13, fontWeight: 600, background: '#fff1f2', color: '#ef4444', border: '1px solid #fecaca' }}>
+                              <i className="feather-x-circle" style={{ fontSize: 13 }} /> Tạm ngưng
+                            </span>
                           )}
                         </td>
                         <td className="text-center pe-4">
-                          <button onClick={() => openEdit(cp)} className="btn btn-sm btn-light btn-icon mx-1 rounded-circle" title="Sửa">
-                            <i className="feather-edit-3" />
-                          </button>
-                          <button onClick={() => handleDelete(id)} className="btn btn-sm btn-light btn-icon text-danger mx-1 rounded-circle" title="Xóa">
-                            <i className="feather-trash-2" />
-                          </button>
+                          <div className="d-flex align-items-center justify-content-center gap-2">
+                            <button
+                              onClick={() => openEdit(cp)}
+                              title="Sửa"
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 8, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#475569', cursor: 'pointer', transition: 'all .18s ease' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#097E52'; e.currentTarget.style.color = '#097E52'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#475569'; }}
+                            >
+                              <i className="feather-edit-3" style={{ fontSize: 15 }} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(id)}
+                              title="Xóa"
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 8, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#ef4444', cursor: 'pointer', transition: 'all .18s ease' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = '#fff1f2'; e.currentTarget.style.borderColor = '#fecaca'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                            >
+                              <i className="feather-trash-2" style={{ fontSize: 15 }} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -390,19 +428,26 @@ export default function ManagerCoupons() {
         </div>
       </div>
 
-      {/* Modal Popup for Add/Edit */}
-      {showModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
-          <div className="modal-dialog modal-dialog-centered modal-lg">
+      {/* Modal: portal ra body — tránh bị .mgr-topbar (z-index 1030) che do stacking trong .mgr-page */}
+      {showModal &&
+        createPortal(
+          <div
+            className="modal fade show d-block mgr-coupon-modal"
+            style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mgr-coupon-modal-title"
+          >
+          <div className="modal-dialog modal-lg" style={{ margin: '1.75rem auto' }}>
             <div className="modal-content rounded-4 border-0 shadow-lg">
               <div className="modal-header border-bottom-0 pb-0 pt-4 px-4">
                 <div className="d-flex align-items-center gap-3">
-                  <div className="bg-primary-light d-flex align-items-center justify-content-center rounded-3" style={{ width: 48, height: 48 }}>
-                    <i className="feather-gift text-primary fs-4" />
+                  <div className="bg-primary-light d-flex align-items-center justify-content-center rounded-3" style={{ width: 44, height: 44 }}>
+                    <i className="feather-gift text-primary" style={{ fontSize: 20 }} />
                   </div>
                   <div>
-                    <h4 className="modal-title fw-bold text-dark mb-1">{editingCoupon ? 'Cập nhật mã khuyến mãi' : 'Tạo mã khuyến mãi'}</h4>
-                    <p className="text-secondary small mb-0">Thiết lập điều kiện giảm giá cho khách đặt sân</p>
+                    <h4 id="mgr-coupon-modal-title" className="modal-title fw-bold text-dark mb-1 mgr-coupon-modal__title">{editingCoupon ? 'Cập nhật mã khuyến mãi' : 'Tạo mã khuyến mãi'}</h4>
+                    <p className="text-muted mb-0 mgr-coupon-modal__subtitle">Thiết lập điều kiện giảm giá cho khách đặt sân</p>
                   </div>
                 </div>
                 <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
@@ -421,18 +466,25 @@ export default function ManagerCoupons() {
                   <div className="row g-4">
                     <div className="col-12 col-md-6">
                       <label className="form-label fw-semibold">Mã Code <span className="text-danger">*</span></label>
-                      <input type="text" className="form-control form-control-lg bg-light border-0 text-uppercase" placeholder="VD: SUMMER24" value={form.code} onChange={e => setField('code', e.target.value.toUpperCase())} required />
+                      <input
+                        type="text"
+                        className="form-control bg-light border-0"
+                        placeholder="VD: Summer24"
+                        value={form.code}
+                        onChange={(e) => setField('code', e.target.value.replace(/[^A-Za-z0-9]/g, ''))}
+                        required
+                      />
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label fw-semibold">Trạng thái phát hành</label>
-                      <select className="form-select form-select-lg bg-light border-0 fw-medium" value={form.isActive} onChange={e => setField('isActive', e.target.value === 'true')}>
+                      <select className="form-select bg-light border-0" value={form.isActive} onChange={e => setField('isActive', e.target.value === 'true')}>
                         <option value="true">Đang kích hoạt (Cho phép dùng)</option>
                         <option value="false">Tạm khóa (Ngừng sử dụng)</option>
                       </select>
                     </div>
 
                     <div className="col-12 border-top pt-4 mt-2">
-                       <h6 className="fw-bold mb-3 text-secondary"><i className="feather-disc me-2" />Quy tắc giảm giá</h6>
+                       <h6 className="mgr-coupon-modal__section-title mb-3"><i className="feather-disc me-2" />Quy tắc giảm giá</h6>
                     </div>
 
                     <div className="col-12 col-md-4">
@@ -449,32 +501,88 @@ export default function ManagerCoupons() {
                     <div className="col-12 col-md-4">
                       <label className="form-label fw-semibold">Giảm tối đa (Tùy chọn)</label>
                       <input type="number" className="form-control bg-light border-0" placeholder="VD: 50000" disabled={form.discountType === 'FIXED'} value={form.maxDiscountAmount} onChange={e => setField('maxDiscountAmount', e.target.value)} />
-                      <small className="text-muted d-block mt-1" style={{ fontSize: 11 }}>Chỉ dùng mốc giảm %</small>
+                      <small className="text-muted d-block mt-1 mgr-coupon-modal__hint">Chỉ dùng khi giảm theo %</small>
                     </div>
 
                     <div className="col-12 col-md-6">
                       <label className="form-label fw-semibold">Giá trị đơn tối thiểu (Tùy chọn)</label>
                       <div className="input-group">
                         <input type="number" className="form-control bg-light border-0" placeholder="0" value={form.minBookingValue} onChange={e => setField('minBookingValue', e.target.value)} />
-                        <span className="input-group-text bg-light border-0 text-muted">VNĐ</span>
+                        <span className="input-group-text bg-light border-0 text-muted mgr-coupon-modal__suffix">VNĐ</span>
                       </div>
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label fw-semibold">Giới hạn số lần dùng (Tùy chọn)</label>
-                      <input type="number" className="form-control bg-light border-0" placeholder="Để trống nếu không giới hạn" min="1" value={form.usageLimit} onChange={e => setField('usageLimit', e.target.value)} />
+                      <input
+                        type="number"
+                        className="form-control bg-light border-0"
+                        placeholder="Để trống nếu không giới hạn"
+                        min="1"
+                        value={form.usageLimit}
+                        onChange={e => setField('usageLimit', e.target.value)}
+                      />
                     </div>
 
                     <div className="col-12 border-top pt-4 mt-2">
-                       <h6 className="fw-bold mb-3 text-secondary"><i className="feather-clock me-2" />Thời gian triển khai</h6>
+                      <h6 className="mgr-coupon-modal__section-title mb-2"><i className="feather-clock me-2" />Thời gian triển khai</h6>
+                      <p className="text-muted mb-3 mgr-coupon-modal__lead">Chọn ngày và khung giờ áp dụng cho mã khuyến mãi.</p>
                     </div>
 
                     <div className="col-12 col-md-6">
-                      <label className="form-label fw-semibold">Từ ngày <span className="text-danger">*</span></label>
-                      <input type="datetime-local" className="form-control bg-light border-0" value={form.startDate} onChange={e => setField('startDate', e.target.value)} required />
+                      <label className="form-label fw-semibold">Ngày bắt đầu <span className="text-danger">*</span></label>
+                      <ShuttleDateField
+                        value={form.startDate ? form.startDate.substring(0, 10) : ''}
+                        onChange={(ymd) => {
+                          const time = form.startDate.length > 10 ? form.startDate.substring(10) : 'T00:00';
+                          setField('startDate', (ymd || '') + (ymd ? time : ''));
+                        }}
+                        placeholder="dd/mm/yyyy"
+                      />
+                      <ShuttleTimePicker
+                        hourValue={form.startDate ? (form.startDate.substring(11, 13) || '00') : '00'}
+                        minuteValue={form.startDate ? (form.startDate.substring(14, 16) || '00') : '00'}
+                        onHourChange={(h) => {
+                          let datePart = form.startDate.substring(0, 10) || '';
+                          if (!datePart) datePart = toYMD(new Date());
+                          const min = form.startDate.substring(14, 16) || '00';
+                          setField('startDate', datePart + 'T' + h + ':' + min);
+                        }}
+                        onMinuteChange={(m) => {
+                          let datePart = form.startDate.substring(0, 10) || '';
+                          if (!datePart) datePart = toYMD(new Date());
+                          const hr = form.startDate.substring(11, 13) || '00';
+                          setField('startDate', datePart + 'T' + hr + ':' + m);
+                        }}
+                        minuteOptions={['00', '15', '30', '45']}
+                      />
                     </div>
                     <div className="col-12 col-md-6">
-                      <label className="form-label fw-semibold">Đến ngày <span className="text-danger">*</span></label>
-                      <input type="datetime-local" className="form-control bg-light border-0" value={form.endDate} onChange={e => setField('endDate', e.target.value)} required />
+                      <label className="form-label fw-semibold">Ngày kết thúc <span className="text-danger">*</span></label>
+                      <ShuttleDateField
+                        value={form.endDate ? form.endDate.substring(0, 10) : ''}
+                        onChange={(ymd) => {
+                          const time = form.endDate.length > 10 ? form.endDate.substring(10) : 'T23:59';
+                          setField('endDate', (ymd || '') + (ymd ? time : ''));
+                        }}
+                        placeholder="dd/mm/yyyy"
+                      />
+                      <ShuttleTimePicker
+                        hourValue={form.endDate ? (form.endDate.substring(11, 13) || '23') : '23'}
+                        minuteValue={form.endDate ? (form.endDate.substring(14, 16) || '59') : '59'}
+                        onHourChange={(h) => {
+                          let datePart = form.endDate.substring(0, 10) || '';
+                          if (!datePart) datePart = toYMD(new Date());
+                          const min = form.endDate.substring(14, 16) || '59';
+                          setField('endDate', datePart + 'T' + h + ':' + min);
+                        }}
+                        onMinuteChange={(m) => {
+                          let datePart = form.endDate.substring(0, 10) || '';
+                          if (!datePart) datePart = toYMD(new Date());
+                          const hr = form.endDate.substring(11, 13) || '23';
+                          setField('endDate', datePart + 'T' + hr + ':' + m);
+                        }}
+                        minuteOptions={['00', '15', '30', '45', '59']}
+                      />
                     </div>
                   </div>
                 </div>
@@ -485,8 +593,9 @@ export default function ManagerCoupons() {
               </form>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body
+        )}
     </div>
   );
 }

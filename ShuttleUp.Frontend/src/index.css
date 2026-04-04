@@ -722,6 +722,17 @@ a:active {
 
 /* â”€â”€ Delete confirm modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .mgr-delete-modal{position:fixed;inset:0;background:rgba(0,0,0,.48);z-index:1060;display:flex;align-items:center;justify-content:center;animation:fadeIn .15s ease}
+/* Modal khuyến mãi (ManagerCoupons): portal ra body, z-index trên .mgr-topbar (1030) */
+.mgr-coupon-modal{position:fixed!important;inset:0;z-index:1100!important;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.mgr-coupon-modal__title{font-size:1.125rem;font-weight:700;letter-spacing:-.02em;line-height:1.35}
+.mgr-coupon-modal__subtitle{font-size:.8125rem;line-height:1.45;color:#64748b!important}
+.mgr-coupon-modal__section-title{font-size:.8125rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#64748b;display:flex;align-items:center;gap:.25rem}
+.mgr-coupon-modal__lead{font-size:.8125rem;line-height:1.5;color:#64748b!important}
+.mgr-coupon-modal .modal-body .form-label{font-size:13px;font-weight:600;color:#475569;margin-bottom:6px}
+.mgr-coupon-modal .form-control,.mgr-coupon-modal .form-select{font-size:14px;font-weight:500;padding:9px 14px;border-radius:8px}
+.mgr-coupon-modal .form-control::placeholder{color:#94a3b8;font-weight:400;opacity:1}
+.mgr-coupon-modal__hint{font-size:.75rem!important;line-height:1.4;color:#64748b!important}
+.mgr-coupon-modal__suffix{font-size:13px!important;font-weight:500}
 .mgr-delete-modal__box{background:#fff;border-radius:16px;padding:36px 32px;max-width:400px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.2);animation:slideUp .2s ease}
 @keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
 .mgr-delete-modal__icon{width:64px;height:64px;background:#fef2f2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
