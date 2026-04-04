@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './context/AuthContext';
+import { ChatProvider } from './context/ChatProvider';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import PageLoader from './components/common/PageLoader';
@@ -170,6 +171,7 @@ function App() {
           <Route path="/user/favorites" element={<ProtectedRoute><UserFavorites /></ProtectedRoute>} />
           <Route path="/user/notifications" element={<ProtectedRoute><UserNotifications /></ProtectedRoute>} />
           <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+          <Route path="/user/chat" element={<Navigate to="/chat" replace />} />
 
           {/* ═══ Matching ═══ */}
           <Route path="/matching" element={<ProtectedRoute><MatchingHub /></ProtectedRoute>} />
@@ -264,7 +266,9 @@ function AppWithProviders() {
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <AuthProvider>
-        <App />
+        <ChatProvider>
+          <App />
+        </ChatProvider>
       </AuthProvider>
     </GoogleOAuthProvider>
   );

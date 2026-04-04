@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import socialApi from '../../api/socialApi';
 import { showBkToast } from '../../utils/bkToast';
+import { useChat } from '../../hooks/useChat';
 
 /**
  * Nút thao tác quan hệ (kết bạn / chặn / v.v.) — dùng chung trên tìm kiếm và profile người khác.
@@ -10,7 +11,11 @@ export default function RelationshipActions({
   initialState = null,
   initialRequestId = null,
   onChanged,
+  /** Hiển thị nút Nhắn tin khi đã là bạn (mini chat) */
+  chatPeerFullName,
+  chatPeerAvatarUrl,
 }) {
+  const { openChatWithPeer, openingPeerId } = useChat();
   const [state, setState] = useState(initialState);
   const [requestId, setRequestId] = useState(initialRequestId);
   const [loading, setLoading] = useState(initialState == null);
@@ -72,7 +77,7 @@ export default function RelationshipActions({
       key={key || label}
       type="button"
       className={`btn btn-sm btn-${variant} me-1 mb-1`}
-      disabled={busy}
+      disabled={busy || (key === 'open-chat' && openingPeerId === String(otherUserId))}
       onClick={onClick}
     >
       {label}
@@ -119,6 +124,17 @@ export default function RelationshipActions({
     case 'FRIENDS':
       return (
         <div className="d-flex flex-wrap">
+          {btn(
+            openingPeerId === String(otherUserId) ? 'Đang mở…' : 'Nhắn tin',
+            () =>
+              openChatWithPeer({
+                userId: otherUserId,
+                fullName: chatPeerFullName,
+                avatarUrl: chatPeerAvatarUrl,
+              }),
+            'primary',
+            'open-chat'
+          )}
           {btn(
             'Huỷ kết bạn',
             () => run(() => socialApi.unfriend(otherUserId), 'Đã cập nhật danh sách bạn bè.'),
