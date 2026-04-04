@@ -118,7 +118,12 @@ export default function UserSocialFriends() {
                         {name}
                       </Link>
                     </div>
-                    <RelationshipActions otherUserId={id} onChanged={loadAll} />
+                    <RelationshipActions
+                      otherUserId={id}
+                      onChanged={loadAll}
+                      chatPeerFullName={name}
+                      chatPeerAvatarUrl={av}
+                    />
                   </li>
                 );
               })}

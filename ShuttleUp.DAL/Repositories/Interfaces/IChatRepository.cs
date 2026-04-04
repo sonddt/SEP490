@@ -22,6 +22,6 @@ public interface IChatRepository
     /// <summary>Lấy tin nhắn theo trang (mới nhất trước)</summary>
     Task<IEnumerable<ChatMessage>> GetMessagesAsync(Guid roomId, int page = 1, int pageSize = 50);
 
-    /// <summary>Lưu tin nhắn mới</summary>
-    Task<ChatMessage> SaveMessageAsync(ChatMessage message);
+    /// <summary>Lưu tin nhắn mới (tùy chọn đính kèm file đã upload)</summary>
+    Task<ChatMessage> SaveMessageAsync(ChatMessage message, Guid? attachmentFileId = null);
 }

@@ -1122,6 +1122,15 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.Description)
                 .HasColumnType("text")
                 .HasColumnName("description");
+            entity.Property(e => e.Includes)
+                .HasColumnType("json")
+                .HasColumnName("includes");
+            entity.Property(e => e.Rules)
+                .HasColumnType("json")
+                .HasColumnName("rules");
+            entity.Property(e => e.Amenities)
+                .HasColumnType("json")
+                .HasColumnName("amenities");
             entity.Property(e => e.WeeklyDiscountPercent)
                 .HasPrecision(5, 2)
                 .HasDefaultValueSql("'0.00'")
@@ -1219,6 +1228,7 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.UsageLimit).HasColumnName("usage_limit");
             entity.Property(e => e.UsedCount).HasDefaultValueSql("0").HasColumnName("used_count");
             entity.Property(e => e.IsActive).HasDefaultValueSql("true").HasColumnName("is_active");
+            entity.Property(e => e.OneUsePerUser).HasDefaultValueSql("true").HasColumnName("one_use_per_user");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP").HasColumnType("datetime").HasColumnName("created_at");
 
             entity.HasOne(d => d.Venue).WithMany(p => p.VenueCoupons)

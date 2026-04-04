@@ -72,13 +72,21 @@ public class ChatRepository : IChatRepository
             .OrderBy(m => m.CreatedAt)  // trả về theo thứ tự cũ → mới
             .ToListAsync();
 
-    public async Task<ChatMessage> SaveMessageAsync(ChatMessage message)
+    public async Task<ChatMessage> SaveMessageAsync(ChatMessage message, Guid? attachmentFileId = null)
     {
         _context.ChatMessages.Add(message);
+        if (attachmentFileId.HasValue)
+        {
+            var file = await _context.Files.FindAsync(attachmentFileId.Value);
+            if (file != null) message.Files.Add(file);
+        }
+
         await _context.SaveChangesAsync();
-        // Reload với sender info
         await _context.Entry(message)
             .Reference(m => m.SenderUser)
+            .LoadAsync();
+        await _context.Entry(message)
+            .Collection(m => m.Files)
             .LoadAsync();
         return message;
     }

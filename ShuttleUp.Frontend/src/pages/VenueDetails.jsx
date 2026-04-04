@@ -8,21 +8,18 @@ import Thumbnails from 'yet-another-react-lightbox/plugins/thumbnails';
 import 'yet-another-react-lightbox/styles.css';
 import 'yet-another-react-lightbox/plugins/thumbnails.css';
 
-// Temporary mock data for Iteration 1.
-// Later, this can be replaced by data from venue API using the venue ID in the route.
-const MOCK_VENUE = {
-  name: 'Badminton Academy',
-  isVerified: true,
-  address: '70 Bright St New York, USA',
-  phone: '+3 80992 31212',
-  email: 'info@badmintonacademy.com',
-  venueType: 'Sân trong nhà',
-  ownerName: 'Hendry Williams',
-  startingPrice: 150,
-  currency: '$',
-  rating: 5.0,
-  reviewCount: 15,
-};
+const AMENITIES_LIST = [
+  { key: 'parking',       label: 'Bãi đỗ xe',                  icon: 'feather-map-pin' },
+  { key: 'water',         label: 'Nước uống',                   icon: 'feather-droplet' },
+  { key: 'locker',        label: 'Tủ đồ & phòng thay đồ',      icon: 'feather-briefcase' },
+  { key: 'bathroom',      label: 'Phòng tắm & nhà vệ sinh',     icon: 'feather-wind' },
+  { key: 'lighting',      label: 'Đèn chiếu sáng',             icon: 'feather-sun' },
+  { key: 'security',      label: 'Camera an ninh',              icon: 'feather-camera' },
+  { key: 'wifi',          label: 'WiFi',                        icon: 'feather-wifi' },
+  { key: 'rental_racket', label: 'Cho thuê vợt',                icon: 'feather-activity' },
+  { key: 'buy_shuttle',   label: 'Mua cầu tại sân',            icon: 'feather-shopping-bag' },
+  { key: 'canteen',       label: 'Căn tin / Quầy ăn uống',     icon: 'feather-coffee' },
+];
 
 const MOCK_GALLERY = [
   '/assets/img/gallery/gallery1/gallery-01.png',
@@ -114,6 +111,10 @@ export default function VenueDetails() {
           lng: data.lng,
           weeklyDiscountPercent: data.weeklyDiscountPercent || data.WeeklyDiscountPercent || 0,
           monthlyDiscountPercent: data.monthlyDiscountPercent || data.MonthlyDiscountPercent || 0,
+          description: data.description || data.Description || null,
+          includes: Array.isArray(data.includes) ? data.includes : (Array.isArray(data.Includes) ? data.Includes : null),
+          rules: Array.isArray(data.rules) ? data.rules : (Array.isArray(data.Rules) ? data.Rules : null),
+          amenities: Array.isArray(data.amenities) ? data.amenities : (Array.isArray(data.Amenities) ? data.Amenities : null),
         });
       } catch (err) {
         setError(err.message || 'Oops... Có lỗi nảy sinh khi tải thông tin sân.');
@@ -416,85 +417,69 @@ export default function VenueDetails() {
               {/* Overview */}
               <section id="overview" className="white-bg mb-4 corner-radius-10 p-4">
                 <h4 className="mb-3">Tổng quan</h4>
-                <p>
-                  Badminton Academy là cụm sân cầu lông chất lượng cao, phù hợp cho cả người chơi phong trào và các đội
-                  tuyển. Sân được bảo trì thường xuyên, hệ thống đèn LED và thảm tiêu chuẩn thi đấu.
-                </p>
-                <p>
-                  Bạn có thể đặt sân theo giờ hoặc theo gói dài hạn, phù hợp với nhu cầu luyện tập linh hoạt của từng
-                  nhóm. Đội ngũ quản lý hỗ trợ nhanh chóng trong suốt quá trình đặt sân.
-                </p>
+                {venue.description ? (
+                  <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.85 }}>{venue.description}</p>
+                ) : (
+                  <>
+                    <p>
+                      Cơ sở đang trong quá trình cập nhật thông tin. Vui lòng liên hệ trực tiếp để biết thêm chi tiết
+                      về tiện nghi và dịch vụ.
+                    </p>
+                  </>
+                )}
               </section>
 
               {/* Includes */}
               <section id="includes" className="white-bg mb-4 corner-radius-10 p-4">
                 <h4 className="mb-3">Bao gồm</h4>
-                <ul className="clearfix">
-                  <li>
-                    <i className="feather-check-square" />
-                    Vợt cầu lông (số lượng giới hạn)
-                  </li>
-                  <li>
-                    <i className="feather-check-square" />
-                    Trụ, lưới và thảm tiêu chuẩn
-                  </li>
-                  <li>
-                    <i className="feather-check-square" />
-                    Hỗ trợ chuẩn bị sân trước giờ chơi
-                  </li>
-                  <li>
-                    <i className="feather-check-square" />
-                    Nước uống cơ bản
-                  </li>
-                </ul>
+                {venue.includes && venue.includes.length > 0 ? (
+                  <ul className="clearfix">
+                    {venue.includes.map((item, i) => (
+                      <li key={i}>
+                        <i className="feather-check-square" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-muted mb-0" style={{ fontSize: 14 }}>Chủ sân chưa cập nhật thông tin mục này.</p>
+                )}
               </section>
 
               {/* Rules */}
               <section id="rules" className="white-bg mb-4 corner-radius-10 p-4">
                 <h4 className="mb-3">Quy định</h4>
-                <ul>
-                  <li>
-                    <p>
-                      <i className="feather-alert-octagon" />
-                      Khuyến khích mang giày đế mềm / non-marking để bảo vệ mặt sân.
-                    </p>
-                  </li>
-                  <li>
-                    <p>
-                      <i className="feather-alert-octagon" />
-                      Không mang thức ăn, đồ uống có gas hoặc chai thủy tinh vào trong khu vực sân.
-                    </p>
-                  </li>
-                  <li>
-                    <p>
-                      <i className="feather-alert-octagon" />
-                      Đến trước giờ chơi ít nhất 10 phút để làm thủ tục nhận sân.
-                    </p>
-                  </li>
-                </ul>
+                {venue.rules && venue.rules.length > 0 ? (
+                  <ul>
+                    {venue.rules.map((rule, i) => (
+                      <li key={i}>
+                        <p>
+                          <i className="feather-alert-octagon" />
+                          {rule}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-muted mb-0" style={{ fontSize: 14 }}>Chủ sân chưa cập nhật quy định.</p>
+                )}
               </section>
 
               {/* Amenities */}
               <section id="amenities" className="white-bg mb-4 corner-radius-10 p-4">
                 <h4 className="mb-3">Tiện ích</h4>
-                <ul className="d-md-flex justify-content-between align-items-center flex-wrap">
-                  <li>
-                    <i className="fa fa-check-circle" aria-hidden="true" />
-                    Bãi đỗ xe
-                  </li>
-                  <li>
-                    <i className="fa fa-check-circle" aria-hidden="true" />
-                    Nước uống
-                  </li>
-                  <li>
-                    <i className="fa fa-check-circle" aria-hidden="true" />
-                    Tủ đồ & phòng thay đồ
-                  </li>
-                  <li>
-                    <i className="fa fa-check-circle" aria-hidden="true" />
-                    Phòng tắm & nhà vệ sinh
-                  </li>
-                </ul>
+                {venue.amenities && venue.amenities.length > 0 ? (
+                  <ul className="d-md-flex justify-content-start align-items-center flex-wrap" style={{ gap: '8px 24px' }}>
+                    {AMENITIES_LIST.filter(a => venue.amenities.includes(a.key)).map(a => (
+                      <li key={a.key}>
+                        <i className={a.icon} aria-hidden="true" />
+                        {a.label}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-muted mb-0" style={{ fontSize: 14 }}>Chủ sân chưa cập nhật tiện ích.</p>
+                )}
               </section>
 
               {/* Gallery */}
@@ -541,7 +526,11 @@ export default function VenueDetails() {
                 <div className="google-maps">
                   <iframe
                     title="Venue location"
-                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2967.8862835683544!2d-73.98256668525309!3d41.93829486962529!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89dd0ee3286615b7%3A0x42bfa96cc2ce4381!2s132%20Kingston%20St%2C%20Kingston%2C%20NY%2012401%2C%20USA!5e0!3m2!1sen!2sin!4v1670922579281!5m2!1sen!2sin"
+                    src={
+                      venue.lat && venue.lng
+                        ? `https://maps.google.com/maps?q=${venue.lat},${venue.lng}&z=16&output=embed`
+                        : `https://maps.google.com/maps?q=${encodeURIComponent(venue.address)}&z=15&output=embed`
+                    }
                     height="445"
                     style={{ border: 0, width: '100%' }}
                     allowFullScreen

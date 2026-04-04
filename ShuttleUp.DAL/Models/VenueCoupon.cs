@@ -29,6 +29,9 @@ public partial class VenueCoupon
 
     public bool? IsActive { get; set; }
 
+    /// <summary>Nếu true: mỗi user chỉ được áp mã một lần (đơn chưa huỷ).</summary>
+    public bool OneUsePerUser { get; set; } = true;
+
     public DateTime? CreatedAt { get; set; }
 
     public virtual Venue Venue { get; set; } = null!;

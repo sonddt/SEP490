@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { loginEmail, loginGoogle } from '../api/authApi';
@@ -22,6 +22,13 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const returnUrl = location.state?.from || null;
+
+  /** Tăng mỗi lần bắt đầu đăng nhập (email hoặc Google) — bỏ qua callback cũ nếu user đổi cách đăng nhập. */
+  const loginAttemptSeq = useRef(0);
+  const bumpLoginAttempt = useCallback(() => {
+    loginAttemptSeq.current += 1;
+    return loginAttemptSeq.current;
+  }, []);
 
   useEffect(() => {
     const hint = location.state?.authHint;
@@ -98,6 +105,7 @@ export default function Login() {
   // ── Đăng nhập bằng email + mật khẩu ──────────────────────────────────────
   const handleLogin = async (e) => {
     e.preventDefault();
+    const seq = bumpLoginAttempt();
     setError('');
     setLoading(true);
     try {
@@ -111,7 +119,6 @@ export default function Login() {
       
       if (Object.keys(newErrors).length > 0) {
         setFieldErrors(newErrors);
-        setLoading(false);
         return;
       }
 
@@ -120,6 +127,7 @@ export default function Login() {
         ? { phoneNumber: emailOrPhone.trim(), password }
         : { email: emailOrPhone.trim(), password };
       const data = await loginEmail(payload);
+      if (seq !== loginAttemptSeq.current) return;
 
       if (rememberMe) {
         localStorage.setItem('shuttleup_remember', JSON.stringify({ emailOrPhone: emailOrPhone.trim(), password }));
@@ -129,6 +137,7 @@ export default function Login() {
 
       const roles = data.user?.roles ?? [];
       const gate = await resolveManagerLoginGate(roles);
+      if (seq !== loginAttemptSeq.current) return;
       if (!gate.allow) {
         logout();
         setError(gate.message);
@@ -136,18 +145,21 @@ export default function Login() {
       }
       login(data);
       const freshProfile = await syncAvatarFromProfile();
+      if (seq !== loginAttemptSeq.current) return;
       if (gate.message) setError(gate.message);
       if (gate.redirect) return navigate(gate.redirect);
       redirectAfterLogin(roles, freshProfile || data.user);
     } catch (err) {
+      if (seq !== loginAttemptSeq.current) return;
       setError(err.response?.data?.message || 'Oops... Thông tin đăng nhập chưa chính xác rồi bạn nhé.');
     } finally {
-      setLoading(false);
+      if (seq === loginAttemptSeq.current) setLoading(false);
     }
   };
 
   // ── Đăng nhập bằng Google ─────────────────────────────────────────────────
   const handleGoogleSuccess = async (credentialResponse) => {
+    const seq = bumpLoginAttempt();
     setError('');
     setLoading(true);
     try {
@@ -160,8 +172,11 @@ export default function Login() {
         idToken: credentialResponse.credential,
         roles: roleByTab,
       });
+      if (seq !== loginAttemptSeq.current) return;
+
       const roles = data.user?.roles ?? [];
       const gate = await resolveManagerLoginGate(roles);
+      if (seq !== loginAttemptSeq.current) return;
       if (!gate.allow) {
         logout();
         setError(gate.message);
@@ -169,13 +184,15 @@ export default function Login() {
       }
       login(data);
       const freshProfile = await syncAvatarFromProfile();
+      if (seq !== loginAttemptSeq.current) return;
       if (gate.message) setError(gate.message);
       if (gate.redirect) return navigate(gate.redirect);
       redirectAfterLogin(roles, freshProfile || data.user);
     } catch (err) {
+      if (seq !== loginAttemptSeq.current) return;
       setError(err.response?.data?.message || 'Oops... Đăng nhập bằng Google có chút trục trặc.');
     } finally {
-      setLoading(false);
+      if (seq === loginAttemptSeq.current) setLoading(false);
     }
   };
 
@@ -226,6 +243,7 @@ export default function Login() {
                               setActiveTab('user');
                             }}
                             type="button"
+                            disabled={loading}
                           >
                             <span className="d-flex justify-content-center align-items-center"></span>Tôi là Người chơi
                           </button>
@@ -238,6 +256,7 @@ export default function Login() {
                               setActiveTab('manager');
                             }}
                             type="button"
+                            disabled={loading}
                           >
                             <span className="d-flex justify-content-center align-items-center"></span>Tôi là Quản lý sân
                           </button>
@@ -261,6 +280,7 @@ export default function Login() {
                                   type="text"
                                   className={`form-control ${fieldErrors.emailOrPhone ? 'is-invalid' : ''}`}
                                   placeholder="Email hoặc Số điện thoại"
+                                  disabled={loading}
                                   value={emailOrPhone}
                                   onChange={(e) => {
                                       setEmailOrPhone(e.target.value);
@@ -285,6 +305,7 @@ export default function Login() {
                                   type={showPassword ? 'text' : 'password'}
                                   className={`form-control pass-input ${fieldErrors.password ? 'is-invalid' : ''}`}
                                   placeholder="Mật khẩu"
+                                  disabled={loading}
                                   value={password}
                                   onChange={(e) => {
                                       setPassword(e.target.value);
@@ -325,15 +346,25 @@ export default function Login() {
                               {!loading && <i className="feather-arrow-right-circle ms-2"></i>}
                             </button>
 
-                            {/* Google Sign-In */}
+                            {/* Google Sign-In — khi đang xử lý (email hoặc Google) thì chặn bấm thêm để tránh xung đột popup */}
                             <div className="form-group mt-3">
                               <div className="login-options text-center mb-2">
                                 <span className="text">Hoặc tiếp tục với</span>
                               </div>
-                              <div className="d-flex justify-content-center">
+                              <div
+                                className="d-flex justify-content-center"
+                                style={{
+                                  opacity: loading ? 0.5 : 1,
+                                  pointerEvents: loading ? 'none' : 'auto',
+                                  position: 'relative',
+                                }}
+                                title={loading ? 'Đang xử lý đăng nhập…' : undefined}
+                              >
                                 <GoogleLogin
                                   onSuccess={handleGoogleSuccess}
-                                  onError={() => setError('Oops... Đăng nhập bằng Google có chút trục trặc.')}
+                                  onError={() => {
+                                    setError('Oops... Đăng nhập bằng Google có chút trục trặc. (Đóng popup và thử lại, hoặc dùng email.)');
+                                  }}
                                   text="signin_with"
                                   locale="vi"
                                   shape="rectangular"

@@ -23,6 +23,15 @@ public partial class Venue
 
     public string? Description { get; set; }
 
+    /// <summary>JSON array of strings — những gì khách được sử dụng khi thuê sân.</summary>
+    public string? Includes { get; set; }
+
+    /// <summary>JSON array of strings — các quy định tại cơ sở.</summary>
+    public string? Rules { get; set; }
+
+    /// <summary>JSON array of string keys — tiện ích có tại cơ sở (parking, wifi, ...).</summary>
+    public string? Amenities { get; set; }
+
     public decimal? WeeklyDiscountPercent { get; set; }
 
     public decimal? MonthlyDiscountPercent { get; set; }

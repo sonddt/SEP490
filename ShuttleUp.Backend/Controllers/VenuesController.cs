@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ShuttleUp.Backend;
@@ -27,7 +28,7 @@ public class VenuesController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetVenueById([FromRoute] Guid id)
     {
-        var venue = await _dbContext.Venues
+        var raw = await _dbContext.Venues
             .Where(v => v.Id == id && v.IsActive == true)
             .Select(v => new
             {
@@ -38,10 +39,13 @@ public class VenuesController : ControllerBase
                 v.Lng,
                 v.WeeklyDiscountPercent,
                 v.MonthlyDiscountPercent,
+                v.Description,
+                v.Includes,
+                v.Rules,
+                v.Amenities,
                 OwnerName = v.OwnerUser != null ? v.OwnerUser.FullName : null,
                 OwnerEmail = v.OwnerUser != null ? v.OwnerUser.Email : null,
                 OwnerPhone = v.OwnerUser != null ? v.OwnerUser.PhoneNumber : null,
-                // Giá min/max để hiển thị "12k - 30k /giờ"
                 MinPrice = v.Courts
                     .SelectMany(c => c.CourtPrices)
                     .Min(cp => (decimal?)cp.Price),
@@ -53,10 +57,38 @@ public class VenuesController : ControllerBase
             })
             .FirstOrDefaultAsync();
 
-        if (venue == null)
+        if (raw == null)
             return NotFound();
 
-        return Ok(venue);
+        // Deserialize JSON columns thành List<string> để frontend nhận được array thật
+        static List<string>? ParseJsonArray(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return null;
+            try { return JsonSerializer.Deserialize<List<string>>(json); }
+            catch { return null; }
+        }
+
+        return Ok(new
+        {
+            raw.Id,
+            raw.Name,
+            raw.Address,
+            raw.Lat,
+            raw.Lng,
+            raw.WeeklyDiscountPercent,
+            raw.MonthlyDiscountPercent,
+            raw.Description,
+            Includes = ParseJsonArray(raw.Includes),
+            Rules = ParseJsonArray(raw.Rules),
+            Amenities = ParseJsonArray(raw.Amenities),
+            raw.OwnerName,
+            raw.OwnerEmail,
+            raw.OwnerPhone,
+            raw.MinPrice,
+            raw.MaxPrice,
+            raw.Rating,
+            raw.ReviewCount,
+        });
     }
 
     /// <summary>

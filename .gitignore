@@ -388,3 +388,9 @@ yarn-error.log*
 
 # Thư mục tạm của Vite
 .vite/
+
+# File log build thủ công (redirect output) — không commit
+ShuttleUp.Backend/build_err.txt
+ShuttleUp.Backend/build_output.txt
+ShuttleUp.Backend/build_errors.log
+ShuttleUp.Backend/build.log
