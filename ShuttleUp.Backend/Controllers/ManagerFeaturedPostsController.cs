@@ -33,8 +33,8 @@ public class ManagerFeaturedPostsController : ControllerBase
         var list = await _db.FeaturedPosts
             .AsNoTracking()
             .Where(p => p.AuthorUserId == managerId && p.AuthorRole == "MANAGER")
-            .OrderByDescending(p => p.SortOrder)
-            .ThenByDescending(p => p.CreatedAt)
+            .OrderByDescending(p => p.CreatedAt)
+            .ThenByDescending(p => p.Id)
             .Select(p => new
             {
                 p.Id,
@@ -46,7 +46,6 @@ public class ManagerFeaturedPostsController : ControllerBase
                 p.IsPublished,
                 p.DisplayFrom,
                 p.DisplayUntil,
-                p.SortOrder,
                 p.VenueId,
                 VenueName = p.Venue != null ? p.Venue.Name : (string?)null,
                 p.CreatedAt,
@@ -86,7 +85,7 @@ public class ManagerFeaturedPostsController : ControllerBase
             IsPublished = dto.IsPublished,
             DisplayFrom = dto.DisplayFrom,
             DisplayUntil = dto.DisplayUntil,
-            SortOrder = dto.SortOrder,
+            SortOrder = 0,
             AuthorUserId = managerId,
             AuthorRole = "MANAGER",
             VenueId = dto.VenueId,
@@ -132,7 +131,7 @@ public class ManagerFeaturedPostsController : ControllerBase
         post.IsPublished = dto.IsPublished;
         post.DisplayFrom = dto.DisplayFrom;
         post.DisplayUntil = dto.DisplayUntil;
-        post.SortOrder = dto.SortOrder;
+        post.SortOrder = 0;
         post.VenueId = dto.VenueId;
         post.UpdatedAt = DateTime.UtcNow;
 

@@ -11,7 +11,6 @@ const emptyForm = {
   isPublished: false,
   displayFrom: '',
   displayUntil: '',
-  sortOrder: 0,
   venueId: '',
 };
 
@@ -63,7 +62,6 @@ export default function AdminFeaturedPosts() {
       isPublished: !!row.isPublished,
       displayFrom: row.displayFrom ? row.displayFrom.slice(0, 16) : '',
       displayUntil: row.displayUntil ? row.displayUntil.slice(0, 16) : '',
-      sortOrder: row.sortOrder ?? 0,
       venueId: row.venueId || '',
     });
     setFormError('');
@@ -93,7 +91,6 @@ export default function AdminFeaturedPosts() {
       isPublished: form.isPublished,
       displayFrom: toIso(form.displayFrom),
       displayUntil: toIso(form.displayUntil),
-      sortOrder: Number(form.sortOrder) || 0,
       venueId: form.venueId ? form.venueId : null,
     };
     try {
@@ -160,19 +157,16 @@ export default function AdminFeaturedPosts() {
                 </div>
               </div>
               <div className="row g-3 mt-1">
-                <div className="col-md-4">
-                  <label className="form-label fw-semibold small">Thứ tự hiển thị</label>
-                  <input type="number" className="form-control" value={form.sortOrder} onChange={(e) => setForm((f) => ({ ...f, sortOrder: e.target.value }))} />
-                </div>
-                <div className="col-md-4">
+                <div className="col-md-6">
                   <label className="form-label fw-semibold small">Hiển thị từ (UTC)</label>
                   <input type="datetime-local" className="form-control" value={form.displayFrom} onChange={(e) => setForm((f) => ({ ...f, displayFrom: e.target.value }))} />
                 </div>
-                <div className="col-md-4">
+                <div className="col-md-6">
                   <label className="form-label fw-semibold small">Hiển thị đến (UTC)</label>
                   <input type="datetime-local" className="form-control" value={form.displayUntil} onChange={(e) => setForm((f) => ({ ...f, displayUntil: e.target.value }))} />
                 </div>
               </div>
+              <p className="small text-muted mb-0 mt-2">Trang Nổi bật sắp xếp theo thời gian tạo: bài mới lên trước.</p>
               <div className="mb-3 mt-3">
                 <label className="form-label fw-semibold small">Gắn cụm sân (tuỳ chọn)</label>
                 <select className="form-select" value={form.venueId} onChange={(e) => setForm((f) => ({ ...f, venueId: e.target.value }))}>

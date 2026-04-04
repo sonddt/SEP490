@@ -23,6 +23,7 @@ public class FeaturedPostsController : ControllerBase
     /// <summary>
     /// Bài đã xuất bản và nằm trong khung thời gian hiển thị.
     /// Dùng giờ cục bộ để so khớp kiểu DATETIME của MySQL (không offset).
+    /// Thứ tự: bài tạo mới nhất lên trước (created_at giảm dần).
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetPublished()
@@ -34,8 +35,8 @@ public class FeaturedPostsController : ControllerBase
             .Where(p => p.IsPublished
                         && (p.DisplayFrom == null || p.DisplayFrom <= now)
                         && (p.DisplayUntil == null || p.DisplayUntil >= now))
-            .OrderByDescending(p => p.SortOrder)
-            .ThenByDescending(p => p.CreatedAt)
+            .OrderByDescending(p => p.CreatedAt)
+            .ThenByDescending(p => p.Id)
             .Select(p => new
             {
                 p.Id,
@@ -46,7 +47,6 @@ public class FeaturedPostsController : ControllerBase
                 p.LinkUrl,
                 p.DisplayFrom,
                 p.DisplayUntil,
-                p.SortOrder,
                 p.AuthorRole,
                 p.VenueId,
                 VenueName = p.Venue != null ? p.Venue.Name : (string?)null,

@@ -10,7 +10,6 @@ public class FeaturedPostUpsertDto
     public bool IsPublished { get; set; }
     public DateTime? DisplayFrom { get; set; }
     public DateTime? DisplayUntil { get; set; }
-    public int SortOrder { get; set; }
 
     /// <summary>Chỉ Manager: gắn bài với cụm sân của mình. Admin có thể để null hoặc bất kỳ sân nào.</summary>
     public Guid? VenueId { get; set; }

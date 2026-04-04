@@ -13,7 +13,6 @@ const EMPTY_FORM = {
   isPublished: false,
   displayFrom: '',
   displayUntil: '',
-  sortOrder: 0,
   venueId: '',
 };
 
@@ -35,6 +34,12 @@ function localToIso(local) {
 function formatDate(iso) {
   if (!iso) return null;
   return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function formatCreatedLabel(iso) {
+  if (!iso) return '—';
+  const s = formatDate(iso);
+  return s ? `Tạo ${s}` : '—';
 }
 
 export default function ManagerFeaturedPosts() {
@@ -94,7 +99,6 @@ export default function ManagerFeaturedPosts() {
       isPublished: !!row.isPublished,
       displayFrom: isoToLocal(row.displayFrom),
       displayUntil: isoToLocal(row.displayUntil),
-      sortOrder: row.sortOrder ?? 0,
       venueId: row.venueId || '',
     });
     setImagePreview(row.coverImageUrl || '');
@@ -138,7 +142,6 @@ export default function ManagerFeaturedPosts() {
       isPublished: form.isPublished,
       displayFrom: localToIso(form.displayFrom),
       displayUntil: localToIso(form.displayUntil),
-      sortOrder: Number(form.sortOrder) || 0,
       venueId: form.venueId || null,
     };
     try {
@@ -388,26 +391,15 @@ export default function ManagerFeaturedPosts() {
                 <h6 style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.04em', color: '#94a3b8', textTransform: 'uppercase', marginBottom: 14 }}>
                   <i className="feather-settings me-2" />Cấu hình phát sóng
                 </h6>
-                <div className="row g-3">
-                  <div className="col-12 col-md-6">
-                    <label className="form-label fw-semibold" style={{ fontSize: 13, color: '#475569' }}>Thứ tự hiển thị</label>
-                    <input type="number" className="form-control bg-light border-0" style={{ fontSize: 14 }}
-                      placeholder="Số lớn hơn = ưu tiên hơn"
-                      value={form.sortOrder} onChange={e => setField('sortOrder', e.target.value)} />
-                    <small className="text-muted d-block mt-1" style={{ fontSize: 12 }}>Số lớn hơn hiển thị trước.</small>
-                  </div>
-                  <div className="col-12 col-md-6 d-flex align-items-center">
-                    <div className="form-check rounded-3 px-3 py-3 w-100" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                      <input className="form-check-input" type="checkbox" id="mgr-fp-pub"
-                        checked={form.isPublished} onChange={e => setField('isPublished', e.target.checked)} />
-                      <label className="form-check-label fw-semibold" htmlFor="mgr-fp-pub" style={{ fontSize: 13, color: '#334155' }}>
-                        Xuất bản ngay
-                      </label>
-                      <p className="mb-0 mt-1" style={{ paddingLeft: '1.5rem', fontSize: 12, color: '#94a3b8' }}>
-                        Bật để bài hiển thị công khai trong thời gian đã chọn.
-                      </p>
-                    </div>
-                  </div>
+                <div className="form-check rounded-3 px-3 py-3 w-100" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                  <input className="form-check-input" type="checkbox" id="mgr-fp-pub"
+                    checked={form.isPublished} onChange={e => setField('isPublished', e.target.checked)} />
+                  <label className="form-check-label fw-semibold" htmlFor="mgr-fp-pub" style={{ fontSize: 13, color: '#334155' }}>
+                    Xuất bản ngay
+                  </label>
+                  <p className="mb-0 mt-1" style={{ paddingLeft: '1.5rem', fontSize: 12, color: '#94a3b8' }}>
+                    Bật để bài hiển thị công khai trong thời gian đã chọn. Trên trang Nổi bật, bài mới tạo sẽ hiển thị trước.
+                  </p>
                 </div>
               </div>
             </div>
@@ -549,10 +541,10 @@ function PostCard({ row, onEdit, onDelete }) {
           )}
         </div>
 
-        {/* Sort order badge */}
+        {/* Ngày tạo — thứ tự công khai theo bài mới trước */}
         <div style={{ position: 'absolute', top: 10, right: 10 }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: 'rgba(255,255,255,.9)', color: '#475569', backdropFilter: 'blur(4px)' }}>
-            <i className="feather-layers" style={{ fontSize: 10 }} />#{row.sortOrder}
+            <i className="feather-clock" style={{ fontSize: 10 }} />{formatCreatedLabel(row.createdAt)}
           </span>
         </div>
       </div>

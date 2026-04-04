@@ -28,8 +28,8 @@ public class AdminFeaturedPostsController : ControllerBase
     {
         var list = await _db.FeaturedPosts
             .AsNoTracking()
-            .OrderByDescending(p => p.SortOrder)
-            .ThenByDescending(p => p.CreatedAt)
+            .OrderByDescending(p => p.CreatedAt)
+            .ThenByDescending(p => p.Id)
             .Select(p => new
             {
                 p.Id,
@@ -41,7 +41,6 @@ public class AdminFeaturedPostsController : ControllerBase
                 p.IsPublished,
                 p.DisplayFrom,
                 p.DisplayUntil,
-                p.SortOrder,
                 p.AuthorRole,
                 p.AuthorUserId,
                 AuthorName = p.AuthorUser.FullName,
@@ -84,7 +83,7 @@ public class AdminFeaturedPostsController : ControllerBase
             IsPublished = dto.IsPublished,
             DisplayFrom = dto.DisplayFrom,
             DisplayUntil = dto.DisplayUntil,
-            SortOrder = dto.SortOrder,
+            SortOrder = 0,
             AuthorUserId = userId,
             AuthorRole = "ADMIN",
             VenueId = dto.VenueId,
@@ -123,7 +122,7 @@ public class AdminFeaturedPostsController : ControllerBase
         post.IsPublished = dto.IsPublished;
         post.DisplayFrom = dto.DisplayFrom;
         post.DisplayUntil = dto.DisplayUntil;
-        post.SortOrder = dto.SortOrder;
+        post.SortOrder = 0;
         post.VenueId = dto.VenueId;
         post.UpdatedAt = DateTime.UtcNow;
 
