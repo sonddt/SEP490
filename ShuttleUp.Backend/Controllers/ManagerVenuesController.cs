@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text.Json;
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Http;
@@ -73,7 +74,11 @@ public class ManagerVenuesController : ControllerBase
             ContactName = request.ContactName,
             ContactPhone = request.ContactPhone,
             WeeklyDiscountPercent = request.WeeklyDiscountPercent,
-            MonthlyDiscountPercent = request.MonthlyDiscountPercent
+            MonthlyDiscountPercent = request.MonthlyDiscountPercent,
+            Description = request.Description,
+            Includes = request.Includes != null ? JsonSerializer.Serialize(request.Includes) : null,
+            Rules = request.Rules != null ? JsonSerializer.Serialize(request.Rules) : null,
+            Amenities = request.Amenities != null ? JsonSerializer.Serialize(request.Amenities) : null,
         };
 
         await _venueService.CreateAsync(venue);
@@ -124,6 +129,10 @@ public class ManagerVenuesController : ControllerBase
         venue.ContactPhone = request.ContactPhone;
         venue.WeeklyDiscountPercent = request.WeeklyDiscountPercent;
         venue.MonthlyDiscountPercent = request.MonthlyDiscountPercent;
+        venue.Description = request.Description;
+        venue.Includes = request.Includes != null ? JsonSerializer.Serialize(request.Includes) : null;
+        venue.Rules = request.Rules != null ? JsonSerializer.Serialize(request.Rules) : null;
+        venue.Amenities = request.Amenities != null ? JsonSerializer.Serialize(request.Amenities) : null;
 
         await _venueService.UpdateAsync(venue);
 

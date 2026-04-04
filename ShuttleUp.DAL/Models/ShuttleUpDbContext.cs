@@ -1122,6 +1122,15 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.Description)
                 .HasColumnType("text")
                 .HasColumnName("description");
+            entity.Property(e => e.Includes)
+                .HasColumnType("json")
+                .HasColumnName("includes");
+            entity.Property(e => e.Rules)
+                .HasColumnType("json")
+                .HasColumnName("rules");
+            entity.Property(e => e.Amenities)
+                .HasColumnType("json")
+                .HasColumnName("amenities");
             entity.Property(e => e.WeeklyDiscountPercent)
                 .HasPrecision(5, 2)
                 .HasDefaultValueSql("'0.00'")
