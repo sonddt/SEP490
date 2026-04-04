@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'react-toastify';
 import axiosClient from '../../api/axiosClient';
@@ -42,6 +42,192 @@ function formatCreatedLabel(iso) {
   return s ? `Tạo ${s}` : '—';
 }
 
+const PAGE_SIZE = 8;
+
+const FP_SORT_OPTIONS = [
+  { value: 'created_desc', label: 'Mới nhất trước' },
+  { value: 'created_asc', label: 'Cũ nhất trước' },
+  { value: 'title_asc', label: 'Tiêu đề (A → Z)' },
+  { value: 'title_desc', label: 'Tiêu đề (Z → A)' },
+];
+
+function FeaturedSortDropdown({ sort, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title="Sắp xếp"
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '9px 14px', border: '2px solid var(--mgr-accent)', borderRadius: 8,
+          background: open ? 'var(--mgr-accent)' : '#fff',
+          color: open ? '#fff' : '#334155',
+          fontWeight: 600, fontSize: 13.5, cursor: 'pointer',
+          transition: 'background .15s ease, color .15s ease, box-shadow .2s ease, transform .2s ease',
+          boxShadow: open ? '0 4px 14px rgba(9,126,82,.35)' : 'none',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-2px)';
+          if (open) {
+            e.currentTarget.style.boxShadow = '0 8px 22px rgba(9,126,82,.45)';
+          } else {
+            e.currentTarget.style.background = '#f0fdf8';
+            e.currentTarget.style.boxShadow = '0 4px 14px rgba(9,126,82,.2)';
+          }
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'none';
+          e.currentTarget.style.boxShadow = open ? '0 4px 14px rgba(9,126,82,.35)' : 'none';
+          e.currentTarget.style.background = open ? 'var(--mgr-accent)' : '#fff';
+        }}
+      >
+        <i className="feather-sliders" style={{ fontSize: 15 }} />
+        <i className={`feather-chevron-${open ? 'up' : 'down'}`} style={{ fontSize: 14 }} />
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', right: 0, top: 'calc(100% + 6px)',
+          background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10,
+          boxShadow: '0 8px 24px rgba(0,0,0,.12)', zIndex: 300, minWidth: 220, overflow: 'hidden',
+        }}>
+          <div style={{ padding: '8px 12px 4px', fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.08em' }}>
+            Sắp xếp theo
+          </div>
+          {FP_SORT_OPTIONS.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => { onChange(o.value); setOpen(false); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 16px',
+                border: 'none', background: sort === o.value ? 'rgba(9,126,82,.08)' : 'none',
+                fontSize: 13.5, fontWeight: sort === o.value ? 700 : 400, cursor: 'pointer',
+                color: sort === o.value ? '#065f3f' : '#334155', textAlign: 'left',
+                transition: 'background .12s ease',
+              }}
+              onMouseEnter={(ev) => {
+                if (sort !== o.value) ev.currentTarget.style.background = 'rgba(9,126,82,.06)';
+              }}
+              onMouseLeave={(ev) => {
+                if (sort !== o.value) ev.currentTarget.style.background = 'none';
+              }}
+            >
+              {sort === o.value && <i className="feather-check" style={{ fontSize: 14, color: '#097E52', flexShrink: 0 }} />}
+              <span style={{ marginLeft: sort === o.value ? 0 : 20 }}>{o.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FeaturedPagination({ page, total, pageSize, onChange }) {
+  const totalPages = Math.ceil(total / pageSize);
+  if (totalPages <= 1) return null;
+
+  const pages = [];
+  for (let i = 1; i <= totalPages; i++) pages.push(i);
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 24, flexWrap: 'wrap' }}>
+      <button
+        type="button"
+        disabled={page <= 1}
+        onClick={() => onChange(page - 1)}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px',
+          border: '1.5px solid #e2e8f0', borderRadius: 8, background: '#fff', fontSize: 13,
+          fontWeight: 600, color: page <= 1 ? '#cbd5e1' : '#334155', cursor: page <= 1 ? 'default' : 'pointer',
+          transition: 'border-color .15s ease, box-shadow .2s ease, transform .2s ease',
+        }}
+        onMouseEnter={(e) => {
+          if (page <= 1) return;
+          e.currentTarget.style.borderColor = '#097E52';
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(9,126,82,.18)';
+          e.currentTarget.style.transform = 'translateY(-2px)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = '#e2e8f0';
+          e.currentTarget.style.boxShadow = 'none';
+          e.currentTarget.style.transform = 'none';
+        }}
+      >
+        <i className="feather-chevron-left" style={{ fontSize: 15 }} /> Trước
+      </button>
+
+      {pages.map((p) => (
+        <button
+          key={p}
+          type="button"
+          onClick={() => onChange(p)}
+          style={{
+            width: 38, height: 38, borderRadius: 8, border: 'none',
+            background: page === p ? 'var(--mgr-accent)' : '#f1f5f9',
+            color: page === p ? '#fff' : '#334155',
+            fontWeight: page === p ? 800 : 500, fontSize: 14,
+            cursor: 'pointer',
+            boxShadow: page === p ? '0 2px 8px rgba(9,126,82,.35)' : 'none',
+            transition: 'background .15s ease, box-shadow .2s ease, transform .2s ease',
+          }}
+          onMouseEnter={(e) => {
+            if (page === p) {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 16px rgba(9,126,82,.45)';
+            } else {
+              e.currentTarget.style.background = '#d1fae5';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'none';
+            e.currentTarget.style.background = page === p ? 'var(--mgr-accent)' : '#f1f5f9';
+            e.currentTarget.style.boxShadow = page === p ? '0 2px 8px rgba(9,126,82,.35)' : 'none';
+          }}
+        >
+          {p}
+        </button>
+      ))}
+
+      <button
+        type="button"
+        disabled={page >= totalPages}
+        onClick={() => onChange(page + 1)}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px',
+          border: '1.5px solid #e2e8f0', borderRadius: 8, background: '#fff', fontSize: 13,
+          fontWeight: 600, color: page >= totalPages ? '#cbd5e1' : '#334155',
+          cursor: page >= totalPages ? 'default' : 'pointer',
+          transition: 'border-color .15s ease, box-shadow .2s ease, transform .2s ease',
+        }}
+        onMouseEnter={(e) => {
+          if (page >= totalPages) return;
+          e.currentTarget.style.borderColor = '#097E52';
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(9,126,82,.18)';
+          e.currentTarget.style.transform = 'translateY(-2px)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = '#e2e8f0';
+          e.currentTarget.style.boxShadow = 'none';
+          e.currentTarget.style.transform = 'none';
+        }}
+      >
+        Sau <i className="feather-chevron-right" style={{ fontSize: 15 }} />
+      </button>
+    </div>
+  );
+}
+
 export default function ManagerFeaturedPosts() {
   const [items, setItems] = useState([]);
   const [venues, setVenues] = useState([]);
@@ -57,6 +243,53 @@ export default function ManagerFeaturedPosts() {
   const [imagePreview, setImagePreview] = useState('');
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
+
+  const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [sort, setSort] = useState('created_desc');
+  const [page, setPage] = useState(1);
+  const [viewMode, setViewMode] = useState('table');
+
+  const filteredSorted = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let arr = items.filter((row) => {
+      const pub = !!row.isPublished;
+      const matchStatus = filterStatus === 'all'
+        || (filterStatus === 'published' && pub)
+        || (filterStatus === 'draft' && !pub);
+      if (!matchStatus) return false;
+      if (!q) return true;
+      const t = (row.title || '').toLowerCase();
+      const ex = (row.excerpt || '').toLowerCase();
+      const body = (row.body || '').toLowerCase();
+      const vn = (row.venueName || '').toLowerCase();
+      return t.includes(q) || ex.includes(q) || body.includes(q) || vn.includes(q);
+    });
+    switch (sort) {
+      case 'created_asc':
+        return [...arr].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      case 'title_asc':
+        return [...arr].sort((a, b) => (a.title || '').localeCompare(b.title || '', 'vi'));
+      case 'title_desc':
+        return [...arr].sort((a, b) => (b.title || '').localeCompare(a.title || '', 'vi'));
+      default:
+        return [...arr].sort((a, b) => {
+          const d = new Date(b.createdAt) - new Date(a.createdAt);
+          if (d !== 0) return d;
+          return String(b.id || '').localeCompare(String(a.id || ''));
+        });
+    }
+  }, [items, search, filterStatus, sort]);
+
+  const paginated = useMemo(
+    () => filteredSorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filteredSorted, page],
+  );
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(filteredSorted.length / PAGE_SIZE));
+    if (page > totalPages) setPage(totalPages);
+  }, [filteredSorted.length, page]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -272,7 +505,9 @@ export default function ManagerFeaturedPosts() {
                       <>
                         <img src={imagePreview} alt="Ảnh bìa" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         <button type="button" onClick={() => { setImagePreview(''); setField('coverImageUrl', ''); }}
-                          style={{ position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.55)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}
+                          style={{ position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.55)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, transition: 'background .15s ease, transform .2s ease' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(220,38,38,.85)'; e.currentTarget.style.transform = 'scale(1.08)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,.55)'; e.currentTarget.style.transform = 'none'; }}
                           title="Xoá ảnh"><i className="feather-x" /></button>
                       </>
                     ) : (
@@ -287,7 +522,20 @@ export default function ManagerFeaturedPosts() {
                   <div className="flex-grow-1" style={{ minWidth: 180 }}>
                     <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImagePick} />
                     <button type="button" disabled={uploading} onClick={() => fileInputRef.current?.click()}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: '1.5px solid #097E52', background: '#fff', color: '#097E52', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginBottom: 8 }}>
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: '1.5px solid #097E52', background: '#fff', color: '#097E52', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginBottom: 8, transition: 'background .15s ease, color .15s ease, box-shadow .2s ease, transform .2s ease' }}
+                      onMouseEnter={(e) => {
+                        if (uploading) return;
+                        e.currentTarget.style.background = '#097E52';
+                        e.currentTarget.style.color = '#fff';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 4px 14px rgba(9,126,82,.35)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '#fff';
+                        e.currentTarget.style.color = '#097E52';
+                        e.currentTarget.style.transform = 'none';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}>
                       <i className="feather-upload" style={{ fontSize: 14 }} />
                       {uploading ? 'Đang tải lên…' : 'Chọn ảnh từ máy'}
                     </button>
@@ -405,10 +653,27 @@ export default function ManagerFeaturedPosts() {
             </div>
 
             <div className="modal-footer border-top-0 pt-0 pb-4 px-4 px-md-5 d-flex gap-3">
-              <button type="button" className="btn btn-light fw-bold px-4 py-2" onClick={() => setModalOpen(false)}>Huỷ</button>
+              <button type="button" className="btn btn-light fw-bold px-4 py-2" onClick={() => setModalOpen(false)}
+                style={{ transition: 'background .15s ease, transform .2s ease, box-shadow .2s ease' }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(15,23,42,.08)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
+              >Huỷ</button>
               <button type="submit" disabled={saving || uploading}
                 className="btn fw-bold px-5 py-2 shadow-sm"
-                style={{ background: '#097E52', borderColor: '#097E52', color: '#fff' }}>
+                style={{ background: '#097E52', borderColor: '#097E52', color: '#fff', transition: 'background .15s ease, border-color .15s ease, transform .2s ease, box-shadow .2s ease' }}
+                onMouseEnter={(e) => {
+                  if (saving || uploading) return;
+                  e.currentTarget.style.background = '#065f3f';
+                  e.currentTarget.style.borderColor = '#065f3f';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 8px 22px rgba(9,126,82,.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#097E52';
+                  e.currentTarget.style.borderColor = '#097E52';
+                  e.currentTarget.style.transform = 'none';
+                  e.currentTarget.style.boxShadow = '';
+                }}>
                 {saving ? 'Đang lưu…' : editingId ? 'Lưu thay đổi' : 'Tạo bài đăng'}
               </button>
             </div>
@@ -419,12 +684,19 @@ export default function ManagerFeaturedPosts() {
     document.body
   );
 
+  const handleSearchChange = (e) => { setSearch(e.target.value); setPage(1); };
+  const handleFilterChange = (e) => { setFilterStatus(e.target.value); setPage(1); };
+  const handleSortChange = (v) => { setSort(v); setPage(1); };
+
+  const rangeStart = filteredSorted.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(page * PAGE_SIZE, filteredSorted.length);
+
   /* ─────────────────────────── RENDER ─────────────────────────── */
   return (
     <div className="container-fluid px-0 px-md-3 pb-5">
 
       {/* Page header */}
-      <div className="d-flex align-items-center justify-content-between mb-4">
+      <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
         <div>
           <h3 className="mb-0 fw-bold" style={{ fontSize: 20, color: '#1e293b', letterSpacing: '-.02em' }}>
             Bài đăng Nổi bật
@@ -435,9 +707,17 @@ export default function ManagerFeaturedPosts() {
         </div>
         <button onClick={openCreate}
           className="d-flex align-items-center gap-2 fw-semibold"
-          style={{ borderRadius: 10, padding: '9px 20px', background: '#097E52', border: 'none', color: '#fff', fontSize: 14, cursor: 'pointer', boxShadow: '0 2px 10px rgba(9,126,82,.3)', transition: 'all .15s' }}
-          onMouseEnter={e => e.currentTarget.style.background = '#065f3f'}
-          onMouseLeave={e => e.currentTarget.style.background = '#097E52'}>
+          style={{ borderRadius: 10, padding: '9px 20px', background: '#097E52', border: 'none', color: '#fff', fontSize: 14, cursor: 'pointer', boxShadow: '0 2px 10px rgba(9,126,82,.3)', transition: 'background .15s ease, box-shadow .2s ease, transform .2s ease' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#065f3f';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 8px 24px rgba(9,126,82,.4)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#097E52';
+            e.currentTarget.style.transform = 'none';
+            e.currentTarget.style.boxShadow = '0 2px 10px rgba(9,126,82,.3)';
+          }}>
           <i className="feather-plus" style={{ fontSize: 16 }} />
           Tạo bài mới
         </button>
@@ -449,7 +729,6 @@ export default function ManagerFeaturedPosts() {
         </div>
       )}
 
-      {/* ── Danh sách dạng card grid ── */}
       {loading ? (
         <div className="text-center py-5">
           <div className="spinner-border" style={{ color: '#097E52' }} role="status">
@@ -457,7 +736,6 @@ export default function ManagerFeaturedPosts() {
           </div>
         </div>
       ) : items.length === 0 ? (
-        /* Empty state */
         <div className="rounded-4 d-flex flex-column align-items-center justify-content-center py-5"
           style={{ border: '2px dashed #d1f0e0', background: '#f0fdf8', minHeight: 280 }}>
           <div className="d-flex align-items-center justify-content-center rounded-circle mb-3"
@@ -469,21 +747,342 @@ export default function ManagerFeaturedPosts() {
             Tạo bài đăng để quảng bá cụm sân trên trang Nổi bật.
           </p>
           <button onClick={openCreate}
-            style={{ padding: '9px 24px', borderRadius: 8, border: 'none', background: '#097E52', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 8px rgba(9,126,82,.3)' }}>
+            style={{ padding: '9px 24px', borderRadius: 8, border: 'none', background: '#097E52', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 8px rgba(9,126,82,.3)', transition: 'background .15s ease, box-shadow .2s ease, transform .2s ease' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#065f3f';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 18px rgba(9,126,82,.38)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#097E52';
+              e.currentTarget.style.transform = 'none';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(9,126,82,.3)';
+            }}>
             <i className="feather-plus me-1" />Tạo bài đầu tiên
           </button>
         </div>
       ) : (
-        <div className="row g-4">
-          {items.map(row => (
-            <div key={row.id} className="col-12 col-md-6 col-xl-4">
-              <PostCard row={row} onEdit={openEdit} onDelete={remove} />
+        <>
+          <div className="card border-0 mb-4" style={{ borderRadius: 'var(--mgr-radius)', boxShadow: 'var(--mgr-shadow)' }}>
+            <div className="card-body py-3">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', width: '100%' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flex: '1 1 auto', minWidth: 0 }}>
+                  <div className="bk-search-wrap" style={{ flex: '1 1 260px', maxWidth: 420, minWidth: 200 }}>
+                    <i className="feather-search bk-search-icon" />
+                    <input
+                      type="text"
+                      className="form-control bk-search-input"
+                      placeholder="Tìm kiếm bài đăng (tiêu đề, mô tả, nội dung, sân)…"
+                      value={search}
+                      onChange={handleSearchChange}
+                    />
+                    {search && (
+                      <button type="button" className="bk-search-clear" onClick={() => { setSearch(''); setPage(1); }}>
+                        <i className="feather-x" />
+                      </button>
+                    )}
+                  </div>
+
+                  <select
+                    className="form-select"
+                    style={{ width: 200, flex: '0 0 auto' }}
+                    value={filterStatus}
+                    onChange={handleFilterChange}
+                  >
+                    <option value="all">Tất cả trạng thái</option>
+                    <option value="published">Đã xuất bản</option>
+                    <option value="draft">Nháp</option>
+                  </select>
+
+                  <FeaturedSortDropdown sort={sort} onChange={handleSortChange} />
+
+                  {(search || filterStatus !== 'all') && (
+                    <span style={{ fontSize: 13, color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                      {filteredSorted.length} kết quả
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0, marginLeft: 'auto' }}>
+                  <span style={{ fontSize: 13, color: '#94a3b8', whiteSpace: 'nowrap', marginRight: 4 }}>Hiển thị</span>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('table')}
+                    title="Dạng bảng"
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      width: 36, height: 36, borderRadius: 8, border: '1.5px solid',
+                      borderColor: viewMode === 'table' ? 'var(--mgr-accent)' : '#e2e8f0',
+                      background: viewMode === 'table' ? 'var(--mgr-accent)' : '#fff',
+                      color: viewMode === 'table' ? '#fff' : '#64748b',
+                      cursor: 'pointer',
+                      transition: 'background .15s ease, border-color .15s ease, color .15s ease, box-shadow .2s ease, transform .2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      if (viewMode === 'table') {
+                        e.currentTarget.style.boxShadow = '0 6px 14px rgba(9,126,82,.4)';
+                      } else {
+                        e.currentTarget.style.borderColor = 'var(--mgr-accent)';
+                        e.currentTarget.style.background = '#f0fdf8';
+                        e.currentTarget.style.color = '#097E52';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'none';
+                      e.currentTarget.style.boxShadow = 'none';
+                      e.currentTarget.style.borderColor = viewMode === 'table' ? 'var(--mgr-accent)' : '#e2e8f0';
+                      e.currentTarget.style.background = viewMode === 'table' ? 'var(--mgr-accent)' : '#fff';
+                      e.currentTarget.style.color = viewMode === 'table' ? '#fff' : '#64748b';
+                    }}
+                  >
+                    <i className="feather-list" style={{ fontSize: 16 }} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('grid')}
+                    title="Dạng lưới"
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      width: 36, height: 36, borderRadius: 8, border: '1.5px solid',
+                      borderColor: viewMode === 'grid' ? 'var(--mgr-accent)' : '#e2e8f0',
+                      background: viewMode === 'grid' ? 'var(--mgr-accent)' : '#fff',
+                      color: viewMode === 'grid' ? '#fff' : '#64748b',
+                      cursor: 'pointer',
+                      transition: 'background .15s ease, border-color .15s ease, color .15s ease, box-shadow .2s ease, transform .2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      if (viewMode === 'grid') {
+                        e.currentTarget.style.boxShadow = '0 6px 14px rgba(9,126,82,.4)';
+                      } else {
+                        e.currentTarget.style.borderColor = 'var(--mgr-accent)';
+                        e.currentTarget.style.background = '#f0fdf8';
+                        e.currentTarget.style.color = '#097E52';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'none';
+                      e.currentTarget.style.boxShadow = 'none';
+                      e.currentTarget.style.borderColor = viewMode === 'grid' ? 'var(--mgr-accent)' : '#e2e8f0';
+                      e.currentTarget.style.background = viewMode === 'grid' ? 'var(--mgr-accent)' : '#fff';
+                      e.currentTarget.style.color = viewMode === 'grid' ? '#fff' : '#64748b';
+                    }}
+                  >
+                    <i className="feather-grid" style={{ fontSize: 16 }} />
+                  </button>
+                </div>
+              </div>
             </div>
-          ))}
-        </div>
+          </div>
+
+          {filteredSorted.length === 0 ? (
+            <div className="card border-0" style={{ borderRadius: 'var(--mgr-radius)', boxShadow: 'var(--mgr-shadow)' }}>
+              <div className="card-body text-center py-5">
+                <i className="feather-search" style={{ fontSize: 36, color: '#cbd5e1' }} />
+                <h6 className="fw-bold mt-3 mb-1" style={{ color: '#334155' }}>Không tìm thấy bài đăng</h6>
+                <p className="text-muted small mb-0">Thử bỏ bộ lọc hoặc từ khoá tìm kiếm.</p>
+              </div>
+            </div>
+          ) : viewMode === 'table' ? (
+            <>
+              <FeaturedPostsTable rows={paginated} onEdit={openEdit} onDelete={remove} />
+              <div className="text-center text-muted small mt-2">
+                Hiển thị {rangeStart}–{rangeEnd} trong {filteredSorted.length} bài
+              </div>
+              <FeaturedPagination
+                page={page}
+                total={filteredSorted.length}
+                pageSize={PAGE_SIZE}
+                onChange={setPage}
+              />
+            </>
+          ) : (
+            <>
+              <div className="row g-4">
+                {paginated.map((row) => (
+                  <div key={row.id} className="col-12 col-md-6 col-xl-4">
+                    <PostCard row={row} onEdit={openEdit} onDelete={remove} />
+                  </div>
+                ))}
+              </div>
+              <div className="text-center text-muted small mt-2">
+                Hiển thị {rangeStart}–{rangeEnd} trong {filteredSorted.length} bài
+              </div>
+              <FeaturedPagination
+                page={page}
+                total={filteredSorted.length}
+                pageSize={PAGE_SIZE}
+                onChange={setPage}
+              />
+            </>
+          )}
+        </>
       )}
 
       {modal}
+    </div>
+  );
+}
+
+function FeaturedPostsTable({ rows, onEdit, onDelete }) {
+  return (
+    <div className="card border-0 overflow-hidden" style={{ borderRadius: 'var(--mgr-radius)', boxShadow: 'var(--mgr-shadow)' }}>
+      <div className="table-responsive">
+        <table className="table table-hover align-middle mb-0" style={{ fontSize: 14 }}>
+          <thead className="table-light">
+            <tr>
+              <th className="text-nowrap" style={{ width: 72 }}>Ảnh</th>
+              <th>Tiêu đề</th>
+              <th className="d-none d-md-table-cell">Sân</th>
+              <th className="text-nowrap">Trạng thái</th>
+              <th className="d-none d-lg-table-cell text-nowrap">Tạo lúc</th>
+              <th className="text-end text-nowrap" style={{ width: 168 }}>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.id}>
+                <td>
+                  <div
+                    style={{
+                      width: 52, height: 36, borderRadius: 8, overflow: 'hidden',
+                      background: '#f0fdf8', border: '1px solid #e2e8f0',
+                    }}
+                  >
+                    {row.coverImageUrl ? (
+                      <img src={row.coverImageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <div className="d-flex align-items-center justify-content-center h-100">
+                        <i className="feather-image" style={{ fontSize: 16, color: '#b6e2cc' }} />
+                      </div>
+                    )}
+                  </div>
+                </td>
+                <td>
+                  <div className="fw-semibold text-dark" style={{ maxWidth: 280 }}>{row.title}</div>
+                  {row.excerpt && (
+                    <div className="text-muted small text-truncate" style={{ maxWidth: 320 }} title={row.excerpt}>
+                      {row.excerpt}
+                    </div>
+                  )}
+                </td>
+                <td className="d-none d-md-table-cell text-muted small">
+                  {row.venueName ? (
+                    <span><i className="feather-map-pin me-1" style={{ fontSize: 12 }} />{row.venueName}</span>
+                  ) : '—'}
+                </td>
+                <td>
+                  {row.isPublished ? (
+                    <span
+                      className="rounded-pill d-inline-flex align-items-center"
+                      style={{
+                        padding: '8px 16px',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        letterSpacing: '.01em',
+                        background: 'rgba(9,126,82,.16)',
+                        color: '#065f3f',
+                        border: '1px solid rgba(9,126,82,.28)',
+                      }}
+                    >
+                      Đã xuất bản
+                    </span>
+                  ) : (
+                    <span
+                      className="rounded-pill d-inline-flex align-items-center bg-secondary text-white"
+                      style={{ padding: '8px 16px', fontSize: 13, fontWeight: 700 }}
+                    >
+                      Nháp
+                    </span>
+                  )}
+                </td>
+                <td className="d-none d-lg-table-cell text-muted small text-nowrap">
+                  {formatCreatedLabel(row.createdAt)}
+                </td>
+                <td className="text-end">
+                  <div
+                    className="d-inline-flex align-items-center justify-content-end gap-2"
+                    style={{ verticalAlign: 'middle' }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onEdit(row)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        minHeight: 38,
+                        padding: '0 14px',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        borderRadius: 8,
+                        background: '#fff',
+                        color: '#334155',
+                        border: '2px solid #64748b',
+                        boxShadow: '0 1px 2px rgba(15,23,42,.06)',
+                        cursor: 'pointer',
+                        transition: 'background .15s ease, border-color .15s ease, color .15s ease, box-shadow .2s ease, transform .2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#f0fdf8';
+                        e.currentTarget.style.borderColor = '#097E52';
+                        e.currentTarget.style.color = '#065f3f';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 4px 14px rgba(9,126,82,.22)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '#fff';
+                        e.currentTarget.style.borderColor = '#64748b';
+                        e.currentTarget.style.color = '#334155';
+                        e.currentTarget.style.transform = 'none';
+                        e.currentTarget.style.boxShadow = '0 1px 2px rgba(15,23,42,.06)';
+                      }}
+                    >
+                      <i className="feather-edit-3" style={{ fontSize: 15 }} /> Sửa
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onDelete(row.id)}
+                      title="Xoá"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minHeight: 38,
+                        minWidth: 38,
+                        width: 38,
+                        padding: 0,
+                        borderRadius: 8,
+                        background: '#fff',
+                        color: '#dc2626',
+                        border: '2px solid #ef4444',
+                        boxShadow: '0 1px 2px rgba(220,38,38,.08)',
+                        cursor: 'pointer',
+                        transition: 'background .15s ease, border-color .15s ease, box-shadow .2s ease, transform .2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#fef2f2';
+                        e.currentTarget.style.borderColor = '#dc2626';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 4px 14px rgba(220,38,38,.25)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '#fff';
+                        e.currentTarget.style.borderColor = '#ef4444';
+                        e.currentTarget.style.transform = 'none';
+                        e.currentTarget.style.boxShadow = '0 1px 2px rgba(220,38,38,.08)';
+                      }}
+                    >
+                      <i className="feather-trash-2" style={{ fontSize: 16 }} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -589,11 +1188,25 @@ function PostCard({ row, onEdit, onDelete }) {
           onClick={() => onEdit(row)}
           style={{
             flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-            padding: '10px 0', borderRadius: 9, border: '1.5px solid #e2e8f0',
-            background: '#f8fafc', color: '#475569', fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'all .15s'
+            padding: '10px 0', borderRadius: 9, border: '2px solid #64748b',
+            background: '#fff', color: '#334155', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+            transition: 'background .15s ease, border-color .15s ease, color .15s ease, box-shadow .2s ease, transform .2s ease',
+            boxShadow: '0 1px 2px rgba(15,23,42,.06)',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#f0fdf8'; e.currentTarget.style.borderColor = '#097E52'; e.currentTarget.style.color = '#097E52'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#475569'; }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#f0fdf8';
+            e.currentTarget.style.borderColor = '#097E52';
+            e.currentTarget.style.color = '#097E52';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 4px 14px rgba(9,126,82,.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#fff';
+            e.currentTarget.style.borderColor = '#64748b';
+            e.currentTarget.style.color = '#334155';
+            e.currentTarget.style.transform = 'none';
+            e.currentTarget.style.boxShadow = '0 1px 2px rgba(15,23,42,.06)';
+          }}
         >
           <i className="feather-edit-3" style={{ fontSize: 15 }} />Sửa bài
         </button>
@@ -601,11 +1214,23 @@ function PostCard({ row, onEdit, onDelete }) {
           onClick={() => onDelete(row.id)}
           style={{
             width: 46, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            borderRadius: 9, border: '1.5px solid #fecaca', background: '#fff1f2', color: '#ef4444',
-            fontSize: 15, cursor: 'pointer', transition: 'all .15s', flexShrink: 0
+            borderRadius: 9, border: '2px solid #ef4444', background: '#fff', color: '#dc2626',
+            fontSize: 15, cursor: 'pointer', flexShrink: 0,
+            boxShadow: '0 1px 2px rgba(220,38,38,.08)',
+            transition: 'background .15s ease, border-color .15s ease, box-shadow .2s ease, transform .2s ease',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.borderColor = '#fca5a5'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = '#fff1f2'; e.currentTarget.style.borderColor = '#fecaca'; }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#fef2f2';
+            e.currentTarget.style.borderColor = '#dc2626';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 4px 14px rgba(220,38,38,.28)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#fff';
+            e.currentTarget.style.borderColor = '#ef4444';
+            e.currentTarget.style.transform = 'none';
+            e.currentTarget.style.boxShadow = '0 1px 2px rgba(220,38,38,.08)';
+          }}
           title="Xoá"
         >
           <i className="feather-trash-2" style={{ fontSize: 16 }} />
