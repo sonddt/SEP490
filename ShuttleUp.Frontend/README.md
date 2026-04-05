@@ -1,3 +1,9 @@
+# ShuttleUp (frontend)
+
+Hướng dẫn chạy cả project (database, backend, Cloudinary, biến môi trường): đọc file README.md và README/LOCAL_SETUP.md ở thư mục gốc repo (cùng cấp với thư mục ShuttleUp.Frontend).
+
+---
+
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

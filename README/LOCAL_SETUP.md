@@ -1,100 +1,88 @@
-# Hướng dẫn cấu hình local cho team ShuttleUp
+# Cấu hình môi trường dev
 
-Tài liệu này giúp mọi thành viên chạy backend trên máy của mình mà không cần lưu Cloudinary API Key và API Secret trong Git.
+Sau khi clone repo, bạn cần chạy được backend và frontend trên máy mình. Không commit Api Key hay Api Secret của Cloudinary lên Git.
 
----
+## Cài sẵn một lần
 
-## 1. Thống nhất một Cloudinary cho môi trường dev
+- .NET 8 SDK (kiểm tra: dotnet --version)
+- Node.js 18 trở lên (kiểm tra: node -v)
+- MySQL hoặc MariaDB, biết user và mật khẩu
 
-- Team nên dùng chung một tài khoản Cloudinary dành cho dev (có thể là cloud hiện tại hoặc tạo cloud dev riêng).
-- Một người phụ trách (lead) quản lý quyền trên Cloudinary Dashboard.
-- Khi có thành viên mới, lead cấp Api Key và Api Secret qua kênh riêng (không để trong repo, không đăng công khai).
+## Bước 1: Database
 
----
+Chạy script Database.txt trong MySQL (theo quy ước team, thường chạy cả file nếu muốn DB mẫu sạch).
 
-## 2. Nội dung cần có trên mỗi máy dev
+Mở ShuttleUp.Backend/appsettings.json và sửa ConnectionStrings DefaultConnection cho đúng server, user, mật khẩu và tên database trên máy bạn.
 
-Backend đọc cấu hình Cloudinary qua section `Cloudinary` với các khóa sau:
+## Bước 2: Backend và Cloudinary
 
-| Khóa | Ghi chú |
-|------|---------|
-| CloudName | Có thể giữ trong `appsettings` (không phải bí mật mạnh như key). |
-| ApiKey | Bí mật: chỉ set qua User Secrets hoặc biến môi trường, không commit. |
-| ApiSecret | Bí mật: chỉ set qua User Secrets hoặc biến môi trường, không commit. |
+API cần Cloudinary để upload ảnh (avatar, minh chứng thanh toán, v.v.). Trong repo chỉ có CloudName và tên thư mục; Api Key và Api Secret mỗi người tự cấu hình trên máy bằng User Secrets.
 
-File `appsettings.json` trong repo chỉ nên chứa phần không nhạy cảm (ví dụ CloudName, Folder). ApiKey và ApiSecret không được đưa vào Git.
+Mở PowerShell tại thư mục ShuttleUp.Backend:
 
----
-
-## 3. Thành viên mới: các bước trên Windows (PowerShell)
-
-Mở terminal tại thư mục backend của solution:
-
-```powershell
+```
 cd ShuttleUp.Backend
 ```
 
-Khởi tạo User Secrets cho project (chỉ cần chạy một lần trên máy đó, nếu chưa có):
+Lần đầu trên máy có thể cần (nếu project đã có UserSecretsId trong file csproj thì có thể bỏ qua):
 
-```powershell
+```
 dotnet user-secrets init
 ```
 
-Đặt Api Key và Api Secret (thay phần trong ngoặc nhọn bằng giá trị lead cung cấp):
+Lấy Api Key và Api Secret từ người phụ trách hoặc từ Cloudinary Dashboard, mục API Keys. Rồi chạy (thay phần trong ngoặc bằng giá trị thật):
 
-```powershell
-dotnet user-secrets set "Cloudinary:ApiKey" "<ApiKey_của_bạn>"
-dotnet user-secrets set "Cloudinary:ApiSecret" "<ApiSecret_của_bạn>"
+```
+dotnet user-secrets set "Cloudinary:ApiKey" "DÁN_API_KEY_VÀO_ĐÂY"
+dotnet user-secrets set "Cloudinary:ApiSecret" 'DÁN_API_SECRET_VÀO_ĐÂY'
 ```
 
-Sau đó chạy API như bình thường (Visual Studio, `dotnet run`, hoặc cách team đang dùng).
+Nếu Api Secret bắt đầu bằng dấu trừ, nên dùng nháy đơn bao quanh giá trị như dòng ApiSecret ở trên, để PowerShell không hiểu nhầm là tham số lệnh.
 
-Lưu ý:
+CloudName đã có trong appsettings.json và appsettings.Development.json. Bạn chỉ cần User Secrets cho ApiKey và ApiSecret.
 
-- User Secrets lưu trên profile Windows của chính người đó, không nằm trong thư mục project và không bị commit khi push Git.
-- Mỗi máy chỉ cần cấu hình một lần, trừ khi team đổi key hoặc bạn cài lại máy.
+Chạy API:
 
----
+```
+dotnet run
+```
 
-## 4. Cách chia sẻ secret trong team (nên làm)
+Swagger thường mở tại http://localhost:5079/swagger
 
-Thứ tự ưu tiên từ an toàn đến chấp nhận được:
+Nếu thiếu Cloudinary, ứng dụng sẽ dừng và báo lỗi ngay khi khởi động. Đó là bình thường để tránh chạy sai mà không hay.
 
-1. Password manager có vault dùng chung (ví dụ Bitwarden, 1Password cho team).
-2. Tin nhắn riêng hoặc cuộc gọi ngắn để truyền key cho member mới, sau đó xóa tin nhắn nếu có thể.
-3. Tránh: đăng key lên nhóm lớp công khai, slide công khai, hoặc commit vào Git.
+## Bước 3: Frontend
 
----
+```
+cd ShuttleUp.Frontend
+copy .env.example .env
+npm install
+npm run dev
+```
 
-## 5. Khi có người rời team
+File .env có biến VITE_API_URL trỏ tới API (mặc định trong .env.example là http://localhost:5079/api). Đổi nếu bạn chạy API ở cổng khác.
 
-- Vào Cloudinary Dashboard, rotate hoặc xóa Api Key / Api Secret cũ, tạo bộ mới nếu cần.
-- Thông báo toàn team set lại User Secrets (hoặc biến môi trường) bằng key mới.
-
----
-
-## 6. Chuẩn bị deploy production (sau này)
-
-Người dùng cuối của web không cần đọc tài liệu này và không cần cấu hình Cloudinary.
-
-Người deploy (bạn hoặc DevOps) cấu hình một lần trên server hoặc trên nền tảng hosting bằng biến môi trường. Với ASP.NET Core, có thể dùng dấu gạch dưới kép để map section lồng nhau:
-
-| Biến môi trường | Ý nghĩa |
-|-----------------|--------|
-| Cloudinary__CloudName | Tên cloud |
-| Cloudinary__ApiKey | API Key |
-| Cloudinary__ApiSecret | API Secret |
-
-Tuỳ nền tảng (Azure App Service, Docker, VPS, v.v.) mà nhập vào mục Application Settings, Environment Variables, hoặc Secret của CI/CD.
-
----
+Có thêm VITE_CHAT_HUB_URL cho chat, chỉnh nếu cần.
 
 ## Kiểm tra nhanh
 
-Sau khi set User Secrets, chạy backend và thử các API có upload ảnh (ví dụ avatar hoặc minh chứng thanh toán). Nếu thiếu Cloudinary, ứng dụng sẽ báo lỗi cấu hình sớm thay vì chạy sai âm thầm.
+- Chạy dotnet run: không lỗi, vào được Swagger.
+- Có upload ảnh: không bị lỗi 500 do thiếu Cloudinary nếu đã set đủ key.
+- Chạy npm run dev: web mở được và gọi đúng địa chỉ API trong .env.
 
----
+## Không nên làm
 
-## Liên hệ trong team
+- Không ghi Cloudinary ApiKey hoặc ApiSecret vào appsettings rồi commit.
+- Không đăng key hoặc secret lên nhóm công khai.
 
-Nếu không chạy được sau khi làm theo các bước trên, báo lead kèm log lỗi từ console hoặc response API để xử lý nhanh.
+## Khi deploy server (tham khảo)
+
+Có thể dùng biến môi trường, ví dụ Cloudinary__CloudName, Cloudinary__ApiKey, Cloudinary__ApiSecret (hai dấu gạch dưới tương ứng section trong cấu hình ASP.NET).
+
+## Gặp lỗi
+
+- Backend báo thiếu Cloudinary: làm lại bước User Secrets hoặc kiểm tra đã dán đúng key chưa.
+- Lệnh user-secrets lỗi với secret: thử bọc giá trị bằng nháy đơn.
+- Lỗi kết nối database: kiểm tra MySQL đã bật và ConnectionStrings trong appsettings.
+
+Nếu vẫn không được, nhờ lead xem giúp và gửi log console của backend hoặc nội dung lỗi API (không gửi kèm secret).
