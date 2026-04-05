@@ -10,6 +10,8 @@ export default function VenueCard({
   viewMode = 'grid',
   isFavorited = false,
   onToggleFavorite,
+  /** Khoảng cách km (từ điểm neo GPS/hồ sơ), hiển thị khi có */
+  distanceKm = null,
 }) {
   // Sync tim với trạng thái thật từ props.
   const [faved, setFaved] = useState(!!isFavorited);
@@ -57,6 +59,18 @@ export default function VenueCard({
                 {priceLabel}
                 <span>/giờ</span>
               </h5>
+              {distanceKm != null && Number.isFinite(distanceKm) && (
+                <h5
+                  className="tag mt-1"
+                  style={{ background: '#475569', fontSize: '0.85rem' }}
+                >
+                  ~
+                  {Math.abs(distanceKm) < 10
+                    ? Math.abs(distanceKm).toFixed(1)
+                    : Math.round(Math.abs(distanceKm))}{' '}
+                  km
+                </h5>
+              )}
             </div>
           </div>
           <div className="listing-content">
