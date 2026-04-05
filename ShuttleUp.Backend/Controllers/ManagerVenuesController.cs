@@ -1041,6 +1041,69 @@ public class ManagerVenuesController : ControllerBase
     }
 
     /// <summary>
+    /// Đọc cài đặt thanh toán + preview VietQR (manager — gồm venue đang tắt hoạt động).
+    /// API public GET /api/venues/... chỉ trả venue active; trang cài đặt cần endpoint này.
+    /// </summary>
+    [HttpGet("{venueId:guid}/checkout-settings")]
+    public async Task<IActionResult> GetCheckoutSettingsForManager(
+        [FromRoute] Guid venueId,
+        [FromQuery] decimal? amount,
+        [FromQuery] string? addInfo)
+    {
+        var managerId = GetCurrentUserId();
+        if (managerId == Guid.Empty)
+            return Unauthorized(new { message = "Không xác định được người dùng hiện tại." });
+
+        var v = await _dbContext.Venues
+            .AsNoTracking()
+            .Where(venue => venue.Id == venueId && venue.OwnerUserId == managerId)
+            .Select(venue => new
+            {
+                venue.Id,
+                venue.Name,
+                venue.PaymentBankName,
+                venue.PaymentBankBin,
+                venue.PaymentAccountNumber,
+                venue.PaymentAccountHolder,
+                venue.PaymentTransferNoteTemplate,
+                venue.PaymentNote,
+                venue.CancelAllowed,
+                venue.CancelBeforeMinutes,
+                venue.RefundType,
+                venue.RefundPercent,
+            })
+            .FirstOrDefaultAsync();
+
+        if (v == null)
+            return NotFound(new { message = "Venue không tồn tại hoặc bạn không có quyền." });
+
+        var bin = VietQrHelper.ResolveBin(v.PaymentBankBin, v.PaymentBankName);
+        var amt = amount ?? 0m;
+        var note = string.IsNullOrWhiteSpace(addInfo) ? null : addInfo.Trim();
+        var vietQrUrl = VietQrHelper.BuildQrImageUrl(bin, v.PaymentAccountNumber, amt, note);
+
+        return Ok(new
+        {
+            venueId = v.Id,
+            venueName = v.Name,
+            bankName = v.PaymentBankName,
+            bankBin = bin,
+            accountNumber = v.PaymentAccountNumber,
+            accountHolder = v.PaymentAccountHolder,
+            transferNoteTemplate = v.PaymentTransferNoteTemplate ?? "[SĐT] - [Tên sân] - [Ngày]",
+            paymentNote = v.PaymentNote,
+            vietQrImageUrl = vietQrUrl,
+            cancellation = new
+            {
+                allowCancel = v.CancelAllowed,
+                cancelBeforeMinutes = v.CancelBeforeMinutes,
+                refundType = v.RefundType ?? "NONE",
+                refundPercent = v.RefundPercent,
+            },
+        });
+    }
+
+    /// <summary>
     /// Cài đặt tài khoản nhận tiền + chính sách huỷ theo từng venue.
     /// Nếu applyToAll = true, áp dụng thông tin ngân hàng cho tất cả venue của manager.
     /// </summary>

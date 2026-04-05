@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { getVenueCheckoutSettings } from '../../api/bookingApi';
-import { getManagedVenues, putVenueCheckoutSettings, lookupBankAccount } from '../../api/managerVenueApi';
+import { getManagedVenues, getManagerVenueCheckoutSettings, putVenueCheckoutSettings, lookupBankAccount } from '../../api/managerVenueApi';
 import {
   POPULAR_BANK_BINS,
   TRANSFER_VARIABLES,
@@ -311,7 +310,7 @@ export default function ManagerPaymentSettings() {
     setLoadingSettings(true); setPageError(''); setSettingsError(false);
     setVerifyStatus('idle'); setVerifiedName('');
     try {
-      const data = await getVenueCheckoutSettings(id, { amount: 250000, addInfo: 'XEM_TRUOC' });
+      const data = await getManagerVenueCheckoutSettings(id, { amount: 250000, addInfo: 'XEM_TRUOC' });
       const mapped = mapCheckoutToForm(data);
       setForm(mapped); setSavedForm(mapped);
     } catch {
@@ -342,7 +341,7 @@ export default function ManagerPaymentSettings() {
     setQrLoading(true);
     (async () => {
       try {
-        const data = await getVenueCheckoutSettings(venueId, { amount: 250000, addInfo: debouncedNote });
+        const data = await getManagerVenueCheckoutSettings(venueId, { amount: 250000, addInfo: debouncedNote });
         if (!cancelled) setPreviewQr(data?.vietQrImageUrl || null);
       } catch { if (!cancelled) setPreviewQr(null); }
       finally { if (!cancelled) setQrLoading(false); }

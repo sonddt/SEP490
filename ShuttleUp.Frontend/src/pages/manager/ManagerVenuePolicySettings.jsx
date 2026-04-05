@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { getVenueCheckoutSettings } from '../../api/bookingApi';
-import { getManagedVenues, putVenueCheckoutSettings } from '../../api/managerVenueApi';
+import { getManagedVenues, getManagerVenueCheckoutSettings, putVenueCheckoutSettings } from '../../api/managerVenueApi';
 import {
   emptyForm,
   mapCheckoutToForm,
@@ -67,7 +66,7 @@ export default function ManagerVenuePolicySettings() {
     if (!id) return;
     setLoadingSettings(true); setPageError(''); setSettingsError(false);
     try {
-      const data = await getVenueCheckoutSettings(id, { amount: 250000, addInfo: 'XEM_TRUOC' });
+      const data = await getManagerVenueCheckoutSettings(id, { amount: 250000, addInfo: 'XEM_TRUOC' });
       const mapped = mapCheckoutToForm(data);
       setForm(mapped); setSavedForm(mapped);
     } catch {

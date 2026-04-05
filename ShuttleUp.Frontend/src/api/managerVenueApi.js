@@ -5,6 +5,11 @@ export function getManagedVenues(params) {
   return axiosClient.get('/manager/venues', { params });
 }
 
+/** @param {string} venueId @param {{ amount?: number, addInfo?: string }} [params] */
+export function getManagerVenueCheckoutSettings(venueId, params) {
+  return axiosClient.get(`/manager/venues/${venueId}/checkout-settings`, { params });
+}
+
 /** @param {string} venueId @param {object} body */
 export function putVenueCheckoutSettings(venueId, body) {
   return axiosClient.put(`/manager/venues/${venueId}/checkout-settings`, body);
