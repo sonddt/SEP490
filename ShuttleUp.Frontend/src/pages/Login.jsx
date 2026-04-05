@@ -21,7 +21,8 @@ export default function Login() {
   const { login, logout, updateUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const returnUrl = location.state?.from || null;
+  const returnUrl =
+    location.state?.from || new URLSearchParams(location.search).get('returnTo') || null;
 
   /** Tăng mỗi lần bắt đầu đăng nhập (email hoặc Google) — bỏ qua callback cũ nếu user đổi cách đăng nhập. */
   const loginAttemptSeq = useRef(0);
@@ -67,10 +68,10 @@ export default function Login() {
       }
     }
 
-    // Tránh bị kéo về sai dashboard bởi returnUrl cũ
+    // Chỉ cho phép đường dẫn nội bộ (tránh open redirect)
     const safeReturnUrl = (() => {
-      if (!returnUrl) return null;
-      if (returnUrl.startsWith('/manager') || returnUrl.startsWith('/user')) return null;
+      if (!returnUrl || typeof returnUrl !== 'string') return null;
+      if (!returnUrl.startsWith('/') || returnUrl.startsWith('//')) return null;
       return returnUrl;
     })();
 

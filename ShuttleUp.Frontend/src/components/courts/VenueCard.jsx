@@ -43,6 +43,13 @@ export default function VenueCard({
     priceLabel = maxLabel;
   }
 
+  const distanceDisplay =
+    distanceKm != null && Number.isFinite(distanceKm)
+      ? Math.abs(distanceKm) < 10
+        ? Math.abs(distanceKm).toFixed(1)
+        : String(Math.round(Math.abs(distanceKm)))
+      : null;
+
   return (
     <div className={isList ? 'col-lg-12 col-md-12' : 'col-lg-4 col-md-6'}>
       <div className={isList ? 'featured-venues-item venue-list-item' : 'wrapper'}>
@@ -51,24 +58,36 @@ export default function VenueCard({
             <Link to={`/venue-details/${venue.id}`}>
               <img src={venue.img} className="img-fluid" alt={venue.name} />
             </Link>
-            <div className="fav-item-venues">
-              {venue.tag && (
-                <span className={`tag ${venue.tagClass}`}>{venue.tag}</span>
-              )}
-              <h5 className="tag tag-primary">
-                {priceLabel}
-                <span>/giờ</span>
-              </h5>
-              {distanceKm != null && Number.isFinite(distanceKm) && (
+            <div className="fav-item-venues venue-card-fav-badges">
+              <div
+                className="venue-card-fav-badges__left d-flex flex-column gap-1"
+                style={{ transform: 'translateX(-12px)', marginRight: 'auto' }}
+              >
+                {venue.tag && (
+                  <span className={`tag ${venue.tagClass}`}>{venue.tag}</span>
+                )}
                 <h5
-                  className="tag mt-1"
-                  style={{ background: '#475569', fontSize: '0.85rem' }}
+                  className="tag tag-primary"
+                  style={{ marginLeft: 0, marginBottom: 0 }}
                 >
-                  ~
-                  {Math.abs(distanceKm) < 10
-                    ? Math.abs(distanceKm).toFixed(1)
-                    : Math.round(Math.abs(distanceKm))}{' '}
-                  km
+                  {priceLabel}
+                  <span>/giờ</span>
+                </h5>
+              </div>
+              {distanceDisplay != null && (
+                <h5
+                  className="tag venue-card-distance-badge"
+                  style={{
+                    marginLeft: 'auto',
+                    marginBottom: 0,
+                    alignSelf: 'flex-start',
+                    background: '#475569',
+                    fontSize: '0.85rem',
+                    color: '#fff',
+                    fontWeight: 600,
+                  }}
+                >
+                  ~{distanceDisplay} km
                 </h5>
               )}
             </div>

@@ -1751,3 +1751,11 @@ optgroup {
 .adm-stat-card--red::before{background:#ef4444}
 .adm-stat-card--red .adm-stat-card__icon{background:#fef2f2;border-color:#fca5a5}
 .adm-stat-card--red .adm-stat-card__icon i{color:#ef4444}
+
+/* VenueCard: căn badge giá / km trên ảnh listing */
+.listing-item .fav-item-venues.venue-card-fav-badges {
+  align-items: flex-start;
+}
+.listing-item .fav-item-venues.venue-card-fav-badges .venue-card-distance-badge {
+  color: #fff !important;
+}

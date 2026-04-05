@@ -1,17 +1,25 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { jwtHasRole } from '../../utils/jwtRoles';
+import { useAuth } from '../../context/AuthContext';
+import { jwtHasRole, isJwtExpired } from '../../utils/jwtRoles';
 
 const AUTH_TOKEN_KEY = 'token';
 
 /**
- * Chỉ render children khi đã đăng nhập (có token trong localStorage).
- * Nếu chưa đăng nhập → chuyển về /login.
+ * Chỉ render children khi đã đăng nhập (JWT còn hạn trong localStorage).
+ * Hết hạn / không có token → logout + chuyển về /login.
  * requiredRole: kiểm tra trên **JWT** (khớp với [Authorize(Roles=...)] trên API),
  * không chỉ localStorage — tránh vào /manager khi token cũ chỉ có PLAYER.
  */
 export default function ProtectedRoute({ children, requiredRole }) {
   const location = useLocation();
-  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const { logout } = useAuth();
+
+  let token = localStorage.getItem(AUTH_TOKEN_KEY);
+  if (token && isJwtExpired(token)) {
+    logout();
+    token = localStorage.getItem(AUTH_TOKEN_KEY);
+  }
+
   const isLoggedIn = !!token;
 
   if (!isLoggedIn) {
