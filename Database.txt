@@ -1445,14 +1445,9 @@ SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema 
 SET @sql := IF(@col = 0, 'ALTER TABLE venue_coupons ADD COLUMN one_use_per_user TINYINT(1) NOT NULL DEFAULT 1 COMMENT ''TRUE: mỗi user chỉ dùng mã 1 lần (đơn không huỷ)''', 'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-<<<<<<< HEAD
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'payment_note');
-SET @sql := IF(@col = 0, 'ALTER TABLE venues ADD COLUMN payment_note VARCHAR(1000) NULL COMMENT ''Ghi chú hướng dẫn thanh toán cho người chơi''', 'SELECT 1');
-=======
 -- featured_posts: bỏ sort_order (thứ tự chỉ theo created_at trong API)
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'featured_posts' AND column_name = 'sort_order');
 SET @sql := IF(@col > 0, 'ALTER TABLE featured_posts DROP COLUMN sort_order', 'SELECT 1');
->>>>>>> cfc830a85cdc47ec352189c65e60b3cdd105341a
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- ======================================================================
