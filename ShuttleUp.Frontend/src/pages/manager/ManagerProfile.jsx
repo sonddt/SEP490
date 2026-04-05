@@ -336,7 +336,7 @@ export default function ManagerProfile() {
             <button
               type="button"
               className="btn btn-primary fw-bold d-inline-flex align-items-center gap-2 shadow-sm"
-              style={{ borderRadius: 12, background: '#097E52', borderColor: '#097E52', padding: '10px 22px' }}
+              style={{ borderRadius: 12, padding: '10px 22px' }}
               onClick={() => { setSuccessMsg(''); setErrorMsg(''); setEditing(true); }}
             >
               <i className="feather-edit-2" style={{ fontSize: 15 }} />
@@ -530,7 +530,7 @@ export default function ManagerProfile() {
                 className="btn btn-primary fw-bold px-5 py-3 shadow"
                 disabled={submittingPersonal}
                 onClick={handleSubmitPersonal}
-                style={{ borderRadius: 12, background: '#097E52', borderColor: '#097E52', minWidth: 180 }}
+                style={{ borderRadius: 12, minWidth: 180 }}
               >
                 {submittingPersonal ? 'ĐANG LƯU...' : 'LƯU THAY ĐỔI'}
               </button>
@@ -593,7 +593,7 @@ export default function ManagerProfile() {
               className="btn btn-primary fw-bold px-5 py-3 shadow"
               disabled={submittingBiz}
               onClick={handleSubmitBiz}
-              style={{ borderRadius: 12, background: '#097E52', borderColor: '#097E52' }}
+              style={{ borderRadius: 12 }}
             >
               {submittingBiz ? 'ĐANG GỬI...' : 'GỬI/CẬP NHẬT'}
             </button>

@@ -112,6 +112,29 @@ public class FileService : IFileService
         return MapUploadResult(result);
     }
 
+    public async Task<FileUploadResult> UploadFeaturedPostImageAsync(IFormFile file, Guid authorId, CancellationToken cancellationToken = default)
+    {
+        var publicId = $"featured_{authorId:N}_{Guid.NewGuid():N}";
+        var folder = ResolveFolder(_settings.FeaturedPostImageFolder);
+
+        await using var stream = file.OpenReadStream();
+        var uploadParams = new ImageUploadParams
+        {
+            File = new FileDescription(file.FileName, stream),
+            Folder = folder,
+            PublicId = publicId,
+            Overwrite = false,
+            Transformation = new Transformation()
+                .Crop("limit")
+                .Width(1600)
+                .Height(900)
+                .FetchFormat("webp")
+        };
+
+        var result = await _cloudinary.UploadAsync(uploadParams, cancellationToken);
+        return MapUploadResult(result);
+    }
+
     private static FileUploadResult MapUploadResult(ImageUploadResult result)
     {
         if (result == null)

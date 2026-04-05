@@ -129,8 +129,12 @@ const Header = ({ transparent = false }) => {
                 </ul>
               </li>
 
+              <li className={isActive('/featured') ? 'active' : ''}>
+                <Link to="/featured" onClick={closeMobileMenu}>Nổi bật</Link>
+              </li>
+
               <li className={isActive('/about') ? 'active' : ''}>
-                <Link to="/about" onClick={closeMobileMenu}>Nổi bật</Link>
+                <Link to="/about" onClick={closeMobileMenu}>Giới thiệu</Link>
               </li>
 
               {isAuthenticated && (

@@ -43,6 +43,7 @@ function SortDropdown({ sort, onChange }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        className="mgr-btn-lift"
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
           padding: '9px 14px', border: '2px solid var(--mgr-accent)', borderRadius: 8,
@@ -103,6 +104,7 @@ function Pagination({ page, total, pageSize, onChange }) {
         type="button"
         disabled={page <= 1}
         onClick={() => onChange(page - 1)}
+        className="mgr-btn-lift"
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px',
           border: '1.5px solid #e2e8f0', borderRadius: 8, background: '#fff', fontSize: 13,
@@ -118,6 +120,7 @@ function Pagination({ page, total, pageSize, onChange }) {
           key={p}
           type="button"
           onClick={() => onChange(p)}
+          className="mgr-btn-lift"
           style={{
             width: 38, height: 38, borderRadius: 8, border: 'none',
             background: page === p ? 'var(--mgr-accent)' : '#f1f5f9',
@@ -135,6 +138,7 @@ function Pagination({ page, total, pageSize, onChange }) {
         type="button"
         disabled={page >= totalPages}
         onClick={() => onChange(page + 1)}
+        className="mgr-btn-lift"
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px',
           border: '1.5px solid #e2e8f0', borderRadius: 8, background: '#fff', fontSize: 13,
@@ -322,6 +326,7 @@ export default function ManagerVenueList() {
               <button
                 type="button"
                 onClick={() => setViewMode('grid')}
+                className="mgr-btn-lift"
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   width: 36, height: 36, borderRadius: 8, border: '1.5px solid',
@@ -337,6 +342,7 @@ export default function ManagerVenueList() {
               <button
                 type="button"
                 onClick={() => setViewMode('list')}
+                className="mgr-btn-lift"
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   width: 36, height: 36, borderRadius: 8, border: '1.5px solid',
@@ -404,9 +410,9 @@ export default function ManagerVenueList() {
           {paginated.map((venue) => {
             const st = STATUS_STYLES[venue.status] || STATUS_STYLES.active;
             return (
-              <div key={venue.id} className="card border-0" style={{ borderRadius: 'var(--mgr-radius)', boxShadow: 'var(--mgr-shadow)', overflow: 'hidden' }}>
+              <div key={venue.id} className="card border-0" style={{ borderRadius: 'var(--mgr-radius)', boxShadow: 'var(--mgr-shadow)' }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-                  <div style={{ width: 180, minHeight: 140, flexShrink: 0, position: 'relative' }}>
+                  <div style={{ width: 180, minHeight: 140, flexShrink: 0, position: 'relative', overflow: 'hidden', borderRadius: 'var(--mgr-radius) 0 0 var(--mgr-radius)' }}>
                     <img
                       src={venue.image} alt={venue.name}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}

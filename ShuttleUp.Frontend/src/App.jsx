@@ -15,6 +15,7 @@ import VenueDetails from './pages/VenueDetails';
 import ChatPage from './pages/ChatPage';
 import Contact from './pages/Contact';
 import About from './pages/About';
+import FeaturedPage from './pages/FeaturedPage';
 import BookingTimeline from './pages/BookingTimeline';
 import BookingConfirm from './pages/BookingConfirm';
 import BookingPayment from './pages/BookingPayment';
@@ -70,6 +71,7 @@ import ManagerVenuePolicySettings from './pages/manager/ManagerVenuePolicySettin
 import ManagerAvailability from './pages/manager/ManagerAvailability';
 import ManagerProfile from './pages/manager/ManagerProfile';
 import ManagerRefunds from './pages/manager/ManagerRefunds';
+import ManagerFeaturedPosts from './pages/manager/ManagerFeaturedPosts';
 
 // Admin — Layout + Pages
 import AdminLayout from './layouts/AdminLayout';
@@ -78,6 +80,7 @@ import AdminAccounts from './pages/admin/AdminAccounts';
 import AdminManagerRequests from './pages/admin/AdminManagerRequests';
 import AdminBookingsStats from './pages/admin/AdminBookingsStats';
 import AdminRevenueStats from './pages/admin/AdminRevenueStats';
+import AdminFeaturedPosts from './pages/admin/AdminFeaturedPosts';
 
 const GOOGLE_CLIENT_ID = '993428936543-3tfatp8ak872p2j248tq3lbbqoi4r2ue.apps.googleusercontent.com';
 
@@ -213,6 +216,7 @@ function App() {
             {/* Bookings */}
             <Route path="bookings" element={<ManagerBookings />} />
             <Route path="refunds" element={<ManagerRefunds />} />
+            <Route path="featured-posts" element={<ManagerFeaturedPosts />} />
 
             {/* Notifications */}
             <Route path="notifications" element={<ManagerNotifications />} />
@@ -227,6 +231,7 @@ function App() {
           </Route>
 
           {/* ═══ Static pages ═══ */}
+          <Route path="/featured" element={<FeaturedPage />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/blog" element={<PlaceholderPage title="Blog" />} />
@@ -250,6 +255,7 @@ function App() {
             <Route path="manager-requests" element={<AdminManagerRequests />} />
             <Route path="bookings-stats" element={<AdminBookingsStats />} />
             <Route path="revenue-stats" element={<AdminRevenueStats />} />
+            <Route path="featured-posts" element={<AdminFeaturedPosts />} />
           </Route>
 
           {/* ═══ 404 ═══ */}
