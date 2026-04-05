@@ -41,6 +41,31 @@ Nếu Api Secret bắt đầu bằng dấu trừ, nên dùng nháy đơn bao qua
 
 CloudName đã có trong appsettings.json và appsettings.Development.json. Bạn chỉ cần User Secrets cho ApiKey và ApiSecret.
 
+### VietQR (tra cứu chủ tài khoản ngân hàng)
+
+Trang cài đặt thanh toán của Manager dùng VietQR Lookup API để xác minh chủ tài khoản. Cần ClientId và ApiKey từ https://vietqr.io (mục API Lookup).
+
+**Bắt buộc:** Lệnh `dotnet user-secrets` phải chạy trong thư mục có file `.csproj` (backend), **không** chạy ở thư mục gốc repo `SEP490` — nếu không sẽ báo *Could not find a MSBuild project file*.
+
+Cách 1 — vào đúng thư mục backend rồi chạy (khuyên dùng):
+
+```
+cd ShuttleUp.Backend
+dotnet user-secrets set "VietQR:ClientId" "DÁN_CLIENT_ID_VÀO_ĐÂY"
+dotnet user-secrets set "VietQR:ApiKey" "DÁN_API_KEY_VÀO_ĐÂY"
+```
+
+Cách 2 — đứng ở thư mục gốc repo, chỉ rõ project:
+
+```
+dotnet user-secrets set "VietQR:ClientId" "DÁN_CLIENT_ID_VÀO_ĐÂY" --project ShuttleUp.Backend/ShuttleUp.Backend.csproj
+dotnet user-secrets set "VietQR:ApiKey" "DÁN_API_KEY_VÀO_ĐÂY" --project ShuttleUp.Backend/ShuttleUp.Backend.csproj
+```
+
+Mỗi lệnh **một dòng** — không dán hai lệnh `dotnet` liền nhau trên cùng một dòng (PowerShell sẽ báo *Unrecognized command or argument 'dotnet'*).
+
+LookupUrl đã có trong appsettings.json. Bạn chỉ cần User Secrets cho ClientId và ApiKey.
+
 Chạy API:
 
 ```
@@ -49,7 +74,7 @@ dotnet run
 
 Swagger thường mở tại http://localhost:5079/swagger
 
-Nếu thiếu Cloudinary, ứng dụng sẽ dừng và báo lỗi ngay khi khởi động. Đó là bình thường để tránh chạy sai mà không hay.
+Nếu thiếu Cloudinary hoặc VietQR, ứng dụng sẽ dừng và báo lỗi ngay khi khởi động. Đó là bình thường để tránh chạy sai mà không hay.
 
 ## Bước 3: Frontend
 
@@ -72,16 +97,18 @@ Có thêm VITE_CHAT_HUB_URL cho chat, chỉnh nếu cần.
 
 ## Không nên làm
 
-- Không ghi Cloudinary ApiKey hoặc ApiSecret vào appsettings rồi commit.
+- Không ghi Cloudinary ApiKey/ApiSecret hoặc VietQR ClientId/ApiKey vào appsettings rồi commit.
 - Không đăng key hoặc secret lên nhóm công khai.
 
 ## Khi deploy server (tham khảo)
 
-Có thể dùng biến môi trường, ví dụ Cloudinary__CloudName, Cloudinary__ApiKey, Cloudinary__ApiSecret (hai dấu gạch dưới tương ứng section trong cấu hình ASP.NET).
+Có thể dùng biến môi trường, ví dụ Cloudinary__CloudName, Cloudinary__ApiKey, Cloudinary__ApiSecret, VietQR__ClientId, VietQR__ApiKey (hai dấu gạch dưới tương ứng section trong cấu hình ASP.NET).
 
 ## Gặp lỗi
 
-- Backend báo thiếu Cloudinary: làm lại bước User Secrets hoặc kiểm tra đã dán đúng key chưa.
+- **Could not find a MSBuild project file:** Bạn đang chạy `dotnet user-secrets` ở thư mục sai. `cd ShuttleUp.Backend` trước, hoặc thêm `--project ShuttleUp.Backend/ShuttleUp.Backend.csproj` (khi đứng ở thư mục gốc repo).
+- **Unrecognized command or argument 'dotnet':** Hai lệnh bị dán trên một dòng. Chạy từng lệnh `dotnet user-secrets set ...` riêng biệt, mỗi lệnh Enter một lần.
+- Backend báo thiếu Cloudinary hoặc VietQR: làm lại bước User Secrets hoặc kiểm tra đã dán đúng key chưa.
 - Lệnh user-secrets lỗi với secret: thử bọc giá trị bằng nháy đơn.
 - Lỗi kết nối database: kiểm tra MySQL đã bật và ConnectionStrings trong appsettings.
 

@@ -75,6 +75,24 @@ namespace ShuttleUp.Backend
                     settings.ApiSecret.Trim()));
             });
             builder.Services.AddScoped<IFileService, FileService>();
+
+            // ── VietQR Lookup API (bank account verification) ──────────────────
+            builder.Services.Configure<Configurations.VietQRSettings>(builder.Configuration.GetSection("VietQR"));
+            builder.Services.AddSingleton(sp =>
+            {
+                var settings = sp.GetRequiredService<IOptions<Configurations.VietQRSettings>>().Value;
+
+                if (string.IsNullOrWhiteSpace(settings.ClientId)
+                    || string.IsNullOrWhiteSpace(settings.ApiKey))
+                {
+                    throw new InvalidOperationException(
+                        "Missing VietQR settings. Please configure VietQR:ClientId, VietQR:ApiKey via user-secrets:\n"
+                        + "  dotnet user-secrets set \"VietQR:ClientId\" \"<your-client-id>\"\n"
+                        + "  dotnet user-secrets set \"VietQR:ApiKey\"   \"<your-api-key>\"");
+                }
+
+                return settings;
+            });
             builder.Services.AddScoped<INotificationDispatchService, NotificationDispatchService>();
             builder.Services.AddScoped<IMatchingPostLifecycleService, MatchingPostLifecycleService>();
             builder.Services.AddScoped<IMatchingPostActivityService, MatchingPostActivityService>();

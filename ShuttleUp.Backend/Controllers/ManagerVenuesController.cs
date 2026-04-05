@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
+using ShuttleUp.Backend.Configurations;
 using ShuttleUp.BLL.DTOs.Manager;
 using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.DAL.Models;
@@ -24,17 +26,20 @@ public class ManagerVenuesController : ControllerBase
     private readonly ICourtService _courtService;
     private readonly ShuttleUpDbContext _dbContext;
     private readonly IConfiguration _config;
+    private readonly VietQRSettings _vietQrSettings;
 
     public ManagerVenuesController(
         IVenueService venueService,
         ICourtService courtService,
         ShuttleUpDbContext dbContext,
-        IConfiguration config)
+        IConfiguration config,
+        IOptions<VietQRSettings> vietQrOptions)
     {
         _venueService = venueService;
         _courtService = courtService;
         _dbContext = dbContext;
         _config = config;
+        _vietQrSettings = vietQrOptions.Value;
     }
 
     public class CourtStatusUpdateDto
@@ -990,38 +995,47 @@ public class ManagerVenuesController : ControllerBase
 
     /// <summary>
     /// Tra cứu tên chủ tài khoản qua VietQR Lookup API.
-    /// Cần cấu hình VietQR:ClientId và VietQR:ApiKey trong appsettings.
+    /// Cấu hình VietQR:ClientId + VietQR:ApiKey qua user-secrets (xem README/LOCAL_SETUP.md).
+    /// AccountNumber == "999999" → sandbox response (không gọi API thật).
     /// </summary>
     [HttpPost("bank-lookup")]
     public async Task<IActionResult> LookupBankAccount([FromBody] BankLookupDto dto)
     {
-        var clientId = _config["VietQR:ClientId"];
-        var apiKey = _config["VietQR:ApiKey"];
-
-        if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(apiKey))
-            return Ok(new { configured = false, message = "VietQR Lookup API chưa được cấu hình. Vui lòng nhập tên chủ tài khoản thủ công." });
+        if (string.IsNullOrWhiteSpace(_vietQrSettings.ClientId)
+            || string.IsNullOrWhiteSpace(_vietQrSettings.ApiKey))
+        {
+            return Ok(new { configured = false, message = "Tính năng tra cứu chưa được cấu hình, vui lòng nhập tay." });
+        }
 
         if (string.IsNullOrWhiteSpace(dto.Bin) || string.IsNullOrWhiteSpace(dto.AccountNumber))
             return BadRequest(new { message = "Thiếu mã BIN hoặc số tài khoản." });
 
+        var bin = dto.Bin.Trim();
         var acctNum = dto.AccountNumber.Trim();
         if (!System.Text.RegularExpressions.Regex.IsMatch(acctNum, @"^\d{6,19}$"))
             return BadRequest(new { message = "Số tài khoản không hợp lệ." });
 
+        // ── Sandbox mock ──
+        if (acctNum == "999999")
+        {
+            return Ok(new { configured = true, found = true, accountName = "NGUYEN VAN TEST (SANDBOX)" });
+        }
+
+        // ── Real VietQR Lookup ──
         try
         {
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
-            client.DefaultRequestHeaders.Add("x-client-id", clientId);
-            client.DefaultRequestHeaders.Add("x-api-key", apiKey);
+            client.DefaultRequestHeaders.Add("x-client-id", _vietQrSettings.ClientId.Trim());
+            client.DefaultRequestHeaders.Add("x-api-key", _vietQrSettings.ApiKey.Trim());
 
-            var response = await client.PostAsJsonAsync("https://api.vietqr.io/v2/lookup", new
+            var response = await client.PostAsJsonAsync(_vietQrSettings.LookupUrl, new
             {
-                bin = dto.Bin.Trim(),
+                bin,
                 accountNumber = acctNum,
             });
 
             if (!response.IsSuccessStatusCode)
-                return Ok(new { configured = true, found = false, message = "Không tra cứu được. Vui lòng nhập thủ công." });
+                return Ok(new { configured = true, found = false, message = "Không tìm thấy tài khoản, vui lòng kiểm tra lại hoặc nhập tay." });
 
             var json = await response.Content.ReadFromJsonAsync<JsonElement>();
             var code = json.GetProperty("code").GetString();
@@ -1032,7 +1046,7 @@ public class ManagerVenuesController : ControllerBase
                 return Ok(new { configured = true, found = true, accountName });
             }
 
-            return Ok(new { configured = true, found = false, message = "Không tìm thấy tài khoản." });
+            return Ok(new { configured = true, found = false, message = "Không tìm thấy tài khoản, vui lòng kiểm tra lại hoặc nhập tay." });
         }
         catch
         {

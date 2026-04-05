@@ -7,7 +7,6 @@ import {
   mapCheckoutToForm,
   buildPutBody,
   fetchVietqrBanks,
-  localBanksAsFallback,
   useDebounce,
   ConfirmModal,
   Toast,
@@ -247,7 +246,6 @@ export default function ManagerPaymentSettings() {
   const [banksLoading, setBanksLoading] = useState(true);
 
   const [verifyStatus, setVerifyStatus] = useState('idle');
-  const [verifiedName, setVerifiedName] = useState('');
 
   const [applyToAll, setApplyToAll] = useState(false);
 
@@ -256,11 +254,23 @@ export default function ManagerPaymentSettings() {
   const showToast = useCallback((msg, type = 'success') => setToast({ msg, type }), []);
   const getFieldError = (name) => fieldErrors[name] || '';
   const setField = (key, val) => {
-    setForm((p) => ({ ...p, [key]: val }));
-    setFieldErrors((p) => ({ ...p, [key]: '' }));
+    setForm((p) => {
+      const next = { ...p, [key]: val };
+      if (key === 'paymentAccountNumber' || key === 'paymentBankBin') {
+        next.paymentAccountHolder = '';
+      }
+      return next;
+    });
+    setFieldErrors((p) => {
+      const next = { ...p, [key]: '' };
+      if (key === 'paymentAccountNumber' || key === 'paymentBankBin') {
+        next.paymentAccountNumber = '';
+        next.paymentAccountHolder = '';
+      }
+      return next;
+    });
     if (key === 'paymentAccountNumber' || key === 'paymentBankBin') {
       setVerifyStatus('idle');
-      setVerifiedName('');
     }
   };
 
@@ -308,11 +318,13 @@ export default function ManagerPaymentSettings() {
   const loadSettings = useCallback(async (id) => {
     if (!id) return;
     setLoadingSettings(true); setPageError(''); setSettingsError(false);
-    setVerifyStatus('idle'); setVerifiedName('');
+    setVerifyStatus('idle');
     try {
       const data = await getManagerVenueCheckoutSettings(id, { amount: 250000, addInfo: 'XEM_TRUOC' });
       const mapped = mapCheckoutToForm(data);
       setForm(mapped); setSavedForm(mapped);
+      const hasHolder = !!(mapped.paymentAccountHolder?.trim() && mapped.paymentBankBin?.trim() && mapped.paymentAccountNumber?.trim());
+      if (hasHolder) setVerifyStatus('success');
     } catch {
       setSettingsError(true);
       setForm(emptyForm()); setSavedForm(emptyForm());
@@ -368,10 +380,10 @@ export default function ManagerPaymentSettings() {
       paymentBankName: shortName,
       paymentBankBin: bin,
       customBankName: '',
+      paymentAccountHolder: '',
     }));
-    setFieldErrors((p) => ({ ...p, paymentBankName: '' }));
+    setFieldErrors((p) => ({ ...p, paymentBankName: '', paymentAccountHolder: '', paymentAccountNumber: '' }));
     setVerifyStatus('idle');
-    setVerifiedName('');
   };
 
   // ── Auto-verify account holder ──
@@ -384,22 +396,41 @@ export default function ManagerPaymentSettings() {
   const handleVerify = async () => {
     if (!canVerify) return;
     setVerifyStatus('loading');
+    setFieldErrors((p) => ({ ...p, paymentAccountNumber: '', paymentAccountHolder: '' }));
     try {
       const res = await lookupBankAccount({
         bin: form.paymentBankBin.trim(),
         accountNumber: form.paymentAccountNumber.trim(),
       });
       if (res.configured === false) {
+        setForm((p) => ({ ...p, paymentAccountHolder: '' }));
         setVerifyStatus('unavailable');
+        setFieldErrors((p) => ({ ...p, paymentAccountHolder: 'Chưa tra cứu được tên chủ tài khoản.' }));
+        showToast(res.message || 'Tính năng tra cứu chưa được cấu hình. Liên hệ quản trị hệ thống.', 'error');
       } else if (res.found) {
-        setVerifiedName(res.accountName || '');
         setField('paymentAccountHolder', (res.accountName || '').toUpperCase());
         setVerifyStatus('success');
+        showToast(`Đã xác minh: ${res.accountName}`);
       } else {
+        setForm((p) => ({ ...p, paymentAccountHolder: '' }));
         setVerifyStatus('not_found');
+        const msg = res.message || 'Không tìm thấy tài khoản. Kiểm tra lại số tài khoản và ngân hàng.';
+        setFieldErrors((p) => ({
+          ...p,
+          paymentAccountNumber: msg,
+          paymentAccountHolder: 'Chưa có tên chủ tài khoản — vui lòng Xác minh lại sau khi sửa STK.',
+        }));
+        showToast(msg, 'error');
       }
     } catch {
+      setForm((p) => ({ ...p, paymentAccountHolder: '' }));
       setVerifyStatus('error');
+      setFieldErrors((p) => ({
+        ...p,
+        paymentAccountNumber: 'Không tra cứu được. Kiểm tra mạng và thử lại.',
+        paymentAccountHolder: 'Chưa tra cứu được tên chủ tài khoản.',
+      }));
+      showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
     }
   };
 
@@ -412,7 +443,9 @@ export default function ManagerPaymentSettings() {
     if (!acctNum) errors.paymentAccountNumber = 'Nhập số tài khoản.';
     else if (!/^\d+$/.test(acctNum)) errors.paymentAccountNumber = 'Số tài khoản chỉ được chứa chữ số.';
     else if (acctNum.length < 6 || acctNum.length > 19) errors.paymentAccountNumber = 'Số tài khoản phải từ 6 đến 19 chữ số.';
-    if (!form.paymentAccountHolder?.trim()) errors.paymentAccountHolder = 'Nhập tên chủ tài khoản.';
+    if (verifyStatus !== 'success' || !form.paymentAccountHolder?.trim()) {
+      errors.paymentAccountHolder = 'Vui lòng bấm Xác minh để lấy tên chủ tài khoản (chỉ hiển thị sau khi tra cứu thành công).';
+    }
     return errors;
   };
 
@@ -456,17 +489,17 @@ export default function ManagerPaymentSettings() {
     );
     if (verifyStatus === 'not_found') return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#d97706' }}>
-        <i className="feather-alert-triangle" style={{ fontSize: 14 }} /> Không tìm thấy — hãy nhập thủ công
+        <i className="feather-alert-triangle" style={{ fontSize: 14 }} /> Không khớp STK — sửa STK rồi Xác minh lại
       </span>
     );
     if (verifyStatus === 'unavailable') return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#94a3b8' }}>
-        <i className="feather-info" style={{ fontSize: 14 }} /> Tra cứu chưa cấu hình — nhập thủ công
+        <i className="feather-info" style={{ fontSize: 14 }} /> Tra cứu chưa cấu hình trên server
       </span>
     );
     if (verifyStatus === 'error') return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#dc3545' }}>
-        <i className="feather-x-circle" style={{ fontSize: 14 }} /> Lỗi tra cứu — nhập thủ công
+        <i className="feather-x-circle" style={{ fontSize: 14 }} /> Lỗi tra cứu — thử lại
       </span>
     );
     return null;
@@ -593,7 +626,7 @@ export default function ManagerPaymentSettings() {
                         <div style={{ flex: 1 }}>
                           <input type="text" inputMode="numeric" className={`form-control ${getFieldError('paymentAccountNumber') ? 'is-invalid' : ''}`} style={inputStyle('paymentAccountNumber')} placeholder="0123456789"
                             value={form.paymentAccountNumber} onChange={(e) => setField('paymentAccountNumber', e.target.value.replace(/\D/g, ''))} />
-                          {getFieldError('paymentAccountNumber') ? <div className="invalid-feedback">{getFieldError('paymentAccountNumber')}</div> : <small className="text-muted">Chỉ nhập chữ số, từ 6 đến 19 ký tự.</small>}
+                          {getFieldError('paymentAccountNumber') ? <div className="invalid-feedback d-block">{getFieldError('paymentAccountNumber')}</div> : <small className="text-muted">Chỉ nhập chữ số, từ 6 đến 19 ký tự. Bấm Xác minh để lấy tên chủ tài khoản.</small>}
                         </div>
                         <button
                           type="button"
@@ -611,22 +644,27 @@ export default function ManagerPaymentSettings() {
                       </div>
                     </div>
 
-                    {/* ── 2. Account Holder + Verify Badge ── */}
+                    {/* ── 2. Account Holder (read-only — chỉ từ tra cứu VietQR) ── */}
                     <div className="mb-4">
-                      <div className="d-flex align-items-center justify-content-between mb-1">
+                      <div className="d-flex align-items-center justify-content-between mb-1 flex-wrap gap-1">
                         <label style={{ fontSize: 13, fontWeight: 700, color: '#334155' }}>Chủ tài khoản <span className="text-danger">*</span></label>
                         {verifyBadge()}
                       </div>
-                      <input type="text" className={`form-control text-uppercase ${getFieldError('paymentAccountHolder') ? 'is-invalid' : ''}`}
+                      <input
+                        type="text"
+                        readOnly
+                        aria-readonly="true"
+                        className={`form-control text-uppercase ${getFieldError('paymentAccountHolder') ? 'is-invalid' : ''}`}
                         style={{
                           ...inputStyle('paymentAccountHolder'),
-                          ...(verifyStatus === 'success' ? { border: '1px solid #059669', background: '#f0fdf4' } : {}),
+                          cursor: 'default',
+                          ...(verifyStatus === 'success' ? { border: '1px solid #059669', background: '#f0fdf4' } : { background: '#f1f5f9' }),
                         }}
-                        placeholder="NGUYEN VAN A"
+                        placeholder="— Bấm «Xác minh» sau khi nhập đúng STK —"
                         value={form.paymentAccountHolder}
-                        onChange={(e) => { setField('paymentAccountHolder', e.target.value.toUpperCase()); if (verifyStatus === 'success') setVerifyStatus('idle'); }}
                       />
-                      {getFieldError('paymentAccountHolder') && <div className="invalid-feedback">{getFieldError('paymentAccountHolder')}</div>}
+                      <small className="text-muted d-block mt-1">Tên chủ tài khoản do VietQR trả về, không chỉnh sửa tay.</small>
+                      {getFieldError('paymentAccountHolder') && <div className="invalid-feedback d-block">{getFieldError('paymentAccountHolder')}</div>}
                     </div>
 
                     {/* ── 3. Transfer Note Template + Variable Chips ── */}
