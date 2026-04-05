@@ -48,6 +48,9 @@ public partial class Venue
 
     public string? PaymentTransferNoteTemplate { get; set; }
 
+    /// <summary>Ghi chú hướng dẫn thanh toán cho người chơi.</summary>
+    public string? PaymentNote { get; set; }
+
     public bool CancelAllowed { get; set; } = true;
 
     public int CancelBeforeMinutes { get; set; } = 120;

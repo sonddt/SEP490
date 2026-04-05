@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Json;
 using CloudinaryDotNet;
@@ -966,14 +967,82 @@ public class ManagerVenuesController : ControllerBase
         public string? PaymentAccountNumber { get; set; }
         public string? PaymentAccountHolder { get; set; }
         public string? PaymentTransferNoteTemplate { get; set; }
+        public string? PaymentNote { get; set; }
         public bool CancelAllowed { get; set; } = true;
         public int CancelBeforeMinutes { get; set; } = 120;
         public string RefundType { get; set; } = "NONE";
         public decimal? RefundPercent { get; set; }
+        public bool ApplyToAll { get; set; } = false;
+    }
+
+    public class BankLookupDto
+    {
+        public string Bin { get; set; } = "";
+        public string AccountNumber { get; set; } = "";
+    }
+
+    private static string? SanitizeText(string? input, int maxLen = 1000)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return null;
+        var clean = System.Text.RegularExpressions.Regex.Replace(input.Trim(), @"<[^>]*>", "");
+        return clean.Length > maxLen ? clean[..maxLen] : clean;
+    }
+
+    /// <summary>
+    /// Tra cứu tên chủ tài khoản qua VietQR Lookup API.
+    /// Cần cấu hình VietQR:ClientId và VietQR:ApiKey trong appsettings.
+    /// </summary>
+    [HttpPost("bank-lookup")]
+    public async Task<IActionResult> LookupBankAccount([FromBody] BankLookupDto dto)
+    {
+        var clientId = _config["VietQR:ClientId"];
+        var apiKey = _config["VietQR:ApiKey"];
+
+        if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(apiKey))
+            return Ok(new { configured = false, message = "VietQR Lookup API chưa được cấu hình. Vui lòng nhập tên chủ tài khoản thủ công." });
+
+        if (string.IsNullOrWhiteSpace(dto.Bin) || string.IsNullOrWhiteSpace(dto.AccountNumber))
+            return BadRequest(new { message = "Thiếu mã BIN hoặc số tài khoản." });
+
+        var acctNum = dto.AccountNumber.Trim();
+        if (!System.Text.RegularExpressions.Regex.IsMatch(acctNum, @"^\d{6,19}$"))
+            return BadRequest(new { message = "Số tài khoản không hợp lệ." });
+
+        try
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            client.DefaultRequestHeaders.Add("x-client-id", clientId);
+            client.DefaultRequestHeaders.Add("x-api-key", apiKey);
+
+            var response = await client.PostAsJsonAsync("https://api.vietqr.io/v2/lookup", new
+            {
+                bin = dto.Bin.Trim(),
+                accountNumber = acctNum,
+            });
+
+            if (!response.IsSuccessStatusCode)
+                return Ok(new { configured = true, found = false, message = "Không tra cứu được. Vui lòng nhập thủ công." });
+
+            var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+            var code = json.GetProperty("code").GetString();
+
+            if (code == "00")
+            {
+                var accountName = json.GetProperty("data").GetProperty("accountName").GetString();
+                return Ok(new { configured = true, found = true, accountName });
+            }
+
+            return Ok(new { configured = true, found = false, message = "Không tìm thấy tài khoản." });
+        }
+        catch
+        {
+            return Ok(new { configured = true, found = false, message = "Lỗi kết nối API. Vui lòng nhập thủ công." });
+        }
     }
 
     /// <summary>
     /// Cài đặt tài khoản nhận tiền + chính sách huỷ theo từng venue.
+    /// Nếu applyToAll = true, áp dụng thông tin ngân hàng cho tất cả venue của manager.
     /// </summary>
     [HttpPut("{venueId:guid}/checkout-settings")]
     public async Task<IActionResult> PutCheckoutSettings([FromRoute] Guid venueId, [FromBody] VenueCheckoutSettingsDto dto)
@@ -998,6 +1067,7 @@ public class ManagerVenuesController : ControllerBase
         var acctNum = dto.PaymentAccountNumber?.Trim();
         var acctHolder = dto.PaymentAccountHolder?.Trim().ToUpperInvariant();
         var noteTemplate = dto.PaymentTransferNoteTemplate?.Trim();
+        var paymentNote = SanitizeText(dto.PaymentNote);
 
         var hasBankData = !string.IsNullOrWhiteSpace(bankName)
                           || !string.IsNullOrWhiteSpace(acctNum)
@@ -1033,23 +1103,47 @@ public class ManagerVenuesController : ControllerBase
                 return BadRequest(new { message = "refundPercent phải từ 0 đến 100." });
         }
 
-        // ── Persist ──
+        // ── Persist primary venue ──
         venue.PaymentBankName = string.IsNullOrWhiteSpace(bankName) ? null : bankName;
         venue.PaymentBankBin = string.IsNullOrWhiteSpace(bankBin) ? null : bankBin;
         venue.PaymentAccountNumber = string.IsNullOrWhiteSpace(acctNum) ? null : acctNum;
         venue.PaymentAccountHolder = string.IsNullOrWhiteSpace(acctHolder) ? null : acctHolder;
         venue.PaymentTransferNoteTemplate = string.IsNullOrWhiteSpace(noteTemplate) ? null : noteTemplate;
+        venue.PaymentNote = paymentNote;
         venue.CancelAllowed = dto.CancelAllowed;
         venue.CancelBeforeMinutes = dto.CancelBeforeMinutes;
         venue.RefundType = refundType;
         venue.RefundPercent = refundType == "PERCENT" ? dto.RefundPercent : null;
 
+        // ── Bulk-apply bank settings to all manager's venues ──
+        var bulkCount = 0;
+        if (dto.ApplyToAll)
+        {
+            var otherVenues = await _dbContext.Venues
+                .Where(v => v.OwnerUserId == managerId && v.Id != venueId)
+                .ToListAsync();
+
+            foreach (var v in otherVenues)
+            {
+                v.PaymentBankName = venue.PaymentBankName;
+                v.PaymentBankBin = venue.PaymentBankBin;
+                v.PaymentAccountNumber = venue.PaymentAccountNumber;
+                v.PaymentAccountHolder = venue.PaymentAccountHolder;
+                v.PaymentTransferNoteTemplate = venue.PaymentTransferNoteTemplate;
+                v.PaymentNote = venue.PaymentNote;
+            }
+            bulkCount = otherVenues.Count;
+        }
+
         await _dbContext.SaveChangesAsync();
 
         return Ok(new
         {
-            message = "Đã lưu cài đặt thanh toán & huỷ đặt.",
+            message = dto.ApplyToAll && bulkCount > 0
+                ? $"Đã lưu cài đặt thanh toán & huỷ đặt, đồng thời áp dụng cho {bulkCount} cụm sân khác."
+                : "Đã lưu cài đặt thanh toán & huỷ đặt.",
             venueId = venue.Id,
+            bulkApplied = bulkCount,
         });
     }
 

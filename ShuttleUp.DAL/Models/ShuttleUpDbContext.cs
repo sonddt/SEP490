@@ -1172,6 +1172,9 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.PaymentTransferNoteTemplate)
                 .HasMaxLength(500)
                 .HasColumnName("payment_transfer_note_template");
+            entity.Property(e => e.PaymentNote)
+                .HasMaxLength(1000)
+                .HasColumnName("payment_note");
             entity.Property(e => e.CancelAllowed)
                 .HasColumnName("cancel_allowed");
             entity.Property(e => e.CancelBeforeMinutes)

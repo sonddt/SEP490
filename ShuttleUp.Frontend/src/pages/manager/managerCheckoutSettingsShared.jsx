@@ -19,6 +19,15 @@ export const BANKS = [
   'Khác',
 ];
 
+export const POPULAR_BANK_BINS = ['970436', '970407', '970418', '970415', '970422'];
+
+export const TRANSFER_VARIABLES = [
+  { key: '[SĐT]', label: 'SĐT', desc: 'Số điện thoại người đặt' },
+  { key: '[Mã đơn]', label: 'Mã đơn', desc: 'Mã đơn hàng' },
+  { key: '[Tên sân]', label: 'Tên sân', desc: 'Tên cụm sân' },
+  { key: '[Ngày]', label: 'Ngày', desc: 'Ngày sử dụng sân' },
+];
+
 export const REFUND_OPTIONS = [
   { value: 'NONE', label: 'Không hoàn tiền khi huỷ' },
   { value: 'FULL', label: 'Hoàn 100% (nếu huỷ đúng hạn)' },
@@ -31,6 +40,7 @@ export function emptyForm() {
   return {
     paymentBankName: '', paymentBankBin: '', paymentAccountNumber: '',
     paymentAccountHolder: '', paymentTransferNoteTemplate: '[SĐT] - [Tên sân] - [Ngày]',
+    paymentNote: '',
     customBankName: '',
     cancelAllowed: true, cancelBeforeMinutes: 120, refundType: 'NONE', refundPercent: null,
   };
@@ -44,6 +54,7 @@ export function mapCheckoutToForm(data) {
     paymentAccountNumber: data?.accountNumber || '',
     paymentAccountHolder: data?.accountHolder || '',
     paymentTransferNoteTemplate: data?.transferNoteTemplate || '[SĐT] - [Tên sân] - [Ngày]',
+    paymentNote: data?.paymentNote || '',
     customBankName: '',
     cancelAllowed: c.allowCancel !== false,
     cancelBeforeMinutes: Number(c.cancelBeforeMinutes ?? 120),
@@ -52,7 +63,7 @@ export function mapCheckoutToForm(data) {
   };
 }
 
-export function buildPutBody(form) {
+export function buildPutBody(form, { applyToAll = false } = {}) {
   const refundType = (form.refundType || 'NONE').toUpperCase();
   const bankName = form.paymentBankName === 'Khác'
     ? (form.customBankName?.trim() || 'Khác')
@@ -63,11 +74,62 @@ export function buildPutBody(form) {
     paymentAccountNumber: form.paymentAccountNumber?.trim() || null,
     paymentAccountHolder: (form.paymentAccountHolder?.trim() || '').toUpperCase() || null,
     paymentTransferNoteTemplate: form.paymentTransferNoteTemplate?.trim() || null,
+    paymentNote: form.paymentNote?.trim() || null,
     cancelAllowed: !!form.cancelAllowed,
     cancelBeforeMinutes: Math.max(0, Math.min(10080, Number(form.cancelBeforeMinutes) || 0)),
     refundType,
     refundPercent: refundType === 'PERCENT' ? Number(form.refundPercent) : null,
+    applyToAll,
   };
+}
+
+const VIETQR_BANKS_CACHE_KEY = 'shuttleup_vietqr_banks';
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+export function localBanksAsFallback() {
+  return BANKS.filter((b) => b !== 'Khác').map((name) => ({
+    shortName: name,
+    name,
+    code: name,
+    bin: BANK_BIN_MAP[name] || '',
+    logo: '',
+    transferSupported: true,
+    lookupSupported: false,
+  }));
+}
+
+export async function fetchVietqrBanks() {
+  try {
+    const cached = localStorage.getItem(VIETQR_BANKS_CACHE_KEY);
+    if (cached) {
+      const { data, ts } = JSON.parse(cached);
+      if (Date.now() - ts < CACHE_TTL_MS && Array.isArray(data) && data.length > 0)
+        return data;
+    }
+  } catch { /* ignore corrupt cache */ }
+
+  try {
+    const res = await fetch('https://api.vietqr.io/v2/banks');
+    if (!res.ok) return localBanksAsFallback();
+    const json = await res.json();
+    const banks = (json.data || [])
+      .filter((b) => b.transferSupported === 1)
+      .map((b) => ({
+        shortName: b.shortName,
+        name: b.name,
+        code: b.code,
+        bin: String(b.bin),
+        logo: b.logo || `https://api.vietqr.io/img/${b.code}.png`,
+        transferSupported: true,
+        lookupSupported: b.lookupSupported === 1,
+      }));
+    if (banks.length > 0) {
+      try { localStorage.setItem(VIETQR_BANKS_CACHE_KEY, JSON.stringify({ data: banks, ts: Date.now() })); } catch { /* quota */ }
+      return banks;
+    }
+  } catch { /* network error */ }
+
+  return localBanksAsFallback();
 }
 
 export function useDebounce(value, delay) {

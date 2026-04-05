@@ -9,3 +9,8 @@ export function getManagedVenues(params) {
 export function putVenueCheckoutSettings(venueId, body) {
   return axiosClient.put(`/manager/venues/${venueId}/checkout-settings`, body);
 }
+
+/** @param {{ bin: string, accountNumber: string }} body */
+export function lookupBankAccount(body) {
+  return axiosClient.post('/manager/venues/bank-lookup', body);
+}
