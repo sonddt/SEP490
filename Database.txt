@@ -245,6 +245,7 @@ CREATE TABLE venues (
     payment_account_number VARCHAR(50) NULL,
     payment_account_holder VARCHAR(255) NULL,
     payment_transfer_note_template VARCHAR(500) NULL DEFAULT '[SĐT] - [Tên sân] - [Ngày]',
+    payment_note VARCHAR(1000) NULL COMMENT 'Ghi chú hướng dẫn thanh toán cho người chơi',
     cancel_allowed TINYINT(1) NOT NULL DEFAULT 1,
     cancel_before_minutes INT NOT NULL DEFAULT 120,
     refund_type VARCHAR(20) NOT NULL DEFAULT 'NONE' COMMENT 'NONE|PERCENT|FULL',
