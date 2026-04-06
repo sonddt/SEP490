@@ -1521,6 +1521,11 @@ SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema 
 SET @sql := IF(@col > 0, 'ALTER TABLE featured_posts DROP COLUMN sort_order', 'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
+-- venues: venue_rules — quy định chi tiết dạng text tự do (chủ sân nhập trên trang chính sách)
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'venue_rules');
+SET @sql := IF(@col = 0, 'ALTER TABLE venues ADD COLUMN venue_rules TEXT NULL COMMENT ''Quy định chung tại sân (free-text, manager nhập)''', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 -- ======================================================================
 -- Kiểm tra kết quả
 -- ======================================================================

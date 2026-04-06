@@ -1226,6 +1226,9 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.RefundPercent)
                 .HasPrecision(5, 2)
                 .HasColumnName("refund_percent");
+            entity.Property(e => e.VenueRules)
+                .HasColumnType("text")
+                .HasColumnName("venue_rules");
 
             entity.HasOne(d => d.OwnerUser).WithMany(p => p.Venues)
                 .HasForeignKey(d => d.OwnerUserId)

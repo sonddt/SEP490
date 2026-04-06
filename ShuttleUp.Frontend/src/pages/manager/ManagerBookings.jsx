@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { BOOKING_STATUSES, PAYMENT_METHODS } from '../../data/bookingsMock';
 import { getManagerBookings, patchManagerBookingStatus } from '../../api/managerBookingsApi';
 import BookingDetailModal from '../../components/manager/BookingDetailModal';
@@ -36,7 +36,8 @@ function mapManagerBookingFromApi(b) {
   const raw = (b.status || '').toUpperCase();
   let uiStatus;
   if (raw === 'PENDING') uiStatus = 'PENDING';
-  else if (raw === 'CANCELLED') uiStatus = 'CANCELLED';
+  else if (raw === 'CANCELLED' || raw === 'REFUNDED') uiStatus = 'CANCELLED';
+  else if (raw === 'PENDING_REFUND') uiStatus = 'CANCELLED';
   else if (raw === 'CONFIRMED') {
     uiStatus = end.getTime() >= Date.now() ? 'UPCOMING' : 'COMPLETED';
   } else uiStatus = 'PENDING';
@@ -82,6 +83,7 @@ function mapManagerBookingFromApi(b) {
     paymentStatus: b.paymentStatus,
     paymentProofImg: b.proofUrl || null,
     status: uiStatus,
+    rawStatus: raw,
     note: b.guestNote || '',
     rejectReason: (b.managerStatusNote || '').trim() || null,
     createdAt,
@@ -504,6 +506,16 @@ export default function ManagerBookings() {
                         <span className="badge" style={{ background: st.bg, color: st.color }}>
                           <i className={st.icon} />{st.label}
                         </span>
+                        {b.rawStatus === 'PENDING_REFUND' && (
+                          <span className="badge bg-warning text-dark d-block mt-1" style={{ fontSize: 10 }}>
+                            <i className="feather-dollar-sign" style={{ fontSize: 10 }} /> Chờ hoàn tiền
+                          </span>
+                        )}
+                        {b.rawStatus === 'REFUNDED' && (
+                          <span className="badge bg-info text-white d-block mt-1" style={{ fontSize: 10 }}>
+                            <i className="feather-check-circle" style={{ fontSize: 10 }} /> Đã hoàn tiền
+                          </span>
+                        )}
                       </td>
                       {/* Actions */}
                       <td>
@@ -525,6 +537,11 @@ export default function ManagerBookings() {
                             <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => handleCancel(b.bookingId)}>
                               <i className="feather-slash" /> Huỷ lịch
                             </button>
+                          )}
+                          {b.rawStatus === 'PENDING_REFUND' && (
+                            <Link to="/manager/refunds" className="btn btn-sm btn-outline-warning">
+                              <i className="feather-dollar-sign" /> Xử lý hoàn tiền
+                            </Link>
                           )}
                         </div>
                       </td>

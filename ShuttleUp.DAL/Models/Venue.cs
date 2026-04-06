@@ -60,6 +60,9 @@ public partial class Venue
 
     public decimal? RefundPercent { get; set; }
 
+    /// <summary>Quy định chung tại sân — free-text do chủ sân nhập (hiển thị cho người chơi).</summary>
+    public string? VenueRules { get; set; }
+
     public bool? IsActive { get; set; }
 
     public DateTime? CreatedAt { get; set; }

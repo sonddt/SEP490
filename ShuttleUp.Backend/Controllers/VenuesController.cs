@@ -281,6 +281,7 @@ public class VenuesController : ControllerBase
                 venue.PaymentAccountHolder,
                 venue.PaymentTransferNoteTemplate,
                 venue.PaymentNote,
+                venue.VenueRules,
                 venue.CancelAllowed,
                 venue.CancelBeforeMinutes,
                 venue.RefundType,
@@ -306,6 +307,7 @@ public class VenuesController : ControllerBase
             accountHolder = v.PaymentAccountHolder,
             transferNoteTemplate = v.PaymentTransferNoteTemplate ?? "[SĐT] - [Tên sân] - [Ngày]",
             paymentNote = v.PaymentNote,
+            venueRules = v.VenueRules,
             vietQrImageUrl = vietQrUrl,
             cancellation = new
             {

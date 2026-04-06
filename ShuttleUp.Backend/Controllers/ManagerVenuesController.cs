@@ -977,6 +977,7 @@ public class ManagerVenuesController : ControllerBase
         public int CancelBeforeMinutes { get; set; } = 120;
         public string RefundType { get; set; } = "NONE";
         public decimal? RefundPercent { get; set; }
+        public string? VenueRules { get; set; }
         public bool ApplyToAll { get; set; } = false;
     }
 
@@ -1085,6 +1086,7 @@ public class ManagerVenuesController : ControllerBase
                 venue.CancelBeforeMinutes,
                 venue.RefundType,
                 venue.RefundPercent,
+                venue.VenueRules,
             })
             .FirstOrDefaultAsync();
 
@@ -1106,6 +1108,7 @@ public class ManagerVenuesController : ControllerBase
             accountHolder = v.PaymentAccountHolder,
             transferNoteTemplate = v.PaymentTransferNoteTemplate ?? "[SĐT] - [Tên sân] - [Ngày]",
             paymentNote = v.PaymentNote,
+            venueRules = v.VenueRules,
             vietQrImageUrl = vietQrUrl,
             cancellation = new
             {
@@ -1180,6 +1183,8 @@ public class ManagerVenuesController : ControllerBase
                 return BadRequest(new { message = "refundPercent phải từ 0 đến 100." });
         }
 
+        var venueRules = SanitizeText(dto.VenueRules, 5000);
+
         // ── Persist primary venue ──
         venue.PaymentBankName = string.IsNullOrWhiteSpace(bankName) ? null : bankName;
         venue.PaymentBankBin = string.IsNullOrWhiteSpace(bankBin) ? null : bankBin;
@@ -1187,6 +1192,7 @@ public class ManagerVenuesController : ControllerBase
         venue.PaymentAccountHolder = string.IsNullOrWhiteSpace(acctHolder) ? null : acctHolder;
         venue.PaymentTransferNoteTemplate = string.IsNullOrWhiteSpace(noteTemplate) ? null : noteTemplate;
         venue.PaymentNote = paymentNote;
+        venue.VenueRules = venueRules;
         venue.CancelAllowed = dto.CancelAllowed;
         venue.CancelBeforeMinutes = dto.CancelBeforeMinutes;
         venue.RefundType = refundType;

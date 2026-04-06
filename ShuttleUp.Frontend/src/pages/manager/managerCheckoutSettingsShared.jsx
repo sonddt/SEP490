@@ -43,6 +43,7 @@ export function emptyForm() {
     paymentNote: '',
     customBankName: '',
     cancelAllowed: true, cancelBeforeMinutes: 120, refundType: 'NONE', refundPercent: null,
+    venueRules: '',
   };
 }
 
@@ -60,6 +61,7 @@ export function mapCheckoutToForm(data) {
     cancelBeforeMinutes: Number(c.cancelBeforeMinutes ?? 120),
     refundType: (c.refundType || 'NONE').toUpperCase(),
     refundPercent: c.refundPercent != null ? Number(c.refundPercent) : null,
+    venueRules: data?.venueRules || '',
   };
 }
 
@@ -79,6 +81,7 @@ export function buildPutBody(form, { applyToAll = false } = {}) {
     cancelBeforeMinutes: Math.max(0, Math.min(10080, Number(form.cancelBeforeMinutes) || 0)),
     refundType,
     refundPercent: refundType === 'PERCENT' ? Number(form.refundPercent) : null,
+    venueRules: form.venueRules?.trim() || null,
     applyToAll,
   };
 }
