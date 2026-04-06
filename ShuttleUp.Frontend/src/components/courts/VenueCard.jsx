@@ -50,6 +50,20 @@ export default function VenueCard({
         : String(Math.round(Math.abs(distanceKm)))
       : null;
 
+  const ratingLabel = (() => {
+    const r = Number(venue.rating);
+    if (!Number.isFinite(r) || r <= 0) return '—';
+    return r.toFixed(1);
+  })();
+
+  const reviewCount = Number(venue.reviewCount ?? 0) || 0;
+  const reviewsLabel =
+    typeof venue.reviews === 'string' && venue.reviews.trim()
+      ? venue.reviews
+      : reviewCount > 0
+        ? `${reviewCount} Đánh giá`
+        : 'Chưa có đánh giá';
+
   return (
     <div className={isList ? 'col-lg-12 col-md-12' : 'col-lg-4 col-md-6'}>
       <div className={isList ? 'featured-venues-item venue-list-item' : 'wrapper'}>
@@ -66,61 +80,39 @@ export default function VenueCard({
                 {venue.tag && (
                   <span className={`tag ${venue.tagClass}`}>{venue.tag}</span>
                 )}
-                <h5
-                  className="tag tag-primary"
-                  style={{ marginLeft: 0, marginBottom: 0 }}
-                >
+                <h5 className="tag tag-primary" style={{ marginLeft: 0, marginBottom: 0 }}>
                   {priceLabel}
                   <span>/giờ</span>
                 </h5>
               </div>
-              {distanceDisplay != null && (
-                <h5
-                  className="tag venue-card-distance-badge"
-                  style={{
-                    marginLeft: 'auto',
-                    marginBottom: 0,
-                    alignSelf: 'flex-start',
-                    background: '#475569',
-                    fontSize: '0.85rem',
-                    color: '#fff',
-                    fontWeight: 600,
+
+              {/* Heart on top-right like template (near-you) */}
+              <div className="list-reviews coche-star" style={{ marginLeft: 'auto' }}>
+                <button
+                  type="button"
+                  className={`fav-icon ${faved ? 'selected' : ''}`}
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const next = !faved;
+                    setFaved(next); // optimistic UI
+                    try {
+                      if (onToggleFavorite) {
+                        await onToggleFavorite(venue.id, next);
+                      }
+                    } catch {
+                      setFaved(!next);
+                    }
                   }}
+                  aria-label="Thêm vào yêu thích"
                 >
-                  ~{distanceDisplay} km
-                </h5>
-              )}
+                  <i className="feather-heart"></i>
+                </button>
+              </div>
             </div>
           </div>
           <div className="listing-content">
-            <div className="list-reviews">
-              <div className="d-flex align-items-center">
-                <span className="rating-bg">{venue.rating}</span>
-                <span>{venue.reviews}</span>
-              </div>
-              <button
-                type="button"
-                className={`fav-icon ${faved ? 'selected' : ''}`}
-                onClick={async (e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-
-                  const next = !faved;
-                  setFaved(next); // optimistic UI
-                  try {
-                    if (onToggleFavorite) {
-                      await onToggleFavorite(venue.id, next);
-                    }
-                  } catch {
-                    // Nếu API lỗi (vd chưa login), revert.
-                    setFaved(!next);
-                  }
-                }}
-                aria-label="Thêm vào yêu thích"
-              >
-                <i className="feather-heart"></i>
-              </button>
-            </div>
             <h3 className="listing-title">
               <Link to={`/venue-details/${venue.id}`}>{venue.name}</Link>
             </h3>
@@ -141,11 +133,32 @@ export default function VenueCard({
                 </li>
               </ul>
             </div>
+
+            {/* Match card row in screenshot: rating + reviews + distance badge */}
+            <div className="list-reviews near-review">
+              <div className="d-flex align-items-center">
+                <span className="rating-bg">{ratingLabel}</span>
+                <span>{reviewsLabel}</span>
+              </div>
+              {distanceDisplay != null && (
+                <span className="mile-away">
+                  <i className="feather-zap"></i>
+                  Cách {distanceDisplay} km
+                </span>
+              )}
+            </div>
+
             <div className="listing-button">
               <div className="listing-venue-owner">
-                <Link to="/manager-detail" className="navigation">
-                  <img src={venue.avatar} alt={venue.owner} />
-                  {venue.owner}
+                <Link
+                  to={venue.ownerId ? `/user/profile/${venue.ownerId}` : '#'}
+                  className="navigation"
+                  onClick={(e) => {
+                    if (!venue.ownerId) e.preventDefault();
+                  }}
+                >
+                  <img src={venue.avatar} alt={venue.owner || 'Chủ sân'} />
+                  {(venue.owner || '').trim() || 'Chủ sân'}
                 </Link>
               </div>
               <Link to={`/venue-details/${venue.id}`} className="user-book-now">

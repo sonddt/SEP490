@@ -116,6 +116,21 @@ public class VenuesController : ControllerBase
                 v.Address,
                 v.Lat,
                 v.Lng,
+                v.CreatedAt,
+                v.OwnerUserId,
+                OwnerName = v.OwnerUser == null
+                    ? null
+                    : (string.IsNullOrWhiteSpace(v.OwnerUser.FullName)
+                        ? v.OwnerUser.Email
+                        : v.OwnerUser.FullName),
+                OwnerAvatarUrl = v.OwnerUser != null && v.OwnerUser.AvatarFile != null
+                    ? v.OwnerUser.AvatarFile.FileUrl
+                    : null,
+                AmenitiesJson = v.Amenities,
+                Rating = v.VenueReviews.Any()
+                    ? v.VenueReviews.Average(r => (double?)r.Stars) ?? 0.0
+                    : 0.0,
+                ReviewCount = v.VenueReviews.Count(),
                 // Giá thấp nhất và cao nhất trong tất cả court thuộc venue (cả weekday & weekend)
                 MinPrice = v.Courts
                     .SelectMany(c => c.CourtPrices)
@@ -125,28 +140,44 @@ public class VenuesController : ControllerBase
                     .Max(cp => (decimal?)cp.Price)
             });
 
-        IOrderedQueryable<dynamic> ordered;
-
-        if (sortBy == "price")
-        {
-            // Sắp xếp theo MinPrice, venues chưa có giá sẽ luôn xuống cuối.
-            ordered = sortDir == "desc"
+        // Giữ IQueryable cùng anonymous type — không dùng IQueryable<dynamic> (dễ khiến materialize sai, mất OwnerName).
+        var ordered = sortBy == "price"
+            ? (sortDir == "desc"
                 ? baseQuery.OrderByDescending(v => v.MinPrice.HasValue)
-                           .ThenByDescending(v => v.MinPrice)
+                    .ThenByDescending(v => v.MinPrice)
                 : baseQuery.OrderByDescending(v => v.MinPrice.HasValue)
-                           .ThenBy(v => v.MinPrice);
-        }
-        else
-        {
-            // Fallback theo tên
-            ordered = sortDir == "desc"
+                    .ThenBy(v => v.MinPrice))
+            : (sortDir == "desc"
                 ? baseQuery.OrderByDescending(v => v.Name)
-                : baseQuery.OrderBy(v => v.Name);
+                : baseQuery.OrderBy(v => v.Name));
+
+        var items = await ordered.AsNoTracking().ToListAsync();
+
+        // Deserialize JSON columns thành List<string> để frontend nhận được array thật
+        static List<string>? ParseJsonArray(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return null;
+            try { return JsonSerializer.Deserialize<List<string>>(json); }
+            catch { return null; }
         }
 
-        var items = await ordered.ToListAsync();
-
-        return Ok(items);
+        return Ok(items.Select(v => new
+        {
+            v.Id,
+            v.Name,
+            v.Address,
+            v.Lat,
+            v.Lng,
+            v.CreatedAt,
+            v.OwnerUserId,
+            v.OwnerName,
+            v.OwnerAvatarUrl,
+            Amenities = ParseJsonArray(v.AmenitiesJson),
+            v.Rating,
+            v.ReviewCount,
+            v.MinPrice,
+            v.MaxPrice,
+        }));
     }
 
     /// <summary>
