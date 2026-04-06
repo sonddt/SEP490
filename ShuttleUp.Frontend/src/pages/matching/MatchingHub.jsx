@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import matchingApi from '../../api/matchingApi';
+import { useAuth } from '../../context/AuthContext';
 import MatchingPostCard from '../../components/matching/MatchingPostCard';
 
 const sortOptions = [
@@ -70,6 +71,7 @@ const skillOptions = [
 ];
 
 export default function MatchingHub() {
+  const { user } = useAuth();
   const [tab, setTab] = useState('all'); // 'all' | 'my' | 'joined'
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [posts, setPosts] = useState([]);
@@ -78,7 +80,7 @@ export default function MatchingHub() {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState({ skillLevel: '', playDate: '', province: '', sort: 'newest' });
+  const [filters, setFilters] = useState({ skillLevel: user?.skillLevel || '', playDate: '', province: user?.province || '', sort: 'newest' });
   const [searchText, setSearchText] = useState('');
 
   const loadPosts = useCallback(async () => {
@@ -174,6 +176,21 @@ export default function MatchingHub() {
       <div className="content py-5" style={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
         <div className="container">
 
+          {user && (user.isPersonalized === false || user.isPersonalized == null) && (
+            <div className="alert alert-info d-flex align-items-center mb-4" role="alert" style={{ borderRadius: '16px', border: '1px solid #bae6fd', backgroundColor: '#f0f9ff', padding: '16px 20px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+              <i className="feather-info me-3 d-none d-sm-block" style={{ fontSize: '24px', color: '#0284c7' }}></i>
+              <div>
+                <h6 className="alert-heading mb-1" style={{ color: '#0369a1', fontWeight: 'bold' }}>Tối ưu hóa gợi ý của bạn!</h6>
+                <p className="mb-0" style={{ color: '#0c4a6e', fontSize: '14px' }}>
+                  Cập nhật hồ sơ để hệ thống có thể đề xuất các trận cầu phù hợp nhất với trình độ và khu vực của bạn.
+                </p>
+              </div>
+              <Link to="/user/profile/edit" className="btn btn-primary ms-auto" style={{ whiteSpace: 'nowrap', borderRadius: '10px', padding: '8px 16px', fontWeight: 'bold' }}>
+                Cập nhật
+              </Link>
+            </div>
+          )}
+
           {/* ── Header Bar ── */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '20px' }}>
             <div style={{ display: 'flex', gap: '8px', backgroundColor: '#fff', padding: '6px', borderRadius: '16px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', border: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
@@ -237,9 +254,16 @@ export default function MatchingHub() {
                             <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px' }}><i className="feather-map-pin me-1"></i> Khu vực</label>
                             <input type="text" className="form-control" placeholder="VD: Quận 7" style={{ borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '700', color: '#1e293b' }} value={filters.province} onChange={(e) => handleFilterChange('province', e.target.value)} />
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '2px' }}>
-                            <button onClick={handleResetFilters} style={{ height: '48px', padding: '0 20px', borderRadius: '12px', backgroundColor: '#fef2f2', color: '#ef4444', border: '1px solid #fee2e2', fontWeight: '700', transition: 'all 0.2s', display: 'flex', alignItems: 'center' }}>
-                                <i className="feather-x me-1"></i> Xoá lọc
+                        <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '2px', gap: '8px' }}>
+                            <button onClick={() => {
+                                setFilters({ skillLevel: user?.skillLevel || '', playDate: '', province: user?.province || '', sort: 'newest' });
+                                setSearchText('');
+                                setPage(1);
+                            }} style={{ height: '48px', padding: '0 16px', borderRadius: '12px', backgroundColor: '#e8f5ee', color: '#097E52', border: '1px solid #bbf7d0', fontWeight: '700', transition: 'all 0.2s', display: 'flex', alignItems: 'center' }}>
+                                <i className="feather-target me-1"></i> Phù hợp với bạn
+                            </button>
+                            <button onClick={handleResetFilters} style={{ height: '48px', padding: '0 16px', borderRadius: '12px', backgroundColor: '#fef2f2', color: '#ef4444', border: '1px solid #fee2e2', fontWeight: '700', transition: 'all 0.2s', display: 'flex', alignItems: 'center' }}>
+                                <i className="feather-x me-1"></i> Xoá lọc (Tất cả)
                             </button>
                         </div>
                      </div>

@@ -137,8 +137,7 @@ const Personalization = () => {
           className="btn text-white p-0 border-0"
           style={{ width: '60px', textAlign: 'right', fontWeight: 500, opacity: 0.85 }}
           onClick={() => {
-            // Cho phép bỏ qua, nhưng vẫn đánh dấu đã hoàn thành để không bị kẹt loop
-            updateUser({ isPersonalized: true });
+            sessionStorage.setItem('skippedPersonalization', 'true');
             window.location.href = '/venues';
           }}
         >

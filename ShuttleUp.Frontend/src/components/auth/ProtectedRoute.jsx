@@ -52,7 +52,11 @@ export default function ProtectedRoute({ children, requiredRole }) {
           userData?.isPersonalized === null ||
           userData?.isPersonalized === undefined;
         if (notPersonalized) {
-          return <Navigate to="/personalization" replace state={{ from: location.pathname }} />;
+          const skipped = sessionStorage.getItem('skippedPersonalization') === 'true';
+
+          if (!skipped) {
+            return <Navigate to="/personalization" replace state={{ from: location.pathname }} />;
+          }
         }
       }
     } catch {
