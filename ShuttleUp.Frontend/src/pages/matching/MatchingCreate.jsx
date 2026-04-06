@@ -20,9 +20,9 @@ const genderOptions = [
 ];
 
 const expenseOptions = [
-  { value: 'split_equal', label: 'Chia đều' },
-  { value: 'host_pays', label: 'Bao sân (Host trả)' },
-  { value: 'female_free', label: 'Nữ miễn phí' },
+  { value: 'split_equal', label: 'Chia đều (Sân + Cầu)' },
+  { value: 'host_pays', label: 'Miễn phí giao lưu (Bao sân)' },
+  { value: 'female_free', label: 'Nam bao Nữ' },
   { value: 'negotiable', label: 'Tùy thỏa thuận' },
 ];
 
@@ -483,11 +483,26 @@ export default function MatchingCreate() {
                       </div>
 
                       <div className="mb-3">
+                        <label className="form-label">Mục đích chơi</label>
+                        <select
+                          className="form-select"
+                          value={form.playPurpose}
+                          onChange={(e) => setForm({ ...form, playPurpose: e.target.value })}
+                        >
+                          <option value="">-- Không yêu cầu --</option>
+                          <option value="Giải trí, vận động">Giải trí, vận động</option>
+                          <option value="Tập luyện nghiêm túc">Tập luyện nghiêm túc</option>
+                          <option value="Tìm partner cố định">Tìm partner cố định</option>
+                          <option value="Đánh giải, cọ xát">Đánh giải, cọ xát</option>
+                        </select>
+                      </div>
+
+                      <div className="mb-3">
                         <label className="form-label">Ghi chú</label>
                         <textarea
                           className="form-control"
                           rows={3}
-                          placeholder="Thêm ghi chú cho đồng đội (VD: mang vợt, mang nước...)"
+                          placeholder="Tip: Ghi chú thêm về phong cách chơi (vui vẻ, hòa đồng hay đánh chiến thuật), luật sân con, hoặc thông tin cầu..."
                           value={form.notes}
                           onChange={(e) => setForm({ ...form, notes: e.target.value })}
                           maxLength={1000}

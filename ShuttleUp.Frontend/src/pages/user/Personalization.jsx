@@ -270,11 +270,10 @@ const Personalization = () => {
                 <h5 className="fw-bold mb-1">🎯 Mục tiêu của bạn</h5>
                 <p className="text-muted mb-4" style={{ fontSize: '14px' }}>Bạn chơi thể thao chủ yếu để làm gì?</p>
                 <div className="row justify-content-center">
-                  <OptionButton label="💪 Rèn luyện sức khỏe" value="Rèn luyện sức khỏe" stateKey="playPurpose" size="col-12 col-sm-6" />
-                  <OptionButton label="🍻 Giao lưu giải trí" value="Giao lưu giải trí" stateKey="playPurpose" size="col-12 col-sm-6" />
-                  <OptionButton label="👥 Tìm bạn kết giao" value="Tìm bạn kết giao" stateKey="playPurpose" size="col-12 col-sm-6" />
-                  <OptionButton label="🏆 Thi đấu nâng trình" value="Thi đấu nâng trình" stateKey="playPurpose" size="col-12 col-sm-6" />
-                  <OptionButton label="🏃 Giảm cân" value="Giảm cân" stateKey="playPurpose" size="col-12 col-sm-6" />
+                  <OptionButton label="💪 Giải trí, vận động" value="Giải trí, vận động" stateKey="playPurpose" size="col-12 col-sm-6" />
+                  <OptionButton label="🎯 Tập luyện nghiêm túc" value="Tập luyện nghiêm túc" stateKey="playPurpose" size="col-12 col-sm-6" />
+                  <OptionButton label="🤝 Tìm partner cố định" value="Tìm partner cố định" stateKey="playPurpose" size="col-12 col-sm-6" />
+                  <OptionButton label="🏆 Đánh giải, cọ xát" value="Đánh giải, cọ xát" stateKey="playPurpose" size="col-12 col-sm-6" />
                 </div>
               </div>
             )}

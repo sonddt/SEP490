@@ -493,7 +493,7 @@ export default function UserProfileEdit() {
                             id="about"
                             name="about"
                             rows="3"
-                            placeholder="Viết vài dòng về bản thân..."
+                            placeholder="Tip: Ghi chú thêm về phong cách chơi của bạn (vui vẻ, máu lửa...), hoặc sân nhà quen thuộc..."
                             value={form.about}
                             onChange={handleChange}
                           />
@@ -564,11 +564,10 @@ export default function UserProfileEdit() {
                             onChange={handleChange}
                           >
                             <option value="">-- Chọn mục tiêu --</option>
-                            <option value="Rèn luyện sức khỏe">Rèn luyện sức khỏe</option>
-                            <option value="Giao lưu giải trí">Giao lưu giải trí</option>
-                            <option value="Tìm bạn kết giao">Tìm bạn kết giao</option>
-                            <option value="Thi đấu nâng trình">Thi đấu nâng trình</option>
-                            <option value="Giảm cân">Giảm cân</option>
+                            <option value="Giải trí, vận động">Giải trí, vận động</option>
+                            <option value="Tập luyện nghiêm túc">Tập luyện nghiêm túc</option>
+                            <option value="Tìm partner cố định">Tìm partner cố định</option>
+                            <option value="Đánh giải, cọ xát">Đánh giải, cọ xát</option>
                           </select>
                         </div>
                       </div>
