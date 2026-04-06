@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import UserDashboardMenu from '../../components/user/UserDashboardMenu';
 import { useAuth } from '../../context/AuthContext';
 import { profileApi } from '../../api/profileApi';
+import { formatDistrictForDisplay } from '../../utils/vietnamDivisions';
 
 export default function MyProfile() {
   const { user: authUser } = useAuth();
@@ -62,7 +63,8 @@ export default function MyProfile() {
   };
 
   const formatAddress = () => {
-    const parts = [u?.address, u?.district, u?.province].filter((x) => x && String(x).trim());
+    const dist = formatDistrictForDisplay(u?.district);
+    const parts = [u?.address, dist, u?.province].filter((x) => x && String(x).trim());
     return parts.length ? parts.join(', ') : 'Chưa cập nhật';
   };
 

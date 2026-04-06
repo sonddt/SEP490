@@ -2,24 +2,18 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import UserDashboardMenu from '../../components/user/UserDashboardMenu';
 import UserProfileTabs from '../../components/user/UserProfileTabs';
+import VietnamAddressFields from '../../components/user/VietnamAddressFields';
 import { useAuth } from '../../context/AuthContext';
 import { profileApi } from '../../api/profileApi';
-
-const PROVINCES = [
-  'Hà Nội', 'Hồ Chí Minh', 'Đà Nẵng', 'Hải Phòng', 'Cần Thơ',
-  'An Giang', 'Bà Rịa - Vũng Tàu', 'Bắc Giang', 'Bắc Kạn', 'Bắc Ninh',
-  'Bến Tre', 'Bình Định', 'Bình Dương', 'Bình Phước', 'Bình Thuận',
-  'Cà Mau', 'Cao Bằng', 'Đắk Lắk', 'Đắk Nông', 'Điện Biên',
-  'Đồng Nai', 'Đồng Tháp', 'Gia Lai', 'Hà Giang', 'Hà Nam',
-  'Hà Tĩnh', 'Hải Dương', 'Hậu Giang', 'Hoà Bình', 'Hưng Yên',
-  'Khánh Hoà', 'Kiên Giang', 'Kon Tum', 'Lai Châu', 'Lâm Đồng',
-  'Lạng Sơn', 'Lào Cai', 'Long An', 'Nam Định', 'Nghệ An',
-  'Ninh Bình', 'Ninh Thuận', 'Phú Thọ', 'Phú Yên', 'Quảng Bình',
-  'Quảng Nam', 'Quảng Ngãi', 'Quảng Ninh', 'Quảng Trị', 'Sóc Trăng',
-  'Sơn La', 'Tây Ninh', 'Thái Bình', 'Thái Nguyên', 'Thanh Hoá',
-  'Thừa Thiên Huế', 'Tiền Giang', 'Trà Vinh', 'Tuyên Quang',
-  'Vĩnh Long', 'Vĩnh Phúc', 'Yên Bái',
-];
+import {
+  districtByCode,
+  formatDistrictForStorage,
+  loadVietnamDivisionTree,
+  namesFromCodes,
+  provinceByCode,
+  resolveCodesFromProfile,
+  wardByCode,
+} from '../../utils/vietnamDivisions';
 
 function formatApiError(e, fallback) {
   const d = e?.response?.data;
@@ -61,6 +55,44 @@ export default function UserProfileEdit() {
     playFrequency: '',
   });
   const [initialForm, setInitialForm] = useState(null);
+  const [divisionTree, setDivisionTree] = useState(null);
+  const [divisionLoadError, setDivisionLoadError] = useState('');
+  const [addrCodes, setAddrCodes] = useState({ p: '', d: '', w: '' });
+
+  useEffect(() => {
+    let ok = true;
+    loadVietnamDivisionTree()
+      .then((t) => {
+        if (ok) {
+          setDivisionTree(t);
+          setDivisionLoadError('');
+        }
+      })
+      .catch(() => {
+        if (ok) {
+          setDivisionTree(null);
+          setDivisionLoadError('Không tải được danh mục địa phương. Bạn thử tải lại trang nhé.');
+        }
+      });
+    return () => {
+      ok = false;
+    };
+  }, []);
+
+  const initialSnapshotRef = useRef(null);
+
+  useEffect(() => {
+    if (!divisionTree || !initialForm) return;
+    const snap = `${initialForm.province}\n${initialForm.district}\n${initialForm.address}`;
+    if (initialSnapshotRef.current === snap) return;
+    initialSnapshotRef.current = snap;
+    const r = resolveCodesFromProfile(
+      divisionTree,
+      initialForm.province,
+      initialForm.district
+    );
+    setAddrCodes({ p: r.provinceCode, d: r.districtCode, w: r.wardCode });
+  }, [divisionTree, initialForm]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -76,7 +108,18 @@ export default function UserProfileEdit() {
   };
 
   const handleReset = () => {
-    if (initialForm) setForm(initialForm);
+    if (initialForm) {
+      setForm(initialForm);
+      if (divisionTree) {
+        const r = resolveCodesFromProfile(
+          divisionTree,
+          initialForm.province,
+          initialForm.district
+        );
+        setAddrCodes({ p: r.provinceCode, d: r.districtCode, w: r.wardCode });
+        initialSnapshotRef.current = `${initialForm.province}\n${initialForm.district}\n${initialForm.address}`;
+      }
+    }
     setAvatarPreview(currentAvatarUrl);
     setAvatarFile(null);
     setSuccess('');
@@ -172,6 +215,21 @@ export default function UserProfileEdit() {
     }
     setFieldErrors({});
 
+    let provinceOut = (form.province || '').trim();
+    let districtOut = (form.district || '').trim();
+    if (divisionTree && addrCodes.p) {
+      const n = namesFromCodes(
+        divisionTree,
+        addrCodes.p,
+        addrCodes.d,
+        addrCodes.w
+      );
+      if (n.province) provinceOut = n.province;
+      if (addrCodes.d) {
+        districtOut = n.district || districtOut;
+      }
+    }
+
     setSaving(true);
     try {
       await profileApi.updateMe({
@@ -180,9 +238,9 @@ export default function UserProfileEdit() {
         gender: form.gender || null,
         dateOfBirth: form.dateOfBirth || null,
         about: form.about || null,
-        address: form.address || null,
-        district: form.district || null,
-        province: form.province || null,
+        address: (form.address || '').trim() || null,
+        district: districtOut || null,
+        province: provinceOut || null,
         skillLevel: form.skillLevel || null,
         playPurpose: form.playPurpose || null,
         playFrequency: form.playFrequency || null,
@@ -209,10 +267,16 @@ export default function UserProfileEdit() {
         } catch {}
       }
 
+      const addrTrim = (form.address || '').trim();
       const nextForm = {
         ...form,
         fullName,
+        province: provinceOut || '',
+        district: districtOut || '',
+        address: addrTrim,
       };
+      setForm(nextForm);
+      initialSnapshotRef.current = `${nextForm.province}\n${nextForm.district}\n${nextForm.address}`;
       setInitialForm(nextForm);
       setSuccess('Tuyệt vời! Cập nhật hồ sơ thành công rồi nha.');
     } catch (e2) {
@@ -220,6 +284,38 @@ export default function UserProfileEdit() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const onProvinceCode = (pCode) => {
+    if (!divisionTree) return;
+    const pr = provinceByCode(divisionTree, pCode);
+    setAddrCodes({ p: pCode, d: '', w: '' });
+    setForm((f) => ({ ...f, province: pr?.n ?? '', district: '' }));
+  };
+
+  const onDistrictCode = (dCode) => {
+    if (!divisionTree) return;
+    const di = districtByCode(divisionTree, addrCodes.p, dCode);
+    const pr = provinceByCode(divisionTree, addrCodes.p);
+    setAddrCodes((c) => ({ ...c, d: dCode, w: '' }));
+    setForm((f) => ({
+      ...f,
+      province: pr?.n ?? f.province,
+      district: di ? formatDistrictForStorage('', di.n) : '',
+    }));
+  };
+
+  const onWardCode = (wCode) => {
+    if (!divisionTree) return;
+    const wn = wardByCode(divisionTree, addrCodes.p, addrCodes.d, wCode);
+    const di = districtByCode(divisionTree, addrCodes.p, addrCodes.d);
+    const pr = provinceByCode(divisionTree, addrCodes.p);
+    setAddrCodes((c) => ({ ...c, w: wCode }));
+    setForm((f) => ({
+      ...f,
+      province: pr?.n ?? f.province,
+      district: formatDistrictForStorage(wn?.n, di?.n),
+    }));
   };
 
   return (
@@ -409,50 +505,29 @@ export default function UserProfileEdit() {
                         <h4>Địa chỉ</h4>
                       </div>
 
-                      <div className="col-lg-12 col-md-12">
-                        <div className="input-space">
-                          <label className="form-label">Địa chỉ cụ thể</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            name="address"
-                            placeholder="Số nhà, tên đường, phường/xã"
-                            value={form.address}
-                            onChange={handleChange}
-                          />
+                      {divisionLoadError && (
+                        <div className="col-12">
+                          <div className="alert alert-warning">{divisionLoadError}</div>
                         </div>
-                      </div>
+                      )}
 
-                      <div className="col-lg-4 col-md-6">
-                        <div className="input-space">
-                          <label className="form-label">Quận / Huyện</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            name="district"
-                            placeholder="Nhập quận / huyện"
-                            value={form.district}
-                            onChange={handleChange}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="col-lg-4 col-md-6">
-                        <div className="input-space mb-0">
-                          <label className="form-label">Tỉnh / Thành phố</label>
-                          <select
-                            className="form-control"
-                            name="province"
-                            value={form.province}
-                            onChange={handleChange}
-                          >
-                            <option value="">-- Chọn tỉnh / thành phố --</option>
-                            {PROVINCES.map((p) => (
-                              <option key={p} value={p}>{p}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
+                      <VietnamAddressFields
+                        tree={divisionTree}
+                        street={form.address}
+                        onStreetChange={(v) => {
+                          setForm((f) => ({ ...f, address: v }));
+                          if (fieldErrors.address) {
+                            setFieldErrors((prev) => ({ ...prev, address: '' }));
+                          }
+                        }}
+                        provinceCode={addrCodes.p}
+                        districtCode={addrCodes.d}
+                        wardCode={addrCodes.w}
+                        onChangeProvinceCode={onProvinceCode}
+                        onChangeDistrictCode={onDistrictCode}
+                        onChangeWardCode={onWardCode}
+                        disabled={loading || saving}
+                      />
 
                       {/* Personalization Section */}
                       <div className="address-form-head mt-4">

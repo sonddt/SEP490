@@ -77,7 +77,9 @@ export async function geocodeAddressQuery(query) {
 export function buildProfileAddressQuery(parts) {
   if (!parts) return '';
   const a = parts.address ?? parts.Address;
-  const d = parts.district ?? parts.District;
+  const dRaw = parts.district ?? parts.District;
+  const d =
+    typeof dRaw === 'string' ? dRaw.split('|||').join(', ').trim() : dRaw;
   const p = parts.province ?? parts.Province;
   const segs = [a, d, p]
     .map((x) => (x == null ? '' : String(x).trim()))
