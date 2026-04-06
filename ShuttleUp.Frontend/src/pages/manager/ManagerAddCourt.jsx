@@ -1,6 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
+import { getCourtBlocks, createCourtBlock, deleteCourtBlock } from '../../api/managerVenueApi';
+
+const BLOCK_REASONS = [
+  { value: 'MAINTENANCE', label: 'Bảo trì' },
+  { value: 'WEATHER', label: 'Thời tiết / môi trường' },
+  { value: 'OTHER', label: 'Khác' },
+];
 
 function SectionHeader({ icon, iconBg, iconColor, title, subtitle }) {
   return (
@@ -47,6 +54,91 @@ export default function ManagerAddCourt() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+
+  const [courtBlocks, setCourtBlocks] = useState([]);
+  const [blockLoading, setBlockLoading] = useState(false);
+  const [blockForm, setBlockForm] = useState({
+    date: new Date().toISOString().split('T')[0],
+    startTime: '08:00',
+    endTime: '10:00',
+    reasonCode: 'MAINTENANCE',
+    reasonDetail: '',
+    internalNote: '',
+  });
+  const [blockError, setBlockError] = useState('');
+  const [blockSaving, setBlockSaving] = useState(false);
+  const [pendingDeleteBlockId, setPendingDeleteBlockId] = useState(null);
+
+  const loadCourtBlocks = useCallback(async () => {
+    if (!courtId || !venueId) return;
+    setBlockLoading(true);
+    setBlockError('');
+    try {
+      const from = new Date();
+      const to = new Date();
+      to.setDate(to.getDate() + 60);
+      const fromStr = from.toISOString().split('T')[0];
+      const toStr = to.toISOString().split('T')[0];
+      const rows = await getCourtBlocks(venueId, courtId, { from: fromStr, to: toStr });
+      setCourtBlocks(Array.isArray(rows) ? rows : []);
+    } catch {
+      setBlockError('Không tải được danh sách khóa lịch.');
+      setCourtBlocks([]);
+    } finally {
+      setBlockLoading(false);
+    }
+  }, [courtId, venueId]);
+
+  useEffect(() => {
+    loadCourtBlocks();
+  }, [loadCourtBlocks]);
+
+  const handleAddBlock = async () => {
+    if (!courtId || !venueId) return;
+    setBlockError('');
+    if (!blockForm.date?.trim() || !blockForm.startTime || !blockForm.endTime) {
+      setBlockError('Oops… Vui lòng chọn đủ ngày và khung giờ.');
+      return;
+    }
+    const startStr = `${blockForm.date}T${blockForm.startTime}:00`;
+    const endStr = `${blockForm.date}T${blockForm.endTime}:00`;
+    if (new Date(endStr) <= new Date(startStr)) {
+      setBlockError('Oops… Giờ kết thúc phải sau giờ bắt đầu (cùng ngày).');
+      return;
+    }
+    setBlockSaving(true);
+    try {
+      await createCourtBlock(venueId, courtId, {
+        startTime: startStr,
+        endTime: endStr,
+        reasonCode: blockForm.reasonCode,
+        reasonDetail: blockForm.reasonDetail?.trim() || null,
+        internalNote: blockForm.internalNote?.trim() || null,
+      });
+      setBlockForm((p) => ({
+        ...p,
+        reasonDetail: '',
+        internalNote: '',
+      }));
+      await loadCourtBlocks();
+    } catch (err) {
+      setBlockError(err.response?.data?.message || err.message || 'Không tạo được khóa lịch.');
+    } finally {
+      setBlockSaving(false);
+    }
+  };
+
+  const handleDeleteBlock = async (blockId) => {
+    if (!courtId || !venueId || !blockId) return;
+    setBlockError('');
+    try {
+      await deleteCourtBlock(venueId, courtId, blockId);
+      setPendingDeleteBlockId(null);
+      await loadCourtBlocks();
+    } catch (err) {
+      setBlockError(err.response?.data?.message || err.message || 'Không xóa được.');
+    }
+  };
 
   const getFieldError = (field) => fieldErrors[field] || '';
 
@@ -357,6 +449,93 @@ export default function ManagerAddCourt() {
             </div>
 
           </div>
+
+        {courtId && (
+          <div className="col-12">
+            <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
+              <div className="card-body p-4 p-md-5">
+                <SectionHeader icon="feather-lock" iconBg="#fef3c7" iconColor="#d97706" title="5. Khóa lịch tạm" subtitle="Bảo trì, thời tiết — người chơi sẽ thấy ô không đặt được và nhận thông báo nếu có đơn trùng giờ" />
+                <p className="text-muted small mb-3">Không thể tạo khóa nếu đã có đơn đặt trùng khung giờ. Hãy xử lý đơn trước hoặc chọn giờ khác.</p>
+                {blockError && <div className="alert alert-warning py-2 small mb-3" role="alert">{blockError}</div>}
+                <div className="row g-3 align-items-end mb-4">
+                  <div className="col-12 col-md-3">
+                    <label className="form-label fw-semibold small mb-1">Ngày</label>
+                    <input type="date" className="form-control bg-light border-0" value={blockForm.date} onChange={(e) => setBlockForm((p) => ({ ...p, date: e.target.value }))} />
+                  </div>
+                  <div className="col-6 col-md-2">
+                    <label className="form-label fw-semibold small mb-1">Từ</label>
+                    <input type="time" className="form-control bg-light border-0" value={blockForm.startTime} onChange={(e) => setBlockForm((p) => ({ ...p, startTime: e.target.value }))} />
+                  </div>
+                  <div className="col-6 col-md-2">
+                    <label className="form-label fw-semibold small mb-1">Đến</label>
+                    <input type="time" className="form-control bg-light border-0" value={blockForm.endTime} onChange={(e) => setBlockForm((p) => ({ ...p, endTime: e.target.value }))} />
+                  </div>
+                  <div className="col-12 col-md-5">
+                    <label className="form-label fw-semibold small mb-1">Lý do</label>
+                    <select className="form-select bg-light border-0" value={blockForm.reasonCode} onChange={(e) => setBlockForm((p) => ({ ...p, reasonCode: e.target.value }))}>
+                      {BLOCK_REASONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label fw-semibold small mb-1">Ghi chú hiển thị cho người chơi (tùy chọn)</label>
+                    <input type="text" className="form-control bg-light border-0" placeholder="VD: Sơn lại sân, dự kiến xong trong ca sáng" maxLength={500} value={blockForm.reasonDetail} onChange={(e) => setBlockForm((p) => ({ ...p, reasonDetail: e.target.value }))} />
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label fw-semibold small mb-1 text-muted">Ghi chú nội bộ (tùy chọn)</label>
+                    <input type="text" className="form-control bg-light border-0" maxLength={500} value={blockForm.internalNote} onChange={(e) => setBlockForm((p) => ({ ...p, internalNote: e.target.value }))} />
+                  </div>
+                  <div className="col-12">
+                    <button type="button" className="btn fw-semibold px-4 text-white border-0" disabled={blockSaving || blockLoading} style={{ borderRadius: 10, background: '#097E52' }} onClick={handleAddBlock}>
+                      {blockSaving ? 'Đang lưu…' : 'Thêm khóa lịch'}
+                    </button>
+                  </div>
+                </div>
+                <div className="border-top pt-3">
+                  <div className="fw-semibold mb-2 small text-secondary">Khóa đã đặt (60 ngày tới)</div>
+                  {blockLoading ? (
+                    <p className="text-muted small mb-0">Đang tải…</p>
+                  ) : courtBlocks.length === 0 ? (
+                    <p className="text-muted small mb-0">Chưa có khóa lịch.</p>
+                  ) : (
+                    <div className="table-responsive">
+                      <table className="table table-sm align-middle mb-0">
+                        <thead><tr><th>Thời gian</th><th>Lý do</th><th>Ghi chú</th><th className="text-end">Thao tác</th></tr></thead>
+                        <tbody>
+                          {courtBlocks.map((b) => {
+                            const id = b.id || b.Id;
+                            const st = b.startTime || b.StartTime;
+                            const en = b.endTime || b.EndTime;
+                            const rc = b.reasonCode || b.ReasonCode;
+                            const rd = b.reasonDetail || b.ReasonDetail;
+                            const label = BLOCK_REASONS.find((x) => x.value === rc)?.label || rc;
+                            return (
+                              <tr key={id}>
+                                <td style={{ fontSize: 13 }}>{st && en ? `${new Date(st).toLocaleString('vi-VN')} → ${new Date(en).toLocaleString('vi-VN')}` : '—'}</td>
+                                <td style={{ fontSize: 13 }}>{label}</td>
+                                <td style={{ fontSize: 12 }} className="text-muted">{rd || '—'}</td>
+                                <td className="text-end">
+                                  {pendingDeleteBlockId === id ? (
+                                    <span className="d-inline-flex gap-1">
+                                      <button type="button" className="btn btn-sm btn-danger" onClick={() => handleDeleteBlock(id)}>Xác nhận xóa</button>
+                                      <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setPendingDeleteBlockId(null)}>Huỷ</button>
+                                    </span>
+                                  ) : (
+                                    <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => setPendingDeleteBlockId(id)}>Xóa</button>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         </div>
 
         {/* Action Buttons */}

@@ -225,7 +225,9 @@ public class VenuesController : ControllerBase
                 CourtId = b.CourtId!.Value,
                 b.StartTime,
                 b.EndTime,
-                Kind = "blocked"
+                Kind = "blocked",
+                b.ReasonCode,
+                b.ReasonDetail,
             })
             .ToListAsync();
 
@@ -246,7 +248,14 @@ public class VenuesController : ControllerBase
         foreach (var row in blocked)
         {
             if (intervalsByCourt.TryGetValue(row.CourtId, out var list))
-                list.Add(new { start = row.StartTime, end = row.EndTime, kind = row.Kind });
+                list.Add(new
+                {
+                    start = row.StartTime,
+                    end = row.EndTime,
+                    kind = row.Kind,
+                    reasonCode = row.ReasonCode,
+                    reasonDetail = row.ReasonDetail,
+                });
         }
 
         var payload = intervalsByCourt.Select(kv => new

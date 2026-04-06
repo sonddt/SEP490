@@ -5,6 +5,9 @@ public static class NotificationTypes
 {
     public const string BookingNew = "BOOKING_NEW";
     public const string Booking = "BOOKING";
+
+    /// <summary>Khóa khung giờ sân (bảo trì, thời tiết…).</summary>
+    public const string CourtBlock = "COURT_BLOCK";
     public const string PaymentProof = "PAYMENT_PROOF";
     public const string System = "SYSTEM";
 

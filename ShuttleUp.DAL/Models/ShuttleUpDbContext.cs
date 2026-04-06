@@ -422,6 +422,21 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.StartTime)
                 .HasColumnType("datetime")
                 .HasColumnName("start_time");
+            entity.Property(e => e.ReasonCode)
+                .HasMaxLength(30)
+                .HasColumnName("reason_code");
+            entity.Property(e => e.ReasonDetail)
+                .HasMaxLength(500)
+                .HasColumnName("reason_detail");
+            entity.Property(e => e.InternalNote)
+                .HasMaxLength(500)
+                .HasColumnName("internal_note");
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("updated_at");
 
             entity.HasOne(d => d.Court).WithMany(p => p.CourtBlocks)
                 .HasForeignKey(d => d.CourtId)

@@ -11,6 +11,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using ShuttleUp.Backend.Configurations;
+using ShuttleUp.Backend.Constants;
+using ShuttleUp.Backend.Services.Interfaces;
 using ShuttleUp.BLL.DTOs.Manager;
 using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.DAL.Models;
@@ -27,19 +29,22 @@ public class ManagerVenuesController : ControllerBase
     private readonly ShuttleUpDbContext _dbContext;
     private readonly IConfiguration _config;
     private readonly VietQRSettings _vietQrSettings;
+    private readonly INotificationDispatchService _notify;
 
     public ManagerVenuesController(
         IVenueService venueService,
         ICourtService courtService,
         ShuttleUpDbContext dbContext,
         IConfiguration config,
-        IOptions<VietQRSettings> vietQrOptions)
+        IOptions<VietQRSettings> vietQrOptions,
+        INotificationDispatchService notify)
     {
         _venueService = venueService;
         _courtService = courtService;
         _dbContext = dbContext;
         _config = config;
         _vietQrSettings = vietQrOptions.Value;
+        _notify = notify;
     }
 
     public class CourtStatusUpdateDto
@@ -828,6 +833,287 @@ public class ManagerVenuesController : ControllerBase
                 CloseTime = o.CloseTime.HasValue ? o.CloseTime.Value.ToString("HH:mm") : null
             })
         });
+    }
+
+    // =====================================================================
+    // COURT BLOCKS — khóa khung giờ tạm (bảo trì, thời tiết…)
+    // =====================================================================
+
+    public class CourtBlockUpsertDto
+    {
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
+        public string? ReasonCode { get; set; }
+        public string? ReasonDetail { get; set; }
+        public string? InternalNote { get; set; }
+    }
+
+    private static string? SanitizeBlockNote(string? input, int maxLen = 500)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return null;
+        var clean = System.Text.RegularExpressions.Regex.Replace(input.Trim(), @"<[^>]*>", "");
+        return clean.Length > maxLen ? clean[..maxLen] : clean;
+    }
+
+    private static string NormalizeBlockReasonCode(string? code)
+    {
+        var c = (code ?? "OTHER").Trim().ToUpperInvariant();
+        return c is "MAINTENANCE" or "WEATHER" or "OTHER" ? c : "OTHER";
+    }
+
+    private async Task<(Venue? venue, Court? court, IActionResult? error)> EnsureManagerCourtAsync(Guid managerId, Guid venueId, Guid courtId)
+    {
+        var venue = await _venueService.GetByIdAsync(venueId);
+        if (venue == null)
+            return (null, null, NotFound(new { message = "Venue không tồn tại." }));
+        if (venue.OwnerUserId != managerId)
+            return (null, null, Forbid());
+
+        var court = await _dbContext.Courts.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == courtId && c.VenueId == venueId);
+        if (court == null)
+            return (null, null, NotFound(new { message = "Court không tồn tại trong venue này." }));
+
+        return (venue, court, null);
+    }
+
+    private async Task<bool> HasBookingOverlapAsync(Guid courtId, DateTime start, DateTime end)
+    {
+        return await _dbContext.BookingItems
+            .AsNoTracking()
+            .AnyAsync(bi => bi.CourtId == courtId
+                            && bi.StartTime < end && bi.EndTime > start
+                            && bi.Booking != null
+                            && bi.Booking.Status != "CANCELLED");
+    }
+
+    private async Task<bool> HasBlockOverlapAsync(Guid courtId, DateTime start, DateTime end, Guid? excludeBlockId)
+    {
+        var q = _dbContext.CourtBlocks.AsNoTracking()
+            .Where(b => b.CourtId == courtId && b.StartTime < end && b.EndTime > start);
+        if (excludeBlockId is { } eid)
+            q = q.Where(b => b.Id != eid);
+        return await q.AnyAsync();
+    }
+
+    private async Task NotifyPlayersAboutCourtBlockAsync(
+        Guid courtId, DateTime start, DateTime end, string reasonLabel, string? detail, Guid venueId, string venueName, string courtName)
+    {
+        var userIds = await _dbContext.BookingItems
+            .AsNoTracking()
+            .Where(bi => bi.CourtId == courtId
+                         && bi.StartTime < end && bi.EndTime > start
+                         && bi.Booking != null
+                         && bi.Booking.Status != "CANCELLED"
+                         && bi.Booking.UserId != null)
+            .Select(bi => bi.Booking!.UserId!.Value)
+            .Distinct()
+            .ToListAsync();
+
+        var window = $"{start:dd/MM/yyyy HH:mm} – {end:dd/MM/yyyy HH:mm}";
+        var extra = string.IsNullOrWhiteSpace(detail) ? "" : $" {detail.Trim()}";
+        var body = $"Sân {courtName} tại {venueName}: khóa tạm {window}. Lý do: {reasonLabel}.{extra} Vui lòng kiểm tra lịch đặt nếu trùng khung giờ.";
+
+        foreach (var uid in userIds)
+        {
+            await _notify.NotifyUserAsync(
+                uid,
+                NotificationTypes.CourtBlock,
+                "Lịch sân cập nhật",
+                body,
+                new { venueId, courtId, entityType = "court_block", deepLink = $"/booking?venueId={venueId}" },
+                sendEmail: false,
+                cancellationToken: HttpContext.RequestAborted);
+        }
+    }
+
+    /// <summary>Danh sách khóa khung giờ của một sân trong khoảng ngày.</summary>
+    [HttpGet("{venueId:guid}/courts/{courtId:guid}/blocks")]
+    public async Task<IActionResult> GetCourtBlocks(
+        [FromRoute] Guid venueId,
+        [FromRoute] Guid courtId,
+        [FromQuery] string? from,
+        [FromQuery] string? to)
+    {
+        var managerId = GetCurrentUserId();
+        if (managerId == Guid.Empty)
+            return Unauthorized(new { message = "Không xác định được người dùng hiện tại." });
+
+        var (_, _, err) = await EnsureManagerCourtAsync(managerId, venueId, courtId);
+        if (err != null) return err;
+
+        var fromDay = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        if (!string.IsNullOrWhiteSpace(from) && !DateOnly.TryParse(from, out fromDay))
+            return BadRequest(new { message = "Tham số from phải là YYYY-MM-DD." });
+        var toDay = fromDay.AddDays(30);
+        if (!string.IsNullOrWhiteSpace(to) && !DateOnly.TryParse(to, out toDay))
+            return BadRequest(new { message = "Tham số to phải là YYYY-MM-DD." });
+        if (toDay < fromDay)
+            return BadRequest(new { message = "to phải sau hoặc bằng from." });
+
+        var rangeStart = fromDay.ToDateTime(TimeOnly.MinValue);
+        var rangeEnd = toDay.AddDays(1).ToDateTime(TimeOnly.MinValue);
+
+        var rows = await _dbContext.CourtBlocks
+            .AsNoTracking()
+            .Where(b => b.CourtId == courtId && b.StartTime < rangeEnd && b.EndTime > rangeStart)
+            .OrderBy(b => b.StartTime)
+            .Select(b => new
+            {
+                b.Id,
+                startTime = b.StartTime,
+                endTime = b.EndTime,
+                b.ReasonCode,
+                b.ReasonDetail,
+                b.InternalNote,
+                b.CreatedAt,
+                b.UpdatedAt,
+            })
+            .ToListAsync();
+
+        return Ok(rows);
+    }
+
+    /// <summary>Tạo khóa khung giờ. Không cho phép nếu đã có đơn đặt trùng giờ.</summary>
+    [HttpPost("{venueId:guid}/courts/{courtId:guid}/blocks")]
+    public async Task<IActionResult> CreateCourtBlock(
+        [FromRoute] Guid venueId,
+        [FromRoute] Guid courtId,
+        [FromBody] CourtBlockUpsertDto dto)
+    {
+        if (dto == null)
+            return BadRequest(new { message = "Thiếu dữ liệu." });
+
+        var managerId = GetCurrentUserId();
+        if (managerId == Guid.Empty)
+            return Unauthorized(new { message = "Không xác định được người dùng hiện tại." });
+
+        var (venue, _, err) = await EnsureManagerCourtAsync(managerId, venueId, courtId);
+        if (err != null) return err;
+
+        var start = dto.StartTime;
+        var end = dto.EndTime;
+        if (end <= start)
+            return BadRequest(new { message = "Thời gian kết thúc phải sau thời gian bắt đầu." });
+
+        if (await HasBookingOverlapAsync(courtId, start, end))
+            return Conflict(new { message = "Không thể khóa: đã có đơn đặt trùng khung giờ. Vui lòng xử lý đơn trước hoặc chọn khung khác." });
+
+        if (await HasBlockOverlapAsync(courtId, start, end, null))
+            return Conflict(new { message = "Khung giờ trùng với một khóa khác." });
+
+        var reason = NormalizeBlockReasonCode(dto.ReasonCode);
+        var block = new CourtBlock
+        {
+            Id = Guid.NewGuid(),
+            CourtId = courtId,
+            StartTime = start,
+            EndTime = end,
+            CreatedBy = managerId,
+            ReasonCode = reason,
+            ReasonDetail = SanitizeBlockNote(dto.ReasonDetail),
+            InternalNote = SanitizeBlockNote(dto.InternalNote),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        _dbContext.CourtBlocks.Add(block);
+        await _dbContext.SaveChangesAsync();
+
+        var courtName = await _dbContext.Courts.AsNoTracking().Where(c => c.Id == courtId).Select(c => c.Name).FirstOrDefaultAsync() ?? "Sân";
+        var reasonLabels = new Dictionary<string, string>
+        {
+            ["MAINTENANCE"] = "Bảo trì",
+            ["WEATHER"] = "Thời tiết / môi trường",
+            ["OTHER"] = "Khác",
+        };
+        var reasonLabel = reasonLabels.GetValueOrDefault(reason, "Khác");
+        await NotifyPlayersAboutCourtBlockAsync(courtId, start, end, reasonLabel, block.ReasonDetail, venueId, venue!.Name, courtName);
+
+        return Ok(new
+        {
+            block.Id,
+            block.StartTime,
+            block.EndTime,
+            block.ReasonCode,
+            block.ReasonDetail,
+            block.InternalNote,
+        });
+    }
+
+    /// <summary>Cập nhật khóa khung giờ.</summary>
+    [HttpPut("{venueId:guid}/courts/{courtId:guid}/blocks/{blockId:guid}")]
+    public async Task<IActionResult> UpdateCourtBlock(
+        [FromRoute] Guid venueId,
+        [FromRoute] Guid courtId,
+        [FromRoute] Guid blockId,
+        [FromBody] CourtBlockUpsertDto dto)
+    {
+        if (dto == null)
+            return BadRequest(new { message = "Thiếu dữ liệu." });
+
+        var managerId = GetCurrentUserId();
+        if (managerId == Guid.Empty)
+            return Unauthorized(new { message = "Không xác định được người dùng hiện tại." });
+
+        var (_, _, err) = await EnsureManagerCourtAsync(managerId, venueId, courtId);
+        if (err != null) return err;
+
+        var block = await _dbContext.CourtBlocks.FirstOrDefaultAsync(b => b.Id == blockId && b.CourtId == courtId);
+        if (block == null)
+            return NotFound(new { message = "Không tìm thấy khóa lịch." });
+
+        var start = dto.StartTime;
+        var end = dto.EndTime;
+        if (end <= start)
+            return BadRequest(new { message = "Thời gian kết thúc phải sau thời gian bắt đầu." });
+
+        if (await HasBookingOverlapAsync(courtId, start, end))
+            return Conflict(new { message = "Không thể cập nhật: đã có đơn đặt trùng khung giờ." });
+
+        if (await HasBlockOverlapAsync(courtId, start, end, blockId))
+            return Conflict(new { message = "Khung giờ trùng với một khóa khác." });
+
+        block.StartTime = start;
+        block.EndTime = end;
+        block.ReasonCode = NormalizeBlockReasonCode(dto.ReasonCode);
+        block.ReasonDetail = SanitizeBlockNote(dto.ReasonDetail);
+        block.InternalNote = SanitizeBlockNote(dto.InternalNote);
+        block.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+
+        return Ok(new
+        {
+            block.Id,
+            block.StartTime,
+            block.EndTime,
+            block.ReasonCode,
+            block.ReasonDetail,
+            block.InternalNote,
+        });
+    }
+
+    /// <summary>Xóa khóa khung giờ.</summary>
+    [HttpDelete("{venueId:guid}/courts/{courtId:guid}/blocks/{blockId:guid}")]
+    public async Task<IActionResult> DeleteCourtBlock(
+        [FromRoute] Guid venueId,
+        [FromRoute] Guid courtId,
+        [FromRoute] Guid blockId)
+    {
+        var managerId = GetCurrentUserId();
+        if (managerId == Guid.Empty)
+            return Unauthorized(new { message = "Không xác định được người dùng hiện tại." });
+
+        var (_, _, err) = await EnsureManagerCourtAsync(managerId, venueId, courtId);
+        if (err != null) return err;
+
+        var block = await _dbContext.CourtBlocks.FirstOrDefaultAsync(b => b.Id == blockId && b.CourtId == courtId);
+        if (block == null)
+            return NotFound(new { message = "Không tìm thấy khóa lịch." });
+
+        _dbContext.CourtBlocks.Remove(block);
+        await _dbContext.SaveChangesAsync();
+        return NoContent();
     }
 
     /// <summary>

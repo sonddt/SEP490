@@ -425,6 +425,11 @@ CREATE TABLE court_blocks (
     start_time DATETIME,
     end_time DATETIME,
     created_by CHAR(36),
+    reason_code VARCHAR(30) NULL COMMENT 'MAINTENANCE|WEATHER|OTHER',
+    reason_detail VARCHAR(500) NULL COMMENT 'Hiển thị cho người chơi',
+    internal_note VARCHAR(500) NULL COMMENT 'Ghi chú nội bộ chủ sân',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (court_id) REFERENCES courts(id) ON DELETE CASCADE,
     FOREIGN KEY (created_by) REFERENCES users(id)
 );
@@ -1524,6 +1529,27 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 -- venues: venue_rules — quy định chi tiết dạng text tự do (chủ sân nhập trên trang chính sách)
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'venue_rules');
 SET @sql := IF(@col = 0, 'ALTER TABLE venues ADD COLUMN venue_rules TEXT NULL COMMENT ''Quy định chung tại sân (free-text, manager nhập)''', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- court_blocks: lý do khóa sân + audit
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'court_blocks' AND column_name = 'reason_code');
+SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN reason_code VARCHAR(30) NULL COMMENT ''MAINTENANCE|WEATHER|OTHER''', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'court_blocks' AND column_name = 'reason_detail');
+SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN reason_detail VARCHAR(500) NULL', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'court_blocks' AND column_name = 'internal_note');
+SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN internal_note VARCHAR(500) NULL', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'court_blocks' AND column_name = 'created_at');
+SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'court_blocks' AND column_name = 'updated_at');
+SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', 'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- ======================================================================
