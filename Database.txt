@@ -826,7 +826,7 @@ INSERT IGNORE INTO venues (id, owner_user_id, name, address, lat, lng, is_active
 
 -- ======================================================================
 -- VENUES MẪU — ĐỊNH VỊ / SORT GẦN NHẤT (/venues)
--- 4 venue: 3 có lat/lng (Q1 gần, Q7 xa hơn, Hà Nội), 1 không tọa độ.
+-- 4 venue: 3 có lat/lng (Đà Nẵng / Cần Thơ / Hải Phòng), 1 không tọa độ.
 -- INSERT IGNORE + id cố định — an toàn chạy lại.
 -- ======================================================================
 
@@ -837,35 +837,35 @@ INSERT IGNORE INTO venues (
 (
     'c5800001-c580-4c80-8000-000000000001',
     'a0000002-0000-0000-0000-000000000002',
-    '[MOCK GEO] Sân sát Nhà thờ Đức Bà',
-    '1 Công xã Paris, Quận 1, TP.HCM',
-    10.77980000, 106.69900000,
-    'Gần điểm trung tâm Q1 — dùng test khoảng cách ngắn.',
+    '[MOCK GEO] Sân trung tâm Hải Châu (Đà Nẵng)',
+    '1 Trần Phú, Quận Hải Châu, TP. Đà Nẵng',
+    16.07120000, 108.21650000,
+    'Dùng test khoảng cách với neo tại các tỉnh/thành khác.',
     TRUE, NOW()
 ),
 (
     'c5800002-c580-4c80-8000-000000000002',
     'a0000002-0000-0000-0000-000000000002',
-    '[MOCK GEO] Sân Phú Mỹ Hưng Q7',
-    'Đường Nguyễn Lương Bằng, Quận 7, TP.HCM',
-    10.73100000, 106.72100000,
-    'Xa trung tâm Q1 hơn venue mock đầu tiên.',
+    '[MOCK GEO] Sân Ninh Kiều (Cần Thơ)',
+    'Đường Cách Mạng Tháng Tám, Quận Ninh Kiều, TP. Cần Thơ',
+    10.02970000, 105.77960000,
+    'Dùng test sort khi neo ở một tỉnh/thành khác.',
     TRUE, NOW()
 ),
 (
     'c5800003-c580-4c80-8000-000000000003',
     'a0000002-0000-0000-0000-000000000002',
-    '[MOCK GEO] Sân Hồ Gươm (Hà Nội)',
-    'Hàng Trống, Hoàn Kiếm, Hà Nội',
-    21.02850000, 105.85420000,
-    'Rất xa TP.HCM — test sort khi neo ở HCM.',
+    '[MOCK GEO] Sân Ngô Quyền (Hải Phòng)',
+    '12 Lạch Tray, Quận Ngô Quyền, TP. Hải Phòng',
+    20.85850000, 106.68850000,
+    'Rất xa so với Đà Nẵng/Cần Thơ — test sort theo khoảng cách.',
     TRUE, NOW()
 ),
 (
     'c5800004-c580-4c80-8000-000000000004',
     'a0000002-0000-0000-0000-000000000002',
     '[MOCK GEO] Sân chưa có tọa độ',
-    '123 Đường Giả, Quận Ảo, TP.HCM',
+    '99 Võ Thị Sáu, Phường Phú Hòa, TP. Thủ Dầu Một',
     NULL, NULL,
     'Không có lat/lng — sẽ xuống cuối khi sort Gần nhất.',
     TRUE, NOW()
