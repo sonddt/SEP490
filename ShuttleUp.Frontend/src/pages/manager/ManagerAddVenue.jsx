@@ -1,6 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef, lazy, Suspense } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
+import VenueAddressFields from '../../components/manager/VenueAddressFields';
+import {
+  loadVietnamDivisionTree,
+  provinceByCode,
+  districtByCode,
+  wardByCode,
+  normalizeKey,
+} from '../../utils/vietnamDivisions';
+
+const MapPicker = lazy(() => import('../../components/common/MapPicker'));
 
 export const AMENITIES_LIST = [
   { key: 'parking',       label: 'Bãi đỗ xe',                  icon: 'feather-map-pin' },
@@ -72,6 +82,44 @@ function EditableList({ items, onChange, placeholder, addLabel }) {
   );
 }
 
+function parseVenueAddress(tree, text) {
+  const out = { p: '', d: '', w: '', street: text || '' };
+  if (!tree?.length || !text) return out;
+  const parts = text.split(',').map((s) => s.trim()).filter(Boolean);
+  if (!parts.length) return out;
+
+  const fuzzy = (a, b) => {
+    const na = normalizeKey(a), nb = normalizeKey(b);
+    return na === nb || na.includes(nb) || nb.includes(na);
+  };
+
+  const remaining = [...parts];
+
+  const prov = tree.find((p) => fuzzy(p.n, remaining[remaining.length - 1]));
+  if (!prov) return out;
+  out.p = String(prov.c);
+  remaining.pop();
+
+  if (remaining.length) {
+    const dist = (prov.d || []).find((d) => fuzzy(d.n, remaining[remaining.length - 1]));
+    if (dist) {
+      out.d = String(dist.c);
+      remaining.pop();
+
+      if (remaining.length) {
+        const ward = (dist.w || []).find((w) => fuzzy(w.n, remaining[remaining.length - 1]));
+        if (ward) {
+          out.w = String(ward.c);
+          remaining.pop();
+        }
+      }
+    }
+  }
+
+  out.street = remaining.join(', ');
+  return out;
+}
+
 export default function ManagerAddVenue() {
   const { venueId } = useParams();
   const navigate = useNavigate();
@@ -106,6 +154,12 @@ export default function ManagerAddVenue() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+  const [divisionTree, setDivisionTree] = useState(null);
+  const [addrCodes, setAddrCodes] = useState({ p: '', d: '', w: '' });
+  const [street, setStreet] = useState('');
+  const [mapFlyQuery, setMapFlyQuery] = useState('');
+  const [mapFlyZoom, setMapFlyZoom] = useState(14);
+  const addressParsedRef = useRef(false);
 
   const getFieldError = (field) => {
     if (!fieldErrors) return null;
@@ -128,6 +182,70 @@ export default function ManagerAddVenue() {
         ? p.amenities.filter(k => k !== key)
         : [...p.amenities, key],
     }));
+  };
+
+  useEffect(() => {
+    loadVietnamDivisionTree().then(setDivisionTree);
+  }, []);
+
+  useEffect(() => {
+    if (addressParsedRef.current || !divisionTree || !venueId) return;
+    if (!form.address) return;
+    addressParsedRef.current = true;
+    const parsed = parseVenueAddress(divisionTree, form.address);
+    if (parsed.p) {
+      setAddrCodes({ p: parsed.p, d: parsed.d, w: parsed.w });
+    }
+    setStreet(parsed.street);
+  }, [divisionTree, form.address, venueId]);
+
+  const assembleAddress = () => {
+    const parts = [];
+    if (street.trim()) parts.push(street.trim());
+    if (addrCodes.w && divisionTree) {
+      const w = wardByCode(divisionTree, addrCodes.p, addrCodes.d, addrCodes.w);
+      if (w) parts.push(w.n);
+    }
+    if (addrCodes.d && divisionTree) {
+      const d = districtByCode(divisionTree, addrCodes.p, addrCodes.d);
+      if (d) parts.push(d.n);
+    }
+    if (addrCodes.p && divisionTree) {
+      const p = provinceByCode(divisionTree, addrCodes.p);
+      if (p) parts.push(p.n);
+    }
+    return parts.join(', ');
+  };
+
+  const handleProvinceChange = (code) => {
+    setAddrCodes({ p: code, d: '', w: '' });
+    setMapFlyQuery('');
+    setFieldErrors((p) => ({ ...p, address: null }));
+  };
+
+  const handleDistrictChange = (code) => {
+    setAddrCodes((prev) => ({ ...prev, d: code, w: '' }));
+    setFieldErrors((p) => ({ ...p, address: null }));
+    if (!code || !divisionTree) return;
+    const prov = provinceByCode(divisionTree, addrCodes.p);
+    const dist = (prov?.d || []).find((x) => String(x.c) === code);
+    if (prov && dist) {
+      setMapFlyQuery(`${dist.n}, ${prov.n}, Vietnam`);
+      setMapFlyZoom(14);
+    }
+  };
+
+  const handleWardChange = (code) => {
+    setAddrCodes((prev) => ({ ...prev, w: code }));
+    setFieldErrors((p) => ({ ...p, address: null }));
+    if (!code || !divisionTree) return;
+    const prov = provinceByCode(divisionTree, addrCodes.p);
+    const dist = districtByCode(divisionTree, addrCodes.p, addrCodes.d);
+    const ward = (dist?.w || []).find((x) => String(x.c) === code);
+    if (prov && dist && ward) {
+      setMapFlyQuery(`${ward.n}, ${dist.n}, ${prov.n}, Vietnam`);
+      setMapFlyZoom(16);
+    }
   };
 
   useEffect(() => {
@@ -163,12 +281,21 @@ export default function ManagerAddVenue() {
     return () => { mounted = false; };
   }, [venueId]);
 
+  const handleMapPick = useCallback((pos) => {
+    setForm((p) => ({
+      ...p,
+      lat: pos.lat.toFixed(8),
+      lng: pos.lng.toFixed(8),
+    }));
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const assembledAddr = assembleAddress();
       const errors = {};
       if (!form.name?.trim()) errors.name = ['Bạn chưa định danh tên cụm sân kìa!'];
-      if (!form.address?.trim()) errors.address = ['Bạn quên điền địa chỉ rồi!'];
+      if (!addrCodes.p || !addrCodes.d) errors.address = ['Bạn chưa chọn đủ Tỉnh/TP và Quận/Huyện!'];
       if (Object.keys(errors).length > 0) {
         setFieldErrors(errors);
         setErrorMsg('Oops... Có vài chỗ chưa ổn, bạn kiểm tra lại bên dưới nhé!');
@@ -181,7 +308,7 @@ export default function ManagerAddVenue() {
       setSubmitting(true);
       const request = {
         name: form.name,
-        address: form.address,
+        address: assembledAddr,
         lat: form.lat ? Number(form.lat) : null,
         lng: form.lng ? Number(form.lng) : null,
         contactName: form.contactName,
@@ -262,8 +389,18 @@ export default function ManagerAddVenue() {
                   </div>
                   <div className="col-12">
                     <label className="form-label fw-semibold text-dark mb-2">Địa chỉ cụ thể <span className="text-danger">*</span></label>
-                    <textarea className={`form-control form-control-lg bg-light border-0 ${getFieldError('address') ? 'is-invalid' : ''}`} rows="3" placeholder="Số nhà, đường, phường, quận..." value={form.address} onChange={(e) => { setField('address', e.target.value); setFieldErrors(p => ({...p, address: null})); }} />
-                    {getFieldError('address') && <div className="invalid-feedback">{getFieldError('address')}</div>}
+                    <VenueAddressFields
+                      tree={divisionTree}
+                      street={street}
+                      onStreetChange={(v) => { setStreet(v); setFieldErrors((p) => ({ ...p, address: null })); }}
+                      provinceCode={addrCodes.p}
+                      districtCode={addrCodes.d}
+                      wardCode={addrCodes.w}
+                      onChangeProvince={handleProvinceChange}
+                      onChangeDistrict={handleDistrictChange}
+                      onChangeWard={handleWardChange}
+                    />
+                    {getFieldError('address') && <div className="text-danger small mt-2">{getFieldError('address')}</div>}
                   </div>
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-semibold text-dark mb-2">Người đại diện</label>
@@ -287,21 +424,48 @@ export default function ManagerAddVenue() {
               </div>
             </div>
 
-            {/* Location Card */}
+            {/* Location Card — Map picker */}
             <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
               <div className="card-body p-4 p-md-5">
-                <SectionHeader icon="feather-map-pin" iconBg="#eff6ff" iconColor="#2563eb" title="2. Tọa độ bản đồ" subtitle="Lấy từ Google Maps (Tùy chọn)" />
-                <div className="row g-4">
+                <SectionHeader icon="feather-map-pin" iconBg="#eff6ff" iconColor="#2563eb" title="2. Vị trí trên bản đồ" subtitle="Bản đồ tự bay đến khi bạn chọn quận/huyện — nhấn để ghim vị trí chính xác" />
+
+                <Suspense fallback={<div className="text-muted text-center py-5">Đang tải bản đồ…</div>}>
+                  <MapPicker
+                    lat={form.lat ? Number(form.lat) : null}
+                    lng={form.lng ? Number(form.lng) : null}
+                    onChange={handleMapPick}
+                    flyToQuery={mapFlyQuery}
+                    flyToZoom={mapFlyZoom}
+                    height={340}
+                  />
+                </Suspense>
+                <p className="text-muted mt-2 mb-3" style={{ fontSize: 13 }}>
+                  <i className="feather-info me-1" />
+                  Chọn Quận/Huyện ở trên để bản đồ bay đến khu vực đó, sau đó click chính xác vị trí sân.
+                </p>
+
+                <div className="row g-3">
                   <div className="col-12 col-md-6">
-                    <label className="form-label fw-semibold text-dark mb-2">Vĩ độ (Latitude)</label>
-                    <input type="number" step="any" className={`form-control form-control-lg bg-light border-0 ${getFieldError('lat') ? 'is-invalid' : ''}`} placeholder="10.7769" value={form.lat} onChange={(e) => setField('lat', e.target.value)} />
+                    <label className="form-label fw-semibold text-dark mb-1" style={{ fontSize: 13 }}>Vĩ độ (Lat)</label>
+                    <input type="number" step="any" className={`form-control bg-light border-0 ${getFieldError('lat') ? 'is-invalid' : ''}`} placeholder="10.7769" value={form.lat} onChange={(e) => setField('lat', e.target.value)} />
                     {getFieldError('lat') && <div className="invalid-feedback">{getFieldError('lat')}</div>}
                   </div>
                   <div className="col-12 col-md-6">
-                    <label className="form-label fw-semibold text-dark mb-2">Kinh độ (Longitude)</label>
-                    <input type="number" step="any" className={`form-control form-control-lg bg-light border-0 ${getFieldError('lng') ? 'is-invalid' : ''}`} placeholder="106.7009" value={form.lng} onChange={(e) => setField('lng', e.target.value)} />
+                    <label className="form-label fw-semibold text-dark mb-1" style={{ fontSize: 13 }}>Kinh độ (Lng)</label>
+                    <input type="number" step="any" className={`form-control bg-light border-0 ${getFieldError('lng') ? 'is-invalid' : ''}`} placeholder="106.7009" value={form.lng} onChange={(e) => setField('lng', e.target.value)} />
                     {getFieldError('lng') && <div className="invalid-feedback">{getFieldError('lng')}</div>}
                   </div>
+                  {form.lat && form.lng && (
+                    <div className="col-12">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => { setField('lat', ''); setField('lng', ''); }}
+                      >
+                        <i className="feather-x me-1" />Xóa tọa độ
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
