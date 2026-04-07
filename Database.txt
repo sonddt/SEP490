@@ -425,6 +425,11 @@ CREATE TABLE court_blocks (
     start_time DATETIME,
     end_time DATETIME,
     created_by CHAR(36),
+    reason_code VARCHAR(30) NULL COMMENT 'MAINTENANCE|WEATHER|OTHER',
+    reason_detail VARCHAR(500) NULL COMMENT 'Hiển thị cho người chơi',
+    internal_note VARCHAR(500) NULL COMMENT 'Ghi chú nội bộ chủ sân',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (court_id) REFERENCES courts(id) ON DELETE CASCADE,
     FOREIGN KEY (created_by) REFERENCES users(id)
 );
@@ -826,7 +831,7 @@ INSERT IGNORE INTO venues (id, owner_user_id, name, address, lat, lng, is_active
 
 -- ======================================================================
 -- VENUES MẪU — ĐỊNH VỊ / SORT GẦN NHẤT (/venues)
--- 4 venue: 3 có lat/lng (Q1 gần, Q7 xa hơn, Hà Nội), 1 không tọa độ.
+-- 4 venue: 3 có lat/lng (Đà Nẵng / Cần Thơ / Hải Phòng), 1 không tọa độ.
 -- INSERT IGNORE + id cố định — an toàn chạy lại.
 -- ======================================================================
 
@@ -837,35 +842,35 @@ INSERT IGNORE INTO venues (
 (
     'c5800001-c580-4c80-8000-000000000001',
     'a0000002-0000-0000-0000-000000000002',
-    '[MOCK GEO] Sân sát Nhà thờ Đức Bà',
-    '1 Công xã Paris, Quận 1, TP.HCM',
-    10.77980000, 106.69900000,
-    'Gần điểm trung tâm Q1 — dùng test khoảng cách ngắn.',
+    '[MOCK GEO] Sân trung tâm Hải Châu (Đà Nẵng)',
+    '1 Trần Phú, Quận Hải Châu, TP. Đà Nẵng',
+    16.07120000, 108.21650000,
+    'Dùng test khoảng cách với neo tại các tỉnh/thành khác.',
     TRUE, NOW()
 ),
 (
     'c5800002-c580-4c80-8000-000000000002',
     'a0000002-0000-0000-0000-000000000002',
-    '[MOCK GEO] Sân Phú Mỹ Hưng Q7',
-    'Đường Nguyễn Lương Bằng, Quận 7, TP.HCM',
-    10.73100000, 106.72100000,
-    'Xa trung tâm Q1 hơn venue mock đầu tiên.',
+    '[MOCK GEO] Sân Ninh Kiều (Cần Thơ)',
+    'Đường Cách Mạng Tháng Tám, Quận Ninh Kiều, TP. Cần Thơ',
+    10.02970000, 105.77960000,
+    'Dùng test sort khi neo ở một tỉnh/thành khác.',
     TRUE, NOW()
 ),
 (
     'c5800003-c580-4c80-8000-000000000003',
     'a0000002-0000-0000-0000-000000000002',
-    '[MOCK GEO] Sân Hồ Gươm (Hà Nội)',
-    'Hàng Trống, Hoàn Kiếm, Hà Nội',
-    21.02850000, 105.85420000,
-    'Rất xa TP.HCM — test sort khi neo ở HCM.',
+    '[MOCK GEO] Sân Ngô Quyền (Hải Phòng)',
+    '12 Lạch Tray, Quận Ngô Quyền, TP. Hải Phòng',
+    20.85850000, 106.68850000,
+    'Rất xa so với Đà Nẵng/Cần Thơ — test sort theo khoảng cách.',
     TRUE, NOW()
 ),
 (
     'c5800004-c580-4c80-8000-000000000004',
     'a0000002-0000-0000-0000-000000000002',
     '[MOCK GEO] Sân chưa có tọa độ',
-    '123 Đường Giả, Quận Ảo, TP.HCM',
+    '99 Võ Thị Sáu, Phường Phú Hòa, TP. Thủ Dầu Một',
     NULL, NULL,
     'Không có lat/lng — sẽ xuống cuối khi sort Gần nhất.',
     TRUE, NOW()
@@ -1519,6 +1524,32 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 -- featured_posts: bỏ sort_order (thứ tự chỉ theo created_at trong API)
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'featured_posts' AND column_name = 'sort_order');
 SET @sql := IF(@col > 0, 'ALTER TABLE featured_posts DROP COLUMN sort_order', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- venues: venue_rules — quy định chi tiết dạng text tự do (chủ sân nhập trên trang chính sách)
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'venue_rules');
+SET @sql := IF(@col = 0, 'ALTER TABLE venues ADD COLUMN venue_rules TEXT NULL COMMENT ''Quy định chung tại sân (free-text, manager nhập)''', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- court_blocks: lý do khóa sân + audit
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'court_blocks' AND column_name = 'reason_code');
+SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN reason_code VARCHAR(30) NULL COMMENT ''MAINTENANCE|WEATHER|OTHER''', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'court_blocks' AND column_name = 'reason_detail');
+SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN reason_detail VARCHAR(500) NULL', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'court_blocks' AND column_name = 'internal_note');
+SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN internal_note VARCHAR(500) NULL', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'court_blocks' AND column_name = 'created_at');
+SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'court_blocks' AND column_name = 'updated_at');
+SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', 'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- ======================================================================

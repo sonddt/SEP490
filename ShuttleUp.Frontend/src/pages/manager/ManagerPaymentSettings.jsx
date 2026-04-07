@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { getManagedVenues, getManagerVenueCheckoutSettings, putVenueCheckoutSettings, lookupBankAccount } from '../../api/managerVenueApi';
 import {
   POPULAR_BANK_BINS,
@@ -222,6 +223,77 @@ function VariableChips({ inputRef, onInsert }) {
 }
 
 /* ──────────────────────────────────────────────
+   SaveConfirmModal — Layer 1: summary + cam kết
+   ────────────────────────────────────────────── */
+
+function SaveConfirmModal({ bankName, accountNumber, accountHolder, verified, onConfirm, onCancel }) {
+  const [agreed, setAgreed] = useState(false);
+
+  return createPortal(
+    <div className="modal fade show d-block" style={{ background: 'rgba(0,0,0,0.5)', zIndex: 1100 }} onClick={onCancel}>
+      <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-content" style={{ borderRadius: 16 }}>
+          <div className="modal-body py-4 px-4">
+            <div className="text-center mb-3">
+              <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#fef3c7', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                <i className="feather-shield" style={{ color: '#92400e', fontSize: 24 }} />
+              </div>
+              <h5 style={{ color: '#1e293b', fontWeight: 700, marginBottom: 4 }}>Xác nhận thông tin nhận tiền</h5>
+              <p className="text-muted small mb-0">Vui lòng kiểm tra kỹ trước khi lưu. Nếu sai, người chơi có thể chuyển nhầm tiền.</p>
+            </div>
+
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '16px 20px', marginBottom: 16 }}>
+              <div className="d-flex justify-content-between mb-2">
+                <span style={{ color: '#64748b', fontSize: 13 }}>Ngân hàng</span>
+                <strong style={{ color: '#1e293b', fontSize: 14 }}>{bankName}</strong>
+              </div>
+              <div className="d-flex justify-content-between mb-2">
+                <span style={{ color: '#64748b', fontSize: 13 }}>Số tài khoản</span>
+                <strong style={{ color: '#1e293b', fontSize: 14, fontFamily: 'monospace', letterSpacing: 1 }}>{accountNumber}</strong>
+              </div>
+              <div className="d-flex justify-content-between align-items-center">
+                <span style={{ color: '#64748b', fontSize: 13 }}>Chủ tài khoản</span>
+                <div className="text-end">
+                  <strong style={{ color: '#1e293b', fontSize: 14 }}>{accountHolder}</strong>
+                  {verified && (
+                    <span className="ms-2" style={{ fontSize: 11, color: '#059669' }}>
+                      <i className="feather-check-circle" style={{ fontSize: 12 }} /> VietQR
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {!verified && (
+              <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 14px', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <i className="feather-alert-triangle" style={{ color: '#92400e', fontSize: 15, flexShrink: 0, marginTop: 2 }} />
+                <span style={{ fontSize: 12, color: '#78350f' }}>
+                  Tên chủ tài khoản <strong>do bạn tự nhập</strong>, chưa được xác minh qua VietQR. Hãy đảm bảo thông tin chính xác 100%.
+                </span>
+              </div>
+            )}
+
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', padding: '10px 12px', background: agreed ? '#f0fdf4' : '#f8fafc', border: agreed ? '1px solid #bbf7d0' : '1px solid #e2e8f0', borderRadius: 10, transition: 'all 0.15s' }}>
+              <input type="checkbox" className="form-check-input mt-0" style={{ flexShrink: 0 }} checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+              <span style={{ fontSize: 13, color: '#1e293b', fontWeight: 500 }}>
+                Tôi cam kết thông tin tài khoản ngân hàng trên là <strong>chính xác</strong>. Tôi hiểu rằng nếu sai, người chơi có thể chuyển nhầm tiền và tôi chịu trách nhiệm.
+              </span>
+            </label>
+          </div>
+          <div className="modal-footer justify-content-end border-0 pt-0 pb-3 px-4" style={{ gap: 8 }}>
+            <button className="btn btn-outline-secondary btn-sm px-3" onClick={onCancel}>Quay lại kiểm tra</button>
+            <button className="btn btn-primary btn-sm px-4" disabled={!agreed} onClick={onConfirm}>
+              <i className="feather-save me-1" />Xác nhận & Lưu
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+/* ──────────────────────────────────────────────
    Main page component
    ────────────────────────────────────────────── */
 
@@ -233,6 +305,7 @@ export default function ManagerPaymentSettings() {
   const [settingsError, setSettingsError] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [savedForm, setSavedForm] = useState(emptyForm);
+  const [confirmStkValue, setConfirmStkValue] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [pageError, setPageError] = useState('');
@@ -240,6 +313,7 @@ export default function ManagerPaymentSettings() {
   const [qrLoading, setQrLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const [confirmModal, setConfirmModal] = useState(null);
+  const [saveModal, setSaveModal] = useState(false);
   const initialVenuePicked = useRef(false);
 
   const [vietqrBanks, setVietqrBanks] = useState([]);
@@ -254,21 +328,8 @@ export default function ManagerPaymentSettings() {
   const showToast = useCallback((msg, type = 'success') => setToast({ msg, type }), []);
   const getFieldError = (name) => fieldErrors[name] || '';
   const setField = (key, val) => {
-    setForm((p) => {
-      const next = { ...p, [key]: val };
-      if (key === 'paymentAccountNumber' || key === 'paymentBankBin') {
-        next.paymentAccountHolder = '';
-      }
-      return next;
-    });
-    setFieldErrors((p) => {
-      const next = { ...p, [key]: '' };
-      if (key === 'paymentAccountNumber' || key === 'paymentBankBin') {
-        next.paymentAccountNumber = '';
-        next.paymentAccountHolder = '';
-      }
-      return next;
-    });
+    setForm((p) => ({ ...p, [key]: val }));
+    setFieldErrors((p) => ({ ...p, [key]: '' }));
     if (key === 'paymentAccountNumber' || key === 'paymentBankBin') {
       setVerifyStatus('idle');
     }
@@ -279,7 +340,6 @@ export default function ManagerPaymentSettings() {
     return keys.some((k) => (form[k] || '') !== (savedForm[k] || ''));
   }, [form, savedForm]);
 
-  // ── Fetch VietQR bank list ──
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -290,7 +350,6 @@ export default function ManagerPaymentSettings() {
     return () => { cancelled = true; };
   }, []);
 
-  // ── Load managed venues ──
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -314,17 +373,16 @@ export default function ManagerPaymentSettings() {
     return () => { cancelled = true; };
   }, []);
 
-  // ── Load checkout settings for selected venue ──
   const loadSettings = useCallback(async (id) => {
     if (!id) return;
     setLoadingSettings(true); setPageError(''); setSettingsError(false);
-    setVerifyStatus('idle');
+    setVerifyStatus('idle'); setConfirmStkValue('');
     try {
       const data = await getManagerVenueCheckoutSettings(id, { amount: 250000, addInfo: 'XEM_TRUOC' });
       const mapped = mapCheckoutToForm(data);
       setForm(mapped); setSavedForm(mapped);
-      const hasHolder = !!(mapped.paymentAccountHolder?.trim() && mapped.paymentBankBin?.trim() && mapped.paymentAccountNumber?.trim());
-      if (hasHolder) setVerifyStatus('success');
+      if (mapped.paymentAccountNumber?.trim()) setConfirmStkValue(mapped.paymentAccountNumber);
+      if (mapped.paymentAccountHolder?.trim()) setVerifyStatus('success');
     } catch {
       setSettingsError(true);
       setForm(emptyForm()); setSavedForm(emptyForm());
@@ -335,7 +393,6 @@ export default function ManagerPaymentSettings() {
 
   useEffect(() => { if (venueId) loadSettings(venueId); }, [venueId, loadSettings]);
 
-  // ── Transfer note preview ──
   const previewNote = useMemo(() => {
     const t = form.paymentTransferNoteTemplate || '[SĐT] - [Tên sân] - [Ngày]';
     return t
@@ -346,7 +403,6 @@ export default function ManagerPaymentSettings() {
   }, [form.paymentTransferNoteTemplate]);
   const debouncedNote = useDebounce(previewNote, 600);
 
-  // ── QR preview ──
   useEffect(() => {
     if (!venueId) { setPreviewQr(null); return; }
     let cancelled = false;
@@ -361,7 +417,6 @@ export default function ManagerPaymentSettings() {
     return () => { cancelled = true; };
   }, [venueId, debouncedNote]);
 
-  // ── Venue switch with unsaved warning ──
   const handleVenueChange = (newId) => {
     if (!hasPaymentChanges) { setVenueId(newId); return; }
     setConfirmModal({
@@ -373,20 +428,18 @@ export default function ManagerPaymentSettings() {
     });
   };
 
-  // ── Bank select from BankPicker ──
-  const handleBankSelect = (shortName, bin, _logo) => {
+  const handleBankSelect = (shortName, bin) => {
     setForm((p) => ({
       ...p,
       paymentBankName: shortName,
       paymentBankBin: bin,
       customBankName: '',
-      paymentAccountHolder: '',
     }));
-    setFieldErrors((p) => ({ ...p, paymentBankName: '', paymentAccountHolder: '', paymentAccountNumber: '' }));
+    setFieldErrors((p) => ({ ...p, paymentBankName: '' }));
     setVerifyStatus('idle');
   };
 
-  // ── Auto-verify account holder ──
+  // ── Layer 2: Lookup = optional helper ──
   const canVerify = useMemo(() => {
     const bin = form.paymentBankBin?.trim();
     const acct = form.paymentAccountNumber?.trim();
@@ -403,60 +456,57 @@ export default function ManagerPaymentSettings() {
         accountNumber: form.paymentAccountNumber.trim(),
       });
       if (res.configured === false) {
-        setForm((p) => ({ ...p, paymentAccountHolder: '' }));
         setVerifyStatus('unavailable');
-        setFieldErrors((p) => ({ ...p, paymentAccountHolder: 'Chưa tra cứu được tên chủ tài khoản.' }));
-        showToast(res.message || 'Tính năng tra cứu chưa được cấu hình. Liên hệ quản trị hệ thống.', 'error');
+        showToast('Tính năng tra cứu chưa được cấu hình trên server. Vui lòng nhập tên chủ tài khoản thủ công.', 'error');
       } else if (res.found) {
         setField('paymentAccountHolder', (res.accountName || '').toUpperCase());
         setVerifyStatus('success');
         showToast(`Đã xác minh: ${res.accountName}`);
       } else {
-        setForm((p) => ({ ...p, paymentAccountHolder: '' }));
         setVerifyStatus('not_found');
-        const msg = res.message || 'Không tìm thấy tài khoản. Kiểm tra lại số tài khoản và ngân hàng.';
-        setFieldErrors((p) => ({
-          ...p,
-          paymentAccountNumber: msg,
-          paymentAccountHolder: 'Chưa có tên chủ tài khoản — vui lòng Xác minh lại sau khi sửa STK.',
-        }));
-        showToast(msg, 'error');
+        showToast(res.message || 'Không tìm thấy tài khoản. Hãy kiểm tra lại STK hoặc nhập tên chủ TK thủ công.', 'error');
       }
     } catch {
-      setForm((p) => ({ ...p, paymentAccountHolder: '' }));
       setVerifyStatus('error');
-      setFieldErrors((p) => ({
-        ...p,
-        paymentAccountNumber: 'Không tra cứu được. Kiểm tra mạng và thử lại.',
-        paymentAccountHolder: 'Chưa tra cứu được tên chủ tài khoản.',
-      }));
-      showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
+      showToast('Lỗi kết nối VietQR. Vui lòng nhập tên chủ tài khoản thủ công.', 'error');
     }
   };
 
-  // ── Validation ──
+  // ── Validation (Layer 1: STK confirm + holder required) ──
   const validatePayment = () => {
     const errors = {};
     const effectiveName = form.paymentBankName === 'Khác' ? form.customBankName?.trim() : form.paymentBankName?.trim();
     if (!effectiveName) errors.paymentBankName = 'Chọn hoặc nhập tên ngân hàng.';
+
     const acctNum = form.paymentAccountNumber?.trim() || '';
     if (!acctNum) errors.paymentAccountNumber = 'Nhập số tài khoản.';
     else if (!/^\d+$/.test(acctNum)) errors.paymentAccountNumber = 'Số tài khoản chỉ được chứa chữ số.';
     else if (acctNum.length < 6 || acctNum.length > 19) errors.paymentAccountNumber = 'Số tài khoản phải từ 6 đến 19 chữ số.';
-    if (verifyStatus !== 'success' || !form.paymentAccountHolder?.trim()) {
-      errors.paymentAccountHolder = 'Vui lòng bấm Xác minh để lấy tên chủ tài khoản (chỉ hiển thị sau khi tra cứu thành công).';
+
+    if (acctNum && confirmStkValue.trim() !== acctNum) {
+      errors.confirmStk = 'Số tài khoản nhập lại không khớp.';
     }
+
+    if (!form.paymentAccountHolder?.trim()) {
+      errors.paymentAccountHolder = 'Nhập tên chủ tài khoản (hoặc bấm "Tự động lấy tên" nếu muốn tra cứu).';
+    }
+
     return errors;
   };
 
-  // ── Save ──
-  const handleSave = async (e) => {
+  // ── Save flow: validate → open confirmation modal → actual save ──
+  const handleSaveClick = (e) => {
     e.preventDefault();
     if (!venueId) return;
     const errors = validatePayment();
     if (Object.keys(errors).length > 0) { setFieldErrors(errors); return; }
+    setFieldErrors({});
+    setSaveModal(true);
+  };
 
-    setFieldErrors({}); setSubmitting(true);
+  const handleSaveConfirmed = async () => {
+    setSaveModal(false);
+    setSubmitting(true);
     try {
       const body = buildPutBody(form, { applyToAll });
       const res = await putVenueCheckoutSettings(venueId, body);
@@ -475,6 +525,7 @@ export default function ManagerPaymentSettings() {
   };
 
   const selectedVenueName = venues.find((v) => v.id === venueId)?.name || '';
+  const effectiveBankName = form.paymentBankName === 'Khác' ? (form.customBankName || 'Khác') : (form.paymentBankName || '');
 
   const inputStyle = (name) => ({
     background: '#f8fafc', borderRadius: '8px', padding: '12px 16px', boxShadow: 'none',
@@ -484,22 +535,22 @@ export default function ManagerPaymentSettings() {
   const verifyBadge = () => {
     if (verifyStatus === 'success') return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#059669', fontWeight: 600 }}>
-        <i className="feather-check-circle" style={{ fontSize: 14 }} /> Đã xác minh
+        <i className="feather-check-circle" style={{ fontSize: 14 }} /> Đã xác minh qua VietQR
       </span>
     );
     if (verifyStatus === 'not_found') return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#d97706' }}>
-        <i className="feather-alert-triangle" style={{ fontSize: 14 }} /> Không khớp STK — sửa STK rồi Xác minh lại
+        <i className="feather-alert-triangle" style={{ fontSize: 14 }} /> Không tìm thấy — nhập tên thủ công
       </span>
     );
     if (verifyStatus === 'unavailable') return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#94a3b8' }}>
-        <i className="feather-info" style={{ fontSize: 14 }} /> Tra cứu chưa cấu hình trên server
+        <i className="feather-info" style={{ fontSize: 14 }} /> Tra cứu chưa cấu hình — nhập thủ công
       </span>
     );
     if (verifyStatus === 'error') return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#dc3545' }}>
-        <i className="feather-x-circle" style={{ fontSize: 14 }} /> Lỗi tra cứu — thử lại
+        <i className="feather-x-circle" style={{ fontSize: 14 }} /> Lỗi tra cứu — nhập thủ công
       </span>
     );
     return null;
@@ -509,8 +560,17 @@ export default function ManagerPaymentSettings() {
     <div className="mgr-page">
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
       <ConfirmModal open={!!confirmModal} {...(confirmModal || {})} />
+      {saveModal && (
+        <SaveConfirmModal
+          bankName={effectiveBankName}
+          accountNumber={form.paymentAccountNumber || ''}
+          accountHolder={form.paymentAccountHolder || ''}
+          verified={verifyStatus === 'success'}
+          onConfirm={handleSaveConfirmed}
+          onCancel={() => setSaveModal(false)}
+        />
+      )}
 
-      {/* ── Page header ── */}
       <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
         <div>
           <h1 className="mb-1" style={{ fontSize: 24, fontWeight: 700, color: '#1e293b' }}>Cài đặt thanh toán</h1>
@@ -525,7 +585,6 @@ export default function ManagerPaymentSettings() {
 
       {pageError && <div className="alert alert-warning mb-4" role="alert"><i className="feather-alert-circle me-2" />{pageError}</div>}
 
-      {/* ── Venue selector ── */}
       <div className="mb-4">
         <label className="form-label fw-semibold" style={{ color: '#334155' }}>Chọn cụm sân</label>
         <select className="form-select" style={{ maxWidth: 480, borderRadius: 8 }} value={venueId} disabled={loadingVenues || venues.length === 0}
@@ -535,7 +594,6 @@ export default function ManagerPaymentSettings() {
         </select>
       </div>
 
-      {/* ── Error state ── */}
       {settingsError && !loadingSettings && (
         <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: 12 }}>
           <div className="card-body text-center py-5">
@@ -550,9 +608,8 @@ export default function ManagerPaymentSettings() {
       )}
 
       {!settingsError && (
-        <form onSubmit={handleSave} noValidate>
+        <form onSubmit={handleSaveClick} noValidate>
           <div className="row g-4 d-flex align-items-stretch">
-            {/* ── Left column — form ── */}
             <div className="col-xl-8 col-lg-7 d-flex flex-column gap-4">
               {loadingSettings && (
                 <div className="text-center text-muted py-5">
@@ -575,7 +632,6 @@ export default function ManagerPaymentSettings() {
                     <hr className="mt-4 mb-0" style={{ borderColor: '#f1f5f9' }} />
                   </div>
                   <div className="card-body pt-4">
-                    {/* Info banner */}
                     <div className="mb-4" style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                       <i className="feather-info" style={{ color: '#3b82f6', fontSize: 16, flexShrink: 0, marginTop: 2 }} />
                       <div style={{ fontSize: 13, color: '#1e40af' }}>
@@ -583,20 +639,13 @@ export default function ManagerPaymentSettings() {
                       </div>
                     </div>
 
-                    {/* ── 1. Smart Bank Picker ── */}
+                    {/* ── Bank Picker ── */}
                     <div className="mb-4">
                       <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 8, display: 'block' }}>Ngân hàng <span className="text-danger">*</span></label>
-                      <BankPicker
-                        banks={vietqrBanks}
-                        value={form.paymentBankName}
-                        onSelect={handleBankSelect}
-                        error={getFieldError('paymentBankName')}
-                        loading={banksLoading}
-                      />
+                      <BankPicker banks={vietqrBanks} value={form.paymentBankName} onSelect={handleBankSelect} error={getFieldError('paymentBankName')} loading={banksLoading} />
                       {getFieldError('paymentBankName') && <div className="text-danger mt-1" style={{ fontSize: 13 }}>{getFieldError('paymentBankName')}</div>}
                     </div>
 
-                    {/* Custom bank name + BIN when "Khác" */}
                     {form.paymentBankName === 'Khác' && (
                       <div className="mb-4">
                         <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 8 }}>Nhập tên ngân hàng <span className="text-danger">*</span></label>
@@ -611,7 +660,6 @@ export default function ManagerPaymentSettings() {
                       </div>
                     )}
 
-                    {/* Auto BIN confirmation */}
                     {form.paymentBankName && form.paymentBankName !== 'Khác' && form.paymentBankBin && (
                       <div className="mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#059669' }}>
                         <i className="feather-check-circle" style={{ fontSize: 15 }} />
@@ -619,55 +667,82 @@ export default function ManagerPaymentSettings() {
                       </div>
                     )}
 
-                    {/* ── Account Number + Verify Button ── */}
+                    {/* ── STK ── */}
                     <div className="mb-4">
                       <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 8, display: 'block' }}>Số tài khoản <span className="text-danger">*</span></label>
-                      <div className="d-flex gap-2 align-items-start">
-                        <div style={{ flex: 1 }}>
-                          <input type="text" inputMode="numeric" className={`form-control ${getFieldError('paymentAccountNumber') ? 'is-invalid' : ''}`} style={inputStyle('paymentAccountNumber')} placeholder="0123456789"
-                            value={form.paymentAccountNumber} onChange={(e) => setField('paymentAccountNumber', e.target.value.replace(/\D/g, ''))} />
-                          {getFieldError('paymentAccountNumber') ? <div className="invalid-feedback d-block">{getFieldError('paymentAccountNumber')}</div> : <small className="text-muted">Chỉ nhập chữ số, từ 6 đến 19 ký tự. Bấm Xác minh để lấy tên chủ tài khoản.</small>}
-                        </div>
-                        <button
-                          type="button"
-                          className="btn btn-outline-success btn-sm"
-                          style={{ borderRadius: 8, padding: '10px 16px', whiteSpace: 'nowrap', fontWeight: 600, fontSize: 13 }}
-                          disabled={!canVerify}
-                          onClick={handleVerify}
-                        >
-                          {verifyStatus === 'loading' ? (
-                            <span className="spinner-border spinner-border-sm" role="status" />
-                          ) : (
-                            <><i className="feather-search me-1" style={{ fontSize: 13 }} />Xác minh</>
-                          )}
-                        </button>
-                      </div>
+                      <input type="text" inputMode="numeric" className={`form-control ${getFieldError('paymentAccountNumber') ? 'is-invalid' : ''}`} style={inputStyle('paymentAccountNumber')} placeholder="0123456789"
+                        value={form.paymentAccountNumber} onChange={(e) => setField('paymentAccountNumber', e.target.value.replace(/\D/g, ''))} />
+                      {getFieldError('paymentAccountNumber') ? <div className="invalid-feedback d-block">{getFieldError('paymentAccountNumber')}</div> : <small className="text-muted">Chỉ nhập chữ số, từ 6 đến 19 ký tự.</small>}
                     </div>
 
-                    {/* ── 2. Account Holder (read-only — chỉ từ tra cứu VietQR) ── */}
+                    {/* ── Layer 1: Nhập lại STK ── */}
+                    <div className="mb-4">
+                      <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 8, display: 'block' }}>
+                        Nhập lại số tài khoản <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="text" inputMode="numeric"
+                        className={`form-control ${getFieldError('confirmStk') ? 'is-invalid' : ''}`}
+                        style={{
+                          ...inputStyle('confirmStk'),
+                          ...(confirmStkValue && confirmStkValue === form.paymentAccountNumber?.trim() ? { border: '1px solid #059669', background: '#f0fdf4' } : {}),
+                        }}
+                        placeholder="Nhập lại số tài khoản để xác nhận"
+                        value={confirmStkValue}
+                        onChange={(e) => { setConfirmStkValue(e.target.value.replace(/\D/g, '')); setFieldErrors((p) => ({ ...p, confirmStk: '' })); }}
+                      />
+                      {getFieldError('confirmStk') ? (
+                        <div className="invalid-feedback d-block">{getFieldError('confirmStk')}</div>
+                      ) : confirmStkValue && confirmStkValue === form.paymentAccountNumber?.trim() ? (
+                        <small style={{ color: '#059669', fontWeight: 600 }}><i className="feather-check me-1" style={{ fontSize: 12 }} />Khớp</small>
+                      ) : (
+                        <small className="text-muted">Nhập lại chính xác STK ở trên để chống gõ nhầm.</small>
+                      )}
+                    </div>
+
+                    {/* ── Layer 2: Account Holder (editable + optional lookup) ── */}
                     <div className="mb-4">
                       <div className="d-flex align-items-center justify-content-between mb-1 flex-wrap gap-1">
                         <label style={{ fontSize: 13, fontWeight: 700, color: '#334155' }}>Chủ tài khoản <span className="text-danger">*</span></label>
                         {verifyBadge()}
                       </div>
-                      <input
-                        type="text"
-                        readOnly
-                        aria-readonly="true"
-                        className={`form-control text-uppercase ${getFieldError('paymentAccountHolder') ? 'is-invalid' : ''}`}
-                        style={{
-                          ...inputStyle('paymentAccountHolder'),
-                          cursor: 'default',
-                          ...(verifyStatus === 'success' ? { border: '1px solid #059669', background: '#f0fdf4' } : { background: '#f1f5f9' }),
-                        }}
-                        placeholder="— Bấm «Xác minh» sau khi nhập đúng STK —"
-                        value={form.paymentAccountHolder}
-                      />
-                      <small className="text-muted d-block mt-1">Tên chủ tài khoản do VietQR trả về, không chỉnh sửa tay.</small>
-                      {getFieldError('paymentAccountHolder') && <div className="invalid-feedback d-block">{getFieldError('paymentAccountHolder')}</div>}
+                      <div className="d-flex gap-2 align-items-start">
+                        <div style={{ flex: 1 }}>
+                          <input
+                            type="text"
+                            className={`form-control text-uppercase ${getFieldError('paymentAccountHolder') ? 'is-invalid' : ''}`}
+                            style={{
+                              ...inputStyle('paymentAccountHolder'),
+                              ...(verifyStatus === 'success' ? { border: '1px solid #059669', background: '#f0fdf4' } : {}),
+                            }}
+                            placeholder="VD: NGUYEN VAN A"
+                            value={form.paymentAccountHolder}
+                            onChange={(e) => {
+                              setField('paymentAccountHolder', e.target.value.toUpperCase());
+                              if (verifyStatus === 'success') setVerifyStatus('idle');
+                            }}
+                          />
+                          {getFieldError('paymentAccountHolder') && <div className="invalid-feedback d-block">{getFieldError('paymentAccountHolder')}</div>}
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-outline-success btn-sm"
+                          style={{ borderRadius: 8, padding: '10px 14px', whiteSpace: 'nowrap', fontWeight: 600, fontSize: 12 }}
+                          disabled={!canVerify}
+                          onClick={handleVerify}
+                          title="Tra cứu tên chủ TK qua VietQR (tùy chọn, cần cấu hình API key)"
+                        >
+                          {verifyStatus === 'loading' ? (
+                            <span className="spinner-border spinner-border-sm" role="status" />
+                          ) : (
+                            <><i className="feather-zap me-1" style={{ fontSize: 12 }} />Tự động lấy tên</>
+                          )}
+                        </button>
+                      </div>
+                      <small className="text-muted d-block mt-1">Nhập tên chủ TK thủ công, hoặc bấm "Tự động lấy tên" để tra cứu qua VietQR (nếu khả dụng).</small>
                     </div>
 
-                    {/* ── 3. Transfer Note Template + Variable Chips ── */}
+                    {/* ── Transfer Note Template + Variable Chips ── */}
                     <div className="mb-4">
                       <label style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8, display: 'block' }}>Mẫu nội dung chuyển khoản</label>
                       <input
@@ -680,7 +755,7 @@ export default function ManagerPaymentSettings() {
                       />
                       <VariableChips
                         inputRef={transferInputRef}
-                        onInsert={(newVal, _cursorPos) => {
+                        onInsert={(newVal) => {
                           if (typeof newVal === 'string' && newVal.startsWith('[')) {
                             setField('paymentTransferNoteTemplate', (form.paymentTransferNoteTemplate || '') + newVal);
                           } else {
@@ -690,7 +765,7 @@ export default function ManagerPaymentSettings() {
                       />
                     </div>
 
-                    {/* ── 4. Payment Note (instructions for player) ── */}
+                    {/* ── Payment Note ── */}
                     <div className="mb-0">
                       <label style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 4, display: 'block' }}>
                         Ghi chú cho người chơi
@@ -714,7 +789,7 @@ export default function ManagerPaymentSettings() {
                 </div>
               )}
 
-              {/* ── 5. Bulk Apply + Save ── */}
+              {/* ── Bulk Apply + Save ── */}
               {!loadingSettings && (
                 <div className="mt-1">
                   {venues.length > 1 && (
@@ -726,17 +801,9 @@ export default function ManagerPaymentSettings() {
                           borderRadius: 10, padding: '12px 16px', transition: 'all 0.15s',
                         }}
                       >
-                        <input
-                          type="checkbox"
-                          className="form-check-input mt-0"
-                          style={{ flexShrink: 0 }}
-                          checked={applyToAll}
-                          onChange={(e) => setApplyToAll(e.target.checked)}
-                        />
+                        <input type="checkbox" className="form-check-input mt-0" style={{ flexShrink: 0 }} checked={applyToAll} onChange={(e) => setApplyToAll(e.target.checked)} />
                         <div>
-                          <span style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>
-                            Áp dụng cài đặt ngân hàng cho tất cả cụm sân
-                          </span>
+                          <span style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>Áp dụng cài đặt ngân hàng cho tất cả cụm sân</span>
                           <span className="d-block mt-1" style={{ fontSize: 12, color: '#64748b' }}>
                             Thông tin tài khoản ngân hàng, mẫu nội dung CK và ghi chú sẽ được cập nhật cho {venues.length - 1} cụm sân còn lại. Chính sách huỷ/hoàn tiền không bị ảnh hưởng.
                           </span>
@@ -787,7 +854,7 @@ export default function ManagerPaymentSettings() {
                     <div className="mt-3 text-center" style={{ fontSize: 14, color: '#166534', width: '100%' }}>
                       <div className="mb-2 d-flex justify-content-between w-100">
                         <span className="opacity-75">Ngân hàng:</span>
-                        <strong className="text-end">{form.paymentBankName === 'Khác' ? (form.customBankName || '…') : (form.paymentBankName || '…')}</strong>
+                        <strong className="text-end">{effectiveBankName || '…'}</strong>
                       </div>
                       <div className="mb-2 d-flex justify-content-between w-100">
                         <span className="opacity-75">Số TK:</span>
@@ -805,7 +872,6 @@ export default function ManagerPaymentSettings() {
                     </div>
                   </div>
 
-                  {/* Payment note preview */}
                   {form.paymentNote?.trim() && (
                     <div className="mt-3" style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 14px' }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>

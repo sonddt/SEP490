@@ -15,6 +15,19 @@ public partial class CourtBlock
 
     public Guid? CreatedBy { get; set; }
 
+    /// <summary>MAINTENANCE | WEATHER | OTHER</summary>
+    public string? ReasonCode { get; set; }
+
+    /// <summary>Hiển thị cho người chơi (plain text).</summary>
+    public string? ReasonDetail { get; set; }
+
+    /// <summary>Ghi chú nội bộ chủ sân.</summary>
+    public string? InternalNote { get; set; }
+
+    public DateTime? CreatedAt { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
+
     public virtual Court? Court { get; set; }
 
     public virtual User? CreatedByNavigation { get; set; }

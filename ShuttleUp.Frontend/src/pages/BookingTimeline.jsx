@@ -169,6 +169,21 @@ function toLocalDateTimeString(d) {
   return `${y}-${m}-${day}T${h}:${min}:${sec}`;
 }
 
+const BLOCK_REASON_LABELS = {
+  MAINTENANCE: 'Bảo trì',
+  WEATHER: 'Thời tiết / môi trường',
+  OTHER: 'Khác',
+};
+
+/** Nhãn hiển thị / tooltip cho ô khóa lịch (public availability). */
+function labelForBlockedInterval(iv) {
+  const detail = String(iv.reasonDetail ?? iv.ReasonDetail ?? '').trim();
+  if (detail) return detail;
+  const code = iv.reasonCode ?? iv.ReasonCode;
+  if (code && BLOCK_REASON_LABELS[code]) return BLOCK_REASON_LABELS[code];
+  return 'Khóa lịch';
+}
+
 function intervalsToGridBlocks(courtId, intervals, dateStr) {
   if (!intervals?.length) return [];
   const blocks = [];
@@ -187,7 +202,8 @@ function intervalsToGridBlocks(courtId, intervals, dateStr) {
     }
     if (startIndex >= 0) {
       const kind = iv.kind === 'blocked' ? 'locked' : 'booked';
-      blocks.push({ courtId, startIndex, endIndex, type: kind });
+      const label = iv.kind === 'blocked' ? labelForBlockedInterval(iv) : undefined;
+      blocks.push({ courtId, startIndex, endIndex, type: kind, label });
     }
   }
   return blocks;
@@ -704,7 +720,7 @@ export default function BookingTimeline() {
                       display: 'flex', alignItems: 'center',
                       overflow: 'hidden', position: 'relative',
                     }}
-                    title={isBlockStart && label ? label : undefined}
+                    title={label || undefined}
                   >
                     {isBlockStart && label && (
                       <span style={{

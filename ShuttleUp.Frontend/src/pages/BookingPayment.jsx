@@ -213,6 +213,8 @@ export default function BookingPayment() {
   }, [navigate, location.state]);
 
   const [agreed, setAgreed] = useState(false);
+  const [agreedRules, setAgreedRules] = useState(false);
+  const [rulesExpanded, setRulesExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const navigateComplete = (payload) => {
@@ -224,6 +226,8 @@ export default function BookingPayment() {
   const handleConfirm = async () => {
     if (!proofFile) { setError('Vui lòng upload ảnh minh chứng chuyển khoản.'); return; }
     if (!agreed) { setError('Vui lòng đồng ý với điều khoản dịch vụ.'); return; }
+    const hasVenueRules = !!(checkoutSettings?.venueRules?.trim() || checkoutSettings?.cancellation);
+    if (hasVenueRules && !agreedRules) { setError('Vui lòng đọc và đồng ý với Quy định của sân và Chính sách hoàn tiền.'); return; }
     if (expired) { setError('Thời gian giữ chỗ đã hết. Vui lòng đặt lại.'); return; }
     if (!pay.venueId) { setError('Thiếu thông tin cơ sở. Vui lòng chọn sân lại.'); return; }
 
@@ -646,6 +650,61 @@ export default function BookingPayment() {
                   <h5 className="mb-0">Tổng cộng</h5>
                   <h5 className="mb-0 primary-text">{finalPriceToDisplay.toLocaleString('vi-VN')} VNĐ</h5>
                 </div>
+
+                {/* ── Venue Rules + Cancellation Policy ── */}
+                {(checkoutSettings?.venueRules?.trim() || checkoutSettings?.cancellation) && (
+                  <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+                    <div
+                      style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                      onClick={() => setRulesExpanded(!rulesExpanded)}
+                    >
+                      <span style={{ fontWeight: 600, fontSize: 14, color: '#581c87' }}>
+                        <i className="feather-book-open me-2" style={{ fontSize: 14 }} />Quy định sân & Chính sách hoàn tiền
+                      </span>
+                      <i className={`feather-chevron-${rulesExpanded ? 'up' : 'down'}`} style={{ fontSize: 14, color: '#7c3aed' }} />
+                    </div>
+                    {rulesExpanded && (
+                      <div style={{ marginTop: 12 }}>
+                        {checkoutSettings?.venueRules?.trim() && (
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Quy định tại sân</div>
+                            <div style={{ fontSize: 13, color: '#581c87', whiteSpace: 'pre-line', lineHeight: 1.7, background: '#f5f3ff', borderRadius: 8, padding: '10px 14px' }}>
+                              {checkoutSettings.venueRules.trim()}
+                            </div>
+                          </div>
+                        )}
+                        {checkoutSettings?.cancellation && (
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#d97706', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Chính sách huỷ & hoàn tiền</div>
+                            <div style={{ fontSize: 13, color: '#78350f', background: '#fffbeb', borderRadius: 8, padding: '10px 14px', lineHeight: 1.6 }}>
+                              {checkoutSettings.cancellation.allowCancel
+                                ? `Được huỷ trước ${checkoutSettings.cancellation.cancelBeforeMinutes >= 1440 ? `${checkoutSettings.cancellation.cancelBeforeMinutes / 1440} ngày` : checkoutSettings.cancellation.cancelBeforeMinutes >= 60 ? `${checkoutSettings.cancellation.cancelBeforeMinutes / 60} giờ` : `${checkoutSettings.cancellation.cancelBeforeMinutes} phút`}. Hoàn tiền: ${(checkoutSettings.cancellation.refundType || 'NONE') === 'FULL' ? '100%' : (checkoutSettings.cancellation.refundType || 'NONE') === 'PERCENT' ? `${checkoutSettings.cancellation.refundPercent}%` : 'không hoàn tiền'}.`
+                                : 'Không cho phép tự huỷ trên app. Liên hệ chủ sân nếu cần huỷ.'}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {!rulesExpanded && (
+                      <p className="mb-0 mt-1" style={{ fontSize: 12, color: '#7c3aed' }}>Nhấn để xem chi tiết quy định và chính sách.</p>
+                    )}
+                  </div>
+                )}
+
+                {(checkoutSettings?.venueRules?.trim() || checkoutSettings?.cancellation) && (
+                  <div className="form-check d-flex align-items-start gap-2 mb-3">
+                    <input
+                      className="form-check-input mt-1"
+                      type="checkbox"
+                      id="agreeRules"
+                      checked={agreedRules}
+                      onChange={e => { setAgreedRules(e.target.checked); setError(''); }}
+                    />
+                    <label className="form-check-label small" htmlFor="agreeRules" style={{ color: '#334155' }}>
+                      Tôi đã đọc và đồng ý với <strong>Quy định của sân</strong> và <strong>Chính sách hoàn tiền</strong>.
+                    </label>
+                  </div>
+                )}
 
                 <div className="form-check d-flex align-items-start gap-2 policy mb-3">
                   <input
