@@ -173,7 +173,7 @@ export default function MatchingHub() {
         </div>
       </section>
 
-      <div className="content py-5" style={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
+      <div className="content py-5 matching-hub-content" style={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
         <div className="container">
 
           {user && (user.isPersonalized === false || user.isPersonalized == null) && (

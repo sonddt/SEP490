@@ -35,6 +35,8 @@ export default function ChatPage() {
   const [error, setError] = useState('');
   const [sendingImg, setSendingImg] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  /* Messenger mobile: true = showing chat, false = showing room list */
+  const [mobileShowChat, setMobileShowChat] = useState(false);
 
   const bottomRef = useRef(null);
   const fileRef = useRef(null);
@@ -102,6 +104,11 @@ export default function ChatPage() {
 
   const handleSelect = (room) => {
     setActiveRoom(room);
+    setMobileShowChat(true); // on mobile, switch to chat view
+  };
+
+  const handleBackToRooms = () => {
+    setMobileShowChat(false);
   };
 
   const handleSend = async () => {
@@ -187,27 +194,28 @@ export default function ChatPage() {
   const onlineLabel = hubConnected ? 'Đã kết nối ✓' : connStatus;
 
   return (
-    <div style={S.page}>
-      <div style={S.wrap}>
-        <div style={S.left}>
-          <div style={S.leftHead}>
+    <div className="chat-page">
+      <div className="chat-wrap">
+        {/* ── Sidebar (Room List) ── */}
+        <div className={`chat-sidebar${mobileShowChat ? ' chat-sidebar--hidden' : ''}`}>
+          <div className="chat-sidebar-head">
             <span style={{ fontWeight: 700, fontSize: 16 }}>💬 Chat</span>
-            <button type="button" style={S.btnGreen} onClick={() => setShowCreate((p) => !p)}>
+            <button type="button" className="chat-btn-green" onClick={() => setShowCreate((p) => !p)}>
               {showCreate ? '✕ Huỷ' : '＋ Tạo room'}
             </button>
           </div>
 
           {showCreate && (
-            <div style={S.createBox}>
-              <label style={S.label}>Tên room *</label>
+            <div className="chat-sidebar-create">
+              <label className="chat-sidebar-label">Tên room *</label>
               <input
-                style={S.inp}
+                className="chat-sidebar-input"
                 placeholder="VD: Nhóm đánh cầu thứ 7"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
               />
-              <label style={S.label}>Mời bạn bè</label>
+              <label className="chat-sidebar-label">Mời bạn bè</label>
               {loadingFriends && (
                 <p style={{ color: '#94a3b8', fontSize: 12, margin: 0 }}>Đang tải danh sách…</p>
               )}
@@ -216,15 +224,7 @@ export default function ChatPage() {
                   Chưa có bạn bè — hãy thêm bạn ở mục Tìm bạn / Bạn bè.
                 </p>
               )}
-              <div
-                style={{
-                  maxHeight: 160,
-                  overflowY: 'auto',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 6,
-                }}
-              >
+              <div style={{ maxHeight: 160, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {friendChoices.map((x) => {
                   const id = x.id ?? x.Id;
                   const name = x.fullName ?? x.FullName ?? '';
@@ -232,20 +232,9 @@ export default function ChatPage() {
                   return (
                     <label
                       key={id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        cursor: 'pointer',
-                        fontSize: 13,
-                        color: '#e2e8f0',
-                      }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#e2e8f0' }}
                     >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleMember(id)}
-                      />
+                      <input type="checkbox" checked={checked} onChange={() => toggleMember(id)} />
                       {name}
                     </label>
                   );
@@ -253,7 +242,8 @@ export default function ChatPage() {
               </div>
               <button
                 type="button"
-                style={{ ...S.btnGreen, width: '100%', padding: '9px 0', marginTop: 4 }}
+                className="chat-btn-green"
+                style={{ width: '100%', padding: '9px 0', marginTop: 4 }}
                 onClick={handleCreate}
               >
                 ✓ Tạo
@@ -261,10 +251,10 @@ export default function ChatPage() {
             </div>
           )}
 
-          <div style={S.roomList}>
-            {loadingRooms && <p style={S.hint}>Đang tải...</p>}
+          <div className="chat-room-list">
+            {loadingRooms && <p style={{ padding: '12px 16px', color: '#64748b', fontSize: 13 }}>Đang tải...</p>}
             {!loadingRooms && rooms.length === 0 && (
-              <div style={S.emptyRoom}>
+              <div className="chat-room-empty">
                 <div style={{ fontSize: 32 }}>💬</div>
                 <div style={{ marginTop: 8, fontWeight: 600 }}>Chưa có room nào</div>
                 <div style={{ marginTop: 4, fontSize: 12, color: '#94a3b8' }}>
@@ -280,14 +270,12 @@ export default function ChatPage() {
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => e.key === 'Enter' && handleSelect(r)}
-                  style={{
-                    ...S.roomItem,
-                    background: roomIdOf(activeRoom) === rid ? '#2563eb' : 'transparent',
-                  }}
+                  className="chat-room-item"
+                  style={{ background: roomIdOf(activeRoom) === rid ? '#2563eb' : 'transparent' }}
                   onClick={() => handleSelect(r)}
                 >
-                  <div style={{ fontWeight: 600, fontSize: 14, color: '#f1f5f9' }}>{r.name}</div>
-                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                  <div className="chat-room-item-name">{r.name}</div>
+                  <div className="chat-room-item-last">
                     {r.lastMessage?.messageText?.slice(0, 38) ?? 'Chưa có tin nhắn'}
                   </div>
                 </div>
@@ -295,15 +283,16 @@ export default function ChatPage() {
             })}
           </div>
 
-          <div style={S.statusBar}>
+          <div className="chat-status-bar">
             <span style={{ color: hubConnected ? '#4ade80' : '#f87171', fontWeight: 700 }}>●</span>
             &nbsp;{onlineLabel}
           </div>
         </div>
 
-        <div style={S.right}>
+        {/* ── Main Chat Area ── */}
+        <div className={`chat-main${!mobileShowChat ? ' chat-main--hidden' : ''}`}>
           {!activeRoom ? (
-            <div style={S.noRoom}>
+            <div className="chat-no-room">
               <div style={{ fontSize: 48 }}>💬</div>
               <div style={{ marginTop: 12, fontSize: 18, fontWeight: 600, color: '#475569' }}>
                 Chọn một room để bắt đầu chat
@@ -314,21 +303,24 @@ export default function ChatPage() {
             </div>
           ) : (
             <>
-              <div style={S.chatHead}>
-                <div>
-                  <span style={{ fontWeight: 700, fontSize: 16 }}>{activeRoom.name}</span>
-                  <span style={{ marginLeft: 10, fontSize: 12, color: '#64748b' }}>
+              <div className="chat-head">
+                <button type="button" className="chat-back-btn" onClick={handleBackToRooms} title="Quay lại">
+                  <i className="feather-arrow-left"></i>
+                </button>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <span className="chat-head-title">{activeRoom.name}</span>
+                  <div className="chat-head-members">
                     {(activeRoom.members || activeRoom.Members || [])
                       .map((m) => m.fullName ?? m.FullName)
                       .filter(Boolean)
                       .join(', ')}
-                  </span>
+                  </div>
                 </div>
               </div>
 
-              {error && <div style={S.errorBar}>⚠ {error}</div>}
+              {error && <div className="chat-error-bar">⚠ {error}</div>}
 
-              <div style={S.msgArea}>
+              <div className="chat-msg-area">
                 {messages.length === 0 && (
                   <p style={{ textAlign: 'center', color: '#94a3b8', marginTop: 40 }}>
                     Chưa có tin nhắn nào. Hãy gửi tin đầu tiên!
@@ -341,27 +333,16 @@ export default function ChatPage() {
                   return (
                     <div
                       key={msgId(msg)}
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: isMe ? 'flex-end' : 'flex-start',
-                      }}
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}
                     >
                       {!isMe && (
-                        <span
-                          style={{
-                            fontSize: 11,
-                            color: '#64748b',
-                            marginBottom: 2,
-                            marginLeft: 4,
-                          }}
-                        >
+                        <span style={{ fontSize: 11, color: '#64748b', marginBottom: 2, marginLeft: 4 }}>
                           {msg.senderName ?? msg.SenderName}
                         </span>
                       )}
                       <div
+                        className="chat-bubble"
                         style={{
-                          ...S.bubble,
                           background: isMe ? '#2563eb' : '#e2e8f0',
                           color: isMe ? '#fff' : '#1e293b',
                           borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
@@ -372,22 +353,10 @@ export default function ChatPage() {
                           <img
                             src={img}
                             alt=""
-                            style={{
-                              maxWidth: 200,
-                              borderRadius: 8,
-                              marginTop: text ? 6 : 0,
-                              display: 'block',
-                            }}
+                            style={{ marginTop: text ? 6 : 0 }}
                           />
                         )}
-                        <div
-                          style={{
-                            fontSize: 10,
-                            opacity: 0.65,
-                            textAlign: 'right',
-                            marginTop: 4,
-                          }}
-                        >
+                        <div style={{ fontSize: 10, opacity: 0.65, textAlign: 'right', marginTop: 4 }}>
                           {new Date(msg.createdAt ?? msg.CreatedAt).toLocaleTimeString('vi-VN', {
                             hour: '2-digit',
                             minute: '2-digit',
@@ -400,7 +369,7 @@ export default function ChatPage() {
                 <div ref={bottomRef} />
               </div>
 
-              <div style={S.inputRow}>
+              <div className="chat-input-row">
                 <input
                   ref={fileRef}
                   type="file"
@@ -427,22 +396,7 @@ export default function ChatPage() {
                     😊
                   </button>
                   {emojiOpen && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        bottom: '100%',
-                        left: 0,
-                        marginBottom: 8,
-                        padding: 8,
-                        background: '#fff',
-                        borderRadius: 10,
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(5, 1fr)',
-                        gap: 4,
-                        zIndex: 20,
-                      }}
-                    >
+                    <div className="chat-emoji-picker">
                       {EMOJIS.map((em) => (
                         <button
                           key={em}
@@ -457,14 +411,14 @@ export default function ChatPage() {
                   )}
                 </div>
                 <textarea
-                  style={S.textarea}
+                  className="chat-textarea"
                   rows={2}
                   placeholder="Nhập tin nhắn… (Enter gửi, Shift+Enter xuống dòng)"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={onKey}
                 />
-                <button type="button" style={S.btnBlue} onClick={handleSend}>
+                <button type="button" className="chat-btn-blue" onClick={handleSend}>
                   Gửi ➤
                 </button>
               </div>
@@ -475,167 +429,3 @@ export default function ChatPage() {
     </div>
   );
 }
-
-const S = {
-  page: {
-    background: '#f1f5f9',
-    display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-    padding: '90px 16px 24px 16px',
-    boxSizing: 'border-box',
-    minHeight: '100vh',
-  },
-  wrap: {
-    display: 'flex',
-    width: '100%',
-    maxWidth: 960,
-    height: 'calc(100vh - 130px)',
-    minHeight: 520,
-    background: '#fff',
-    borderRadius: 16,
-    boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-    overflow: 'hidden',
-  },
-  left: {
-    width: 280,
-    background: '#1e293b',
-    display: 'flex',
-    flexDirection: 'column',
-    flexShrink: 0,
-  },
-  leftHead: {
-    padding: '16px',
-    background: '#0f172a',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    color: '#f1f5f9',
-    borderBottom: '1px solid #334155',
-  },
-  createBox: {
-    padding: '12px',
-    background: '#0f172a',
-    borderBottom: '1px solid #334155',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 6,
-  },
-  label: { color: '#94a3b8', fontSize: 11, fontWeight: 600, textTransform: 'uppercase' },
-  inp: {
-    background: '#1e293b',
-    border: '1px solid #475569',
-    borderRadius: 6,
-    color: '#f1f5f9',
-    padding: '7px 10px',
-    fontSize: 13,
-    outline: 'none',
-    width: '100%',
-    boxSizing: 'border-box',
-  },
-  roomList: { flex: 1, overflowY: 'auto' },
-  roomItem: {
-    padding: '12px 16px',
-    cursor: 'pointer',
-    borderBottom: '1px solid #334155',
-    transition: 'background 0.15s',
-  },
-  emptyRoom: {
-    padding: '32px 16px',
-    textAlign: 'center',
-    color: '#64748b',
-    fontSize: 14,
-  },
-  hint: { padding: '12px 16px', color: '#64748b', fontSize: 13 },
-  statusBar: {
-    padding: '10px 16px',
-    borderTop: '1px solid #334155',
-    fontSize: 12,
-    color: '#94a3b8',
-    background: '#0f172a',
-  },
-  right: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    background: '#fff',
-  },
-  noRoom: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#64748b',
-  },
-  chatHead: {
-    padding: '14px 20px',
-    borderBottom: '1px solid #e2e8f0',
-    background: '#f8fafc',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  errorBar: {
-    background: '#fee2e2',
-    color: '#dc2626',
-    padding: '8px 16px',
-    fontSize: 13,
-  },
-  msgArea: {
-    flex: 1,
-    overflowY: 'auto',
-    padding: '16px 20px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 10,
-    background: '#f8fafc',
-  },
-  bubble: {
-    maxWidth: '68%',
-    padding: '10px 14px',
-    fontSize: 14,
-    wordBreak: 'break-word',
-    lineHeight: 1.5,
-  },
-  inputRow: {
-    display: 'flex',
-    gap: 10,
-    padding: '12px 16px',
-    borderTop: '1px solid #e2e8f0',
-    background: '#fff',
-    alignItems: 'flex-end',
-  },
-  textarea: {
-    flex: 1,
-    resize: 'none',
-    border: '1px solid #cbd5e1',
-    borderRadius: 10,
-    padding: '10px 14px',
-    fontSize: 14,
-    outline: 'none',
-    fontFamily: 'inherit',
-    lineHeight: 1.5,
-  },
-  btnGreen: {
-    background: '#16a34a',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 8,
-    padding: '7px 13px',
-    cursor: 'pointer',
-    fontWeight: 700,
-    fontSize: 13,
-    whiteSpace: 'nowrap',
-  },
-  btnBlue: {
-    background: '#2563eb',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 10,
-    padding: '10px 18px',
-    cursor: 'pointer',
-    fontWeight: 700,
-    fontSize: 14,
-    whiteSpace: 'nowrap',
-  },
-};
