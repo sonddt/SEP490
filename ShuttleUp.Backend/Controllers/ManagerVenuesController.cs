@@ -50,6 +50,7 @@ public class ManagerVenuesController : ControllerBase
     public class CourtStatusUpdateDto
     {
         public bool IsActive { get; set; }
+        public bool Force { get; set; }
     }
 
     // =====================================================================
@@ -630,6 +631,20 @@ public class ManagerVenuesController : ControllerBase
         var court = await _dbContext.Courts.FirstOrDefaultAsync(c => c.Id == courtId && c.VenueId == venueId);
         if (court == null)
             return NotFound(new { message = "Court không tồn tại trong venue này." });
+
+        if (request.IsActive == false && !request.Force)
+        {
+            var now = DateTime.UtcNow;
+            var futureBookingCount = await _dbContext.BookingItems
+                .AsNoTracking()
+                .CountAsync(bi => bi.CourtId == courtId
+                                  && bi.EndTime > now
+                                  && bi.Booking != null
+                                  && bi.Booking.Status != "CANCELLED");
+
+            if (futureBookingCount > 0)
+                return Conflict(new { message = "HAS_FUTURE_BOOKINGS", count = futureBookingCount });
+        }
 
         court.IsActive = request.IsActive;
         await _dbContext.SaveChangesAsync();

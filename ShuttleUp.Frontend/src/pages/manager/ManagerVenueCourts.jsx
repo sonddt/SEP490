@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
 
@@ -46,6 +46,7 @@ export default function ManagerVenueCourts() {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('default');
   const [deleteModal, setDeleteModal] = useState(null);
+  const [deactivateModal, setDeactivateModal] = useState(null);
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState('card'); // 'card' | 'table'
   const itemsPerPage = 12;
@@ -68,12 +69,17 @@ export default function ManagerVenueCourts() {
     return () => { mounted = false; };
   }, [venueId]);
 
-  const toggleStatus = async (court) => {
+  const toggleStatus = async (court, force = false) => {
     try {
       const nextStatus = !court.status;
-      await axiosClient.patch(`/manager/venues/${venueId}/courts/${court.id}/status`, { isActive: nextStatus });
+      await axiosClient.patch(`/manager/venues/${venueId}/courts/${court.id}/status`, { isActive: nextStatus, force });
       setCourts(prev => prev.map(c => c.id === court.id ? { ...c, status: nextStatus } : c));
+      setDeactivateModal(null);
     } catch (e) {
+      if (e.response?.status === 409 && e.response?.data?.message === 'HAS_FUTURE_BOOKINGS') {
+        setDeactivateModal({ court, count: e.response.data.count });
+        return;
+      }
       console.error('Failed to update court status', e);
     }
   };
@@ -376,6 +382,31 @@ export default function ManagerVenueCourts() {
             <div className="mgr-delete-modal__actions">
               <button className="btn btn-outline-secondary" onClick={() => setDeleteModal(null)}>Huỷ</button>
               <button className="btn btn-danger" onClick={handleDelete}>Xoá sân</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Deactivate Warning Modal ──────────────────── */}
+      {deactivateModal && (
+        <div className="mgr-delete-modal" onClick={() => setDeactivateModal(null)}>
+          <div className="mgr-delete-modal__box" onClick={e => e.stopPropagation()}>
+            <div className="mgr-delete-modal__icon" style={{ background: '#fef3c7' }}>
+              <i className="feather-alert-circle" style={{ color: '#d97706' }} />
+            </div>
+            <h5>Sân đang có lịch đặt</h5>
+            <p>
+              Sân <strong>{deactivateModal.court.name}</strong> hiện có{' '}
+              <strong>{deactivateModal.count}</strong> đơn đặt sắp tới.
+              Tắt sân sẽ ngăn đơn mới nhưng <em>không tự huỷ</em> các đơn hiện tại.
+              Bạn có muốn tiếp tục?
+            </p>
+            <div className="mgr-delete-modal__actions">
+              <button className="btn btn-outline-secondary" onClick={() => setDeactivateModal(null)}>Giữ nguyên</button>
+              <button className="btn" style={{ background: '#d97706', color: '#fff', border: 'none' }}
+                onClick={() => toggleStatus(deactivateModal.court, true)}>
+                Vẫn tắt sân
+              </button>
             </div>
           </div>
         </div>
