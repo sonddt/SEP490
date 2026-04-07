@@ -15,7 +15,8 @@ function shouldRedirectToLoginOn401(pathname) {
         pathname.startsWith('/booking') ||
         pathname.startsWith('/matching') ||
         pathname.startsWith('/chat') ||
-        pathname.startsWith('/personalization')
+        pathname.startsWith('/personalization') ||
+        pathname.startsWith('/venue-details')
     );
 }
 

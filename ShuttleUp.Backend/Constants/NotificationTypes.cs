@@ -30,4 +30,11 @@ public static class NotificationTypes
     public const string RefundCompleted = "REFUND_COMPLETED";
     public const string RefundRejected = "REFUND_REJECTED";
     public const string RefundReconciled = "REFUND_RECONCILED";
+
+    // ── Venue reviews ───────────────────────────────────────────────
+    /// <summary>Người chơi vừa đánh giá sân — gửi cho chủ sân.</summary>
+    public const string VenueReviewNew = "VENUE_REVIEW_NEW";
+
+    /// <summary>Chủ sân vừa phản hồi đánh giá — gửi cho người chơi.</summary>
+    public const string VenueReviewReply = "VENUE_REVIEW_REPLY";
 }

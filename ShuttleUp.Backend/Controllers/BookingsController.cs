@@ -820,6 +820,14 @@ public class BookingsController : ControllerBase
             .ToListAsync();
 
         var bookingIds = rows.Select(r => r.Id).ToList();
+        var nowUtc = DateTime.UtcNow;
+        var reviewRows = await _dbContext.VenueReviews
+            .AsNoTracking()
+            .Where(vr => vr.UserId == userId && vr.BookingId != null && bookingIds.Contains(vr.BookingId.Value))
+            .Select(vr => new { BookingId = vr.BookingId!.Value, vr.Id })
+            .ToListAsync();
+        var reviewByBookingId = reviewRows.ToDictionary(x => x.BookingId, x => x.Id);
+
         var refundMap = await _dbContext.RefundRequests
             .AsNoTracking()
             .Where(r => r.BookingId != null && bookingIds.Contains(r.BookingId.Value))
@@ -830,6 +838,13 @@ public class BookingsController : ControllerBase
         var withCode = rows.Select(b =>
         {
             refundMap.TryGetValue(b.Id, out var refund);
+            var created = b.CreatedAt ?? nowUtc;
+            var windowEnd = created.AddDays(3);
+            var inWindow = nowUtc <= windowEnd;
+            var isConfirmed = string.Equals(b.Status, "CONFIRMED", StringComparison.OrdinalIgnoreCase);
+            var venueReviewId = reviewByBookingId.TryGetValue(b.Id, out var vrId) ? vrId : (Guid?)null;
+            var canReview = isConfirmed && inWindow && venueReviewId == null;
+            var canEditReview = isConfirmed && inWindow && venueReviewId != null;
             return new
             {
                 b.Id,
@@ -853,6 +868,10 @@ public class BookingsController : ControllerBase
                 refundBankName = refund?.RefundBankName,
                 refundAccountNumber = refund?.RefundAccountNumber,
                 refundAccountHolder = refund?.RefundAccountHolder,
+                venueReviewId,
+                reviewWindowEndsAt = windowEnd,
+                canReview,
+                canEditReview,
             };
         });
 

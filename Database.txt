@@ -625,6 +625,8 @@ CREATE TABLE venue_reviews (
     booking_id CHAR(36),
     stars INT CHECK (stars BETWEEN 1 AND 5),
     comment TEXT,
+    owner_reply TEXT NULL COMMENT 'Phản hồi của chủ sân (manager)',
+    owner_reply_at DATETIME NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id),
@@ -1550,6 +1552,15 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'court_blocks' AND column_name = 'updated_at');
 SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- venue_reviews: phản hồi chủ sân
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venue_reviews' AND column_name = 'owner_reply');
+SET @sql := IF(@col = 0, 'ALTER TABLE venue_reviews ADD COLUMN owner_reply TEXT NULL COMMENT ''Phản hồi của chủ sân (manager)''', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venue_reviews' AND column_name = 'owner_reply_at');
+SET @sql := IF(@col = 0, 'ALTER TABLE venue_reviews ADD COLUMN owner_reply_at DATETIME NULL', 'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- ======================================================================

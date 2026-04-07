@@ -52,8 +52,10 @@ public class VenuesController : ControllerBase
                 MaxPrice = v.Courts
                     .SelectMany(c => c.CourtPrices)
                     .Max(cp => (decimal?)cp.Price),
-                Rating = 5.0,
-                ReviewCount = 0
+                Rating = v.VenueReviews.Any()
+                    ? v.VenueReviews.Average(r => (double?)r.Stars) ?? 0.0
+                    : 0.0,
+                ReviewCount = v.VenueReviews.Count()
             })
             .FirstOrDefaultAsync();
 

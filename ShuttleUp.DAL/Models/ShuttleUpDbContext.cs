@@ -1347,6 +1347,12 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.Stars).HasColumnName("stars");
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.VenueId).HasColumnName("venue_id");
+            entity.Property(e => e.OwnerReply)
+                .HasColumnType("text")
+                .HasColumnName("owner_reply");
+            entity.Property(e => e.OwnerReplyAt)
+                .HasColumnType("datetime")
+                .HasColumnName("owner_reply_at");
 
             entity.HasOne(d => d.Booking).WithMany(p => p.VenueReviews)
                 .HasForeignKey(d => d.BookingId)

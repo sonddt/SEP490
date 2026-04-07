@@ -13,4 +13,6 @@ public interface IFileService
     Task<FileUploadResult> UploadChatImageAsync(IFormFile file, Guid roomId, Guid userId, CancellationToken cancellationToken = default);
 
     Task<FileUploadResult> UploadFeaturedPostImageAsync(IFormFile file, Guid authorId, CancellationToken cancellationToken = default);
+
+    Task<FileUploadResult> UploadVenueReviewImageAsync(IFormFile file, Guid venueId, Guid userId, CancellationToken cancellationToken = default);
 }

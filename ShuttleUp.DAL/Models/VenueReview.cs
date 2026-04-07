@@ -17,6 +17,11 @@ public partial class VenueReview
 
     public string? Comment { get; set; }
 
+    /// <summary>Phản hồi của chủ sân (manager) — hiển thị public.</summary>
+    public string? OwnerReply { get; set; }
+
+    public DateTime? OwnerReplyAt { get; set; }
+
     public DateTime? CreatedAt { get; set; }
 
     public virtual Booking? Booking { get; set; }

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
+import StarRatingDisplay from '../../components/common/StarRatingDisplay';
+import RichText from '../../components/common/RichText';
 
 /* ── Constants ──────────────────────────────────────────────────────────── */
 const TYPE_MAP = {
@@ -50,6 +52,10 @@ export default function ManagerVenueCourts() {
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState('card'); // 'card' | 'table'
   const itemsPerPage = 12;
+  const [venueReviews, setVenueReviews] = useState([]);
+  const [revLoading, setRevLoading] = useState(false);
+  const [replyDrafts, setReplyDrafts] = useState({});
+  const [replyError, setReplyError] = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -68,6 +74,45 @@ export default function ManagerVenueCourts() {
     if (venueId) load();
     return () => { mounted = false; };
   }, [venueId]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadRev = async () => {
+      if (!venueId) return;
+      try {
+        setRevLoading(true);
+        const res = await axiosClient.get(`/venues/${venueId}/reviews`);
+        if (!mounted) return;
+        const data = res.data ?? res;
+        const list = data.reviews ?? data.Reviews ?? [];
+        setVenueReviews(Array.isArray(list) ? list : []);
+      } catch {
+        if (mounted) setVenueReviews([]);
+      } finally {
+        if (mounted) setRevLoading(false);
+      }
+    };
+    loadRev();
+    return () => { mounted = false; };
+  }, [venueId]);
+
+  const submitReply = async (reviewId) => {
+    const text = (replyDrafts[reviewId] || '').trim();
+    setReplyError('');
+    try {
+      await axiosClient.put(`/manager/venues/${venueId}/reviews/${reviewId}/reply`, {
+        reply: text || null,
+      });
+      const res = await axiosClient.get(`/venues/${venueId}/reviews`);
+      const data = res.data ?? res;
+      const list = data.reviews ?? data.Reviews ?? [];
+      setVenueReviews(Array.isArray(list) ? list : []);
+      setReplyDrafts((d) => ({ ...d, [reviewId]: '' }));
+    } catch (e) {
+      console.error(e);
+      setReplyError(e.response?.data?.message || 'Không gửi được phản hồi.');
+    }
+  };
 
   const toggleStatus = async (court, force = false) => {
     try {
@@ -371,6 +416,65 @@ export default function ManagerVenueCourts() {
       {viewMode === 'card' && totalPages > 1 && (
         <Pagination page={page} totalPages={totalPages} onChange={setPage} />
       )}
+
+      <div className="card border-0 shadow-sm mt-4">
+        <div className="card-header bg-white border-0 pt-4">
+          <h5 className="mb-0" style={{ fontFamily: '"Be Vietnam Pro", sans-serif', color: '#097E52' }}>
+            Đánh giá từ người chơi
+          </h5>
+          <p className="text-muted small mb-0">Phản hồi hiển thị ngay trên trang chi tiết sân.</p>
+        </div>
+        <div className="card-body">
+          {replyError && <div className="alert alert-danger py-2 small mb-3">{replyError}</div>}
+          {revLoading ? (
+            <p className="text-muted small mb-0">Đang tải…</p>
+          ) : venueReviews.length === 0 ? (
+            <p className="text-muted small mb-0">Chưa có đánh giá.</p>
+          ) : (
+            <div className="d-flex flex-column gap-3">
+              {venueReviews.map((r) => {
+                const rid = r.id ?? r.Id;
+                const name = r.userFullName ?? r.UserFullName ?? '—';
+                const st = Number(r.stars ?? r.Stars ?? 0);
+                const cm = r.comment ?? r.Comment ?? '';
+                const existing = r.ownerReply ?? r.OwnerReply ?? '';
+                return (
+                  <div key={rid} className="p-3 rounded" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                    <div className="d-flex justify-content-between gap-2 align-items-center">
+                      <strong style={{ fontSize: 14 }}>{name}</strong>
+                      <span className="d-inline-flex align-items-center gap-1 small text-warning">
+                        <StarRatingDisplay value={st} size={14} /> {Number.isFinite(st) ? st.toFixed(1) : '—'}
+                      </span>
+                    </div>
+                    {cm ? <RichText text={cm} className="mb-2 mt-1 small" as="div" /> : null}
+                    {existing && (
+                      <div className="small text-muted mb-2 p-2 rounded" style={{ background: '#ecfdf5' }}>
+                        <span className="d-block fw-semibold text-success">Đã phản hồi:</span>
+                        <RichText text={existing} className="mb-0" as="div" />
+                      </div>
+                    )}
+                    <textarea
+                      className="form-control form-control-sm"
+                      rows={2}
+                      maxLength={1000}
+                      placeholder="Viết phản hồi cho khách…"
+                      value={replyDrafts[rid] ?? ''}
+                      onChange={(e) => setReplyDrafts((d) => ({ ...d, [rid]: e.target.value }))}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-secondary mt-2"
+                      onClick={() => submitReply(rid)}
+                    >
+                      Gửi phản hồi
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* ── Delete Modal ─────────────────────────────── */}
       {deleteModal && (

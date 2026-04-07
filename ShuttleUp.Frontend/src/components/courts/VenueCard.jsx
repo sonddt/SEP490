@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import StarRatingDisplay from '../common/StarRatingDisplay';
 
 /**
  * Thẻ hiển thị thông tin một sân (grid hoặc list),
@@ -50,8 +51,9 @@ export default function VenueCard({
         : String(Math.round(Math.abs(distanceKm)))
       : null;
 
+  const ratingNum = Number(venue.rating);
   const ratingLabel = (() => {
-    const r = Number(venue.rating);
+    const r = ratingNum;
     if (!Number.isFinite(r) || r <= 0) return '—';
     return r.toFixed(1);
   })();
@@ -136,8 +138,11 @@ export default function VenueCard({
 
             {/* Match card row in screenshot: rating + reviews + distance badge */}
             <div className="list-reviews near-review">
-              <div className="d-flex align-items-center">
+              <div className="d-flex align-items-center flex-wrap gap-1">
                 <span className="rating-bg">{ratingLabel}</span>
+                {Number.isFinite(ratingNum) && ratingNum > 0 && (
+                  <StarRatingDisplay value={ratingNum} size={13} className="ms-1" />
+                )}
                 <span>{reviewsLabel}</span>
               </div>
               {distanceDisplay != null && (
