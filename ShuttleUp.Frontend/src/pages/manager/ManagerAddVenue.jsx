@@ -499,9 +499,7 @@ export default function ManagerAddVenue() {
           </button>
           <div>
             <h3 className="mb-0 fw-bold text-dark">{venueId ? 'Cập nhật Cụm sân' : 'Tạo mới Cụm sân'}</h3>
-            <p className="text-secondary mb-0 mt-1" style={{ fontSize: 14 }}>
-              Single source of truth cho cấu hình venue (thông tin + chính sách)
-            </p>
+            <p className="text-secondary mb-0 mt-1" style={{ fontSize: 14 }}>Thiết lập thông tin chung cho cơ sở của bạn</p>
           </div>
         </div>
 
@@ -604,14 +602,6 @@ export default function ManagerAddVenue() {
                     <label className="form-label fw-semibold text-dark mb-2">Số điện thoại</label>
                     <input type="tel" className={`form-control form-control-lg bg-light border-0 ${getFieldError('contactPhone') ? 'is-invalid' : ''}`} placeholder="0901234567" value={form.contactPhone} onChange={(e) => setField('contactPhone', e.target.value)} />
                     {getFieldError('contactPhone') && <div className="invalid-feedback">{getFieldError('contactPhone')}</div>}
-                  </div>
-                  <div className="col-12 col-md-6">
-                    <label className="form-label fw-semibold text-dark mb-2">Tỉ lệ Giảm giá Tuần (%)</label>
-                    <input type="number" min="0" max="100" className="form-control form-control-lg bg-light border-0" placeholder="VD: 10" value={form.weeklyDiscountPercent} onChange={(e) => setField('weeklyDiscountPercent', e.target.value)} />
-                  </div>
-                  <div className="col-12 col-md-6">
-                    <label className="form-label fw-semibold text-dark mb-2">Tỉ lệ Giảm giá Tháng (%)</label>
-                    <input type="number" min="0" max="100" className="form-control form-control-lg bg-light border-0" placeholder="VD: 20" value={form.monthlyDiscountPercent} onChange={(e) => setField('monthlyDiscountPercent', e.target.value)} />
                   </div>
                 </div>
               </div>

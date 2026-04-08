@@ -183,7 +183,15 @@ export default function ManagerVenueCourts() {
           </div>
         </div>
         <div className="d-flex gap-2">
-          <Link to={`/manager/venues/${venueId}/coupons`} className="btn fw-semibold mgr-btn-lift" style={{ background: '#fef3c7', color: '#d97706', border: 'none' }}>
+          <Link
+            to={`/manager/venues/${venueId}/coupons`}
+            className="btn fw-semibold mgr-btn-lift"
+            style={{
+              background: '#fff7ed',
+              color: '#9a3412',
+              border: '1px solid #fdba74',
+            }}
+          >
             <i className="feather-tag" /> Quản lý Voucher
           </Link>
           <Link to={`/manager/venues/${venueId}/courts/add`} className="btn btn-secondary vc-hero__cta">
