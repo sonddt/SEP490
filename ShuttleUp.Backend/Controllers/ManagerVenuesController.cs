@@ -350,47 +350,72 @@ public class ManagerVenuesController : ControllerBase
         if (pageSize <= 0) pageSize = 20;
         if (pageSize > 100) pageSize = 100;
 
-        var venues = await _venueService.GetByOwnerAsync(managerId);
+        var query = _dbContext.Venues.AsNoTracking()
+            .Include(v => v.Courts)
+            .Include(v => v.Bookings)
+            .Where(v => v.OwnerUserId == managerId);
 
         // Search
         if (!string.IsNullOrWhiteSpace(search))
         {
             var keyword = search.Trim();
-            venues = venues.Where(v =>
-                (!string.IsNullOrEmpty(v.Name) &&
-                 v.Name.Contains(keyword, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrEmpty(v.Address) &&
-                 v.Address.Contains(keyword, StringComparison.OrdinalIgnoreCase)));
+            query = query.Where(v =>
+                (v.Name != null && v.Name.Contains(keyword)) ||
+                (v.Address != null && v.Address.Contains(keyword)));
         }
 
         // Sort
         sortBy = string.IsNullOrWhiteSpace(sortBy) ? "createdAt" : sortBy.Trim().ToLowerInvariant();
         sortDir = string.IsNullOrWhiteSpace(sortDir) ? "desc" : sortDir.Trim().ToLowerInvariant();
 
-        venues = (sortBy, sortDir) switch
+        query = (sortBy, sortDir) switch
         {
-            ("name", "asc") => venues.OrderBy(v => v.Name),
-            ("name", "desc") => venues.OrderByDescending(v => v.Name),
-            ("createdat", "asc") => venues.OrderBy(v => v.CreatedAt),
-            ("createdat", "desc") => venues.OrderByDescending(v => v.CreatedAt),
-            _ => venues.OrderByDescending(v => v.CreatedAt)
+            ("name", "asc") => query.OrderBy(v => v.Name),
+            ("name", "desc") => query.OrderByDescending(v => v.Name),
+            ("createdat", "asc") => query.OrderBy(v => v.CreatedAt),
+            ("createdat", "desc") => query.OrderByDescending(v => v.CreatedAt),
+            _ => query.OrderByDescending(v => v.CreatedAt)
         };
 
-        var totalItems = venues.Count();
+        var totalItems = await query.CountAsync();
         var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
 
-        var items = venues
+        var venueList = await query
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(v => new
+            .ToListAsync();
+
+        var now = DateTime.UtcNow;
+        var startOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        var items = venueList.Select(v =>
+        {
+            var courts = v.Courts ?? new List<Court>();
+            var courtCount = courts.Count;
+            var activeCourts = courts.Count(c => c.IsActive == true && c.Status == "ACTIVE");
+
+            var monthBookings = (v.Bookings ?? new List<Booking>())
+                .Where(b => b.CreatedAt.HasValue && b.CreatedAt.Value >= startOfMonth
+                         && b.Status != null && b.Status != "CANCELLED")
+                .ToList();
+            var totalBookingsThisMonth = monthBookings.Count;
+            var revenueThisMonth = monthBookings
+                .Where(b => b.Status == "CONFIRMED" || b.Status == "COMPLETED")
+                .Sum(b => b.FinalAmount ?? 0m);
+
+            return new
             {
                 v.Id,
                 v.Name,
                 v.Address,
                 v.IsActive,
-                v.CreatedAt
-            })
-            .ToList();
+                v.CreatedAt,
+                courtCount,
+                activeCourts,
+                totalBookingsThisMonth,
+                revenueThisMonth
+            };
+        }).ToList();
 
         return Ok(new
         {
@@ -1322,6 +1347,8 @@ public class ManagerVenuesController : ControllerBase
 
         return Ok(new
         {
+            venueName = venue.Name,
+            venueAddress = venue.Address,
             totalItems,
             totalPages,
             page,
