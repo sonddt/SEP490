@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import * as signalR from '@microsoft/signalr';
 import { useAuth } from '../context/AuthContext';
-import { showAppToast, refreshNotificationBadge } from '../utils/appToast';
+import { refreshNotificationBadge } from '../utils/appToast';
+import { notifyInfo, notifySuccess } from './useNotification';
 
 function hubBaseUrl() {
   const api = import.meta.env.VITE_API_URL || 'http://localhost:5079/api';
@@ -65,7 +66,7 @@ export function useAppNotificationsHub() {
       }
       const title = payload?.title || 'Thông báo';
       const body = payload?.body || '';
-      showAppToast('info', body ? `${title} — ${body}` : title, 6000);
+      notifyInfo(body ? `${title} — ${body}` : title, { autoClose: 6000 });
       refreshNotificationBadge();
     });
 
@@ -77,7 +78,7 @@ export function useAppNotificationsHub() {
       }
       const title = payload?.title || 'Cập nhật đơn đặt sân';
       const body = payload?.body || '';
-      showAppToast('success', body ? `${title} — ${body}` : title, 7000);
+      notifySuccess(body ? `${title} — ${body}` : title, { autoClose: 7000 });
       refreshNotificationBadge();
     });
 

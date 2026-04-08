@@ -21,4 +21,7 @@ public class CreateReviewRequestDto
 
     [MaxLength(1000, ErrorMessage = "Nhận xét tối đa 1000 ký tự.")]
     public string? Comment { get; set; }
+
+    /// <summary>Ảnh đã upload qua POST .../reviews/upload-image (tối đa 5).</summary>
+    public List<Guid>? FileIds { get; set; }
 }

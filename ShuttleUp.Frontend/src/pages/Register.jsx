@@ -5,6 +5,8 @@ import { registerEmail, loginGoogle } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
 import { managerProfileApi } from '../api/managerProfileApi';
 import { profileApi } from '../api/profileApi';
+import { notifySuccess } from '../hooks/useNotification';
+import { TOAST } from '../constants/toastMessages';
 
 export default function Register() {
   const [activeTab, setActiveTab] = useState('user');
@@ -125,13 +127,12 @@ export default function Register() {
         isManagerRoleRequested: activeTab === 'manager',
       });
       login(data);
-      // Đồng bộ avatar sau khi login để Header không bị quay về ảnh mock.
+      notifySuccess(TOAST.GUEST.REGISTER_SUCCESS);
       try {
         const me = await profileApi.getMe();
         updateUser?.({ avatarUrl: me?.user?.avatarUrl ?? null });
       } catch {}
       if (activeTab === 'manager') {
-        // Manager: chuyển sang trang hoàn thiện hồ sơ quản lý (PENDING)
         navigate('/manager/profile-request');
       } else {
         navigate('/venues');

@@ -79,6 +79,11 @@ function mapApiRowToBooking(api) {
     court: courtLabel || api.venueName || 'Đặt sân',
     courtImg: '/assets/img/booking/booking-01.jpg',
     venueAddress: api.venueAddress || api.venueName || '',
+    venueId: api.venueId,
+    venueReviewId: api.venueReviewId ?? null,
+    reviewWindowEndsAt: api.reviewWindowEndsAt,
+    canReview: api.canReview === true,
+    canEditReview: api.canEditReview === true,
     date: dateStr,
     time: timeStr,
     amount: Number(api.finalAmount ?? api.totalAmount ?? 0),
@@ -417,6 +422,7 @@ export default function UserBookings() {
                             <th>Thanh toán</th>
                             <th>P.thức</th>
                             <th>Trạng thái</th>
+                            <th>Đánh giá</th>
                             <th>Chi tiết</th>
                             <th />
                           </tr>
@@ -424,7 +430,7 @@ export default function UserBookings() {
                         <tbody>
                           {loading && (
                             <tr>
-                              <td colSpan={9} className="text-center text-muted py-5">
+                              <td colSpan={10} className="text-center text-muted py-5">
                                 <div className="spinner-border spinner-border-sm text-secondary mb-2" role="status" />
                                 <div>Đang tải lịch đặt sân…</div>
                               </td>
@@ -432,7 +438,7 @@ export default function UserBookings() {
                           )}
                           {!loading && filtered.length === 0 && (
                             <tr>
-                              <td colSpan={9} className="text-center text-muted py-5">
+                              <td colSpan={10} className="text-center text-muted py-5">
                                 <i className="feather-calendar" style={{ fontSize: 32, display: 'block', marginBottom: 8, opacity: 0.4 }} />
                                 Không có lịch đặt sân nào
                               </td>
@@ -477,6 +483,27 @@ export default function UserBookings() {
                                 </span>
                               </td>
                               <td><StatusBadge b={b} /></td>
+                              <td>
+                                {b.venueId && (b.canReview || b.canEditReview) ? (
+                                  <Link
+                                    className="btn btn-sm btn-outline-secondary"
+                                    to={`/venue-details/${b.venueId}?openReview=1&bookingId=${b.id}`}
+                                    title={b.canEditReview ? 'Sửa đánh giá' : 'Viết đánh giá'}
+                                  >
+                                    <i className="feather-star me-1" />
+                                    {b.canEditReview ? 'Sửa ĐG' : 'Đánh giá'}
+                                  </Link>
+                                ) : b.venueId && b.venueReviewId ? (
+                                  <Link
+                                    className="btn btn-sm btn-link text-muted p-0 small"
+                                    to={`/venue-details/${b.venueId}#reviews`}
+                                  >
+                                    Đã gửi
+                                  </Link>
+                                ) : (
+                                  <span className="text-muted small">—</span>
+                                )}
+                              </td>
                               {/* Detail btn */}
                               <td>
                                 <button
@@ -509,6 +536,17 @@ export default function UserBookings() {
                                         >
                                           <i className="feather-credit-card me-2" />Thanh toán lại
                                         </button>
+                                      </li>
+                                    )}
+                                    {b.venueId && (b.canReview || b.canEditReview) && (
+                                      <li>
+                                        <Link
+                                          className="dropdown-item"
+                                          to={`/venue-details/${b.venueId}?openReview=1&bookingId=${b.id}`}
+                                        >
+                                          <i className="feather-star me-2" />
+                                          {b.canEditReview ? 'Sửa đánh giá' : 'Đánh giá sân'}
+                                        </Link>
                                       </li>
                                     )}
                                     {canUserCancel(b) && (

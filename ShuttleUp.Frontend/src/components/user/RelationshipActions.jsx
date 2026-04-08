@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import socialApi from '../../api/socialApi';
-import { showBkToast } from '../../utils/bkToast';
+import { notifySuccess, notifyWarning } from '../../hooks/useNotification';
 import { useChat } from '../../hooks/useChat';
 
 /**
@@ -58,7 +58,7 @@ export default function RelationshipActions({
       const result = await fn();
       const serverMsg = result && typeof result === 'object' && typeof result.message === 'string' ? result.message : '';
       const toastText = serverMsg || okMsg;
-      if (toastText) showBkToast(toastText, 'success');
+      if (toastText) notifySuccess(toastText);
       await refresh();
       onChanged?.();
     } catch (e) {
@@ -66,7 +66,7 @@ export default function RelationshipActions({
         e?.response?.data?.message ||
         (typeof e?.response?.data === 'string' ? e.response.data : null) ||
         'Không thực hiện được thao tác này lúc này.';
-      showBkToast(msg, 'warning');
+      notifyWarning(msg);
     } finally {
       setBusy(false);
     }

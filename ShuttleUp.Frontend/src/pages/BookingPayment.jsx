@@ -727,7 +727,7 @@ export default function BookingPayment() {
                     type="button"
                     className="btn btn-primary"
                     onClick={handleConfirm}
-                    disabled={loading || expired}
+                    disabled={loading || expired || !agreed || ((checkoutSettings?.venueRules?.trim() || checkoutSettings?.cancellation) && !agreedRules)}
                   >
                     {loading
                       ? <><span className="spinner-border spinner-border-sm me-2" />Đang xử lý...</>

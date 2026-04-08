@@ -24,6 +24,9 @@ export function getNotificationTargetPath(metadataJson, isManager) {
   if (meta.friendUserId) {
     return `/user/profile/${meta.friendUserId}`;
   }
+  if (meta.venueId != null && meta.venueId !== '') {
+    return `/venue-details/${String(meta.venueId)}#reviews`;
+  }
   const bid = meta.bookingId;
   if (bid) {
     const id = String(bid);

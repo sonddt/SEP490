@@ -667,12 +667,30 @@ export default function ManagerPaymentSettings() {
                       </div>
                     )}
 
-                    {/* ── STK ── */}
+                    {/* ── STK + Xác minh ── */}
                     <div className="mb-4">
                       <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 8, display: 'block' }}>Số tài khoản <span className="text-danger">*</span></label>
-                      <input type="text" inputMode="numeric" className={`form-control ${getFieldError('paymentAccountNumber') ? 'is-invalid' : ''}`} style={inputStyle('paymentAccountNumber')} placeholder="0123456789"
-                        value={form.paymentAccountNumber} onChange={(e) => setField('paymentAccountNumber', e.target.value.replace(/\D/g, ''))} />
-                      {getFieldError('paymentAccountNumber') ? <div className="invalid-feedback d-block">{getFieldError('paymentAccountNumber')}</div> : <small className="text-muted">Chỉ nhập chữ số, từ 6 đến 19 ký tự.</small>}
+                      <div className="d-flex gap-2 align-items-start">
+                        <div style={{ flex: 1 }}>
+                          <input type="text" inputMode="numeric" className={`form-control ${getFieldError('paymentAccountNumber') ? 'is-invalid' : ''}`} style={inputStyle('paymentAccountNumber')} placeholder="0123456789"
+                            value={form.paymentAccountNumber} onChange={(e) => setField('paymentAccountNumber', e.target.value.replace(/\D/g, ''))} />
+                          {getFieldError('paymentAccountNumber') ? <div className="invalid-feedback d-block">{getFieldError('paymentAccountNumber')}</div> : <small className="text-muted">Chỉ nhập chữ số, từ 6 đến 19 ký tự.</small>}
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-outline-primary btn-sm"
+                          style={{ borderRadius: 8, padding: '10px 14px', whiteSpace: 'nowrap', fontWeight: 600, fontSize: 12 }}
+                          disabled={!canVerify}
+                          onClick={handleVerify}
+                          title="Xác minh STK qua VietQR — tự động điền tên chủ tài khoản"
+                        >
+                          {verifyStatus === 'loading' ? (
+                            <span className="spinner-border spinner-border-sm" role="status" />
+                          ) : (
+                            <><i className="feather-check-circle me-1" style={{ fontSize: 12 }} />Xác minh</>
+                          )}
+                        </button>
+                      </div>
                     </div>
 
                     {/* ── Layer 1: Nhập lại STK ── */}
@@ -700,46 +718,32 @@ export default function ManagerPaymentSettings() {
                       )}
                     </div>
 
-                    {/* ── Layer 2: Account Holder (editable + optional lookup) ── */}
+                    {/* ── Layer 2: Account Holder (always editable, auto-filled by verify) ── */}
                     <div className="mb-4">
                       <div className="d-flex align-items-center justify-content-between mb-1 flex-wrap gap-1">
                         <label style={{ fontSize: 13, fontWeight: 700, color: '#334155' }}>Chủ tài khoản <span className="text-danger">*</span></label>
                         {verifyBadge()}
                       </div>
-                      <div className="d-flex gap-2 align-items-start">
-                        <div style={{ flex: 1 }}>
-                          <input
-                            type="text"
-                            className={`form-control text-uppercase ${getFieldError('paymentAccountHolder') ? 'is-invalid' : ''}`}
-                            style={{
-                              ...inputStyle('paymentAccountHolder'),
-                              ...(verifyStatus === 'success' ? { border: '1px solid #059669', background: '#f0fdf4' } : {}),
-                            }}
-                            placeholder="VD: NGUYEN VAN A"
-                            value={form.paymentAccountHolder}
-                            onChange={(e) => {
-                              setField('paymentAccountHolder', e.target.value.toUpperCase());
-                              if (verifyStatus === 'success') setVerifyStatus('idle');
-                            }}
-                          />
-                          {getFieldError('paymentAccountHolder') && <div className="invalid-feedback d-block">{getFieldError('paymentAccountHolder')}</div>}
-                        </div>
-                        <button
-                          type="button"
-                          className="btn btn-outline-success btn-sm"
-                          style={{ borderRadius: 8, padding: '10px 14px', whiteSpace: 'nowrap', fontWeight: 600, fontSize: 12 }}
-                          disabled={!canVerify}
-                          onClick={handleVerify}
-                          title="Tra cứu tên chủ TK qua VietQR (tùy chọn, cần cấu hình API key)"
-                        >
-                          {verifyStatus === 'loading' ? (
-                            <span className="spinner-border spinner-border-sm" role="status" />
-                          ) : (
-                            <><i className="feather-zap me-1" style={{ fontSize: 12 }} />Tự động lấy tên</>
-                          )}
-                        </button>
+                      <div>
+                        <input
+                          type="text"
+                          className={`form-control text-uppercase ${getFieldError('paymentAccountHolder') ? 'is-invalid' : ''}`}
+                          style={{
+                            ...inputStyle('paymentAccountHolder'),
+                            ...(verifyStatus === 'success' ? { border: '1px solid #059669', background: '#f0fdf4' } : {}),
+                          }}
+                          placeholder="VD: NGUYEN VAN A"
+                          value={form.paymentAccountHolder}
+                          onChange={(e) => {
+                            setField('paymentAccountHolder', e.target.value.toUpperCase());
+                            if (verifyStatus === 'success') setVerifyStatus('idle');
+                          }}
+                        />
+                        {getFieldError('paymentAccountHolder') && <div className="invalid-feedback d-block">{getFieldError('paymentAccountHolder')}</div>}
+                        {!getFieldError('paymentAccountHolder') && verifyStatus !== 'success' && (
+                          <small className="text-muted">Nhập thủ công hoặc bấm "Xác minh" ở STK để tự động điền.</small>
+                        )}
                       </div>
-                      <small className="text-muted d-block mt-1">Nhập tên chủ TK thủ công, hoặc bấm "Tự động lấy tên" để tra cứu qua VietQR (nếu khả dụng).</small>
                     </div>
 
                     {/* ── Transfer Note Template + Variable Chips ── */}

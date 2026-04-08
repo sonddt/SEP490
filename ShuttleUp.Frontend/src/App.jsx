@@ -265,7 +265,16 @@ function App() {
 
       {showHeaderFooter && !isBookingPage && <Footer />}
 
-      <ToastContainer position="top-right" autoClose={3000} />
+      <ToastContainer
+        position="top-right"
+        autoClose={4000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnHover
+        draggable={false}
+        limit={5}
+      />
     </>
   );
 }

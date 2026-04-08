@@ -24,4 +24,16 @@ public class BookingRepository : Repository<Booking>, IBookingRepository
     {
         return await _dbSet.Where(b => b.Status == status).ToListAsync();
     }
+
+    public async Task<List<Booking>> GetConfirmedByUserAndVenueAsync(Guid userId, Guid venueId)
+    {
+        return await _dbSet
+            .AsNoTracking()
+            .Include(b => b.Venue)
+            .Include(b => b.BookingItems)
+                .ThenInclude(bi => bi.Court)
+            .Where(b => b.UserId == userId && b.VenueId == venueId && b.Status == "CONFIRMED")
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync();
+    }
 }

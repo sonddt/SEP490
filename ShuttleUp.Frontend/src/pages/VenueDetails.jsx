@@ -1,5 +1,9 @@
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import VenueReviewModal from '../components/courts/VenueReviewModal';
+import StarRatingDisplay from '../components/common/StarRatingDisplay';
+import RichText from '../components/common/RichText';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
 import Lightbox from 'yet-another-react-lightbox';
@@ -38,6 +42,9 @@ export default function VenueDetails() {
   const { venueId, id } = useParams();
   const resolvedId = venueId ?? id;
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { user } = useAuth();
 
   // ALL hooks MUST be declared before any conditional return (React Rules of Hooks)
   const [venue, setVenue] = useState(null);
@@ -48,6 +55,10 @@ export default function VenueDetails() {
   const [moreHovered, setMoreHovered] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [reviewsData, setReviewsData] = useState(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [pendingReviewBookingId, setPendingReviewBookingId] = useState(null);
 
   // Build slides for lightbox
   const slides = MOCK_GALLERY.map((src) => ({ src }));
@@ -128,6 +139,84 @@ export default function VenueDetails() {
     }
   }, [resolvedId]);
 
+  const loadReviews = useCallback(async () => {
+    if (!resolvedId) return;
+    try {
+      setReviewsLoading(true);
+      const res = await fetch(`/api/venues/${resolvedId}/reviews`);
+      if (res.ok) {
+        const data = await res.json();
+        setReviewsData(data);
+      } else {
+        setReviewsData(null);
+      }
+    } catch {
+      setReviewsData(null);
+    } finally {
+      setReviewsLoading(false);
+    }
+  }, [resolvedId]);
+
+  useEffect(() => {
+    loadReviews();
+  }, [loadReviews]);
+
+  useEffect(() => {
+    const ob = searchParams.get('openReview');
+    const bid = searchParams.get('bookingId');
+    if (!ob || (ob !== '1' && ob !== 'true')) return;
+    if (!user) {
+      navigate(`/login?returnTo=${encodeURIComponent(location.pathname + (location.search || ''))}`);
+      return;
+    }
+    if (bid) setPendingReviewBookingId(bid);
+    setReviewModalOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('openReview');
+    next.delete('bookingId');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams, user, navigate, location.pathname, location.search]);
+
+  useEffect(() => {
+    if (!reviewModalOpen || !pendingReviewBookingId) return;
+    const t = window.setTimeout(() => {
+      document.getElementById('reviews')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, [reviewModalOpen, pendingReviewBookingId]);
+
+  const handleOpenReviewModal = () => {
+    if (!user) {
+      navigate(`/login?returnTo=${encodeURIComponent(location.pathname + (location.search || ''))}`);
+      return;
+    }
+    setPendingReviewBookingId(null);
+    setReviewModalOpen(true);
+  };
+
+  const handleReviewSaved = () => {
+    loadReviews();
+    async function refreshVenue() {
+      try {
+        const response = await fetch(`/api/venues/${resolvedId}`);
+        if (!response.ok) return;
+        const data = await response.json();
+        setVenue((prev) =>
+          prev
+            ? {
+                ...prev,
+                rating: data.rating ?? data.Rating ?? prev.rating,
+                reviewCount: data.reviewCount ?? data.ReviewCount ?? prev.reviewCount,
+              }
+            : prev
+        );
+      } catch {
+        /* ignore */
+      }
+    }
+    refreshVenue();
+  };
+
   // Early returns AFTER all hooks
   if (loading) {
     return (
@@ -155,6 +244,14 @@ export default function VenueDetails() {
       </div>
     );
   }
+
+  const avgStars = Number(
+    reviewsData?.averageStars ?? reviewsData?.AverageStars ?? venue.rating ?? 0
+  );
+  const reviewCountDisplay = Number(
+    reviewsData?.reviewCount ?? reviewsData?.ReviewCount ?? venue.reviewCount ?? 0
+  );
+  const reviewsList = reviewsData?.reviews ?? reviewsData?.Reviews ?? [];
 
   return (
     <div className="main-wrapper content-below-header venue-coach-details">
@@ -323,7 +420,7 @@ export default function VenueDetails() {
                 </li>
                 <li className="venue-review-info d-flex justify-content-start align-items-center">
                   <span className="d-flex justify-content-center align-items-center">
-                    {venue.rating.toFixed(1)}
+                    {avgStars.toFixed(1)}
                   </span>
                   <div className="review">
                     <div className="rating">
@@ -333,7 +430,7 @@ export default function VenueDetails() {
                     </div>
                     <p className="mb-0">
                       <button type="button" className="btn btn-link p-0">
-                        {venue.reviewCount} đánh giá
+                        {reviewCountDisplay} đánh giá
                       </button>
                     </p>
                   </div>
@@ -494,28 +591,83 @@ export default function VenueDetails() {
                 </div>
               </section>
 
-              {/* Reviews – static content for now */}
+              {/* Reviews */}
               <section id="reviews" className="white-bg mb-4 corner-radius-10 p-4">
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <h4 className="mb-0">Đánh giá</h4>
-                  <button type="button" className="btn btn-gradient add-review">
+                  <button type="button" className="btn btn-gradient add-review" onClick={handleOpenReviewModal}>
                     Viết đánh giá
                   </button>
                 </div>
                 <div className="row review-wrapper">
                   <div className="col-lg-3">
                     <div className="ratings-info corner-radius-10 text-center">
-                      <h3>4.8</h3>
+                      <h3>{avgStars.toFixed(1)}</h3>
                       <span>trên 5.0</span>
-                      <div className="rating">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <i key={i} className="fas fa-star filled" />
-                        ))}
+                      <div className="rating d-flex align-items-center justify-content-center gap-1 flex-wrap">
+                        <StarRatingDisplay value={avgStars} size={16} />
                       </div>
+                      <p className="small text-muted mb-0 mt-2">{reviewCountDisplay} lượt đánh giá</p>
                     </div>
                   </div>
                   <div className="col-lg-9">
-                    <p>97% người chơi sẵn sàng quay lại đặt sân tại đây.</p>
+                    {reviewsLoading ? (
+                      <p className="text-muted mb-0">Đang tải đánh giá…</p>
+                    ) : reviewsList.length === 0 ? (
+                      <p className="text-muted mb-0">Chưa có đánh giá nào. Hãy là người đầu tiên đặt sân và chia sẻ trải nghiệm.</p>
+                    ) : (
+                      <ul className="list-unstyled mb-0">
+                        {reviewsList.map((r) => {
+                          const rid = r.id ?? r.Id;
+                          const name = r.userFullName ?? r.UserFullName ?? 'Người chơi';
+                          const st = Number(r.stars ?? r.Stars ?? 0);
+                          const cm = r.comment ?? r.Comment ?? '';
+                          const imgs = r.imageUrls ?? r.ImageUrls ?? [];
+                          const reply = r.ownerReply ?? r.OwnerReply;
+                          const replyAt = r.ownerReplyAt ?? r.OwnerReplyAt;
+                          return (
+                            <li key={rid} className="mb-4 pb-3 border-bottom">
+                              <div className="d-flex justify-content-between align-items-start gap-2">
+                                <strong style={{ fontFamily: '"Be Vietnam Pro", sans-serif' }}>{name}</strong>
+                                <span className="d-inline-flex align-items-center gap-1 small text-warning">
+                                  <StarRatingDisplay value={st} size={14} /> {st.toFixed(1)}
+                                </span>
+                              </div>
+                              {cm ? (
+                                <RichText
+                                  text={cm}
+                                  className="mb-2 mt-1"
+                                  as="div"
+                                />
+                              ) : null}
+                              {Array.isArray(imgs) && imgs.length > 0 && (
+                                <div className="d-flex flex-wrap gap-2 mb-2">
+                                  {imgs.map((url) => (
+                                    <a key={url} href={url} target="_blank" rel="noreferrer">
+                                      <img
+                                        src={url}
+                                        alt=""
+                                        className="rounded"
+                                        style={{ width: 72, height: 72, objectFit: 'cover' }}
+                                      />
+                                    </a>
+                                  ))}
+                                </div>
+                              )}
+                              {reply && (
+                                <div className="p-2 rounded mt-2" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                                  <small className="text-muted d-block mb-1">Phản hồi từ chủ sân</small>
+                                  <RichText text={reply} className="mb-0 small" as="div" />
+                                  {replyAt && (
+                                    <small className="text-muted">{new Date(replyAt).toLocaleString('vi-VN')}</small>
+                                  )}
+                                </div>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
                   </div>
                 </div>
               </section>
@@ -618,12 +770,10 @@ export default function VenueDetails() {
                   </div>
                   <div>
                     <h5>{venue.ownerName}</h5>
-                    <div className="rating">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <i key={i} className="fas fa-star filled" />
-                      ))}
-                      <span className="ms-1">5.0</span>
-                      <span>(20 Reviews)</span>
+                    <div className="rating d-flex align-items-center flex-wrap gap-1">
+                      <StarRatingDisplay value={avgStars} size={15} />
+                      <span className="ms-1">{avgStars.toFixed(1)}</span>
+                      <span>({reviewCountDisplay} đánh giá)</span>
                     </div>
                   </div>
                 </div>
@@ -642,6 +792,17 @@ export default function VenueDetails() {
           </div>
         </div>
       </div>
+
+      <VenueReviewModal
+        venueId={resolvedId}
+        open={reviewModalOpen}
+        initialBookingId={pendingReviewBookingId}
+        onClose={() => {
+          setReviewModalOpen(false);
+          setPendingReviewBookingId(null);
+        }}
+        onSaved={handleReviewSaved}
+      />
     </div>
   );
 }
