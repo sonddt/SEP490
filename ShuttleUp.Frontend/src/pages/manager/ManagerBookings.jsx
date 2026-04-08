@@ -43,7 +43,7 @@ function mapManagerBookingFromApi(b) {
   } else uiStatus = 'PENDING';
 
   const methodRaw = (b.paymentMethod || '').toUpperCase();
-  let paymentMethod = 'CASH';
+  let paymentMethod = 'NONE';
   if (methodRaw.includes('BANK')) paymentMethod = 'BANK';
   else if (methodRaw.includes('QR')) paymentMethod = 'QR';
   else if (methodRaw.includes('VNPAY')) paymentMethod = 'VNPAY';
@@ -447,7 +447,7 @@ export default function ManagerBookings() {
                   </tr>
                 ) : pageItems.map(b => {
                   const st = BOOKING_STATUSES[b.status] || BOOKING_STATUSES.PENDING;
-                  const pm = PAYMENT_METHODS[b.paymentMethod] || PAYMENT_METHODS.CASH;
+                  const pm = PAYMENT_METHODS[b.paymentMethod] || PAYMENT_METHODS.NONE;
                   return (
                     <tr key={b.id} data-manager-booking-row={b.bookingId || b.id}>
                       {/* Court */}

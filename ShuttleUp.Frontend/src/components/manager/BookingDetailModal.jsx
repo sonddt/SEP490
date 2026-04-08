@@ -113,7 +113,7 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
   if (!booking) return null;
 
   const st = BOOKING_STATUSES[booking.status] || BOOKING_STATUSES.PENDING;
-  const pm = PAYMENT_METHODS[booking.paymentMethod] || PAYMENT_METHODS.CASH;
+  const pm = PAYMENT_METHODS[booking.paymentMethod] || PAYMENT_METHODS.NONE;
 
   const paymentStatusLabel = booking.paymentStatus === 'PAID'
     ? 'Đã thanh toán'

@@ -141,11 +141,13 @@ export default function LongTermFlexibleConfirm() {
       }
       navigate(`/booking/payment?bookingId=${bookingId}&flow=long-term`);
     } catch (err) {
+      const status = err.response?.status;
       const msg =
         err.response?.data?.message
         || err.message
         || 'Không tạo được đơn.';
-      setSubmitError(msg);
+      if (status === 409) setSubmitError(`${msg} Vui lòng quay lại chọn giờ.`);
+      else setSubmitError(msg);
     } finally {
       setLoading(false);
     }

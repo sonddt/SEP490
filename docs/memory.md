@@ -194,5 +194,47 @@ Kết bạn & quan hệ xã hội (Player):
 
 ---
 
+## 8 tháng 4, 2026 (Server-side Hold & Unified Booking Flow)
+
+### A. Server-side Soft Lock (HOLDING status)
+
+1. **Database Schema (`Database.txt`)**: Thêm cột `hold_expires_at DATETIME NULL` vào bảng `bookings`. Migration có điều kiện (ALTER IF NOT EXISTS) cho DB cũ. Trạng thái mới `HOLDING` — đặt trước khi thanh toán, TTL 5 phút.
+2. **DAL Model**: `Booking.HoldExpiresAt` (nullable DateTime) + EF mapping `HasColumnName("hold_expires_at")`.
+3. **BookingSlotHelper**: Collision detection loại trừ `HOLDING` đã hết hạn (`HoldExpiresAt <= UtcNow`), chỉ block slot cho hold còn hiệu lực.
+4. **ExpiredHoldCleanupService** (`BackgroundService`): Chạy mỗi 30s, tìm booking `HOLDING` hết hạn → chuyển `CANCELLED`, giải phóng slot. Đăng ký `AddHostedService<>` trong `Program.cs`.
+5. **BookingsController — 3 endpoint tạo đơn** (`POST /bookings`, `/bookings/long-term`, `/bookings/long-term/flexible`):
+   - Trạng thái khởi tạo: `HOLDING` (thay vì `PENDING`).
+   - Set `HoldExpiresAt = UtcNow + 5 min`.
+   - **Không** gửi notification cho chủ sân khi tạo (chủ sân chỉ thấy đơn khi có minh chứng CK).
+6. **SubmitPayment** (`POST /bookings/{id}/payment`):
+   - Cho phép `HOLDING` hoặc `PENDING`. Kiểm tra hold hết hạn → 400 `HOLD_EXPIRED`.
+   - Khi `HOLDING` → chuyển booking + items + series (nếu có) sang `PENDING`, xoá `HoldExpiresAt`.
+   - Gửi notification "Có đơn đặt sân mới" cho chủ sân (trước đây gửi ở tạo đơn).
+7. **GetPaymentContext**: Trả thêm `status`, `holdExpiresAt` cho FE đồng bộ countdown.
+8. **ManagerBookingsController**: Lọc `Status != "HOLDING"` — chủ sân không nhìn thấy đơn đang giữ chỗ.
+
+### B. Unified 4-Step Booking UI
+
+1. **BookingConfirm.jsx** (đặt sân đơn): Khi nhấn "Tiếp theo" → gọi `createBooking` API (tạo HOLDING) → navigate `/booking/payment?bookingId=...`. Trước đây chỉ pass state, tạo booking ở bước Payment.
+2. **LongTermConfirm.jsx** (cố định): Refactored giao diện thành 2 cột matching BookingConfirm (card sân + form liên hệ + sidebar tóm tắt + mã giảm giá). Đã có gọi API, giữ nguyên.
+3. **LongTermFlexibleConfirm.jsx**: Đã có giao diện matching; giữ nguyên.
+4. **BookingPayment.jsx**: Viết lại hoàn toàn:
+   - Luôn nhận `bookingId` qua query param (không còn tạo booking ở bước này).
+   - Fetch context từ `GET /bookings/{id}/payment-context` → lấy `holdExpiresAt`.
+   - Countdown **đồng bộ server** (tính từ `holdExpiresAt`, không hardcode 15 phút).
+   - Modal hết hạn: 5 phút, redirect về trang sân.
+   - Xoá logic "thanh toán lại" / "re-pay".
+   - Xoá `createBooking` import & call.
+5. **BookingResponseDto**: Thêm `HoldExpiresAt` (nullable).
+
+### C. Loại bỏ "Tiền mặt" (CASH)
+
+1. **bookingsMock.js**: Xoá `CASH` khỏi `PAYMENT_METHODS`, thêm `NONE` ("Chờ minh chứng CK") + `BANK_TRANSFER`. Mock data cũ `CASH` → `BANK`.
+2. **ManagerBookings.jsx**: Fallback `CASH` → `NONE`.
+3. **BookingDetailModal.jsx**: Fallback `CASH` → `NONE`.
+4. **UserBookings.jsx**: `formatPaymentMethodLabel` trả "Chờ minh chứng CK" nếu null/unknown (không còn trả "Chuyển khoản" mặc định).
+
+---
+
 *Cập nhật: gom theo ngày, bỏ trùng lặp và định dạng lại cho dễ đọc.*
 

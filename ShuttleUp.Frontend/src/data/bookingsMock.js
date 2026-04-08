@@ -7,10 +7,11 @@ export const BOOKING_STATUSES = {
 };
 
 export const PAYMENT_METHODS = {
-  BANK:   { label: 'Chuyển khoản', icon: 'feather-credit-card' },
-  CASH:   { label: 'Tiền mặt',     icon: 'feather-dollar-sign' },
-  VNPAY:  { label: 'VNPay',        icon: 'feather-zap' },
-  QR:     { label: 'Quét mã QR',   icon: 'feather-smartphone' },
+  BANK:          { label: 'Chuyển khoản',           icon: 'feather-credit-card' },
+  BANK_TRANSFER: { label: 'Chuyển khoản',           icon: 'feather-credit-card' },
+  VNPAY:         { label: 'VNPay',                  icon: 'feather-zap' },
+  QR:            { label: 'Quét mã QR',             icon: 'feather-smartphone' },
+  NONE:          { label: 'Chờ minh chứng CK',      icon: 'feather-alert-circle' },
 };
 
 export const MOCK_BOOKINGS = [
@@ -70,7 +71,7 @@ export const MOCK_BOOKINGS = [
     timeEnd: '20:00',
     guests: 2,
     amount: 300000,
-    paymentMethod: 'CASH',
+    paymentMethod: 'BANK',
     paymentStatus: 'UNPAID',
     status: 'PENDING',
     note: 'Cần thuê thêm 2 vợt',
@@ -153,7 +154,7 @@ export const MOCK_BOOKINGS = [
     timeEnd: '12:00',
     guests: 1,
     amount: 120000,
-    paymentMethod: 'CASH',
+    paymentMethod: 'BANK',
     paymentStatus: 'PAID',
     status: 'COMPLETED',
     note: '',
@@ -213,7 +214,7 @@ export const MOCK_BOOKINGS = [
     timeEnd: '18:00',
     guests: 4,
     amount: 480000,
-    paymentMethod: 'CASH',
+    paymentMethod: 'BANK',
     paymentStatus: 'UNPAID',
     status: 'REJECTED',
     rejectReason: 'Sân 1 đang bảo trì định kỳ trong ngày này',

@@ -377,6 +377,7 @@ CREATE TABLE bookings (
     series_id CHAR(36) NULL,
     coupon_id CHAR(36) NULL,
     status VARCHAR(50) DEFAULT 'PENDING',
+    hold_expires_at DATETIME NULL COMMENT 'UTC deadline for HOLDING status; NULL when not holding',
     total_amount DECIMAL(15,2),
     discount_amount DECIMAL(15,2) DEFAULT 0,
     final_amount DECIMAL(15,2),
@@ -1561,6 +1562,11 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venue_reviews' AND column_name = 'owner_reply_at');
 SET @sql := IF(@col = 0, 'ALTER TABLE venue_reviews ADD COLUMN owner_reply_at DATETIME NULL', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- bookings: hold_expires_at — server-side soft-lock (HOLDING status, 5 min TTL)
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'bookings' AND column_name = 'hold_expires_at');
+SET @sql := IF(@col = 0, 'ALTER TABLE bookings ADD COLUMN hold_expires_at DATETIME NULL COMMENT ''UTC deadline for HOLDING status'' AFTER status', 'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- ======================================================================

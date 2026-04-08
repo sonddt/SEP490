@@ -141,12 +141,15 @@ public class BookingsController : ControllerBase
             RefundPercent = venuePolicy.RefundPercent,
         };
 
+        var holdExpiry = DateTime.UtcNow.AddMinutes(5);
+
         var booking = new Booking
         {
             Id = Guid.NewGuid(),
             UserId = userId,
             VenueId = dto.VenueId,
-            Status = "PENDING",
+            Status = "HOLDING",
+            HoldExpiresAt = holdExpiry,
             TotalAmount = total,
             DiscountAmount = discountAmount,
             FinalAmount = finalAmount,
@@ -170,7 +173,7 @@ public class BookingsController : ControllerBase
                 StartTime = ni.Start,
                 EndTime = ni.End,
                 FinalPrice = ni.Price,
-                Status = "PENDING"
+                Status = "HOLDING"
             });
         }
 
@@ -199,8 +202,9 @@ public class BookingsController : ControllerBase
             BookingId = booking.Id,
             BookingCode = code,
             Status = booking.Status,
+            HoldExpiresAt = holdExpiry,
             TotalAmount = total,
-            FinalAmount = total,
+            FinalAmount = finalAmount,
             Items = booking.BookingItems.Select(bi => new BookingItemResponseDto
             {
                 Id = bi.Id,
@@ -212,28 +216,6 @@ public class BookingsController : ControllerBase
                 Status = bi.Status
             }).ToList()
         };
-
-        var ownerId = await _dbContext.Venues.AsNoTracking()
-            .Where(v => v.Id == dto.VenueId)
-            .Select(v => v.OwnerUserId)
-            .FirstOrDefaultAsync();
-        if (ownerId is { } oid && oid != Guid.Empty)
-        {
-            try
-            {
-                await _notify.NotifyUserAsync(
-                    oid,
-                    NotificationTypes.BookingNew,
-                    "Có đơn đặt sân mới",
-                    $"Mã {code} — {dto.ContactName.Trim()} — {total:N0} VNĐ.",
-                    NotificationMetadataBuilder.BookingForManager(booking.Id, dto.VenueId),
-                    sendEmail: true);
-            }
-            catch
-            {
-                /* không chặn response 201 */
-            }
-        }
 
         return StatusCode(StatusCodes.Status201Created, response);
     }
@@ -321,6 +303,8 @@ public class BookingsController : ControllerBase
             RefundPercent = venuePolicy.RefundPercent,
         };
 
+        var holdExpiry = DateTime.UtcNow.AddMinutes(5);
+
         var ruleJson = JsonSerializer.Serialize(new
         {
             type = "WEEKLY",
@@ -338,7 +322,7 @@ public class BookingsController : ControllerBase
             RecurrenceRuleJson = ruleJson,
             RangeStartDate = built.RangeStart!.Value,
             RangeEndDate = built.RangeEnd!.Value,
-            Status = "PENDING",
+            Status = "HOLDING",
             CreatedAt = DateTime.UtcNow,
         };
 
@@ -348,7 +332,8 @@ public class BookingsController : ControllerBase
             UserId = userId,
             VenueId = dto.VenueId,
             SeriesId = series.Id,
-            Status = "PENDING",
+            Status = "HOLDING",
+            HoldExpiresAt = holdExpiry,
             TotalAmount = total,
             DiscountAmount = discountAmount,
             FinalAmount = finalAmount,
@@ -369,7 +354,7 @@ public class BookingsController : ControllerBase
                 StartTime = ni.Start,
                 EndTime = ni.End,
                 FinalPrice = ni.Price,
-                Status = "PENDING"
+                Status = "HOLDING"
             });
         }
 
@@ -395,14 +380,16 @@ public class BookingsController : ControllerBase
         var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
         var courtById = new Dictionary<Guid, Court> { [built.Court!.Id] = built.Court };
 
-        var response = new BookingResponseDto
+        return StatusCode(StatusCodes.Status201Created, new
         {
-            BookingId = booking.Id,
-            BookingCode = code,
-            Status = booking.Status,
-            TotalAmount = total,
-            FinalAmount = total,
-            Items = booking.BookingItems.Select(bi => new BookingItemResponseDto
+            seriesId = series.Id,
+            bookingId = booking.Id,
+            bookingCode = code,
+            status = booking.Status,
+            holdExpiresAt = holdExpiry,
+            totalAmount = total,
+            finalAmount,
+            items = booking.BookingItems.Select(bi => new BookingItemResponseDto
             {
                 Id = bi.Id,
                 CourtId = bi.CourtId ?? Guid.Empty,
@@ -411,40 +398,7 @@ public class BookingsController : ControllerBase
                 EndTime = bi.EndTime ?? default,
                 FinalPrice = bi.FinalPrice ?? 0,
                 Status = bi.Status
-            }).ToList()
-        };
-
-        var ownerId = await _dbContext.Venues.AsNoTracking()
-            .Where(v => v.Id == dto.VenueId)
-            .Select(v => v.OwnerUserId)
-            .FirstOrDefaultAsync();
-        if (ownerId is { } oid && oid != Guid.Empty)
-        {
-            try
-            {
-                await _notify.NotifyUserAsync(
-                    oid,
-                    NotificationTypes.BookingNew,
-                    "Có đơn đặt lịch dài hạn mới",
-                    $"Mã {code} — {dto.ContactName.Trim()} — {built.NormalizedItems.Count} khung — {total:N0} VNĐ.",
-                    NotificationMetadataBuilder.BookingForManager(booking.Id, dto.VenueId),
-                    sendEmail: true);
-            }
-            catch
-            {
-                /* ignore */
-            }
-        }
-
-        return StatusCode(StatusCodes.Status201Created, new
-        {
-            seriesId = series.Id,
-            response.BookingId,
-            response.BookingCode,
-            response.Status,
-            response.TotalAmount,
-            response.FinalAmount,
-            response.Items,
+            }).ToList(),
         });
     }
 
@@ -532,6 +486,8 @@ public class BookingsController : ControllerBase
             RefundPercent = venuePolicy.RefundPercent,
         };
 
+        var holdExpiry = DateTime.UtcNow.AddMinutes(5);
+
         var ruleJson = JsonSerializer.Serialize(new
         {
             type = "FLEXIBLE",
@@ -546,7 +502,7 @@ public class BookingsController : ControllerBase
             RecurrenceRuleJson = ruleJson,
             RangeStartDate = built.RangeStart!.Value,
             RangeEndDate = built.RangeEnd!.Value,
-            Status = "PENDING",
+            Status = "HOLDING",
             CreatedAt = DateTime.UtcNow,
         };
 
@@ -556,7 +512,8 @@ public class BookingsController : ControllerBase
             UserId = userId,
             VenueId = dto.VenueId,
             SeriesId = series.Id,
-            Status = "PENDING",
+            Status = "HOLDING",
+            HoldExpiresAt = holdExpiry,
             TotalAmount = total,
             DiscountAmount = discountAmount,
             FinalAmount = finalAmount,
@@ -577,7 +534,7 @@ public class BookingsController : ControllerBase
                 StartTime = ni.Start,
                 EndTime = ni.End,
                 FinalPrice = ni.Price,
-                Status = "PENDING"
+                Status = "HOLDING"
             });
         }
 
@@ -603,14 +560,16 @@ public class BookingsController : ControllerBase
         var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
         var courtById = built.CourtById!;
 
-        var response = new BookingResponseDto
+        return StatusCode(StatusCodes.Status201Created, new
         {
-            BookingId = booking.Id,
-            BookingCode = code,
-            Status = booking.Status,
-            TotalAmount = total,
-            FinalAmount = total,
-            Items = booking.BookingItems.Select(bi => new BookingItemResponseDto
+            seriesId = series.Id,
+            bookingId = booking.Id,
+            bookingCode = code,
+            status = booking.Status,
+            holdExpiresAt = holdExpiry,
+            totalAmount = total,
+            finalAmount,
+            items = booking.BookingItems.Select(bi => new BookingItemResponseDto
             {
                 Id = bi.Id,
                 CourtId = bi.CourtId ?? Guid.Empty,
@@ -619,40 +578,7 @@ public class BookingsController : ControllerBase
                 EndTime = bi.EndTime ?? default,
                 FinalPrice = bi.FinalPrice ?? 0,
                 Status = bi.Status
-            }).ToList()
-        };
-
-        var ownerId = await _dbContext.Venues.AsNoTracking()
-            .Where(v => v.Id == dto.VenueId)
-            .Select(v => v.OwnerUserId)
-            .FirstOrDefaultAsync();
-        if (ownerId is { } oid && oid != Guid.Empty)
-        {
-            try
-            {
-                await _notify.NotifyUserAsync(
-                    oid,
-                    NotificationTypes.BookingNew,
-                    "Có đơn đặt lịch dài hạn (linh hoạt) mới",
-                    $"Mã {code} — {dto.ContactName.Trim()} — {normalizedItems.Count} khung — {total:N0} VNĐ.",
-                    NotificationMetadataBuilder.BookingForManager(booking.Id, dto.VenueId),
-                    sendEmail: true);
-            }
-            catch
-            {
-                /* ignore */
-            }
-        }
-
-        return StatusCode(StatusCodes.Status201Created, new
-        {
-            seriesId = series.Id,
-            response.BookingId,
-            response.BookingCode,
-            response.Status,
-            response.TotalAmount,
-            response.FinalAmount,
-            response.Items,
+            }).ToList(),
         });
     }
 
@@ -1216,8 +1142,11 @@ public class BookingsController : ControllerBase
         if (booking == null)
             return NotFound(new { message = "Không tìm thấy đơn đặt." });
 
-        if (booking.Status != "PENDING")
-            return BadRequest(new { message = "Chỉ có thể thanh toán khi đơn đang chờ duyệt." });
+        if (booking.Status is not ("PENDING" or "HOLDING"))
+            return BadRequest(new { message = "Chỉ có thể thanh toán khi đơn đang chờ duyệt hoặc đang giữ chỗ." });
+
+        if (booking.Status == "HOLDING" && booking.HoldExpiresAt != null && booking.HoldExpiresAt <= DateTime.UtcNow)
+            return BadRequest(new { message = "Thời gian giữ chỗ đã hết. Vui lòng đặt lại.", code = "HOLD_EXPIRED" });
 
         var lastPay = booking.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
         var hasProof = lastPay != null
@@ -1247,6 +1176,10 @@ public class BookingsController : ControllerBase
         {
             bookingId = booking.Id,
             bookingCode = code,
+            status = booking.Status,
+            holdExpiresAt = booking.HoldExpiresAt.HasValue
+                ? DateTime.SpecifyKind(booking.HoldExpiresAt.Value, DateTimeKind.Utc)
+                : (DateTime?)null,
             venueId = booking.VenueId,
             venueName = booking.Venue != null ? booking.Venue.Name : null,
             venueAddress = booking.Venue != null ? booking.Venue.Address : null,
@@ -1284,6 +1217,7 @@ public class BookingsController : ControllerBase
         var booking = await _dbContext.Bookings
             .Include(b => b.Venue)
             .Include(b => b.Payments)
+            .Include(b => b.BookingItems)
             .FirstOrDefaultAsync(b => b.Id == id && b.UserId == userId);
 
         if (booking == null)
@@ -1292,8 +1226,11 @@ public class BookingsController : ControllerBase
         if (booking.Status == "CANCELLED")
             return BadRequest(new { message = "Đơn đã bị huỷ." });
 
-        if (booking.Status != "PENDING")
-            return BadRequest(new { message = "Chỉ có thể nộp minh chứng khi đơn đang chờ duyệt." });
+        if (booking.Status is not ("PENDING" or "HOLDING"))
+            return BadRequest(new { message = "Chỉ có thể nộp minh chứng khi đơn đang chờ duyệt hoặc đang giữ chỗ." });
+
+        if (booking.Status == "HOLDING" && booking.HoldExpiresAt != null && booking.HoldExpiresAt <= DateTime.UtcNow)
+            return BadRequest(new { message = "Thời gian giữ chỗ đã hết. Vui lòng đặt lại.", code = "HOLD_EXPIRED" });
 
         var methodNorm = string.IsNullOrWhiteSpace(form.Method) ? "BANK" : form.Method.Trim().ToUpperInvariant();
         var methodLabel = methodNorm == "QR" ? "QR" : "BANK_TRANSFER";
@@ -1319,6 +1256,21 @@ public class BookingsController : ControllerBase
             && existingPending.GatewayReference.StartsWith("https", StringComparison.OrdinalIgnoreCase))
         {
             return BadRequest(new { message = "Đơn đã có minh chứng thanh toán. Không gửi lại." });
+        }
+
+        var wasHolding = booking.Status == "HOLDING";
+        if (wasHolding)
+        {
+            booking.Status = "PENDING";
+            booking.HoldExpiresAt = null;
+            foreach (var item in booking.BookingItems)
+                item.Status = "PENDING";
+
+            if (booking.SeriesId is { } seriesId)
+            {
+                var series = await _dbContext.BookingSeries.FirstOrDefaultAsync(s => s.Id == seriesId);
+                if (series != null) series.Status = "PENDING";
+            }
         }
 
         Payment paymentRow;
@@ -1353,13 +1305,19 @@ public class BookingsController : ControllerBase
         {
             try
             {
+                var notifTitle = wasHolding ? "Có đơn đặt sân mới" : "Có minh chứng thanh toán mới";
+                var notifBody = wasHolding
+                    ? $"Mã {bookingCode} — {booking.ContactName} — {booking.FinalAmount:N0} VNĐ."
+                    : $"Đơn {bookingCode} vừa có ảnh chứng từ từ người chơi.";
+                var notifType = wasHolding ? NotificationTypes.BookingNew : NotificationTypes.PaymentProof;
+
                 await _notify.NotifyUserAsync(
                     mgrId,
-                    NotificationTypes.PaymentProof,
-                    "Có minh chứng thanh toán mới",
-                    $"Đơn {bookingCode} vừa có ảnh chứng từ từ người chơi.",
+                    notifType,
+                    notifTitle,
+                    notifBody,
                     NotificationMetadataBuilder.BookingForManager(booking.Id, booking.VenueId),
-                    sendEmail: false);
+                    sendEmail: wasHolding);
             }
             catch
             {
@@ -1375,7 +1333,8 @@ public class BookingsController : ControllerBase
             paymentRow.Amount,
             proofUrl = secureUrl,
             bookingId = booking.Id,
-            bookingCode
+            bookingCode,
+            bookingStatus = booking.Status,
         });
     }
 

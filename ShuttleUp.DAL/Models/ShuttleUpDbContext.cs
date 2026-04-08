@@ -135,6 +135,9 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasMaxLength(50)
                 .HasDefaultValueSql("'PENDING'")
                 .HasColumnName("status");
+            entity.Property(e => e.HoldExpiresAt)
+                .HasColumnType("datetime")
+                .HasColumnName("hold_expires_at");
             entity.Property(e => e.TotalAmount)
                 .HasPrecision(15, 2)
                 .HasColumnName("total_amount");

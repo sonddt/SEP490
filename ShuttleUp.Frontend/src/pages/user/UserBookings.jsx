@@ -8,11 +8,12 @@ function pad2(n) {
 }
 
 function formatPaymentMethodLabel(method) {
-  if (!method) return 'Chuyển khoản';
+  if (!method) return 'Chờ minh chứng CK';
   const u = String(method).toUpperCase();
   if (u.includes('QR')) return 'Quét mã QR';
   if (u.includes('BANK')) return 'Chuyển khoản';
-  return 'Chuyển khoản';
+  if (u.includes('VNPAY')) return 'VNPay';
+  return 'Chờ minh chứng CK';
 }
 
 function mapUserBookingTabStatus(apiStatus, items) {

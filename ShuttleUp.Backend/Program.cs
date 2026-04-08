@@ -93,6 +93,7 @@ namespace ShuttleUp.Backend
 
                 return settings;
             });
+            builder.Services.AddHostedService<ShuttleUp.Backend.Services.ExpiredHoldCleanupService>();
             builder.Services.AddScoped<INotificationDispatchService, NotificationDispatchService>();
             builder.Services.AddScoped<IMatchingPostLifecycleService, MatchingPostLifecycleService>();
             builder.Services.AddScoped<IMatchingPostActivityService, MatchingPostActivityService>();

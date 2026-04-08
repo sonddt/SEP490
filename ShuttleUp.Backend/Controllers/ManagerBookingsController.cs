@@ -60,7 +60,7 @@ public class ManagerBookingsController : ControllerBase
             .Include(b => b.User)!.ThenInclude(u => u!.AvatarFile)
             .Include(b => b.BookingItems).ThenInclude(bi => bi.Court)!.ThenInclude(c => c!.Files)
             .Include(b => b.Payments)
-            .Where(b => b.Venue != null && b.Venue.OwnerUserId == userId);
+            .Where(b => b.Venue != null && b.Venue.OwnerUserId == userId && b.Status != "HOLDING");
 
         if (!string.IsNullOrWhiteSpace(status))
         {

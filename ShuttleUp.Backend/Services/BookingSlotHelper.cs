@@ -154,13 +154,18 @@ public static class BookingSlotHelper
         var minStart = normalizedItems.Min(x => x.Start);
         var maxEnd = normalizedItems.Max(x => x.End);
 
+        var now = DateTime.UtcNow;
+
         var existingItems = await db.BookingItems
             .AsNoTracking()
             .Include(bi => bi.Booking)
             .Where(bi => bi.CourtId != null
                          && courtIds.Contains(bi.CourtId.Value)
                          && bi.StartTime < maxEnd && bi.EndTime > minStart
-                         && bi.Booking != null && bi.Booking.Status != "CANCELLED")
+                         && bi.Booking != null
+                         && bi.Booking.Status != "CANCELLED"
+                         && (bi.Booking.Status != "HOLDING"
+                             || (bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now)))
             .ToListAsync(cancellationToken);
 
         foreach (var bi in existingItems)

@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import BookingSteps from '../components/booking/BookingSteps';
 import { useAuth } from '../context/AuthContext';
 import { profileApi } from '../api/profileApi';
-import { previewDiscount } from '../api/bookingApi';
+import { previewDiscount, createBooking } from '../api/bookingApi';
 
 function formatDateVN(isoDate) {
   if (!isoDate) return '';
@@ -59,6 +59,8 @@ export default function BookingConfirm() {
   const [appliedCoupon, setAppliedCoupon] = useState('');
   const [couponError, setCouponError] = useState('');
   const [previewingDiscount, setPreviewingDiscount] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
     if (!localStorage.getItem('token')) return;
@@ -137,20 +139,38 @@ export default function BookingConfirm() {
     return e;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); return; }
-    navigate('/booking/payment', {
-      state: {
-        venueId, venueName, venueAddress, date,
-        selectedSlots, totalPrice, totalHours,
-        customerName:  form.name,
-        customerPhone: form.phone,
-        note:          form.note,
-        couponCode:    appliedCoupon || null,
-        discountInfo:  discountInfo || null,
-      },
-    });
+    if (!venueId) { setSubmitError('Thiếu thông tin cơ sở.'); return; }
+
+    const items = (selectedSlots || [])
+      .filter(s => s.courtId && s.startTime && s.endTime)
+      .map(s => ({ courtId: s.courtId, startTime: s.startTime, endTime: s.endTime }));
+    if (items.length === 0) { setSubmitError('Không có khung giờ hợp lệ.'); return; }
+
+    setSubmitError('');
+    setLoading(true);
+    try {
+      const created = await createBooking({
+        venueId,
+        items,
+        contactName: form.name.trim(),
+        contactPhone: form.phone.trim(),
+        note: form.note.trim() || undefined,
+        couponCode: appliedCoupon || undefined,
+      });
+      const bookingId = created.bookingId ?? created.BookingId;
+      if (!bookingId) { setSubmitError('Phản hồi server không có mã đơn.'); setLoading(false); return; }
+      navigate(`/booking/payment?bookingId=${bookingId}`);
+    } catch (err) {
+      const status = err.response?.status;
+      const msg = err.response?.data?.message || err.message || 'Không tạo được đơn.';
+      if (status === 409) setSubmitError(`${msg} Vui lòng quay lại chọn giờ.`);
+      else setSubmitError(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -404,13 +424,15 @@ export default function BookingConfirm() {
                     <strong className="primary-text fs-4">{totalPrice.toLocaleString('vi-VN')} VNĐ</strong>
                   </div>
                 )}
+                {submitError && <div className="alert alert-danger small mb-2">{submitError}</div>}
                 <div className="d-grid">
                   <button
                     type="button"
                     onClick={handleNext}
+                    disabled={loading}
                     className="btn btn-secondary btn-icon"
                   >
-                    Tiếp theo <i className="feather-arrow-right-circle ms-1" />
+                    {loading ? 'Đang tạo đơn…' : 'Tiếp theo'} <i className="feather-arrow-right-circle ms-1" />
                   </button>
                 </div>
               </aside>
@@ -430,8 +452,9 @@ export default function BookingConfirm() {
               type="button"
               className="btn btn-secondary btn-icon"
               onClick={handleNext}
+              disabled={loading}
             >
-              Tiếp theo <i className="feather-arrow-right-circle ms-1" />
+              {loading ? 'Đang tạo đơn…' : 'Tiếp theo'} <i className="feather-arrow-right-circle ms-1" />
             </button>
           </div>
 
