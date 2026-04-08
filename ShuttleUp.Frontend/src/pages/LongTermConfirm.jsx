@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import LongTermBookingSteps from '../components/booking/LongTermBookingSteps';
 import { useAuth } from '../context/AuthContext';
 import { profileApi } from '../api/profileApi';
@@ -35,6 +35,11 @@ export default function LongTermConfirm() {
     preview = null,
   } = state;
 
+  // Detect bookingId from state (passed back from Payment page) or URL search params (browser back button)
+  const [searchParams] = useSearchParams();
+  const existingBookingId = state.bookingId || searchParams.get('bookingId') || null;
+  const isUpdating = !!existingBookingId;
+
   const totalPrice = preview?.totalAmount ?? 0;
   const slotCount = preview?.slotCount ?? 0;
   const sessionCount = preview?.sessionCount ?? 0;
@@ -45,9 +50,9 @@ export default function LongTermConfirm() {
   const totalHours = tm > 0 ? `${th}h${tm}` : `${th}h`;
 
   const [form, setForm] = useState({
-    name: user?.fullName ?? '',
-    phone: (user?.phoneNumber ?? '').trim(),
-    note: '',
+    name: state.customerName || (user?.fullName ?? ''),
+    phone: (state.customerPhone || (user?.phoneNumber ?? '')).trim(),
+    note: state.note || '',
   });
   const [autoFilled, setAutoFilled] = useState({
     name: !!user?.fullName,
@@ -165,6 +170,7 @@ export default function LongTermConfirm() {
         contactPhone: form.phone.trim(),
         note: form.note.trim() || undefined,
         couponCode: appliedCoupon || undefined,
+        bookingId: existingBookingId || undefined,
       });
       const bookingId = result.bookingId ?? result.BookingId;
       if (!bookingId) { setSubmitError('Phản hồi server không có mã đơn.'); setLoading(false); return; }
@@ -417,7 +423,7 @@ export default function LongTermConfirm() {
                     disabled={loading}
                     className="btn btn-secondary btn-icon"
                   >
-                    {loading ? 'Đang tạo đơn…' : 'Tiếp theo'} <i className="feather-arrow-right-circle ms-1" />
+              {loading ? (isUpdating ? 'Đang cập nhật…' : 'Đang tạo đơn…') : 'Tiếp theo'} <i className="feather-arrow-right-circle ms-1" />
                   </button>
                 </div>
               </aside>
@@ -438,7 +444,7 @@ export default function LongTermConfirm() {
               onClick={handleSubmit}
               disabled={loading}
             >
-              {loading ? 'Đang tạo đơn…' : 'Tiếp theo'} <i className="feather-arrow-right-circle ms-1" />
+              {loading ? (isUpdating ? 'Đang cập nhật…' : 'Đang tạo đơn…') : 'Tiếp theo'} <i className="feather-arrow-right-circle ms-1" />
             </button>
           </div>
 

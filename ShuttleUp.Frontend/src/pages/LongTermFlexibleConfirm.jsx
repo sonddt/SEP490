@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import LongTermBookingSteps from '../components/booking/LongTermBookingSteps';
 import { useAuth } from '../context/AuthContext';
 import { profileApi } from '../api/profileApi';
@@ -31,6 +31,11 @@ export default function LongTermFlexibleConfirm() {
     totalPrice: stateTotalPrice,
   } = state;
 
+  // Detect bookingId from state (passed back from Payment page) or URL search params (browser back button)
+  const [searchParams] = useSearchParams();
+  const existingBookingId = state.bookingId || searchParams.get('bookingId') || null;
+  const isUpdating = !!existingBookingId;
+
   const totalPrice = stateTotalPrice ?? preview?.totalAmount ?? 0;
   const totalHours = stateTotalHours;
 
@@ -48,9 +53,9 @@ export default function LongTermFlexibleConfirm() {
   }, [selectedSlots, date]);
 
   const [form, setForm] = useState({
-    name: user?.fullName ?? '',
-    phone: (user?.phoneNumber ?? '').trim(),
-    note: '',
+    name: state.customerName || (user?.fullName ?? ''),
+    phone: (state.customerPhone || (user?.phoneNumber ?? '')).trim(),
+    note: state.note || '',
   });
   const [autoFilled, setAutoFilled] = useState({
     name: !!user?.fullName,
@@ -132,6 +137,7 @@ export default function LongTermFlexibleConfirm() {
         contactName: form.name.trim(),
         contactPhone: form.phone.trim(),
         note: form.note.trim() || undefined,
+        bookingId: existingBookingId || undefined,
       });
       const bookingId = result.bookingId ?? result.BookingId;
       if (!bookingId) {
@@ -381,7 +387,7 @@ export default function LongTermFlexibleConfirm() {
                     disabled={loading}
                     className="btn btn-secondary btn-icon"
                   >
-                    {loading ? 'Đang tạo đơn…' : 'Tiếp theo'} <i className="feather-arrow-right-circle ms-1" />
+              {loading ? (isUpdating ? 'Đang cập nhật…' : 'Đang tạo đơn…') : 'Tiếp theo'} <i className="feather-arrow-right-circle ms-1" />
                   </button>
                 </div>
               </aside>

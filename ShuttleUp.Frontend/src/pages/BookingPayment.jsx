@@ -6,6 +6,7 @@ import {
   submitPayment,
   getVenueCheckoutSettings,
   getBookingPaymentContext,
+  cancelHold,
 } from '../api/bookingApi';
 
 const FALLBACK_BANK = {
@@ -218,6 +219,8 @@ export default function BookingPayment() {
   const [agreedRules, setAgreedRules] = useState(false);
   const [rulesExpanded, setRulesExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const navigateComplete = (payload) => {
     navigate('/booking/complete', {
@@ -686,15 +689,99 @@ export default function BookingPayment() {
             </div>
           </div>
 
-          <div className="text-center btn-row mt-4">
+          <div className="text-center btn-row mt-4 d-flex justify-content-center gap-3">
             <button
               type="button"
-              className="btn btn-outline-secondary me-3 btn-icon"
-              onClick={() => navigate('/user/bookings')}
+              className="btn btn-primary btn-icon"
+              onClick={() => {
+                // Navigate back to the correct Confirm page, passing bookingId
+                const backState = {
+                  ...pay,
+                  bookingId: bookingId || paramBookingId,
+                  customerName: pay.customerName,
+                  customerPhone: pay.customerPhone,
+                  note: pay.note,
+                };
+                if (isLongTermFlow) {
+                  // For long-term flows, navigate to the generic long-term confirm
+                  // The user will need the original schedule state; we pass what we have
+                  navigate('/booking/long-term/confirm', { state: backState, replace: true });
+                } else {
+                  navigate('/booking/confirm', { state: backState, replace: true });
+                }
+              }}
+              disabled={expired || cancelling}
             >
-              <i className="feather-arrow-left-circle me-1" /> Về lịch sử đặt sân
+              <i className="feather-edit me-1" /> Quay lại chỉnh sửa thông tin
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline-danger btn-icon"
+              onClick={() => setShowCancelDialog(true)}
+              disabled={expired || loading || cancelling}
+            >
+              <i className="feather-x-circle me-1" /> Huỷ giữ chỗ
             </button>
           </div>
+
+          {/* Cancel confirmation dialog */}
+          {showCancelDialog && (
+            <div
+              style={{
+                position: 'fixed', inset: 0, zIndex: 9998,
+                background: 'rgba(0,0,0,0.55)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <div
+                className="card text-center p-4"
+                style={{ maxWidth: 420, width: '90%', borderRadius: 16 }}
+              >
+                <div style={{ fontSize: 44, lineHeight: 1, marginBottom: 12, color: '#ef4444' }}>
+                  <i className="feather-alert-triangle" />
+                </div>
+                <h4 className="mb-2">Xác nhận huỷ giữ chỗ?</h4>
+                <p className="text-muted mb-4">
+                  Các khung giờ bạn đã chọn sẽ được giải phóng để người khác đặt.
+                  Bạn sẽ cần thực hiện lại từ đầu nếu muốn đặt sân.
+                </p>
+                <div className="d-flex gap-3 justify-content-center">
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    onClick={() => setShowCancelDialog(false)}
+                    disabled={cancelling}
+                  >
+                    Không, quay lại
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    disabled={cancelling}
+                    onClick={async () => {
+                      setCancelling(true);
+                      try {
+                        await cancelHold(bookingId || paramBookingId);
+                        clearInterval(intervalRef.current);
+                        if (pay.venueId) navigate(`/venues/${pay.venueId}`);
+                        else navigate('/venues');
+                      } catch (e) {
+                        setError(e.response?.data?.message || 'Đã có lỗi khi huỷ giữ chỗ.');
+                        setShowCancelDialog(false);
+                      } finally {
+                        setCancelling(false);
+                      }
+                    }}
+                  >
+                    {cancelling
+                      ? <><span className="spinner-border spinner-border-sm me-2" />Đang huỷ...</>
+                      : 'Xác nhận huỷ'
+                    }
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
         </div>
       </div>

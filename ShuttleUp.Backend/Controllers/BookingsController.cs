@@ -87,6 +87,12 @@ public class BookingsController : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.ContactPhone))
             return BadRequest(new { message = "Vui lòng nhập số điện thoại." });
 
+        // ── Update-in-place: if bookingId is provided, update existing HOLDING record ──
+        if (dto.BookingId.HasValue)
+        {
+            return await UpdateHoldingBookingContact(dto.BookingId.Value, userId, dto.ContactName, dto.ContactPhone, dto.Note);
+        }
+
         var venuePolicy = await _dbContext.Venues
             .AsNoTracking()
             .Where(v => v.Id == dto.VenueId && v.IsActive == true)
@@ -267,6 +273,12 @@ public class BookingsController : ControllerBase
             return BadRequest(new { message = "Vui lòng nhập họ tên." });
         if (string.IsNullOrWhiteSpace(dto.ContactPhone))
             return BadRequest(new { message = "Vui lòng nhập số điện thoại." });
+
+        // ── Update-in-place: if bookingId is provided, update existing HOLDING record ──
+        if (dto.BookingId.HasValue)
+        {
+            return await UpdateHoldingBookingContact(dto.BookingId.Value, userId, dto.ContactName, dto.ContactPhone, dto.Note);
+        }
 
         var built = await BuildLongTermNormalizedAsync(dto, HttpContext.RequestAborted);
         if (built.Error != null)
@@ -449,6 +461,12 @@ public class BookingsController : ControllerBase
             return BadRequest(new { message = "Vui lòng nhập họ tên." });
         if (string.IsNullOrWhiteSpace(dto.ContactPhone))
             return BadRequest(new { message = "Vui lòng nhập số điện thoại." });
+
+        // ── Update-in-place: if bookingId is provided, update existing HOLDING record ──
+        if (dto.BookingId.HasValue)
+        {
+            return await UpdateHoldingBookingContact(dto.BookingId.Value, userId, dto.ContactName, dto.ContactPhone, dto.Note);
+        }
 
         var built = await BuildFlexibleLongTermAsync(dto, HttpContext.RequestAborted);
         if (built.Error != null)
@@ -1094,6 +1112,120 @@ public class BookingsController : ControllerBase
             status = newBookingStatus,
             cancelBranch,
             refundRequestId = refundReq?.Id,
+        });
+    }
+
+    /// <summary>
+    /// Cancel a HOLDING booking immediately, releasing the courts for others.
+    /// Only the owner of the booking can trigger this.
+    /// </summary>
+    [HttpPost("{id:guid}/cancel-hold")]
+    public async Task<IActionResult> CancelHold([FromRoute] Guid id)
+    {
+        if (!TryGetCurrentUserId(out var userId))
+            return Unauthorized(new { message = "Không xác định được người dùng." });
+
+        var booking = await _dbContext.Bookings
+            .Include(b => b.BookingItems)
+            .FirstOrDefaultAsync(b => b.Id == id);
+
+        if (booking == null)
+            return NotFound(new { message = "Không tìm thấy đơn đặt." });
+
+        // Strict ownership validation
+        if (booking.UserId != userId)
+            return Forbid();
+
+        if (booking.Status != "HOLDING")
+            return BadRequest(new { message = "Chỉ có thể huỷ đơn đang giữ chỗ (HOLDING)." });
+
+        booking.Status = "CANCELLED";
+        booking.HoldExpiresAt = null;
+
+        foreach (var item in booking.BookingItems)
+            item.Status = "CANCELLED";
+
+        // Cancel the series too, if any
+        if (booking.SeriesId is { } seriesId)
+        {
+            var series = await _dbContext.BookingSeries.FirstOrDefaultAsync(s => s.Id == seriesId);
+            if (series != null)
+                series.Status = "CANCELLED";
+        }
+
+        // Restore coupon usage if one was applied
+        if (booking.CouponId.HasValue)
+        {
+            var coupon = await _dbContext.VenueCoupons.FirstOrDefaultAsync(c => c.Id == booking.CouponId.Value);
+            if (coupon != null && (coupon.UsedCount ?? 0) > 0)
+                coupon.UsedCount = (coupon.UsedCount ?? 0) - 1;
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "Đã huỷ giữ chỗ thành công. Các khung giờ đã được giải phóng.",
+            bookingId = booking.Id,
+            status = booking.Status,
+        });
+    }
+
+    /// <summary>
+    /// Shared helper: update an existing HOLDING booking's contact info and refresh the hold timer.
+    /// Strictly validates ownership (UserId) and HOLDING status.
+    /// </summary>
+    private async Task<IActionResult> UpdateHoldingBookingContact(
+        Guid bookingId, Guid userId, string contactName, string contactPhone, string? note)
+    {
+        var booking = await _dbContext.Bookings
+            .Include(b => b.BookingItems).ThenInclude(bi => bi.Court)
+            .FirstOrDefaultAsync(b => b.Id == bookingId);
+
+        if (booking == null)
+            return NotFound(new { message = "Không tìm thấy đơn đặt." });
+
+        // Strict ownership validation
+        if (booking.UserId != userId)
+            return Forbid();
+
+        if (booking.Status != "HOLDING")
+            return BadRequest(new { message = "Chỉ có thể cập nhật đơn đang giữ chỗ (HOLDING)." });
+
+        if (booking.HoldExpiresAt != null && booking.HoldExpiresAt <= DateTime.UtcNow)
+            return BadRequest(new { message = "Thời gian giữ chỗ đã hết. Vui lòng đặt lại.", code = "HOLD_EXPIRED" });
+
+        // Update contact info
+        booking.ContactName = contactName.Trim();
+        booking.ContactPhone = contactPhone.Trim();
+        booking.GuestNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+
+        // Refresh hold timer to a new 5-minute window
+        var holdExpiry = DateTime.UtcNow.AddMinutes(5);
+        booking.HoldExpiresAt = holdExpiry;
+
+        await _dbContext.SaveChangesAsync();
+
+        var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
+
+        return Ok(new
+        {
+            bookingId = booking.Id,
+            bookingCode = code,
+            status = booking.Status,
+            holdExpiresAt = DateTime.SpecifyKind(holdExpiry, DateTimeKind.Utc),
+            totalAmount = booking.TotalAmount,
+            finalAmount = booking.FinalAmount,
+            items = booking.BookingItems.Select(bi => new BookingItemResponseDto
+            {
+                Id = bi.Id,
+                CourtId = bi.CourtId ?? Guid.Empty,
+                CourtName = bi.Court?.Name,
+                StartTime = bi.StartTime ?? default,
+                EndTime = bi.EndTime ?? default,
+                FinalPrice = bi.FinalPrice ?? 0,
+                Status = bi.Status
+            }).ToList(),
         });
     }
 
