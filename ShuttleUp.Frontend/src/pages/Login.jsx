@@ -5,6 +5,8 @@ import { loginEmail, loginGoogle } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
 import { managerProfileApi } from '../api/managerProfileApi';
 import { profileApi } from '../api/profileApi';
+import { notifySuccess } from '../hooks/useNotification';
+import { TOAST } from '../constants/toastMessages';
 
 export default function Login() {
   const saved = JSON.parse(localStorage.getItem('shuttleup_remember') || 'null');
@@ -57,8 +59,8 @@ export default function Login() {
   // ── Đường dẫn sau khi login xong (ưu tiên returnUrl từ ProtectedRoute) ─────
   const redirectAfterLogin = (roles, userData) => {
     const tab = activeTabRef.current;
+    notifySuccess(TOAST.GUEST.LOGIN_SUCCESS);
 
-    // Kiểm tra Player chưa cá nhân hoá → bắt buộc đến trang Personalization
     const isPlayer = roles?.includes('PLAYER');
     const isManagerTab = tab === 'manager';
     if (isPlayer && !isManagerTab) {

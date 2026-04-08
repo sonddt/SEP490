@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, Link } from 'react-router-dom';
 import { getVenueCoupons, createVenueCoupon, updateVenueCoupon, deleteVenueCoupon } from '../../api/managerCouponsApi';
-import { toast } from 'react-toastify';
+import { notifySuccess, notifyError } from '../../hooks/useNotification';
 import axiosClient from '../../api/axiosClient';
 import ShuttleDateField, { ShuttleTimePicker, toYMD } from '../../components/ui/ShuttleDateField';
 
@@ -53,7 +53,7 @@ export default function ManagerCoupons() {
       }
     } catch (err) {
       console.error(err);
-      toast.error('Không thể tải dữ liệu khuyến mãi.');
+      notifyError('Không thể tải dữ liệu khuyến mãi.');
     } finally {
       setLoading(false);
     }
@@ -79,12 +79,12 @@ export default function ManagerCoupons() {
       };
 
       await axiosClient.put(`/manager/venues/${venueId}`, request);
-      toast.success('Đã lưu cấu hình giảm giá mặc định!');
+      notifySuccess('Đã lưu cấu hình giảm giá mặc định!');
       setIsEditingDefault(false);
       setVenue({ ...venue, ...request });
     } catch (err) {
       console.error('Submit venue failed', err);
-      toast.error('Lưu giảm giá thất bại. Vui lòng thử lại.');
+      notifyError('Lưu giảm giá thất bại. Vui lòng thử lại.');
     } finally {
       setSavingDefault(false);
     }
@@ -186,10 +186,10 @@ export default function ManagerCoupons() {
       setSubmitting(true);
       if (editingCoupon) {
         await updateVenueCoupon(venueId, editingCoupon.id || editingCoupon.Id, payload);
-        toast.success('Đã cập nhật mã khuyến mãi!');
+        notifySuccess('Đã cập nhật mã khuyến mãi!');
       } else {
         await createVenueCoupon(venueId, payload);
-        toast.success('Đã thêm mã khuyến mãi!');
+        notifySuccess('Đã thêm mã khuyến mãi!');
       }
       setShowModal(false);
       setFormError('');
@@ -198,7 +198,7 @@ export default function ManagerCoupons() {
       console.error(err);
       const msg = err.response?.data?.message || 'Có lỗi xảy ra khi lưu mã khuyến mãi.';
       setFormError(msg);
-      toast.error(msg);
+      notifyError(msg);
     } finally {
       setSubmitting(false);
     }
@@ -208,11 +208,11 @@ export default function ManagerCoupons() {
     if (!window.confirm('Bạn có chắc chắn muốn xóa mã khuyến mãi này không?')) return;
     try {
       await deleteVenueCoupon(venueId, cpId);
-      toast.success('Đã xóa thành công');
+      notifySuccess('Đã xóa thành công');
       loadData();
     } catch (err) {
       console.error(err);
-      toast.error('Không thể xóa mã khuyến mãi do đã có dữ liệu liên quan. Vui lòng chuyển trạng thái sang Không hoạt động thay vì xóa.');
+      notifyError('Không thể xóa mã khuyến mãi do đã có dữ liệu liên quan. Vui lòng chuyển trạng thái sang Không hoạt động thay vì xóa.');
     }
   };
 

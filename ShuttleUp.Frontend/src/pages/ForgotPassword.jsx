@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { forgotPassword } from '../api/authApi';
+import { notifySuccess } from '../hooks/useNotification';
+import { TOAST } from '../constants/toastMessages';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -15,6 +17,7 @@ export default function ForgotPassword() {
     try {
       await forgotPassword(email);
       setSuccess(true);
+      notifySuccess(TOAST.GUEST.FORGOT_PASSWORD_SENT);
     } catch (err) {
       setError(err.response?.data?.message ?? 'Oops... Không thể kết nối đến máy chủ. Bạn thử lại nha.');
     } finally {

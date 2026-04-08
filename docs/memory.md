@@ -170,5 +170,29 @@ Kết bạn & quan hệ xã hội (Player):
 
 ---
 
+## 7 tháng 4, 2026 (Chính sách sân, Toast hệ thống, Xác minh bank)
+
+### A. Venue Policy & Rules System (hoàn thiện)
+
+1. **Database / Backend**: `venue_rules` (TEXT) đã có trong `Database.txt` + Venue model (DAL & Backend). `VenueCheckoutSettingsDto` có trường `VenueRules`; s`PutCheckoutSettings` dùng `SanitizeText(…, 5000)` strip HTML. Checkout GET (cả public và manager) trả `venueRules`.
+2. **Manager UI (`ManagerVenuePolicySettings.jsx`)**: Textarea "Quy định chung tại sân" + nút "Sử dụng mẫu quy định chung" (5 quy tắc mẫu). Có khối refund policy cố định (100% hoàn thủ công khi sân hủy). Preview bên phải real-time.
+3. **Player UI (`BookingPayment.jsx`)**: Hiển thị `venueRules` + chính sách hủy trong accordion "Quy định sân & Chính sách hoàn tiền". Checkbox bắt buộc "Tôi đã đọc và đồng ý…". Nút thanh toán **disabled** cho đến khi tick cả checkbox quy định sân lẫn checkbox điều khoản dịch vụ.
+
+### B. Global Toast Notification System
+
+1. **Hạ tầng**: Dùng `react-toastify` (đã có). `ToastContainer` trong `App.jsx` đặt top-right, auto-dismiss 4s, limit 5, newestOnTop.
+2. **Hook `useNotification.js`**: export `notify(type, msg, opts)`, `notifySuccess`, `notifyError`, `notifyWarning`, `notifyInfo`. Dùng được cả hook (`useNotification()`) lẫn import trực tiếp hàm.
+3. **Notification Content Library (`constants/toastMessages.js`)**: Đối tượng `TOAST` phân theo role — `GUEST` (login/register/reset), `PLAYER` (booking/cancel/matching/refund), `MANAGER` (orders/venue/settings/refund), `ADMIN` (lock/unlock/request).
+4. **Axios Interceptor (`axiosClient.js`)**: Response interceptor tự hiện error toast khi status 400/401/403/500, trích `message` từ body. Hỗ trợ `_silenceToast: true` trên config request để tắt toast cho call cụ thể.
+5. **Migration toast cũ → mới**: `useAppNotificationsHub` → `notifyInfo`/`notifySuccess`; `ManagerFeaturedPosts`, `ManagerCoupons` → `notifySuccess`/`notifyError`; `RelationshipActions`, `UserSocialFriends`, `UserSocialSearch`, `ChatProvider` → `notifySuccess`/`notifyWarning`/`notifyInfo`; `Login` + `Register` + `ForgotPassword` → `notifySuccess` + `TOAST.*` messages.
+
+### C. Bank Lookup Refinement
+
+1. **Xác minh STK (`ManagerPaymentSettings.jsx`)**: Nút "Xác minh" đặt cạnh ô số tài khoản (thay vì chỉ ở chủ TK). Gọi `lookupBankAccount` (VietQR) — tự điền tên chủ TK nếu thành công.
+2. **Account Holder luôn editable**: Nếu lookup fail / chưa cấu hình → chủ TK vẫn sửa tự do. Badge trạng thái (success / not_found / unavailable / error) hiện cạnh label.
+3. **Sandbox**: Backend giữ nguyên logic `AccountNumber == "999999"` → trả `NGUYEN VAN TEST (SANDBOX)` không gọi API.
+
+---
+
 *Cập nhật: gom theo ngày, bỏ trùng lặp và định dạng lại cho dễ đọc.*
 

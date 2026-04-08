@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import UserDashboardMenu from '../../components/user/UserDashboardMenu';
 import RelationshipActions from '../../components/user/RelationshipActions';
 import socialApi from '../../api/socialApi';
-import { showBkToast } from '../../utils/bkToast';
+import { notifyWarning } from '../../hooks/useNotification';
 
 const TABS = [
   { key: 'friends', label: 'Bạn bè' },
@@ -38,7 +38,7 @@ export default function UserSocialFriends() {
       setIncoming(Array.isArray(inc) ? inc : []);
       setSent(Array.isArray(s) ? s : []);
     } catch (e) {
-      showBkToast(e?.response?.data?.message || 'Không tải được danh sách.', 'warning');
+      notifyWarning(e?.response?.data?.message || 'Không tải được danh sách.');
     } finally {
       setLoading(false);
     }

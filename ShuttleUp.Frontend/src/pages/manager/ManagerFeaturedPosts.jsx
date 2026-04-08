@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { toast } from 'react-toastify';
+import { notifySuccess, notifyError } from '../../hooks/useNotification';
 import axiosClient from '../../api/axiosClient';
 import ShuttleDateField, { ShuttleTimePicker, toYMD } from '../../components/ui/ShuttleDateField';
 
@@ -380,10 +380,10 @@ export default function ManagerFeaturedPosts() {
     try {
       if (editingId) {
         await axiosClient.put(`/manager/featured-posts/${editingId}`, body);
-        toast.success('Đã cập nhật bài đăng!');
+        notifySuccess('Đã cập nhật bài đăng!');
       } else {
         await axiosClient.post('/manager/featured-posts', body);
-        toast.success('Đã tạo bài đăng mới!');
+        notifySuccess('Đã tạo bài đăng mới!');
       }
       setModalOpen(false);
       load();
@@ -398,10 +398,10 @@ export default function ManagerFeaturedPosts() {
     if (!window.confirm('Xoá bài đăng này?')) return;
     try {
       await axiosClient.delete(`/manager/featured-posts/${id}`);
-      toast.success('Đã xoá bài đăng.');
+      notifySuccess('Đã xoá bài đăng.');
       load();
     } catch (e) {
-      toast.error(e.response?.data?.message || e.message);
+      notifyError(e.response?.data?.message || e.message);
     }
   };
 

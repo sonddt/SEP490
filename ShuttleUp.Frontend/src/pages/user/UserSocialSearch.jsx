@@ -7,7 +7,7 @@ import RelationshipActions from '../../components/user/RelationshipActions';
 import socialApi from '../../api/socialApi';
 import { useAuth } from '../../context/AuthContext';
 import { buildProfileShareUrl, getProfileUserIdFromDecodedQr } from '../../utils/profileQr';
-import { showBkToast } from '../../utils/bkToast';
+import { notifySuccess, notifyWarning, notifyInfo } from '../../hooks/useNotification';
 
 export default function UserSocialSearch() {
   const navigate = useNavigate();
@@ -36,7 +36,7 @@ export default function UserSocialSearch() {
           allowFindByPhone: !!p.allowFindByPhone,
         });
       } catch {
-        if (m) showBkToast('Chưa tải được cài đặt riêng tư — bạn vẫn có thể tìm kiếm.', 'info');
+        if (m) notifyInfo('Chưa tải được cài đặt riêng tư — bạn vẫn có thể tìm kiếm.');
       } finally {
         if (m) setPrivacyLoaded(true);
       }
@@ -63,7 +63,7 @@ export default function UserSocialSearch() {
       const data = await socialApi.searchExact(q);
       setResults(Array.isArray(data) ? data : []);
     } catch (e) {
-      showBkToast(e?.response?.data?.message || 'Không tìm được lúc này.', 'warning');
+      notifyWarning(e?.response?.data?.message || 'Không tìm được lúc này.');
       setResults([]);
     } finally {
       setSearching(false);
@@ -86,7 +86,7 @@ export default function UserSocialSearch() {
       } catch {
         if (!cancelled) {
           setResults([]);
-          showBkToast('Gợi ý tên chưa tải được — thử lại sau vài giây.', 'warning');
+          notifyWarning('Gợi ý tên chưa tải được — thử lại sau vài giây.');
         }
       } finally {
         if (!cancelled) setSearching(false);
@@ -102,9 +102,9 @@ export default function UserSocialSearch() {
   const savePrivacy = async () => {
     try {
       await socialApi.putPrivacy(privacy);
-      showBkToast('Đã lưu cài đặt riêng tư.', 'success');
+      notifySuccess('Đã lưu cài đặt riêng tư.');
     } catch (e) {
-      showBkToast(e?.response?.data?.message || 'Chưa lưu được — thử lại nhé.', 'warning');
+      notifyWarning(e?.response?.data?.message || 'Chưa lưu được — thử lại nhé.');
     }
   };
 
@@ -122,27 +122,27 @@ export default function UserSocialSearch() {
           canvas.height = img.naturalHeight;
           const ctx = canvas.getContext('2d');
           if (!ctx) {
-            showBkToast('Trình duyệt chưa hỗ trợ đọc ảnh này.', 'warning');
+            notifyWarning('Trình duyệt chưa hỗ trợ đọc ảnh này.');
             return;
           }
           ctx.drawImage(img, 0, 0);
           const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
           const code = jsQR(imageData.data, imageData.width, imageData.height);
           if (!code?.data) {
-            showBkToast('Chưa đọc được mã trong ảnh — thử ảnh rõ hơn nhé.', 'info');
+            notifyInfo('Chưa đọc được mã trong ảnh — thử ảnh rõ hơn nhé.');
             return;
           }
           const uid = getProfileUserIdFromDecodedQr(code.data);
           if (!uid) {
-            showBkToast('Liên kết trong mã không thuộc hồ sơ ShuttleUp.', 'info');
+            notifyInfo('Liên kết trong mã không thuộc hồ sơ ShuttleUp.');
             return;
           }
           navigate(`/user/profile/${uid}`);
         };
-        img.onerror = () => showBkToast('Không mở được file ảnh.', 'warning');
+        img.onerror = () => notifyWarning('Không mở được file ảnh.');
         img.src = reader.result;
       };
-      reader.onerror = () => showBkToast('Không đọc được file.', 'warning');
+      reader.onerror = () => notifyWarning('Không đọc được file.');
       reader.readAsDataURL(file);
     },
     [navigate]

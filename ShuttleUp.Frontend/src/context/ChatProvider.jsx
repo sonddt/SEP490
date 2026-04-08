@@ -4,7 +4,7 @@ import { useAuth } from './AuthContext';
 import chatApi from '../api/chatApi';
 import { findDirectRoom, roomIdOf } from '../utils/chatDirectRoom';
 import { getChatHubUrl } from '../utils/chatHubUrl';
-import { showBkToast } from '../utils/bkToast';
+import { notifyInfo, notifyWarning } from '../hooks/useNotification';
 import ChatDock from '../components/chat/ChatDock';
 import { ChatContext } from './chatContext';
 
@@ -174,7 +174,7 @@ export function ChatProvider({ children }) {
     async ({ userId, fullName, avatarUrl }) => {
       if (!user?.id || !userId) return;
       if (String(userId) === String(user.id)) {
-        showBkToast('Không thể chat với chính mình.', 'info');
+        notifyInfo('Không thể chat với chính mình.');
         return;
       }
       setOpeningPeerId(String(userId));
@@ -226,7 +226,7 @@ export function ChatProvider({ children }) {
           e?.response?.data?.message ||
           e?.message ||
           'Không mở được cuộc trò chuyện.';
-        showBkToast(msg, 'warning');
+        notifyWarning(msg);
       } finally {
         setOpeningPeerId(null);
       }
