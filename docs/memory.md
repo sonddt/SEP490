@@ -238,3 +238,20 @@ Kết bạn & quan hệ xã hội (Player):
 
 *Cập nhật: gom theo ngày, bỏ trùng lặp và định dạng lại cho dễ đọc.*
 
+## 8 tháng 4, 2026 (Tối ưu Responsive Manager & Booking Tabs)
+
+1. **Sửa lỗi Sidebar mobile ẩn không hết**: 
+   - Điều chỉnh `translateX` từ `-100%` thành `calc(-100% - 30px)` trong `index.css`.
+   - Việc dịch thêm 30px giúp che hoàn toàn phần đổ bóng (box-shadow) và dải màu xanh còn sót lại do layout có lề `14px`.
+2. **Triệt tiêu Scroll ngang trên Manager Dashboard**:
+   - Khóa chiều rộng `.mgr-content` bằng `width` và `max-width` dùng `calc(100% - var(--mgr-sidebar-w) - 28px)`.
+   - Thêm `overflow-x: hidden` cho `.mgr-layout` và `.mgr-content` để đảm bảo bảng dữ liệu (table-responsive) không bao giờ đẩy vỡ khung nhìn chính.
+3. **Tối ưu Tab Booking trên Mobile (`ManagerBookings.jsx`)**:
+   - Màn hình < 768px: Thu nhỏ font (12px), padding (6px 10px) và ép `flex-wrap: wrap` để các tab xuống dòng tự nhiên.
+   - Màn hình < 480px: Chuyển sang giao diện **Grid 2x2** (`grid-template-columns: 1fr 1fr`).
+   - Các nút "Chờ duyệt", "Sắp tới", "Hoàn thành", "Đã huỷ" được căn giữa, chiếm đều không gian, giúp giao diện gọn gàng và dễ bấm trên điện thoại nhỏ.
+
+---
+
+*Cập nhật: gom theo ngày, bổ sung các tinh chỉnh responsive quan trọng ngăn layout bị vỡ trên mobile/Laptop L.*
+

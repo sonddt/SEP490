@@ -43,6 +43,8 @@ function Pagination({ page, totalPages, onChange }) {
 export default function ManagerVenueCourts() {
   const { venueId } = useParams();
   const [courts, setCourts] = useState([]);
+  const [venueName, setVenueName] = useState('');
+  const [venueAddress, setVenueAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const [filterTab, setFilterTab] = useState('all');
   const [search, setSearch] = useState('');
@@ -64,7 +66,10 @@ export default function ManagerVenueCourts() {
         setLoading(true);
         const res = await axiosClient.get(`/manager/venues/${venueId}/courts?page=1&pageSize=100`);
         if (!mounted) return;
-        setCourts(res?.items || res?.data?.items || []);
+        const data = res?.data ?? res;
+        setCourts(data?.items || []);
+        if (data?.venueName) setVenueName(data.venueName);
+        if (data?.venueAddress) setVenueAddress(data.venueAddress);
       } catch (e) {
         console.error('Failed to load courts', e);
       } finally {
@@ -170,10 +175,10 @@ export default function ManagerVenueCourts() {
             <i className="feather-arrow-left" />
           </Link>
           <div>
-            <h2 className="vc-hero__title">Quản lý Sân con</h2>
+            <h2 className="vc-hero__title">{venueName || 'Quản lý Sân con'}</h2>
             <p className="vc-hero__sub">
               <i className="feather-map-pin" style={{ fontSize: 13 }} />
-              Cụm sân · {courts.length} sân
+              {venueAddress || 'Cụm sân'} · {courts.length} sân
             </p>
           </div>
         </div>

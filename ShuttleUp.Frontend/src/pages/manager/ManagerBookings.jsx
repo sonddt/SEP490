@@ -358,32 +358,29 @@ export default function ManagerBookings() {
       <div className="card card-tableset border-0">
         <div className="card-body">
           {/* Tabs + Filters header */}
-          <div className="coache-head-blk">
-            <div className="row align-items-center">
-              <div className="col-lg-5">
-                <div className="court-table-head">
-                  <h4>Quản lý đặt sân</h4>
-                  <p>{processed.length} lịch đặt · {pageItems.length} hiển thị</p>
-                </div>
+          <div className="coache-head-blk pb-3">
+            <div className="d-flex flex-column flex-lg-row align-items-lg-center gap-3 gap-lg-4">
+              <div className="court-table-head mb-0">
+                <h4 style={{ whiteSpace: 'nowrap' }}>Quản lý đặt sân</h4>
+                <p style={{ whiteSpace: 'nowrap', margin: 0 }}>{processed.length} lịch đặt · {pageItems.length} hiển thị</p>
               </div>
-              <div className="col-lg-7">
-                <div className="coach-court-list">
-                  <ul className="nav">
-                    {TABS.map(tab => (
-                      <li key={tab.key}>
-                        <button
-                          type="button"
-                          className={activeTab === tab.key ? 'active' : ''}
-                          onClick={() => setActiveTab(tab.key)}
-                        >
-                          <i className={tab.icon} style={{ fontSize: 14 }} />
-                          {tab.label}
-                          <span className="bk-tab-count">{counts[tab.key] || 0}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+              <div className="coach-court-list">
+                <ul className="nav d-flex flex-wrap gap-2 m-0 p-0" style={{ listStyle: 'none' }}>
+                  {TABS.map(tab => (
+                    <li key={tab.key} style={{ margin: 0, padding: 0, flex: '0 0 auto', width: 'max-content' }}>
+                      <button
+                        type="button"
+                        className={activeTab === tab.key ? 'active' : ''}
+                        onClick={() => setActiveTab(tab.key)}
+                        style={{ width: '100%' }}
+                      >
+                        <i className={tab.icon} style={{ fontSize: 14 }} />
+                        {tab.label}
+                        <span className="bk-tab-count">{counts[tab.key] || 0}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
           </div>
