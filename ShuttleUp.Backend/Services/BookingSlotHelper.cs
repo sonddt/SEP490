@@ -146,7 +146,8 @@ public static class BookingSlotHelper
         ShuttleUpDbContext db,
         List<Guid> courtIds,
         List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)> normalizedItems,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Guid? excludeBookingId = null)
     {
         if (normalizedItems.Count == 0)
             return null;
@@ -156,7 +157,7 @@ public static class BookingSlotHelper
 
         var now = DateTime.UtcNow;
 
-        var existingItems = await db.BookingItems
+        var query = db.BookingItems
             .AsNoTracking()
             .Include(bi => bi.Booking)
             .Where(bi => bi.CourtId != null
@@ -165,8 +166,13 @@ public static class BookingSlotHelper
                          && bi.Booking != null
                          && bi.Booking.Status != "CANCELLED"
                          && (bi.Booking.Status != "HOLDING"
-                             || (bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now)))
-            .ToListAsync(cancellationToken);
+                             || (bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now)));
+
+        // Exclude the booking's own items so it doesn't conflict with itself during update-in-place
+        if (excludeBookingId.HasValue)
+            query = query.Where(bi => bi.BookingId != excludeBookingId.Value);
+
+        var existingItems = await query.ToListAsync(cancellationToken);
 
         foreach (var bi in existingItems)
         {

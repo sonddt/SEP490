@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import BookingSteps from '../components/booking/BookingSteps';
 import { useAuth } from '../context/AuthContext';
 import { profileApi } from '../api/profileApi';
@@ -29,6 +29,11 @@ export default function BookingConfirm() {
     totalHours   = '0h',
   } = state;
 
+  // Detect bookingId from state (passed back from Payment page) or URL search params (browser back button)
+  const [searchParams] = useSearchParams();
+  const existingBookingId = state.bookingId || searchParams.get('bookingId') || null;
+  const isUpdating = !!existingBookingId;
+
   // Group slots by court (giữ object để lấy đúng khoảng bắt đầu–kết thúc)
   const slotsByCourt = useMemo(() => {
     const map = {};
@@ -44,9 +49,9 @@ export default function BookingConfirm() {
 
   // Pre-fill từ AuthContext + GET /profile/me (axios baseURL đã có /api — không gọi /api/api/...)
   const [form, setForm] = useState({
-    name:  user?.fullName ?? '',
-    phone: (user?.phoneNumber ?? '').trim(),
-    note:  '',
+    name:  state.customerName || (user?.fullName ?? ''),
+    phone: (state.customerPhone || (user?.phoneNumber ?? '')).trim(),
+    note:  state.note || '',
   });
   const [autoFilled, setAutoFilled] = useState({
     name: !!user?.fullName,
@@ -159,6 +164,7 @@ export default function BookingConfirm() {
         contactPhone: form.phone.trim(),
         note: form.note.trim() || undefined,
         couponCode: appliedCoupon || undefined,
+        bookingId: existingBookingId || undefined,
       });
       const bookingId = created.bookingId ?? created.BookingId;
       if (!bookingId) { setSubmitError('Phản hồi server không có mã đơn.'); setLoading(false); return; }
@@ -432,7 +438,7 @@ export default function BookingConfirm() {
                     disabled={loading}
                     className="btn btn-secondary btn-icon"
                   >
-                    {loading ? 'Đang tạo đơn…' : 'Tiếp theo'} <i className="feather-arrow-right-circle ms-1" />
+                    {loading ? (isUpdating ? 'Đang cập nhật…' : 'Đang tạo đơn…') : 'Tiếp theo'} <i className="feather-arrow-right-circle ms-1" />
                   </button>
                 </div>
               </aside>

@@ -69,3 +69,8 @@ export function getBookingPaymentContext(bookingId) {
 export function previewDiscount(payload) {
   return axiosClient.post('/bookings/preview-discount', payload);
 }
+
+/** @param {string} bookingId — Cancel a HOLDING booking immediately */
+export function cancelHold(bookingId) {
+  return axiosClient.post(`/bookings/${bookingId}/cancel-hold`);
+}
