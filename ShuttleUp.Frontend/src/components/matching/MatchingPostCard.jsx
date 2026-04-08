@@ -154,9 +154,9 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
     return (
       <>
       <div className="col-12 mb-4">
-        <div style={{ display: 'flex', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', overflow: 'hidden', transition: 'all 0.3s' }}>
+        <div className="matching-list-card" style={{ display: 'flex', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', overflow: 'hidden', transition: 'all 0.3s' }}>
           {/* Image Side */}
-          <div style={{ width: '280px', position: 'relative', flexShrink: 0 }}>
+          <div className="matching-list-card-img" style={{ width: '280px', position: 'relative', flexShrink: 0 }}>
             <Link to={`/matching/${post.id}`} style={{ display: 'block', height: '100%' }}>
               <img src={defaultImg} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={post.title} />
             </Link>
@@ -200,9 +200,9 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
           </div>
 
           {/* Content Side */}
-          <div style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column' }}>
+          <div className="matching-list-card-body" style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             <div style={{ marginBottom: '16px' }}>
-              <h4 style={{ fontSize: '20px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>
+              <h4 style={{ fontSize: '20px', fontWeight: '700', color: '#1e293b', marginBottom: '8px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                 <Link to={`/matching/${post.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{post.title}</Link>
               </h4>
               <div style={{ display: 'flex', gap: '16px', color: '#64748b', fontSize: '14px', fontWeight: '600', flexWrap: 'wrap' }}>
@@ -335,7 +335,7 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
 
         {/* ── Content ── */}
         <div className="matching-card-body" style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <h4 style={{ fontSize: '18px', fontWeight: '800', color: '#1e293b', marginBottom: '12px', lineHeight: '1.4' }}>
+          <h4 style={{ fontSize: '18px', fontWeight: '800', color: '#1e293b', marginBottom: '12px', lineHeight: '1.4', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
             <Link to={`/matching/${post.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{post.title}</Link>
           </h4>
           

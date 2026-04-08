@@ -14,6 +14,7 @@ using ShuttleUp.Backend.Configurations;
 using ShuttleUp.Backend.Constants;
 using ShuttleUp.Backend.Services.Interfaces;
 using ShuttleUp.BLL.DTOs.Manager;
+using ShuttleUp.BLL.DTOs.Review;
 using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.DAL.Models;
 
@@ -30,6 +31,7 @@ public class ManagerVenuesController : ControllerBase
     private readonly IConfiguration _config;
     private readonly VietQRSettings _vietQrSettings;
     private readonly INotificationDispatchService _notify;
+    private readonly IVenueReviewService _venueReviewService;
 
     public ManagerVenuesController(
         IVenueService venueService,
@@ -37,7 +39,8 @@ public class ManagerVenuesController : ControllerBase
         ShuttleUpDbContext dbContext,
         IConfiguration config,
         IOptions<VietQRSettings> vietQrOptions,
-        INotificationDispatchService notify)
+        INotificationDispatchService notify,
+        IVenueReviewService venueReviewService)
     {
         _venueService = venueService;
         _courtService = courtService;
@@ -45,12 +48,73 @@ public class ManagerVenuesController : ControllerBase
         _config = config;
         _vietQrSettings = vietQrOptions.Value;
         _notify = notify;
+        _venueReviewService = venueReviewService;
     }
 
     public class CourtStatusUpdateDto
     {
         public bool IsActive { get; set; }
         public bool Force { get; set; }
+    }
+
+    // =====================================================================
+    // REVIEWS — Phản hồi đánh giá (chủ sân)
+    // =====================================================================
+
+    /// <summary>Chủ sân trả lời một đánh giá (public ngay).</summary>
+    [HttpPut("{venueId:guid}/reviews/{reviewId:guid}/reply")]
+    public async Task<IActionResult> ReplyToVenueReview(
+        [FromRoute] Guid venueId,
+        [FromRoute] Guid reviewId,
+        [FromBody] OwnerReplyRequestDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var managerId = GetCurrentUserId();
+        if (managerId == Guid.Empty)
+            return Unauthorized(new { message = "Không xác định được người dùng hiện tại." });
+
+        var venue = await _venueService.GetByIdAsync(venueId);
+        if (venue == null)
+            return NotFound(new { message = "Venue không tồn tại." });
+        if (venue.OwnerUserId != managerId)
+            return Forbid();
+
+        var reviewExists = await _dbContext.VenueReviews
+            .AsNoTracking()
+            .AnyAsync(r => r.Id == reviewId && r.VenueId == venueId);
+        if (!reviewExists)
+            return NotFound(new { message = "Không tìm thấy đánh giá." });
+
+        try
+        {
+            var result = await _venueReviewService.SetOwnerReplyAsync(reviewId, dto.Reply);
+            var replyTrim = (dto.Reply ?? string.Empty).Trim();
+            if (replyTrim.Length > 0 && result.UserId != managerId)
+            {
+                var venueName = venue.Name ?? "Sân";
+                await _notify.NotifyUserAsync(
+                    result.UserId,
+                    NotificationTypes.VenueReviewReply,
+                    "Chủ sân đã phản hồi đánh giá của bạn",
+                    $"{venueName} vừa trả lời đánh giá của bạn.",
+                    new
+                    {
+                        deepLink = $"/venue-details/{venueId}#reviews",
+                        venueId,
+                        reviewId,
+                    },
+                    sendEmail: false,
+                    cancellationToken: HttpContext.RequestAborted);
+            }
+
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     // =====================================================================

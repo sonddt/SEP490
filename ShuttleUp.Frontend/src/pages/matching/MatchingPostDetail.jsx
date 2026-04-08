@@ -328,7 +328,7 @@ export default function MatchingPostDetail() {
              <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
                 <img src={post.host?.avatarUrl || defaultAvatar} alt={post.host?.fullName} style={{ width: '80px', height: '80px', borderRadius: '16px', objectFit: 'cover', border: '3px solid #e8f5ee', boxShadow: '0 2px 10px rgba(9,126,82,0.1)' }} />
                 <div>
-                  <h3 style={{ fontSize: '26px', fontWeight: '700', color: '#1e293b', marginBottom: '8px', letterSpacing: '-0.5px' }}>{post.title}</h3>
+                  <h3 style={{ fontSize: '26px', fontWeight: '700', color: '#1e293b', marginBottom: '8px', letterSpacing: '-0.5px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{post.title}</h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '15px', fontWeight: '700', color: '#097E52' }}><i className="feather-user me-1"></i> {post.host?.fullName}</span>
                     <span style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: '#cbd5e1' }}></span>
@@ -426,7 +426,7 @@ export default function MatchingPostDetail() {
                 {post.notes && (
                   <div style={{ borderTop: '1px dashed #e2e8f0', padding: '24px 32px' }}>
                      <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}><i className="feather-feather me-2"></i>Ghi chú từ chủ nhóm</div>
-                     <div style={{ backgroundColor: '#fffbeb', color: '#b45309', padding: '16px 20px', borderRadius: '12px', fontSize: '14.5px', fontWeight: '500', lineHeight: '1.6' }}>
+                     <div style={{ backgroundColor: '#fffbeb', color: '#b45309', padding: '16px 20px', borderRadius: '12px', fontSize: '14.5px', fontWeight: '500', lineHeight: '1.6', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                         {post.notes}
                      </div>
                   </div>

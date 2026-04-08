@@ -9,6 +9,14 @@ public class ReviewResponseDto
     public int Stars { get; set; }
     public string? Comment { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    public List<string> ImageUrls { get; set; } = [];
+
+    /// <summary>Id file ảnh (để form sửa gửi lại khi thay ảnh).</summary>
+    public List<Guid> FileIds { get; set; } = [];
+
+    public string? OwnerReply { get; set; }
+    public DateTime? OwnerReplyAt { get; set; }
 }
 
 public class VenueRatingSummaryDto
