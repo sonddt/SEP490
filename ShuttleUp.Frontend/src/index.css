@@ -1025,11 +1025,22 @@ a:active {
   .mgr-page .btn{font-size:13px;padding:8px 14px}
   .mgr-page .btn-sm{font-size:12px;padding:6px 11px}
   .mgr-filter-tabs{overflow-x:auto;white-space:nowrap;width:100%;-webkit-overflow-scrolling:touch}
+  /* Tab pills compact on mobile */
+  .mgr-page .coach-court-list .nav{flex-wrap:wrap!important;gap:6px!important;overflow:visible}
+  .mgr-page .coach-court-list .nav a,
+  .mgr-page .coach-court-list .nav button{padding:6px 10px!important;font-size:12px!important;gap:4px!important}
+  .mgr-page .coach-court-list .bk-tab-count{min-width:16px;height:16px;font-size:9px;padding:0 4px}
+  .mgr-page .coache-head-blk{padding:14px 14px 0!important}
 }
 
 @media (max-width:479px){
   .bk-stats-strip{flex-direction:column}
   .bk-stat-card{flex:unset;width:100%}
+  /* 2-column tab grid on very small screens */
+  .mgr-page .coach-court-list .nav{display:grid!important;grid-template-columns:1fr 1fr;gap:6px!important}
+  .mgr-page .coach-court-list .nav li{width:100%!important;flex:unset!important}
+  .mgr-page .coach-court-list .nav a,
+  .mgr-page .coach-court-list .nav button{width:100%!important;justify-content:center;padding:8px 6px!important;font-size:11.5px!important}
 }
 
 /* ── 2K / Large Screen Scaling (1440px+) ────────────────────────────────── */
