@@ -22,6 +22,12 @@ import {
 
 const MapPicker = lazy(() => import('../../components/common/MapPicker'));
 
+const DEFAULT_RULES_TEMPLATE = `1. Vui lòng sử dụng giày chuyên dụng (đế keo) để bảo vệ mặt thảm.
+2. Không mang đồ ăn, thức uống có màu hoặc kẹo cao su vào khu vực thảm đấu.
+3. Không hút thuốc lá và sử dụng chất kích thích trong khuôn viên sân.
+4. Vui lòng có mặt trước 10 phút để nhận sân và đảm bảo trật tự.
+5. Tự bảo quản tài sản cá nhân; sân không chịu trách nhiệm nếu xảy ra mất mát.`;
+
 export const AMENITIES_LIST = [
   { key: 'parking',       label: 'Bãi đỗ xe',                  icon: 'feather-map-pin' },
   { key: 'water',         label: 'Nước uống',                   icon: 'feather-droplet' },
@@ -383,6 +389,20 @@ export default function ManagerAddVenue() {
     }
     return errors;
   }, [policyForm.refundType, policyForm.refundPercent]);
+
+  const handleUseRulesTemplate = useCallback(() => {
+    if ((policyForm.venueRules || '').trim()) {
+      setConfirmModal({
+        title: 'Ghi đè quy định?',
+        message: 'Bạn đã có nội dung quy định. Sử dụng mẫu sẽ thay thế toàn bộ nội dung hiện tại.',
+        confirmLabel: 'Dùng mẫu',
+        onConfirm: () => { setPolicyField('venueRules', DEFAULT_RULES_TEMPLATE); setConfirmModal(null); },
+        onCancel: () => setConfirmModal(null),
+      });
+      return;
+    }
+    setPolicyField('venueRules', DEFAULT_RULES_TEMPLATE);
+  }, [policyForm.venueRules, setPolicyField]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -853,7 +873,18 @@ export default function ManagerAddVenue() {
                       <hr className="mt-4 mb-0" style={{ borderColor: '#f1f5f9' }} />
                     </div>
                     <div className="card-body pt-4">
-                      <label style={{ fontSize: 13, fontWeight: 700, color: '#334155' }}>Nội dung quy định</label>
+                      <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <label style={{ fontSize: 13, fontWeight: 700, color: '#334155' }}>Nội dung quy định</label>
+                        <button
+                          type="button"
+                          className="btn btn-outline-primary btn-sm"
+                          style={{ fontSize: 12, borderRadius: 6 }}
+                          onClick={handleUseRulesTemplate}
+                        >
+                          <i className="feather-file-text me-1" style={{ fontSize: 12 }} />
+                          Sử dụng mẫu quy định chung
+                        </button>
+                      </div>
                       <textarea
                         className="form-control mt-2"
                         rows={8}
