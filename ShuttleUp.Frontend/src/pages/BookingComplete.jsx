@@ -61,7 +61,7 @@ export default function BookingComplete() {
   const courts = [...new Set(selectedSlots.map(s => s.courtName))];
 
   return (
-    <div className="main-wrapper" style={{ paddingTop: '96px', minHeight: '100vh' }}>
+    <div className="main-wrapper content-below-header" style={{ minHeight: '100vh' }}>
 
       {/* Breadcrumb */}
       <div className="breadcrumb mb-0">

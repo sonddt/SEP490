@@ -180,7 +180,7 @@ export default function BookingConfirm() {
   };
 
   return (
-    <div className="main-wrapper" style={{ paddingTop: '96px' }}>
+    <div className="main-wrapper content-below-header">
       <BookingSteps currentStep={2} />
 
       <div className="content book-cage">

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import UserDashboardMenu from '../../components/user/UserDashboardMenu';
 import UserProfileTabs from '../../components/user/UserProfileTabs';
 import { managerProfileApi } from '../../api/managerProfileApi';
 import { useAuth } from '../../context/AuthContext';
@@ -248,206 +247,263 @@ export default function UserManagerInfo() {
   })();
 
   return (
-    <div className="main-wrapper">
-      <section className="breadcrumb breadcrumb-list mb-0">
-        <span className="primary-right-round"></span>
-        <div className="container">
-          <h1 className="text-white">Hồ sơ người dùng</h1>
-          <ul>
-            <li><Link to="/">Trang chủ</Link></li>
-            <li>Hồ sơ người dùng</li>
-          </ul>
-        </div>
-      </section>
-
-      <UserDashboardMenu />
-
-      <div className="content court-bg" style={{ paddingTop: '90px' }}>
-        <div className="container">
-          <UserProfileTabs />
-
-          <div className="row">
-            <div className="col-sm-12">
-              <div className="profile-detail-group">
-                <div className="card">
-                  <div className="card-body">
-                    <div className="d-flex align-items-center justify-content-between mb-2">
-                      <div>
-                        <h4 className="mb-0">Thông tin quản lý</h4>
-                        <div className="text-muted" style={{ fontSize: 14 }}>Trạng thái: {badge}</div>
-                      </div>
-                    </div>
-
-                    {err && <div className="alert alert-danger py-2">{err}</div>}
-                    {msg && <div className="alert alert-success py-2">{msg}</div>}
-
-                    {loading ? (
-                      <div className="text-muted">Đang tải...</div>
-                    ) : (
-                      <form onSubmit={handleSubmit}>
-                        <div className="row">
-                          <div className="col-lg-4 col-md-6">
-                            <div className="input-space">
-                              <label className="form-label">CCCD mặt trước</label>
-                              <input
-                                type="file"
-                                className={`form-control ${fieldErrors.cccdFrontFile ? 'is-invalid' : ''}`}
-                                accept="image/png,image/jpeg"
-                                onChange={(e) => {
-                                  setCccdFrontFile(e.target.files?.[0] ?? null);
-                                  if (fieldErrors.cccdFrontFile) setFieldErrors(prev => ({ ...prev, cccdFrontFile: '' }));
-                                }}
-                              />
-                              {fieldErrors.cccdFrontFile && <div className="invalid-feedback d-block mt-1">{fieldErrors.cccdFrontFile}</div>}
-                              {(cccdFrontObjectUrl || existingCccdFrontUrl) && (
-                                <div className="mt-2">
-                                  <img
-                                    src={cccdFrontObjectUrl || existingCccdFrontUrl}
-                                    alt="CCCD mặt trước"
-                                    style={{ width: '100%', maxHeight: 220, objectFit: 'contain', borderRadius: 6 }}
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="col-lg-4 col-md-6">
-                            <div className="input-space">
-                              <label className="form-label">CCCD mặt sau</label>
-                              <input
-                                type="file"
-                                className={`form-control ${fieldErrors.cccdBackFile ? 'is-invalid' : ''}`}
-                                accept="image/png,image/jpeg"
-                                onChange={(e) => {
-                                  setCccdBackFile(e.target.files?.[0] ?? null);
-                                  if (fieldErrors.cccdBackFile) setFieldErrors(prev => ({ ...prev, cccdBackFile: '' }));
-                                }}
-                              />
-                              {fieldErrors.cccdBackFile && <div className="invalid-feedback d-block mt-1">{fieldErrors.cccdBackFile}</div>}
-                              {(cccdBackObjectUrl || existingCccdBackUrl) && (
-                                <div className="mt-2">
-                                  <img
-                                    src={cccdBackObjectUrl || existingCccdBackUrl}
-                                    alt="CCCD mặt sau"
-                                    style={{ width: '100%', maxHeight: 220, objectFit: 'contain', borderRadius: 6 }}
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="col-lg-4 col-md-6">
-                            <div className="input-space">
-                              <label className="form-label">Mã số thuế</label>
-                              <input
-                                type="text"
-                                className={`form-control ${fieldErrors.taxCode ? 'is-invalid' : ''}`}
-                                name="taxCode"
-                                value={form.taxCode}
-                                onChange={handleChange}
-                                placeholder="Nhập mã số thuế"
-                              />
-                              {fieldErrors.taxCode && <div className="invalid-feedback d-block mt-1">{fieldErrors.taxCode}</div>}
-                            </div>
-                          </div>
-
-                          <div className="col-lg-12 col-md-12">
-                            <div className="input-space">
-                              <label className="form-label">Giấy phép kinh doanh</label>
-                              <input
-                                type="file"
-                                className={`form-control ${fieldErrors.businessLicenseFiles ? 'is-invalid' : ''}`}
-                                accept="image/png,image/jpeg,application/pdf"
-                                multiple
-                                onChange={(e) => {
-                                  const files = Array.from(e.target.files ?? []);
-                                  if (files.length > 3) {
-                                    setErr('Lưu ý nhỏ: Chỉ được tải lên tối đa 3 file giấy phép kinh doanh thôi nha.');
-                                    setBusinessLicenseFiles(files.slice(0, 3));
-                                    return;
-                                  }
-                                  setBusinessLicenseFiles(files);
-                                  if (fieldErrors.businessLicenseFiles && files.length > 0) {
-                                    setFieldErrors(prev => ({ ...prev, businessLicenseFiles: '' }));
-                                  }
-                                  setErr('');
-                                }}
-                              />
-                              {fieldErrors.businessLicenseFiles && <div className="invalid-feedback d-block mt-1">{fieldErrors.businessLicenseFiles}</div>}
-
-                              {((businessLicenseObjectPreviews && businessLicenseObjectPreviews.length > 0) ||
-                                (existingBusinessLicenseFiles && existingBusinessLicenseFiles.length > 0)) && (
-                                <div className="mt-3">
-                                  <div className="text-muted" style={{ fontSize: 13, marginBottom: 6 }}>
-                                    Xem trước giấy phép:
-                                  </div>
-                                  <div className="d-flex flex-wrap gap-2">
-                                    {(businessLicenseObjectPreviews?.length > 0
-                                      ? businessLicenseObjectPreviews
-                                      : existingBusinessLicenseFiles
-                                    ).map((f, idx) => {
-                                      const mime = f.mimeType || f.MimeType || '';
-                                      const isImg = (mime || '').toString().startsWith('image/');
-                                      return (
-                                        <div key={f.id ?? `${f.name ?? 'file'}_${idx}`} style={{ width: 160 }}>
-                                          {isImg ? (
-                                            <img
-                                              src={f.url}
-                                              alt={f.name ?? 'Giấy phép'}
-                                              style={{ width: '100%', maxHeight: 140, objectFit: 'cover', borderRadius: 6 }}
-                                            />
-                                          ) : (
-                                            <a href={f.url} target="_blank" rel="noreferrer">
-                                              Xem PDF
-                                            </a>
-                                          )}
-                                          <div className="text-muted" style={{ fontSize: 12, wordBreak: 'break-word' }}>
-                                            {f.name ? f.name : 'Tài liệu'}
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              )}
-
-                              <div className="text-muted mt-2" style={{ fontSize: 13 }}>
-                                Vui lòng tải lên ảnh chụp Giấy phép kinh doanh (Rõ nét, không mất góc). Chấp nhận file JPG, PNG hoặc PDF. Tối đa 3 file, mỗi file không quá 5MB.
-                                {(requestType || '').toString().toUpperCase() === 'CAP_NHAT' ? (
-                                  <div className="mt-1">Cập nhật có thể không cần gửi lại giấy phép.</div>
-                                ) : null}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="col-lg-12 col-md-12">
-                            <div className="input-space">
-                              <label className="form-label">Địa chỉ DOANH NGHIỆP / CÁ NHÂN</label>
-                              <input
-                                type="text"
-                                className={`form-control ${fieldErrors.address ? 'is-invalid' : ''}`}
-                                name="address"
-                                value={form.address}
-                                onChange={handleChange}
-                                placeholder="Nhập địa chỉ"
-                              />
-                              {fieldErrors.address && <div className="invalid-feedback d-block mt-1">{fieldErrors.address}</div>}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="text-end">
-                          <button className="btn btn-success" type="submit" disabled={!canSubmit}>
-                            {saving ? 'Đang gửi...' : 'Gửi/Cập nhật'}
-                          </button>
-                        </div>
-                      </form>
-                    )}
-                  </div>
-                </div>
-              </div>
+    <div className="space-y-6">
+      {/* Header section */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6 mb-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-1 flex items-center gap-2">
+              <i className="fa-solid fa-file-signature text-emerald-600"></i>
+              Thông tin Quản lý
+            </h2>
+            <p className="text-slate-500 text-sm m-0">Quản lý hồ sơ doanh nghiệp và trạng thái cộng tác viên.</p>
+          </div>
+          <div className="flex gap-2">
+            <div className={`px-4 py-2 rounded-xl border font-bold text-sm shadow-sm flex items-center gap-2 ${
+              (status || '').toUpperCase() === 'APPROVED' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+              (status || '').toUpperCase() === 'REJECTED' ? 'bg-rose-50 border-rose-100 text-rose-700' :
+              (status || '').toUpperCase() === 'PENDING' ? 'bg-amber-50 border-amber-100 text-amber-700' :
+              'bg-slate-50 border-slate-100 text-slate-600'
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${
+                (status || '').toUpperCase() === 'APPROVED' ? 'bg-emerald-500' :
+                (status || '').toUpperCase() === 'REJECTED' ? 'bg-rose-500' :
+                (status || '').toUpperCase() === 'PENDING' ? 'bg-amber-500' :
+                'bg-slate-400'
+              }`}></span>
+              {status ? status.toUpperCase() : (isManager ? 'ĐÃ ĐĂNG KÝ' : 'CHƯA ĐĂNG KÝ')}
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="max-w-5xl">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-8">
+          {err && (
+            <div className="alert alert-danger rounded-xl border-0 shadow-sm flex items-center gap-3 bg-rose-50 text-rose-700 py-3 px-4 mb-6">
+              <i className="fa-solid fa-circle-exclamation text-rose-500"></i>
+              <span className="font-semibold text-sm">{err}</span>
+            </div>
+          )}
+          {msg && (
+            <div className="alert alert-success rounded-xl border-0 shadow-sm flex items-center gap-3 bg-emerald-50 text-emerald-700 py-3 px-4 mb-6">
+              <i className="fa-solid fa-circle-check text-emerald-500"></i>
+              <span className="font-semibold text-sm">{msg}</span>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="flex flex-col items-center py-10 gap-3">
+              <i className="fa-solid fa-circle-notch fa-spin text-emerald-500 text-3xl"></i>
+              <p className="text-slate-400 font-medium">Đang tải hồ sơ của bạn...</p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* CCCD Front */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <i className="fa-solid fa-id-card text-emerald-500 text-sm"></i>
+                    <h5 className="text-[15px] font-bold text-slate-800 m-0">CCCD mặt trước</h5>
+                  </div>
+                  <div className={`relative group border-2 border-dashed rounded-2xl p-4 transition-all ${fieldErrors.cccdFrontFile ? 'border-rose-200 bg-rose-50/20' : 'border-slate-100 hover:border-emerald-200 hover:bg-slate-50'}`}>
+                    <input
+                      type="file"
+                      className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                      accept="image/png,image/jpeg"
+                      onChange={(e) => {
+                        setCccdFrontFile(e.target.files?.[0] ?? null);
+                        if (fieldErrors.cccdFrontFile) setFieldErrors(prev => ({ ...prev, cccdFrontFile: '' }));
+                      }}
+                    />
+                    <div className="flex flex-col items-center text-center py-4">
+                      {cccdFrontObjectUrl || existingCccdFrontUrl ? (
+                         <div className="relative w-full aspect-[1.6/1] rounded-xl overflow-hidden shadow-sm group-hover:shadow-md transition-all">
+                            <img
+                              src={cccdFrontObjectUrl || existingCccdFrontUrl}
+                              alt="CCCD Front"
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                              <span className="text-white text-xs font-bold bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/30">Thay đổi ảnh</span>
+                            </div>
+                         </div>
+                      ) : (
+                        <>
+                          <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 mb-2 group-hover:text-emerald-500 group-hover:scale-110 transition-all">
+                            <i className="fa-solid fa-cloud-arrow-up text-xl"></i>
+                          </div>
+                          <span className="text-[13px] font-bold text-slate-600">Bấm hoặc kéo thả ảnh</span>
+                          <span className="text-[11px] text-slate-400 mt-1">Chụp rõ nét mặt trước CCCD</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {fieldErrors.cccdFrontFile && <div className="text-rose-500 text-[11px] font-bold px-1">{fieldErrors.cccdFrontFile}</div>}
+                </div>
+
+                {/* CCCD Back */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <i className="fa-solid fa-id-card text-emerald-500 text-sm"></i>
+                    <h5 className="text-[15px] font-bold text-slate-800 m-0">CCCD mặt sau</h5>
+                  </div>
+                  <div className={`relative group border-2 border-dashed rounded-2xl p-4 transition-all ${fieldErrors.cccdBackFile ? 'border-rose-200 bg-rose-50/20' : 'border-slate-100 hover:border-emerald-200 hover:bg-slate-50'}`}>
+                    <input
+                      type="file"
+                      className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                      accept="image/png,image/jpeg"
+                      onChange={(e) => {
+                        setCccdBackFile(e.target.files?.[0] ?? null);
+                        if (fieldErrors.cccdBackFile) setFieldErrors(prev => ({ ...prev, cccdBackFile: '' }));
+                      }}
+                    />
+                    <div className="flex flex-col items-center text-center py-4">
+                      {cccdBackObjectUrl || existingCccdBackUrl ? (
+                         <div className="relative w-full aspect-[1.6/1] rounded-xl overflow-hidden shadow-sm group-hover:shadow-md transition-all">
+                            <img
+                              src={cccdBackObjectUrl || existingCccdBackUrl}
+                              alt="CCCD Back"
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                              <span className="text-white text-xs font-bold bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/30">Thay đổi ảnh</span>
+                            </div>
+                         </div>
+                      ) : (
+                        <>
+                          <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 mb-2 group-hover:text-emerald-500 group-hover:scale-110 transition-all">
+                            <i className="fa-solid fa-cloud-arrow-up text-xl"></i>
+                          </div>
+                          <span className="text-[13px] font-bold text-slate-600">Bấm hoặc kéo thả ảnh</span>
+                          <span className="text-[11px] text-slate-400 mt-1">Chụp rõ nét mặt sau CCCD</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {fieldErrors.cccdBackFile && <div className="text-rose-500 text-[11px] font-bold px-1">{fieldErrors.cccdBackFile}</div>}
+                </div>
+              </div>
+
+              {/* Tax & Business License */}
+              <div className="space-y-6 pt-6 border-t border-slate-50">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                   <div className="md:col-span-1 space-y-2">
+                      <label className="text-[13px] font-bold text-slate-600 px-1">Mã số thuế</label>
+                      <div className="relative">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                          <i className="fa-solid fa-building-circle-check text-xs"></i>
+                        </div>
+                        <input
+                          type="text"
+                          className="form-control rounded-xl border-slate-200 py-3 pl-10 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all px-4 font-bold text-slate-700"
+                          name="taxCode"
+                          value={form.taxCode}
+                          onChange={handleChange}
+                          placeholder="Mã số thuế..."
+                        />
+                      </div>
+                      {fieldErrors.taxCode && <div className="text-rose-500 text-[11px] font-bold px-1">{fieldErrors.taxCode}</div>}
+                   </div>
+
+                   <div className="md:col-span-2 space-y-2">
+                      <label className="text-[13px] font-bold text-slate-600 px-1">Địa chỉ doanh nghiệp / cá nhân</label>
+                      <div className="relative">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                          <i className="fa-solid fa-location-dot text-xs"></i>
+                        </div>
+                        <input
+                          type="text"
+                          className="form-control rounded-xl border-slate-200 py-3 pl-10 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all px-4 font-medium"
+                          name="address"
+                          value={form.address}
+                          onChange={handleChange}
+                          placeholder="Địa chỉ đăng ký kinh doanh..."
+                        />
+                      </div>
+                      {fieldErrors.address && <div className="text-rose-500 text-[11px] font-bold px-1">{fieldErrors.address}</div>}
+                   </div>
+                </div>
+
+                <div className="space-y-4">
+                   <div className="flex items-center gap-2 mb-1">
+                      <i className="fa-solid fa-file-contract text-emerald-500 text-sm"></i>
+                      <h5 className="text-[15px] font-bold text-slate-800 m-0">Giấy phép kinh doanh (Tối đa 3 file)</h5>
+                   </div>
+                   
+                   <div className={`relative group border-2 border-dashed rounded-2xl p-8 transition-all flex flex-col items-center text-center ${fieldErrors.businessLicenseFiles ? 'border-rose-200 bg-rose-50/20' : 'border-slate-100 hover:border-emerald-200 hover:bg-slate-50'}`}>
+                      <input
+                        type="file"
+                        className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                        accept="image/png,image/jpeg,application/pdf"
+                        multiple
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files ?? []);
+                          if (files.length > 3) {
+                            setErr('Chỉ được tải lên tối đa 3 file giấy phép kinh doanh thôi nha.');
+                            setBusinessLicenseFiles(files.slice(0, 3));
+                            return;
+                          }
+                          setBusinessLicenseFiles(files);
+                          if (fieldErrors.businessLicenseFiles && files.length > 0) setFieldErrors(p => ({ ...p, businessLicenseFiles: '' }));
+                          setErr('');
+                        }}
+                      />
+                      <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center text-slate-300 mb-4 group-hover:text-emerald-500 group-hover:scale-110 transition-all">
+                        <i className="fa-solid fa-cloud-arrow-up text-2xl"></i>
+                      </div>
+                      <p className="text-slate-600 font-bold m-0">Chọn hoặc kéo thả các tài liệu kinh doanh</p>
+                      <p className="text-[12px] text-slate-400 mt-1">Chấp nhận JPG, PNG, PDF (Tối đa 5MB mỗi file)</p>
+                   </div>
+                   {fieldErrors.businessLicenseFiles && <div className="text-rose-500 text-[11px] font-bold text-center">{fieldErrors.businessLicenseFiles}</div>}
+
+                   {((businessLicenseObjectPreviews && businessLicenseObjectPreviews.length > 0) ||
+                                 (existingBusinessLicenseFiles && existingBusinessLicenseFiles.length > 0)) && (
+                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-6">
+                        {(businessLicenseObjectPreviews?.length > 0
+                          ? businessLicenseObjectPreviews
+                          : existingBusinessLicenseFiles
+                        ).map((f, idx) => {
+                          const mime = f.mimeType || f.MimeType || '';
+                          const isImg = (mime || '').toString().startsWith('image/');
+                          return (
+                            <div key={f.id ?? `${f.name ?? 'file'}_${idx}`} className="group relative bg-slate-50 rounded-xl p-2 border border-slate-100">
+                               <div className="aspect-square bg-white rounded-lg overflow-hidden flex items-center justify-center mb-2 shadow-sm">
+                                  {isImg ? (
+                                    <img src={f.url} className="w-full h-full object-cover" alt="license" />
+                                  ) : (
+                                    <i className="fa-solid fa-file-pdf text-3xl text-rose-500"></i>
+                                  )}
+                               </div>
+                               <div className="px-1 overflow-hidden">
+                                  <p className="text-[10px] font-bold text-slate-600 truncate mb-1">{f.name || 'document_' + (idx+1)}</p>
+                                  {!isImg && (
+                                    <a href={f.url} target="_blank" rel="noreferrer" className="text-[10px] text-emerald-600 font-bold no-underline">XEM CHI TIẾT <i className="fa-solid fa-arrow-up-right-from-square text-[8px]"></i></a>
+                                  )}
+                               </div>
+                            </div>
+                          );
+                        })}
+                     </div>
+                   )}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-8 border-t border-slate-50 mt-10">
+                <button
+                  type="submit"
+                  disabled={!canSubmit}
+                  className="flex items-center justify-center bg-emerald-600 text-white hover:bg-emerald-700 px-10 py-3 rounded-2xl font-bold shadow-lg shadow-emerald-500/20 transition-all gap-2 border-0 disabled:opacity-50 disabled:shadow-none"
+                >
+                  {saving ? (
+                    <><i className="fa-solid fa-spinner fa-spin"></i> Đang xử lý</>
+                  ) : (
+                    <><i className="fa-solid fa-paper-plane"></i> Gửi / Cập nhật thông tin</>
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </div>
