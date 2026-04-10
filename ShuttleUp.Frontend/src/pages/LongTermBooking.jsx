@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import LongTermBookingSteps from '../components/booking/LongTermBookingSteps';
 import { getVenueCourts, previewLongTermBooking, previewDiscount } from '../api/bookingApi';
+import ShuttleDateField from '../components/ui/ShuttleDateField';
 
 /* ── Constants ────────────────────────────────────────────── */
 const DAY_OPTS = [
@@ -378,22 +379,18 @@ export default function LongTermBooking() {
                 </div>
                 <div className="col-md-3">
                   <label className="form-label fw-semibold">Từ ngày</label>
-                  <input
-                    type="date"
-                    className="form-control"
+                  <ShuttleDateField
                     value={rangeStart}
-                    min={todayIso()}
-                    onChange={(e) => setRangeStart(e.target.value)}
+                    onChange={(ymd) => setRangeStart(ymd)}
+                    placeholder="dd/mm/yyyy"
                   />
                 </div>
                 <div className="col-md-3">
                   <label className="form-label fw-semibold">Đến ngày</label>
-                  <input
-                    type="date"
-                    className="form-control"
+                  <ShuttleDateField
                     value={rangeEnd}
-                    min={rangeStart}
-                    onChange={(e) => setRangeEnd(e.target.value)}
+                    onChange={(ymd) => setRangeEnd(ymd)}
+                    placeholder="dd/mm/yyyy"
                   />
                 </div>
               </div>

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
 import { getCourtBlocks, createCourtBlock, deleteCourtBlock } from '../../api/managerVenueApi';
+import ShuttleDateField from '../../components/ui/ShuttleDateField';
 
 const BLOCK_REASONS = [
   { value: 'MAINTENANCE', label: 'Bảo trì' },
@@ -460,7 +461,11 @@ export default function ManagerAddCourt() {
                 <div className="row g-3 align-items-end mb-4">
                   <div className="col-12 col-md-3">
                     <label className="form-label fw-semibold small mb-1">Ngày</label>
-                    <input type="date" className="form-control bg-light border-0" value={blockForm.date} onChange={(e) => setBlockForm((p) => ({ ...p, date: e.target.value }))} />
+                    <ShuttleDateField
+                      value={blockForm.date}
+                      onChange={(ymd) => setBlockForm((p) => ({ ...p, date: ymd }))}
+                      placeholder="Chọn ngày khóa"
+                    />
                   </div>
                   <div className="col-6 col-md-2">
                     <label className="form-label fw-semibold small mb-1">Từ</label>

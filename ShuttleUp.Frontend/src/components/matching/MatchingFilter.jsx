@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ShuttleDateField from '../ui/ShuttleDateField';
 
 const skillOptions = [
   { value: '', label: 'Tất cả trình độ' },
@@ -33,11 +34,9 @@ export default function MatchingFilter({ filters, onFilterChange }) {
 
         {/* Play Date */}
         <div className="matching-filter-item">
-          <input
-            type="date"
-            className="form-control"
+          <ShuttleDateField
             value={filters.playDate || ''}
-            onChange={(e) => handleChange('playDate', e.target.value)}
+            onChange={(ymd) => handleChange('playDate', ymd)}
             placeholder="Ngày chơi"
           />
         </div>

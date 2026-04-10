@@ -32,7 +32,7 @@ public class MatchingPostActivityService : IMatchingPostActivityService
         foreach (var p in toMark)
         {
             p.Status = "Inactive";
-            p.UpdatedAt = now;
+            p.UpdatedAt = localTime;
         }
 
         var postIds = toMark.Select(p => p.Id).ToList();
@@ -43,7 +43,7 @@ public class MatchingPostActivityService : IMatchingPostActivityService
         foreach (var r in pending)
         {
             r.Status = "CANCELLED";
-            r.UpdatedAt = now;
+            r.UpdatedAt = localTime;
         }
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -71,7 +71,7 @@ public class MatchingPostActivityService : IMatchingPostActivityService
             return;
 
         post.Status = "Inactive";
-        post.UpdatedAt = now;
+        post.UpdatedAt = localTime;
 
         var pending = await _db.MatchingJoinRequests
             .Where(r => r.PostId == postId && r.Status == "PENDING")
@@ -79,7 +79,7 @@ public class MatchingPostActivityService : IMatchingPostActivityService
         foreach (var r in pending)
         {
             r.Status = "CANCELLED";
-            r.UpdatedAt = now;
+            r.UpdatedAt = localTime;
         }
 
         await _db.SaveChangesAsync(cancellationToken);
