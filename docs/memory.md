@@ -236,22 +236,51 @@ Kết bạn & quan hệ xã hội (Player):
 
 ---
 
-*Cập nhật: gom theo ngày, bỏ trùng lặp và định dạng lại cho dễ đọc.*
-
-## 8 tháng 4, 2026 (Tối ưu Responsive Manager & Booking Tabs)
-
-1. **Sửa lỗi Sidebar mobile ẩn không hết**: 
-   - Điều chỉnh `translateX` từ `-100%` thành `calc(-100% - 30px)` trong `index.css`.
-   - Việc dịch thêm 30px giúp che hoàn toàn phần đổ bóng (box-shadow) và dải màu xanh còn sót lại do layout có lề `14px`.
-2. **Triệt tiêu Scroll ngang trên Manager Dashboard**:
-   - Khóa chiều rộng `.mgr-content` bằng `width` và `max-width` dùng `calc(100% - var(--mgr-sidebar-w) - 28px)`.
-   - Thêm `overflow-x: hidden` cho `.mgr-layout` và `.mgr-content` để đảm bảo bảng dữ liệu (table-responsive) không bao giờ đẩy vỡ khung nhìn chính.
-3. **Tối ưu Tab Booking trên Mobile (`ManagerBookings.jsx`)**:
-   - Màn hình < 768px: Thu nhỏ font (12px), padding (6px 10px) và ép `flex-wrap: wrap` để các tab xuống dòng tự nhiên.
-   - Màn hình < 480px: Chuyển sang giao diện **Grid 2x2** (`grid-template-columns: 1fr 1fr`).
-   - Các nút "Chờ duyệt", "Sắp tới", "Hoàn thành", "Đã huỷ" được căn giữa, chiếm đều không gian, giúp giao diện gọn gàng và dễ bấm trên điện thoại nhỏ.
+*Cập nhật: gom theo ngày, bổ sung các tinh chỉnh responsive quan trọng ngăn layout bị vỡ trên mobile/Laptop L.*
 
 ---
 
-*Cập nhật: gom theo ngày, bổ sung các tinh chỉnh responsive quan trọng ngăn layout bị vỡ trên mobile/Laptop L.*
+## 8 tháng 4, 2026 (Cập nhật tại chỗ - Update-in-Place cho Đơn đặt sân HOLDING)
 
+1. **Khắc phục lỗi 409 Conflict**: Xử lý vấn đề người dùng quay lại ("Back to Edit") khi đang ở trang thanh toán sẽ tạo ra booking mới bị kẹt ở trạng thái `HOLDING`, gây lỗi trùng lịch giả.
+2. **Backend API**:
+   - Các API tạo đơn (`POST /bookings`, `/bookings/long-term`) hỗ trợ thêm tham số tuỳ chọn `bookingId` để cập nhật lại booking đang `HOLDING` thay vì tạo mới.
+   - Thêm endpoint `POST /bookings/{id}/cancel-hold` để chủ động huỷ đơn `HOLDING` ngay lập tức.
+3. **Frontend Cải tiến**:
+   - Cập nhật state quản lý form đặt sân để luôn truyền `bookingId` khi quay lại chỉnh sửa.
+   - Thêm nút "Hủy đơn" trên trang thanh toán để gọi API `cancel-hold` và giải phóng sân.
+
+---
+
+## 9 tháng 4, 2026 (Hệ thống Xếp hạng Elite Owner & Tối ưu UI Thanh toán)
+
+1. **Hệ thống Xếp hạng Elite Owner**:
+   - Xây dựng hệ thống huy hiệu / xếp hạng Elite cho các chủ sân (Manager) có hiệu suất hoạt động và dịch vụ xuất sắc.
+   - Run migration lưu hạn mức xếp hạng (rank thresholds).
+   - Backend service tính toán xếp hạng tự động.
+   - Frontend hiển thị huy hiệu Elite trên Dashboard chủ sân và UI tìm kiếm/thông tin sân cho người dùng.
+2. **Soft Reminders (Nhắc nhở nhẹ) cho Đơn chờ**:
+   - Tự động nhắc nhở thanh toán (pending bookings) thông qua các Notification Job.
+3. **Tối ưu UX Thanh toán & Hoàn tiền (Manager)**:
+   - Tích hợp tính năng tải ảnh VietQR trực tiếp.
+   - Cải tiến Workflow đối soát & hoàn tiền thuận tiện với giao diện quản lý.
+
+---
+
+## 10-11 tháng 4, 2026 (Smart Court Allocation & Flexible Booking - Phân bổ sân thông minh)
+
+1. **Thuật toán Phân bổ linh hoạt 3 Pha (Backend - `BookingSlotHelper.cs`)**:
+   - Triển khai cấp độ "Sân bất kỳ" (Any Court) giải quyết triệt để tính cứng nhắc của việc đặt lịch dài hạn.
+   - **Phase 1 (Stability):** Ưu tiên tìm 1 sân trống 100% cho mọi buổi.
+   - **Phase 2 (Optimization):** Đổi sân tối thiểu, cố gắng giữ lại sân lấp kín nhất có thể.
+   - **Phase 3 (Partial & Upsell):** Loại bỏ slot hết sân, gợi ý sân Premium.
+   - Set-cap giới hạn 90 ngày được validate cứng (400 Bad Request) ở Tầng Backend (Server-level security).
+2. **DTO & Logic Backend**:
+   - Cập nhật `LongTermScheduleDto.cs`: `CourtId` chuyển sang kiểu nullable (`Guid?`).
+   - Thêm cờ `AutoSwitchCourt` (Cho phép thuật toán đổi sân nếu kẹt) và cờ `PricePreference` ("BUDGET" cho tiết kiệm, "BEST" cho linh hoạt).
+   - Truy vấn Bulk loading toàn bộ conflict trong vòng đời đặt sân lên bộ nhớ (In-memory verification) với độ trễ thấp, thay vì loop từng query DB.
+3. **Giao diện & Trải nghiệm Thông minh (Frontend - `LongTermBooking.jsx`)**:
+   - **Any Court Dropdown:** Tuỳ chọn ở đầu "🏸 Sân bất kỳ" kèm lời khuyên UI/UX.
+   - **Price Filters Radio:** Tuỳ chọn linh hoạt giữa tiết kiệm và tối ưu. Độc lập xuất hiện khi bật Checkbox tính năng linh hoạt.
+   - Bảng **Preview Tương tác:** Gồm cột "Sân", "Trạng thái". Slot nào có thay đổi do hệ thống chèn vào sẽ có badge màu cảnh báo (🔄) và lời gợi ý tự động (tooltip). Rào xoá các Slot hết sân bằng đường gạch ngang, đỏ (`✖`).
+   - **Partial Booking CTA:** Nút sẽ tự động chuyển đổi văn bản sang kiểu chốt linh hoạt (ví dụ: "Đặt 8/10 buổi") thay vì block toàn bộ chuỗi hành động khi có Slot Unavailable. Phối hợp với Backend chỉ trừ tiền đúng 8 buổi.

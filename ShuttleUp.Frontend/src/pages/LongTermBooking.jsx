@@ -64,10 +64,12 @@ export default function LongTermBooking() {
   const venueName = venueState.venueName ?? 'Cơ sở';
   const venueAddress = venueState.venueAddress ?? '';
 
-  /* ── Courts ────────────────────────────── */
+  /* ── Courts ──────────────────────────── */
   const [courts, setCourts] = useState([]);
   const [loadCourts, setLoadCourts] = useState({ loading: false, error: '' });
   const [courtId, setCourtId] = useState('');
+  const [autoSwitchCourt, setAutoSwitchCourt] = useState(false);
+  const [pricePreference, setPricePreference] = useState('BEST');
 
   /* ── Date range ────────────────────────── */
   const [rangeStart, setRangeStart] = useState(todayIso());
@@ -206,9 +208,16 @@ export default function LongTermBooking() {
     }
   };
 
+  /* ── 90-day max for end date ────────────── */
+  const maxEndDate = useMemo(() => {
+    if (!rangeStart) return '';
+    const d = new Date(rangeStart);
+    d.setDate(d.getDate() + 90);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, [rangeStart]);
+
   /* ── Build payload ─────────────────────── */
   const schedulePayload = useMemo(() => {
-    // Check if all selected days share same time (sync mode or naturally same)
     const selectedTimes = days.map((d) => dayTimes[d]);
     const allSame = selectedTimes.length > 0 && selectedTimes.every(
       (t) => t.start === selectedTimes[0].start && t.end === selectedTimes[0].end
@@ -216,7 +225,9 @@ export default function LongTermBooking() {
 
     const base = {
       venueId,
-      courtId,
+      courtId: courtId || null,
+      autoSwitchCourt: courtId ? autoSwitchCourt : false,
+      pricePreference: (!courtId || autoSwitchCourt) ? pricePreference : null,
       rangeStart,
       rangeEnd,
       sessionStartTime: dayTimes[days[0]]?.start || '18:00',
@@ -225,7 +236,6 @@ export default function LongTermBooking() {
     };
 
     if (!allSame && days.length > 0) {
-      // Per-day schedules
       base.dailySchedules = days.map((d) => ({
         dayOfWeek: d,
         startTime: dayTimes[d].start,
@@ -234,14 +244,14 @@ export default function LongTermBooking() {
     }
 
     return base;
-  }, [venueId, courtId, rangeStart, rangeEnd, days, dayTimes]);
+  }, [venueId, courtId, autoSwitchCourt, pricePreference, rangeStart, rangeEnd, days, dayTimes]);
 
   /* ── Preview handler ───────────────────── */
   const handlePreview = async () => {
     setPreviewError('');
     setPreview(null);
-    if (!venueId || !courtId) {
-      setPreviewError('Vui lòng chọn cơ sở và sân.');
+    if (!venueId) {
+      setPreviewError('Vui lòng chọn cơ sở.');
       return;
     }
     if (!days.length) {
@@ -287,24 +297,29 @@ export default function LongTermBooking() {
   /* ── Next step ─────────────────────────── */
   const handleNext = () => {
     if (!preview?.slotCount) return;
+    const availItems = (preview.items || []).filter(i => !i.isUnavailable);
     navigate('/booking/long-term/confirm', {
       state: {
         venueId,
         venueName,
         venueAddress,
-        courtId,
-        courtName: courts.find((c) => c.id === courtId)?.name ?? '',
+        courtId: courtId || null,
+        courtName: preview.courtName || courts.find((c) => c.id === courtId)?.name || '',
         rangeStart,
         rangeEnd,
         sessionStartTime: dayTimes[days[0]]?.start || '18:00',
         sessionEndTime: dayTimes[days[0]]?.end || '20:00',
         daysOfWeek: days,
         dailySchedules: schedulePayload.dailySchedules || null,
+        autoSwitchCourt: courtId ? autoSwitchCourt : false,
+        pricePreference: (!courtId || autoSwitchCourt) ? pricePreference : null,
         preview: {
-          slotCount: preview.slotCount,
+          slotCount: availItems.length,
           sessionCount: preview.sessionCount,
-          totalAmount: preview.totalAmount,
+          totalAmount: availItems.reduce((s, i) => s + (i.price || 0), 0),
           discountInfo: preview.discountInfo,
+          isFlexible: preview.isFlexible,
+          items: availItems,
         },
       },
     });
@@ -378,12 +393,53 @@ export default function LongTermBooking() {
                   <select
                     className="form-select"
                     value={courtId}
-                    onChange={(e) => setCourtId(e.target.value)}
+                    onChange={(e) => { setCourtId(e.target.value); setAutoSwitchCourt(false); }}
                   >
+                    <option value="">🏸 Sân bất kỳ (Tự động sắp xếp)</option>
                     {courts.map((c) => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
+
+                  {/* Visual hint for "Any Court" */}
+                  {!courtId && (
+                    <div className="text-muted small mt-1 fst-italic">
+                      <i className="feather-info me-1"></i>
+                      Hệ thống sẽ tự động gán sân trống phù hợp nhất cho từng buổi để đảm bảo lịch trình được đặt trọn vẹn.
+                    </div>
+                  )}
+
+                  {/* Auto-switch toggle for specific court */}
+                  {courtId && (
+                    <div className="form-check mt-2">
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id="autoSwitchCourt"
+                        checked={autoSwitchCourt}
+                        onChange={(e) => setAutoSwitchCourt(e.target.checked)}
+                      />
+                      <label className="form-check-label small" htmlFor="autoSwitchCourt">
+                        Cho phép tự động chuyển sang sân khác nếu sân này bị kẹt giờ
+                      </label>
+                    </div>
+                  )}
+
+                  {/* Price preference radios */}
+                  {(!courtId || autoSwitchCourt) && (
+                    <div className="mt-2 d-flex gap-3">
+                      <label className="form-check form-check-inline mb-0">
+                        <input className="form-check-input" type="radio" name="pricePref" value="BUDGET"
+                          checked={pricePreference === 'BUDGET'} onChange={() => setPricePreference('BUDGET')} />
+                        <span className="form-check-label small">💰 Tiết kiệm (chỉ sân cùng giá)</span>
+                      </label>
+                      <label className="form-check form-check-inline mb-0">
+                        <input className="form-check-input" type="radio" name="pricePref" value="BEST"
+                          checked={pricePreference === 'BEST'} onChange={() => setPricePreference('BEST')} />
+                        <span className="form-check-label small">⚡ Linh hoạt (sân bất kỳ)</span>
+                      </label>
+                    </div>
+                  )}
                 </div>
                 <div className="col-md-3">
                   <label className="form-label fw-semibold">Từ ngày</label>
@@ -402,6 +458,7 @@ export default function LongTermBooking() {
                       onChange={(ymd) => setRangeEnd(ymd)}
                       placeholder="dd/mm/yyyy"
                       minDate={rangeStart}
+                      maxDate={maxEndDate}
                     />
                   </div>
                   {rangeStart > rangeEnd && (
@@ -569,7 +626,7 @@ export default function LongTermBooking() {
                 <button
                   type="button"
                   className={preview ? "btn btn-outline-secondary" : "btn btn-primary px-4"}
-                  disabled={previewLoading || !courtId || days.length === 0 || rangeStart > rangeEnd || !rangeStart || !rangeEnd}
+                  disabled={previewLoading || days.length === 0 || rangeStart > rangeEnd || !rangeStart || !rangeEnd}
                   onClick={handlePreview}
                 >
                   {previewLoading ? 'Đang tính…' : 'Xem trước giá & khung giờ'}
@@ -581,20 +638,28 @@ export default function LongTermBooking() {
           </div>
 
           {/* ── Preview results ───────────────── */}
-          {preview && (
+          {preview && (() => {
+            const allItems = preview.items || [];
+            const availItems = allItems.filter(i => !i.isUnavailable);
+            const unavailCount = allItems.filter(i => i.isUnavailable).length;
+            const availTotal = availItems.reduce((s, i) => s + (i.price || 0), 0);
+            return (
             <div className="card mb-4">
               <div className="card-body">
                 <h5 className="border-bottom pb-2">Kết quả xem trước</h5>
                 <p>
                   <strong>{preview.sessionCount}</strong> buổi ·{' '}
-                  <strong>{preview.slotCount}</strong> ô × 30 phút
+                  <strong>{availItems.length}</strong> ô × 30 phút
+                  {unavailCount > 0 && (
+                    <span className="text-danger ms-2">(×{unavailCount} hết sân)</span>
+                  )}
                 </p>
 
                 <div className="bg-light p-3 rounded mb-3 border">
                    <div className="d-flex justify-content-between mb-2">
                       <span className="text-muted">Tổng phụ (chưa giảm):</span>
                       <span className={preview.discountInfo?.discountAmount > 0 ? "text-decoration-line-through text-muted" : "fw-bold"}>
-                        {Number(preview.totalAmount).toLocaleString('vi-VN')} đ
+                        {Number(availTotal).toLocaleString('vi-VN')} đ
                       </span>
                    </div>
 
@@ -610,44 +675,85 @@ export default function LongTermBooking() {
                    <div className="d-flex justify-content-between border-top pt-2 mt-2">
                       <span className="fw-bold">Thành tiền:</span>
                       <span className="fw-bold text-success fs-5">
-                        {Number(preview.discountInfo?.finalAmount || preview.totalAmount).toLocaleString('vi-VN')} đ
+                        {Number(preview.discountInfo?.finalAmount || availTotal).toLocaleString('vi-VN')} đ
                       </span>
                    </div>
                 </div>
 
-                <div className="table-responsive" style={{ maxHeight: '320px' }}>
-                  <table className="table table-sm table-bordered">
-                    <thead>
+                <div className="table-responsive" style={{ maxHeight: '400px' }}>
+                  <table className="table table-sm table-bordered align-middle">
+                    <thead className="table-light">
                       <tr>
+                        <th>Sân</th>
                         <th>Bắt đầu</th>
                         <th>Kết thúc</th>
                         <th className="text-end">Giá (30p)</th>
+                        <th>Trạng thái</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {(preview.items || []).slice(0, 80).map((row, i) => (
-                        <tr key={i}>
-                          <td>{row.startTime ? new Date(row.startTime).toLocaleString('vi-VN') : ''}</td>
-                          <td>{row.endTime ? new Date(row.endTime).toLocaleString('vi-VN') : ''}</td>
-                          <td className="text-end">{Number(row.price).toLocaleString('vi-VN')}</td>
-                        </tr>
-                      ))}
+                      {allItems.slice(0, 120).map((row, i) => {
+                        if (row.isUnavailable) {
+                          return (
+                            <tr key={i} style={{ background: '#fff5f5', opacity: 0.7 }}>
+                              <td className="text-muted">—</td>
+                              <td className="text-muted text-decoration-line-through">{row.startTime ? new Date(row.startTime).toLocaleString('vi-VN') : ''}</td>
+                              <td className="text-muted text-decoration-line-through">{row.endTime ? new Date(row.endTime).toLocaleString('vi-VN') : ''}</td>
+                              <td className="text-end text-muted">—</td>
+                              <td>
+                                <span className="badge bg-danger">✖ Hết sân</span>
+                                {row.switchReason && (
+                                  <div className="text-warning small mt-1" style={{ fontSize: '11px' }}>
+                                    💡 {row.switchReason}
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        }
+                        return (
+                          <tr key={i} style={row.isSwitched ? { background: '#fffbeb' } : {}}>
+                            <td className="fw-semibold">
+                              {row.courtName || '—'}
+                              {row.isSwitched && (
+                                <span className="badge bg-warning text-dark ms-1" title={row.switchReason || 'Đổi sân tự động'}>🔄</span>
+                              )}
+                            </td>
+                            <td>{row.startTime ? new Date(row.startTime).toLocaleString('vi-VN') : ''}</td>
+                            <td>{row.endTime ? new Date(row.endTime).toLocaleString('vi-VN') : ''}</td>
+                            <td className="text-end">{Number(row.price).toLocaleString('vi-VN')}</td>
+                            <td>
+                              {row.isSwitched
+                                ? <span className="badge bg-warning text-dark">Đổi sân</span>
+                                : <span className="text-muted">—</span>
+                              }
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
-                {(preview.items || []).length > 80 && (
-                  <p className="small text-muted mb-0">Chỉ hiển thị 80 dòng đầu.</p>
+                {allItems.length > 120 && (
+                  <p className="small text-muted mb-0">Chỉ hiển thị 120 dòng đầu.</p>
                 )}
                 <button
                   type="button"
                   className="btn btn-success btn-lg fw-bold w-100 mt-4 py-3 shadow-sm"
+                  disabled={availItems.length === 0}
                   onClick={handleNext}
                 >
-                  Tiếp theo — Chọn sân & thanh toán
+                  {availItems.length === 0
+                    ? 'Không có buổi nào khả dụng'
+                    : unavailCount > 0
+                      ? `Tiếp theo — Đặt ${availItems.length}/${allItems.length} buổi`
+                      : 'Tiếp theo — Xác nhận & thanh toán'
+                  }
                 </button>
               </div>
             </div>
-          )}
+            );
+          })()}
         </div>
       </div>
     </div>
