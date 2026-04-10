@@ -65,7 +65,7 @@ function CalendarIcon() {
 /**
  * @param {{ value: string, onChange: (ymd: string) => void, placeholder?: string, id?: string, minDate?: string }} props
  */
-export default function ShuttleDateField({ value, onChange, placeholder = 'dd/mm/yyyy', id, minDate }) {
+export default function ShuttleDateField({ value, onChange, placeholder = 'dd/mm/yyyy', id, minDate, maxDate }) {
   const [open, setOpen] = useState(false);
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
@@ -199,7 +199,7 @@ export default function ShuttleDateField({ value, onChange, placeholder = 'dd/mm
             const ymd = toYMD(cell);
             const isSel = value === ymd;
             const isTo = isSameYMD(cell, today);
-            const isDisabled = minDate && ymd < minDate;
+            const isDisabled = (minDate && ymd < minDate) || (maxDate && ymd > maxDate);
             return (
               <button
                 key={idx}
