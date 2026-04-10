@@ -64,7 +64,7 @@ const Header = ({ transparent = false }) => {
   const isActive = (path) => path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
 
   const isWhiteBg = !transparent || scrolled;
-  const logoSrc   = isWhiteBg ? '/assets/img/logo-black.svg' : '/assets/img/logo.svg';
+  const logoSrc   = isWhiteBg ? '/assets/img/logo-black.svg' : '/assets/img/logo-white.svg';
 
   // Icon colour: white on transparent header OR when scrolled (fixed header stays green)
   const iconColor = (!isWhiteBg || scrolled) ? '#fff' : '#555';
@@ -98,7 +98,7 @@ const Header = ({ transparent = false }) => {
           <div className={`main-menu-wrapper${mobileMenuOpen ? ' menu-open' : ''}`}>
             <div className="menu-header">
               <Link to="/" className="menu-logo" onClick={closeMobileMenu}>
-                <img src="/assets/img/logo-black.svg" className="img-fluid" alt="ShuttleUp" />
+                <img src="/assets/img/logo-white.svg" className="img-fluid" alt="ShuttleUp" />
               </Link>
               <button
                 id="menu_close"

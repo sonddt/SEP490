@@ -550,7 +550,7 @@ export default function BookingTimeline() {
   // ── Render ───────────────────────────────────────────────────────────────
   // paddingTop: 96px compensates for the fixed site navbar
   return (
-    <div style={{ backgroundColor: '#f0fdf4', minHeight: '100vh', paddingTop: '96px', paddingBottom: '80px' }}>
+    <div className="content-below-header" style={{ backgroundColor: '#f0fdf4', minHeight: '100vh', paddingBottom: '80px' }}>
 
       {/* ── Booking step progress ───────────────────────────────────────── */}
       <BookingSteps currentStep={1} />
