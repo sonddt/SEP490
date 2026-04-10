@@ -279,6 +279,7 @@ function App() {
         pauseOnHover
         draggable={false}
         limit={5}
+        style={{ marginTop: '65px' }}
       />
     </>
   );

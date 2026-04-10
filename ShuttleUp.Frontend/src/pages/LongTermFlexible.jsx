@@ -430,6 +430,13 @@ export default function LongTermFlexible() {
     if (isPastSlot(slotIndex)) return { status: 'past' };
     const booking = getBookingAt(courtId, slotIndex);
     if (booking) return { status: booking.type, label: booking.label, isBlockStart: slotIndex === booking.startIndex };
+    
+    // Kiểm tra xem slot này đã có trong giỏ hàng (của ngày đang chọn) chưa
+    const inCartLine = cart.find(c => c.date === selectedDate && c.courtId === courtId);
+    if (inCartLine && inCartLine.slotIndices.includes(slotIndex)) {
+      return { status: 'in_cart' };
+    }
+
     if (selections[courtId]?.has(slotIndex)) return { status: 'selected' };
     return { status: 'free' };
   };
@@ -548,7 +555,8 @@ export default function LongTermFlexible() {
       case 'booked':   return '#ef4444';
       case 'locked':   return '#c084fc';
       case 'past':     return '#d1d5db';
-      case 'selected': return '#16a34a';
+      case 'selected': 
+      case 'in_cart':  return '#16a34a';
       default:         return '#ffffff';
     }
   };
