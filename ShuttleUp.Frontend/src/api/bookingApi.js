@@ -62,12 +62,36 @@ export function getBookingPaymentContext(bookingId) {
   return axiosClient.get(`/bookings/${bookingId}/payment-context`);
 }
 
-/** 
- * @param {object} payload 
+/**
+ * ASP.NET có thể trả camelCase hoặc PascalCase tùy cấu hình — chuẩn hóa để UI tách giảm giá dài hạn / voucher đúng.
+ * @param {object | null | undefined} raw
+ */
+export function normalizePreviewDiscountResponse(raw) {
+  if (raw == null || typeof raw !== 'object') return raw;
+  const g = (camel, pascal) => raw[camel] ?? raw[pascal];
+  const n = (v) => {
+    const x = Number(v);
+    return Number.isFinite(x) ? x : 0;
+  };
+  return {
+    baseAmount: n(g('baseAmount', 'BaseAmount')),
+    discountAmount: n(g('discountAmount', 'DiscountAmount')),
+    longTermDiscountAmount: n(g('longTermDiscountAmount', 'LongTermDiscountAmount')),
+    couponDiscountAmount: n(g('couponDiscountAmount', 'CouponDiscountAmount')),
+    finalAmount: n(g('finalAmount', 'FinalAmount')),
+    isValidCoupon: Boolean(g('isValidCoupon', 'IsValidCoupon')),
+    errorMsg: g('errorMsg', 'ErrorMsg') ?? null,
+  };
+}
+
+/**
+ * @param {object} payload
  * { venueId, baseAmount, daysDuration, couponCode }
  */
 export function previewDiscount(payload) {
-  return axiosClient.post('/bookings/preview-discount', payload);
+  return axiosClient
+    .post('/bookings/preview-discount', payload)
+    .then(normalizePreviewDiscountResponse);
 }
 
 /** @param {string} bookingId — Cancel a HOLDING booking immediately */

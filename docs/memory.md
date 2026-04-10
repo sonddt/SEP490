@@ -67,7 +67,7 @@ Tài liệu ghi lại các mốc làm việc theo thời gian. Đọc từ trên
 Kết bạn & quan hệ xã hội (Player):
 
 - Database: `user_privacy_settings`, `friend_requests`, `friendships`, `user_blocks` (trong `Database.txt`).
-- Backend: `SocialController` (`/api/social`) — privacy, tìm exact/name, lời mời, bạn bè, chặn, `GET relationship/{id}`; thông báo `FRIEND_REQUEST` / `FRIEND_ACCEPTED` + `deepLink` trong metadata; `ProfileController`: `GET /api/profile/{userId}` (hồ sơ tối thiểu, `relationshipState`, `pendingRequestId` khi `PENDING_IN`).
+- Backend: `SocialController` (`/api/social`) — privacy, tìm exact/name, lời mời, bạn bè, chặn, `GET relationship/{id}`; thông báo `FRIEND_REQUEST` / `FRIEND_ACCEPTED` + `deepLink` in metadata; `ProfileController`: `GET /api/profile/{userId}` (hồ sơ tối thiểu, `relationshipState`, `pendingRequestId` khi `PENDING_IN`).
 - Frontend: `/user/social/search`, `/user/social/friends` (tab Bạn bè / Đã nhận / Đã gửi), `/user/profile/:userId`; `RelationshipActions`, `socialApi`; QR (`qrcode.react`) + đọc ảnh QR (`jsqr`); `VITE_PUBLIC_APP_URL` (fallback `window.location.origin`); menu Tìm bạn / Bạn bè; `notificationTypes` + `notificationNavigation`.
 - Personalization: cho phép vào `/user/social/*` và `/user/profile/{guid}` dù chưa xong onboarding (theo kế hoạch tính năng xã hội).
 - Bình luận matching: sửa lệch giờ sau F5 (MySQL `datetime` → JSON có `Z` qua `AsUtcForJson` trong `MatchingController` GET/POST comments); giới hạn 1 comment / 0,5s / user / post (HTTP 429); `MatchingComments.jsx` parse ISO không offset như UTC + cooldown client + hiển thị `message` từ API; UI chỉ hiện 5 bình luận đầu, nút **Xem thêm** gọi một lần `pageSize = total` để tải hết.
@@ -93,7 +93,7 @@ Kết bạn & quan hệ xã hội (Player):
 3. **Frontend UI/UX**:
    - `MatchingHub.jsx`: Grid bài đăng kèm filter chuyên sâu (trình độ, ngày, khu vực) và pagination.
    - `MatchingCreate.jsx`: Stepper 4 bước (Chọn đơn sân → Chọn ca chơi → Thông tin bài → Xác nhận) kèm Preview Card trực quan. Áp dụng Rule 2 (inline validation, copywriting thân thiện).
-   - `MatchingPostDetail.jsx`: Dashboard quản lý cho host (duyệt/từ chối/kick) và seeker (form xin tham gia, countdown slots).
+   - `MatchingPostDetail.jsx`: Dashboard quản lý cho host (duyệt/tối chối/kick) và seeker (form xin tham gia, countdown slots).
    - Tích hợp `index.css`: ~370 dòng CSS tùy chỉnh cho matching (nền gradient, progress bar, circular SVG chart cho slots).
 4. **Hệ thống Thông báo**: Tích hợp notifications SignalR cho mọi hành động (xin gia nhập, duyệt, từ chối, đóng bài, bình luận mới).
 
@@ -282,8 +282,38 @@ Kết bạn & quan hệ xã hội (Player):
 3. **Giao diện & Trải nghiệm Thông minh (Frontend - `LongTermBooking.jsx`)**:
    - **Any Court Dropdown:** Tuỳ chọn ở đầu "🏸 Sân bất kỳ" kèm lời khuyên UI/UX.
    - **Price Filters Radio:** Tuỳ chọn linh hoạt giữa tiết kiệm và tối ưu. Độc lập xuất hiện khi bật Checkbox tính năng linh hoạt.
-   - Bảng **Preview Tương tác:** Gồm cột "Sân", "Trạng thái". Slot nào có thay đổi do hệ thống chèn vào sẽ có badge màu cảnh báo (🔄) và lời gợi ý tự động (tooltip). Rào xoá các Slot hết sân bằng đường gạch ngang, đỏ (`✖`).
+   - Bảng **Preview Tương tác:** Gồm cột "Sân", "Trạng thái". Slot no c thay đổi do hệ thống chèn vào sẽ có badge màu cảnh báo (🔄) và lời gợi ý tự động (tooltip). Rào xoá các Slot hết sân bằng đường gạch ngang, đỏ (`✖`).
    - **Partial Booking CTA:** Nút sẽ tự động chuyển đổi văn bản sang kiểu chốt linh hoạt (ví dụ: "Đặt 8/10 buổi") thay vì block toàn bộ chuỗi hành động khi có Slot Unavailable. Phối hợp với Backend chỉ trừ tiền đúng 8 buổi.
 4. **Tinh chỉnh UI & Trải nghiệm (Frontend)**:
    - Định dạng lại vị trí `ToastContainer` (`App.jsx`), đẩy thông báo toast xuống (`marginTop: '65px'`) để tránh bị che khuất bởi avatar người dùng ở Header.
    - **Lưới lịch linh hoạt (`LongTermFlexible.jsx`):** Đánh dấu trạng thái `in_cart` bằng màu xanh lá (`#16a34a` - Đang chọn) cho các ô/slote hiện đang có trong giỏ hàng. Điều này giúp lịch trực quan hơn khi người chơi đã "Thêm ngày vào đơn" nhưng vẫn đang ở cùng giao diện ngày hôm đó.
+
+---
+
+## 11 tháng 4, 2026 (Đại tu giao diện Dashboard User & Tin nhắn)
+
+1. **Hiện đại hóa Dashboard (SaaS Standard)**:
+   - Tái cấu trúc bộ UI Người chơi: `UserProfileEdit.jsx`, `UserProfileChangePassword.jsx`, `UserManagerInfo.jsx`, `UserBookings.jsx`, `UserFavorites.jsx`.
+   - **Sửa lỗi hiển thị nút bấm:** Loại bỏ triệt để class `.btn` của Bootstrap gây xung đột màu chữ (trùng màu nền) trên các trang form. Chuyển sang Tailwind utility classes hoàn toàn cho các nút hành động (Emerald Green `#10b981`).
+   - **UserFavorites (Sân yêu thích):** Sửa lỗi hiển thị dữ liệu thô (JSON), chuyển sang dùng lưới `row g-4` của Bootstrap đồng bộ với component `VenueCard` để hiển thị sân đẹp như trang chủ.
+   - **UserBookings:** Cập nhật bộ lọc Tab pill-shaped và các ô select bo tròn theo chuẩn giao diện hiện đại.
+
+2. **Đại tu toàn diện Chat (`ChatPage.jsx`)**:
+   - Đập đi xây lại 100% giao diện chat theo cấu trúc mẫu `user-chat.html`.
+   - **Xử lý xung đột Layout:** Thay thế các class khoá cứng layout cũ (`chat-window`, `chat-cont-left`, `chat-cont-right`) bằng hệ thống Flexbox của Tailwind để tránh bị co rúm giao diện do CSS template gốc (`style.css`).
+   - **Fix Header Overlap:** Sử dụng container `content-below-header` để đẩy nội dung chat xuống dưới thanh Header cố định, khắc phục lỗi chat bị che khuất.
+
+3. **Quản trị Repository**:
+   - Thực hiện Commit & Merge an toàn: Xử lý conflict Git thủ công để bảo vệ mã nguồn giao diện Tailwind mới trước các cập nhật Bootstrap cũ từ remote.
+   - Commit message chuẩn hoá tiếng Anh: `fix: resolve user dashboard and chat UI alignment issues`.
+
+4. **Tinh chỉnh UI nhỏ**:
+   - Cập nhật Badge số lượng sân yêu thích (dùng `inline-flex` thay cho `.badge` để hiện rõ chữ).
+   - Căn chỉnh lại `ToastContainer` để thông báo không đè lên Avatar người dùng.
+
+5. **Giảm giá đặt lịch dài hạn — tách UI + API + chuẩn JSON**:
+   - **Lỗi đã sửa:** Trang xác nhận (`LongTermConfirm.jsx`) khi xóa mã voucher gọi `setDiscountInfo(null)` làm mất luôn giảm giá tuần/tháng; sau khi sửa: gọi lại `previewDiscount` với `couponCode: ''` và giữ hai dòng: **Giảm giá đợt dài hạn** / **Giảm giá do mã ưu đãi (mã)**.
+   - **Backend (`BookingsController.cs`):** `POST /bookings/preview-discount` trả thêm `longTermDiscountAmount`, `couponDiscountAmount` (tổng `discountAmount` giữ nguyên). Khi mã coupon không hợp lệ, preview vẫn giữ số giảm đợt dài hạn trong body (không trả tổng giảm = 0 như trước).
+   - **JSON:** `Program.cs` — `AddJsonOptions` bật `PropertyNamingPolicy = CamelCase` cho response API.
+   - **Frontend (`bookingApi.js`):** `normalizePreviewDiscountResponse` gộp camelCase + PascalCase; `previewDiscount()` luôn trả object đã chuẩn hóa. `LongTermConfirm`: `useRef` baseline giảm dài hạn khi chưa có mã — fallback tách dòng nếu API chỉ có `discountAmount` tổng.
+   - **Đồng bộ nhãn / preview:** `LongTermBooking.jsx` (khối kết quả xem trước) và `LongTermFlexibleConfirm.jsx` dùng cùng logic nhận field tách / nhãn **Giảm giá đợt dài hạn** khi phù hợp.

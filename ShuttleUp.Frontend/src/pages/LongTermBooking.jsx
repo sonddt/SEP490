@@ -810,6 +810,14 @@ export default function LongTermBooking() {
             const unavailCount = allItems.filter(i => i.isUnavailable).length;
             const availTotal = availItems.reduce((s, i) => s + (i.price || 0), 0);
 
+            const diPrev = preview.discountInfo;
+            const pLt = Number(diPrev?.longTermDiscountAmount ?? 0);
+            const pCp = Number(diPrev?.couponDiscountAmount ?? 0);
+            const pLeg = Number(diPrev?.discountAmount ?? 0);
+            const previewLongTermLine =
+              pLt > 0 ? pLt : (pCp === 0 && pLeg > 0 ? pLeg : 0);
+            const previewHasDiscount = previewLongTermLine > 0 || pCp > 0;
+
             const sortedItems = [...allItems].sort((a, b) => {
               let aVal = a[sortConfig.key];
               let bVal = b[sortConfig.key];
@@ -867,16 +875,24 @@ export default function LongTermBooking() {
                 <div className="bg-light p-3 rounded mb-3 border">
                    <div className="d-flex justify-content-between mb-2">
                       <span className="text-muted">Tổng phụ (chưa giảm):</span>
-                      <span className={preview.discountInfo?.discountAmount > 0 ? "text-decoration-line-through text-muted" : "fw-bold"}>
+                      <span className={previewHasDiscount ? "text-decoration-line-through text-muted" : "fw-bold"}>
                         {Number(availTotal).toLocaleString('vi-VN')} đ
                       </span>
                    </div>
 
-                   {preview.discountInfo?.discountAmount > 0 && (
+                   {previewLongTermLine > 0 && (
                      <div className="d-flex justify-content-between mb-2">
-                        <span className="text-success"><i className="feather-tag me-1" /> Giảm giá đặt dài hạn:</span>
+                        <span className="text-success"><i className="feather-tag me-1" /> Giảm giá đợt dài hạn:</span>
                         <span className="text-success fw-bold">
-                          - {Number(preview.discountInfo.discountAmount).toLocaleString('vi-VN')} đ
+                          - {previewLongTermLine.toLocaleString('vi-VN')} đ
+                        </span>
+                     </div>
+                   )}
+                   {pCp > 0 && (
+                     <div className="d-flex justify-content-between mb-2">
+                        <span className="text-success"><i className="feather-gift me-1" /> Giảm giá voucher:</span>
+                        <span className="text-success fw-bold">
+                          - {pCp.toLocaleString('vi-VN')} đ
                         </span>
                      </div>
                    )}
@@ -884,7 +900,7 @@ export default function LongTermBooking() {
                    <div className="d-flex justify-content-between border-top pt-2 mt-2">
                       <span className="fw-bold">Thành tiền:</span>
                       <span className="fw-bold text-success fs-5">
-                        {Number(preview.discountInfo?.finalAmount || availTotal).toLocaleString('vi-VN')} đ
+                        {Number(diPrev?.finalAmount || availTotal).toLocaleString('vi-VN')} đ
                       </span>
                    </div>
                 </div>

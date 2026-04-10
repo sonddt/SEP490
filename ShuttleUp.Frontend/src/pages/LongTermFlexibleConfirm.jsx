@@ -168,6 +168,15 @@ export default function LongTermFlexibleConfirm() {
     );
   }
 
+  const flexLongTermDiscount = Number(discountInfo?.longTermDiscountAmount ?? 0);
+  const flexCouponDiscount = Number(discountInfo?.couponDiscountAmount ?? 0);
+  const flexLegacyDiscount = Number(discountInfo?.discountAmount ?? 0);
+  const flexLongTermLineAmount =
+    flexLongTermDiscount > 0
+      ? flexLongTermDiscount
+      : (flexCouponDiscount === 0 && flexLegacyDiscount > 0 ? flexLegacyDiscount : 0);
+  const flexHasLongTermDiscount = flexLongTermLineAmount > 0;
+
   return (
     <div className="main-wrapper" style={{ paddingTop: '96px' }}>
       <LongTermBookingSteps
@@ -366,14 +375,14 @@ export default function LongTermFlexibleConfirm() {
                 </div>
                 <div className="d-flex justify-content-between align-items-center mb-2">
                   <span>Tổng tiền gốc</span>
-                  <strong className={discountInfo?.discountAmount > 0 ? "text-decoration-line-through text-muted" : "primary-text"}>
+                  <strong className={flexHasLongTermDiscount ? "text-decoration-line-through text-muted" : "primary-text"}>
                     {Number(totalPrice).toLocaleString('vi-VN')} VNĐ
                   </strong>
                 </div>
-                {discountInfo?.discountAmount > 0 && (
+                {flexHasLongTermDiscount && (
                   <div className="d-flex justify-content-between align-items-center mb-2 text-success">
-                    <span><i className="feather-tag me-1" /> Giảm giá đặt dài hạn</span>
-                    <strong>- {Number(discountInfo.discountAmount).toLocaleString('vi-VN')} VNĐ</strong>
+                    <span><i className="feather-tag me-1" /> Giảm giá đợt dài hạn</span>
+                    <strong>- {flexLongTermLineAmount.toLocaleString('vi-VN')} VNĐ</strong>
                   </div>
                 )}
                 <div className="d-flex justify-content-between align-items-center mb-3">
