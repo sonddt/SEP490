@@ -208,6 +208,81 @@ export default function LongTermBooking() {
     }
   };
 
+  /* ── Dynamic Price Calculation ───────────── */
+  const priceRange = useMemo(() => {
+    if (!courts || courts.length === 0 || days.length === 0) 
+      return { budget: 0, min: 0, max: 0 };
+      
+    const toMinutes = (timeStr) => {
+      if (!timeStr) return 0;
+      const [h, m] = timeStr.split(':').map(Number);
+      return h * 60 + (m || 0);
+    };
+
+    const resolvePrice = (prices, chunkStartMin, isWeekend) => {
+      for (const p of prices) {
+        if (p.isWeekend === isWeekend) {
+          const s = toMinutes(p.startTime);
+          const e = toMinutes(p.endTime);
+          if (s <= chunkStartMin && chunkStartMin < e) return p.price;
+        }
+      }
+      return null;
+    };
+
+    const getCourtActivePrices = (court) => {
+      const active = new Set();
+      for (const dayV of days) {
+        const isWeekend = dayV === 0 || dayV === 6;
+        const times = dayTimes[dayV];
+        if (!times) continue;
+        const startMin = toMinutes(times.start);
+        const endMin = toMinutes(times.end);
+        for (let m = startMin; m < endMin; m += 30) {
+          const price = resolvePrice(court.prices || [], m, isWeekend);
+          if (price !== null) active.add(price);
+        }
+      }
+      return Array.from(active);
+    };
+
+    let minAll = Infinity;
+    let maxAll = -Infinity;
+    
+    const courtMaxPrices = courts.map(c => {
+      const active = getCourtActivePrices(c);
+      if (active.length === 0) return null;
+      const cMax = Math.max(...active);
+      const cMin = Math.min(...active);
+      
+      if (cMin < minAll) minAll = cMin;
+      if (cMax > maxAll) maxAll = cMax;
+      
+      return { id: c.id, maxActivePrice: cMax };
+    }).filter(c => c !== null);
+    
+    if (courtMaxPrices.length === 0) 
+      return { budget: 0, min: 0, max: 0 };
+
+    let budget = 0;
+    if (courtId) {
+      const selectedInfo = courtMaxPrices.find(c => c.id === courtId);
+      if (selectedInfo) budget = selectedInfo.maxActivePrice;
+      else budget = Math.max(...courtMaxPrices.map(c => c.maxActivePrice)); 
+    } else {
+      budget = Math.min(...courtMaxPrices.map(c => c.maxActivePrice));
+    }
+    
+    if (minAll === Infinity) minAll = 0;
+    if (maxAll === -Infinity) maxAll = 0;
+
+    return {
+      budget: budget * 2,
+      min: minAll * 2,
+      max: maxAll * 2
+    };
+  }, [courts, courtId, days, dayTimes]);
+
   /* ── 90-day max for end date ────────────── */
   const maxEndDate = useMemo(() => {
     if (!rangeStart) return '';
@@ -427,17 +502,29 @@ export default function LongTermBooking() {
 
                   {/* Price preference radios */}
                   {(!courtId || autoSwitchCourt) && (
-                    <div className="mt-2 d-flex gap-3">
-                      <label className="form-check form-check-inline mb-0">
-                        <input className="form-check-input" type="radio" name="pricePref" value="BUDGET"
-                          checked={pricePreference === 'BUDGET'} onChange={() => setPricePreference('BUDGET')} />
-                        <span className="form-check-label small">💰 Tiết kiệm (chỉ sân cùng giá)</span>
-                      </label>
-                      <label className="form-check form-check-inline mb-0">
-                        <input className="form-check-input" type="radio" name="pricePref" value="BEST"
-                          checked={pricePreference === 'BEST'} onChange={() => setPricePreference('BEST')} />
-                        <span className="form-check-label small">⚡ Linh hoạt (sân bất kỳ)</span>
-                      </label>
+                    <div className="mt-3 bg-light border rounded p-3">
+                      <div className="d-flex flex-column gap-3">
+                        <label className="form-check mb-0">
+                          <input className="form-check-input" type="radio" name="pricePref" value="BUDGET"
+                            checked={pricePreference === 'BUDGET'} onChange={() => setPricePreference('BUDGET')} />
+                          <span className="form-check-label fw-medium text-dark d-block">
+                            💰 Tiết kiệm (Chỉ sân cùng giá: {priceRange.budget > 0 ? `${priceRange.budget.toLocaleString('vi-VN')}đ/h` : '...'})
+                          </span>
+                          <span className="text-muted small ms-4 d-block mt-1 lh-sm">
+                            Lịch của bạn sẽ chỉ dùng các sân có mức giá tới {priceRange.budget > 0 ? `${priceRange.budget.toLocaleString('vi-VN')}đ/h` : '...'}. Một số buổi có thể rơi vào trạng thái "Hết sân" nếu hệ thống không tìm được sân có cùng mức giá.
+                          </span>
+                        </label>
+                        <label className="form-check mb-0">
+                          <input className="form-check-input" type="radio" name="pricePref" value="BEST"
+                            checked={pricePreference === 'BEST'} onChange={() => setPricePreference('BEST')} />
+                          <span className="form-check-label fw-medium text-dark d-block">
+                            ⚡ Linh hoạt (Sân bất kỳ: {priceRange.min > 0 ? `${priceRange.min.toLocaleString('vi-VN')}đ` : '...'} - {priceRange.max > 0 ? `${priceRange.max.toLocaleString('vi-VN')}đ/h` : '...'})
+                          </span>
+                          <span className="text-muted small ms-4 d-block mt-1 lh-sm">
+                            Hệ thống ưu tiên sân bạn chọn nhưng có thể tự động đổi sang các sân khác (có mức giá tới {priceRange.max > 0 ? `${priceRange.max.toLocaleString('vi-VN')}đ/h` : '...'}) để đảm bảo xếp kín 100% lịch đặt.
+                          </span>
+                        </label>
+                      </div>
                     </div>
                   )}
                 </div>
