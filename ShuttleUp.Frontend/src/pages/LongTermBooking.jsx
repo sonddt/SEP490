@@ -429,9 +429,12 @@ export default function LongTermBooking() {
                 {venueName}
                 {venueAddress ? ` — ${venueAddress}` : ''}
               </p>
-              <p className="small text-danger mt-2 mb-0">
-                Huỷ đơn sẽ huỷ toàn bộ các buổi trong chuỗi; thanh toán một lần cho tổng tiền.
-              </p>
+              <div className="alert alert-light w-100 d-flex align-items-center mt-3 mb-0 py-2 border-0" style={{ backgroundColor: '#fff3cd', color: '#856404' }}>
+                <i className="feather-info me-2 fs-5"></i>
+                <span className="small">
+                  <strong>Lưu ý:</strong> Đối với lịch dài hạn, thao tác huỷ đơn sẽ áp dụng cho tất cả các buổi. Bạn chỉ cần thanh toán một lần cho tổng số buổi.
+                </span>
+              </div>
             </div>
           </div>
 
@@ -462,7 +465,8 @@ export default function LongTermBooking() {
               {loadCourts.error && <div className="alert alert-danger">{loadCourts.error}</div>}
 
               {/* Court + Date range */}
-              <div className="row g-3 mb-4">
+              {/* Court + Date range */}
+              <div className="row g-3 mb-2">
                 <div className="col-md-6">
                   <label className="form-label fw-semibold">Sân</label>
                   <select
@@ -494,37 +498,9 @@ export default function LongTermBooking() {
                         checked={autoSwitchCourt}
                         onChange={(e) => setAutoSwitchCourt(e.target.checked)}
                       />
-                      <label className="form-check-label small" htmlFor="autoSwitchCourt">
+                      <label className="form-check-label small text-dark" htmlFor="autoSwitchCourt">
                         Cho phép tự động chuyển sang sân khác nếu sân này bị kẹt giờ
                       </label>
-                    </div>
-                  )}
-
-                  {/* Price preference radios */}
-                  {(!courtId || autoSwitchCourt) && (
-                    <div className="mt-3 bg-light border rounded p-3">
-                      <div className="d-flex flex-column gap-3">
-                        <label className="form-check mb-0">
-                          <input className="form-check-input" type="radio" name="pricePref" value="BUDGET"
-                            checked={pricePreference === 'BUDGET'} onChange={() => setPricePreference('BUDGET')} />
-                          <span className="form-check-label fw-medium text-dark d-block">
-                            💰 Tiết kiệm (Chỉ sân cùng giá: {priceRange.budget > 0 ? `${priceRange.budget.toLocaleString('vi-VN')}đ/h` : '...'})
-                          </span>
-                          <span className="text-muted small ms-4 d-block mt-1 lh-sm">
-                            Lịch của bạn sẽ chỉ dùng các sân có mức giá tới {priceRange.budget > 0 ? `${priceRange.budget.toLocaleString('vi-VN')}đ/h` : '...'}. Một số buổi có thể rơi vào trạng thái "Hết sân" nếu hệ thống không tìm được sân có cùng mức giá.
-                          </span>
-                        </label>
-                        <label className="form-check mb-0">
-                          <input className="form-check-input" type="radio" name="pricePref" value="BEST"
-                            checked={pricePreference === 'BEST'} onChange={() => setPricePreference('BEST')} />
-                          <span className="form-check-label fw-medium text-dark d-block">
-                            ⚡ Linh hoạt (Sân bất kỳ: {priceRange.min > 0 ? `${priceRange.min.toLocaleString('vi-VN')}đ` : '...'} - {priceRange.max > 0 ? `${priceRange.max.toLocaleString('vi-VN')}đ/h` : '...'})
-                          </span>
-                          <span className="text-muted small ms-4 d-block mt-1 lh-sm">
-                            Hệ thống ưu tiên sân bạn chọn nhưng có thể tự động đổi sang các sân khác (có mức giá tới {priceRange.max > 0 ? `${priceRange.max.toLocaleString('vi-VN')}đ/h` : '...'}) để đảm bảo xếp kín 100% lịch đặt.
-                          </span>
-                        </label>
-                      </div>
                     </div>
                   )}
                 </div>
@@ -554,11 +530,39 @@ export default function LongTermBooking() {
                 </div>
               </div>
 
+              {/* Price preference radios (Moved Out of Column) */}
+              {(!courtId || autoSwitchCourt) && (
+                <div className="mt-2 bg-light border rounded p-3 mb-4">
+                  <div className="d-flex flex-column gap-3">
+                    <label className="form-check mb-0">
+                      <input className="form-check-input" type="radio" name="pricePref" value="BUDGET"
+                        checked={pricePreference === 'BUDGET'} onChange={() => setPricePreference('BUDGET')} />
+                      <span className="form-check-label fw-medium text-dark d-block">
+                        💰 {courtId ? 'Cố định mức giá' : 'Tiết kiệm'} (Tối đa: {priceRange.budget > 0 ? `${priceRange.budget.toLocaleString('vi-VN')}đ/h` : '...'})
+                      </span>
+                      <span className="text-muted small ms-4 d-block mt-1 lh-sm">
+                        Lịch của bạn sẽ chỉ dùng các sân có mức giá tới {priceRange.budget > 0 ? `${priceRange.budget.toLocaleString('vi-VN')}đ/h` : '...'}. Một số buổi có thể rơi vào trạng thái "Hết sân" nếu hệ thống không tìm được sân có cùng mức giá.
+                      </span>
+                    </label>
+                    <label className="form-check mb-0">
+                      <input className="form-check-input" type="radio" name="pricePref" value="BEST"
+                        checked={pricePreference === 'BEST'} onChange={() => setPricePreference('BEST')} />
+                      <span className="form-check-label fw-medium text-dark d-block">
+                        ⚡ Linh hoạt (Sân bất kỳ: {priceRange.min > 0 ? `${priceRange.min.toLocaleString('vi-VN')}đ` : '...'} - {priceRange.max > 0 ? `${priceRange.max.toLocaleString('vi-VN')}đ/h` : '...'})
+                      </span>
+                      <span className="text-muted small ms-4 d-block mt-1 lh-sm">
+                        Hệ thống ưu tiên sân bạn chọn nhưng có thể tự động đổi sang các sân khác (có mức giá tới {priceRange.max > 0 ? `${priceRange.max.toLocaleString('vi-VN')}đ/h` : '...'}) để đảm bảo xếp kín 100% lịch đặt.
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              )}
+
               {/* ── AVAILABILITY SECTION ──────── */}
               <h5 className="border-bottom pb-2 mb-3">Chọn ngày & khung giờ</h5>
 
               {/* Select Days */}
-              <div className="avail-days">
+              <div className="avail-days d-flex flex-wrap gap-2">
                 {DAY_OPTS.map(({ v, label }) => (
                   <div className="avail-days__item" key={v}>
                     <input
@@ -594,46 +598,53 @@ export default function LongTermBooking() {
               <div style={{ transition: 'all 0.3s ease-in-out' }}>
                 {isSyncTime ? (
                   /* Global Sync Panel */
-                  <div className="card bg-light border-0 shadow-sm mt-3" style={{ borderRadius: 12 }}>
+                  <div className={`card ${days.length === 0 ? 'bg-transparent shadow-none' : 'bg-light border-0 shadow-sm'} mt-3`} style={{ borderRadius: 12, border: days.length === 0 ? '2px dashed #cbd5e1' : undefined }}>
                     <div className="card-body">
-                      <h6 className="fw-bold mb-3 d-flex align-items-center gap-2">
-                        <i className="feather-clock text-primary"></i> Khung giờ chung
-                      </h6>
-                      
                       {days.length === 0 ? (
-                        <p className="text-muted fst-italic mb-0">
-                          Vui lòng chọn ít nhất một thứ trong tuần để bắt đầu cấu hình giờ chung.
-                        </p>
-                      ) : (
-                        <div className="avail-time-row">
-                          <div className="avail-time-field">
-                            <label>Thời lượng <span>*</span></label>
-                            <select
-                              value={dayTimes[days[0]]?.duration || 2}
-                              onChange={(e) => handleDurationChange(days[0], e.target.value)}
-                            >
-                              {DURATION_OPTS.map((d) => (
-                                <option key={d.value} value={d.value}>{d.label}</option>
-                              ))}
-                            </select>
+                        <div className="text-center py-4">
+                          <div className="d-inline-flex align-items-center justify-content-center bg-light rounded-circle mb-3" style={{ width: 64, height: 64 }}>
+                            <i className="feather-calendar text-muted fs-3"></i>
                           </div>
-                          <div className="avail-time-field">
-                            <label>Giờ bắt đầu <span>*</span></label>
-                            <input
-                              type="time"
-                              value={dayTimes[days[0]]?.start || '18:00'}
-                              onChange={(e) => handleStartChange(days[0], e.target.value)}
-                            />
-                          </div>
-                          <div className="avail-time-field">
-                            <label>Giờ kết thúc <span>*</span></label>
-                            <input
-                              type="time"
-                              value={dayTimes[days[0]]?.end || '20:00'}
-                              onChange={(e) => handleEndChange(days[0], e.target.value)}
-                            />
-                          </div>
+                          <h6 className="fw-bold text-dark">Khung giờ chung</h6>
+                          <p className="text-muted small mb-0 mx-auto" style={{ maxWidth: 300 }}>
+                            Vui lòng chọn ít nhất một thứ trong tuần ở bên trên để bắt đầu cấu hình.
+                          </p>
                         </div>
+                      ) : (
+                        <>
+                          <h6 className="fw-bold mb-3 d-flex align-items-center gap-2">
+                            <i className="feather-clock text-primary"></i> Khung giờ chung
+                          </h6>
+                          <div className="avail-time-row">
+                            <div className="avail-time-field">
+                              <label>Thời lượng <span>*</span></label>
+                              <select
+                                value={dayTimes[days[0]]?.duration || 2}
+                                onChange={(e) => handleDurationChange(days[0], e.target.value)}
+                              >
+                                {DURATION_OPTS.map((d) => (
+                                  <option key={d.value} value={d.value}>{d.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="avail-time-field">
+                              <label>Giờ bắt đầu <span>*</span></label>
+                              <input
+                                type="time"
+                                value={dayTimes[days[0]]?.start || '18:00'}
+                                onChange={(e) => handleStartChange(days[0], e.target.value)}
+                              />
+                            </div>
+                            <div className="avail-time-field">
+                              <label>Giờ kết thúc <span>*</span></label>
+                              <input
+                                type="time"
+                                value={dayTimes[days[0]]?.end || '20:00'}
+                                onChange={(e) => handleEndChange(days[0], e.target.value)}
+                              />
+                            </div>
+                          </div>
+                        </>
                       )}
                     </div>
                   </div>
