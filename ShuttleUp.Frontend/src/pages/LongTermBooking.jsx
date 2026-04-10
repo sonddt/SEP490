@@ -73,8 +73,16 @@ export default function LongTermBooking() {
   const [rangeStart, setRangeStart] = useState(todayIso());
   const [rangeEnd, setRangeEnd] = useState(todayIso());
 
+  const handleRangeStartChange = (ymd) => {
+    setRangeStart(ymd);
+    // Auto-correction: if start is after end, move end to match start
+    if (rangeEnd < ymd) {
+      setRangeEnd(ymd);
+    }
+  };
+
   /* ── Days selection ────────────────────── */
-  const [days, setDays] = useState(() => [1, 3, 5]);
+  const [days, setDays] = useState([]);
 
   /* ── Sync toggle ───────────────────────── */
   const [isSyncTime, setIsSyncTime] = useState(true);
@@ -381,17 +389,24 @@ export default function LongTermBooking() {
                   <label className="form-label fw-semibold">Từ ngày</label>
                   <ShuttleDateField
                     value={rangeStart}
-                    onChange={(ymd) => setRangeStart(ymd)}
+                    onChange={handleRangeStartChange}
                     placeholder="dd/mm/yyyy"
+                    minDate={todayIso()}
                   />
                 </div>
                 <div className="col-md-3">
                   <label className="form-label fw-semibold">Đến ngày</label>
-                  <ShuttleDateField
-                    value={rangeEnd}
-                    onChange={(ymd) => setRangeEnd(ymd)}
-                    placeholder="dd/mm/yyyy"
-                  />
+                  <div className={rangeStart > rangeEnd ? "border border-danger rounded" : ""}>
+                    <ShuttleDateField
+                      value={rangeEnd}
+                      onChange={(ymd) => setRangeEnd(ymd)}
+                      placeholder="dd/mm/yyyy"
+                      minDate={rangeStart}
+                    />
+                  </div>
+                  {rangeStart > rangeEnd && (
+                     <div className="text-danger mt-1" style={{ fontSize: '12px' }}>Ngày kết thúc không được nhỏ hơn ngày bắt đầu.</div>
+                  )}
                 </div>
               </div>
 
@@ -427,78 +442,125 @@ export default function LongTermBooking() {
                   Đồng bộ khung giờ cho tất cả các ngày
                 </span>
                 <span className="avail-sync-row__hint">
-                  {isSyncTime ? 'Thay đổi 1 ngày sẽ áp dụng cho tất cả' : 'Mỗi ngày có thể đặt giờ riêng'}
+                  {isSyncTime ? 'Cấu hình 1 lần áp dụng cho tất cả ngày đã chọn' : 'Mỗi ngày thiết lập khung giờ riêng biệt'}
                 </span>
               </div>
 
-              {/* Days Accordion */}
-              <div className="avail-accordion">
-                {DAY_OPTS.filter(({ v }) => days.includes(v)).map(({ v, full }) => {
-                  const isOpen = !!openDays[v];
-                  const t = dayTimes[v];
-                  return (
-                    <div className={`avail-day-item${isOpen ? ' open' : ''}`} key={v}>
-                      {/* Header */}
-                      <div className="avail-day-header" onClick={() => toggleAccordion(v)}>
-                        <div className="avail-day-header__toggle">
-                          <label className="avail-toggle" onClick={(e) => e.stopPropagation()}>
+              {/* Day / Time Configuration */}
+              <div style={{ transition: 'all 0.3s ease-in-out' }}>
+                {isSyncTime ? (
+                  /* Global Sync Panel */
+                  <div className="card bg-light border-0 shadow-sm mt-3" style={{ borderRadius: 12 }}>
+                    <div className="card-body">
+                      <h6 className="fw-bold mb-3 d-flex align-items-center gap-2">
+                        <i className="feather-clock text-primary"></i> Khung giờ chung
+                      </h6>
+                      
+                      {days.length === 0 ? (
+                        <p className="text-muted fst-italic mb-0">
+                          Vui lòng chọn ít nhất một thứ trong tuần để bắt đầu cấu hình giờ chung.
+                        </p>
+                      ) : (
+                        <div className="avail-time-row">
+                          <div className="avail-time-field">
+                            <label>Thời lượng <span>*</span></label>
+                            <select
+                              value={dayTimes[days[0]]?.duration || 2}
+                              onChange={(e) => handleDurationChange(days[0], e.target.value)}
+                            >
+                              {DURATION_OPTS.map((d) => (
+                                <option key={d.value} value={d.value}>{d.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="avail-time-field">
+                            <label>Giờ bắt đầu <span>*</span></label>
                             <input
-                              type="checkbox"
-                              checked={days.includes(v)}
-                              onChange={() => toggleDay(v)}
+                              type="time"
+                              value={dayTimes[days[0]]?.start || '18:00'}
+                              onChange={(e) => handleStartChange(days[0], e.target.value)}
                             />
-                            <span className="avail-toggle__slider" />
-                          </label>
-                        </div>
-                        <span className="avail-day-header__title">{full}</span>
-                        <span className="avail-day-header__edit">
-                          {isOpen ? 'Đóng' : 'Chỉnh sửa'}
-                        </span>
-                      </div>
-
-                      {/* Body */}
-                      {isOpen && (
-                        <div className="avail-day-body">
-                          <div className="avail-time-row">
-                            {/* Duration */}
-                            <div className="avail-time-field">
-                              <label>Thời lượng <span>*</span></label>
-                              <select
-                                value={t.duration}
-                                onChange={(e) => handleDurationChange(v, e.target.value)}
-                              >
-                                {DURATION_OPTS.map((d) => (
-                                  <option key={d.value} value={d.value}>{d.label}</option>
-                                ))}
-                              </select>
-                            </div>
-                            {/* Start Time */}
-                            <div className="avail-time-field">
-                              <label>Giờ bắt đầu <span>*</span></label>
-                              <input
-                                type="time"
-                                value={t.start}
-                                onChange={(e) => handleStartChange(v, e.target.value)}
-                              />
-                            </div>
-                            {/* End Time */}
-                            <div className="avail-time-field">
-                              <label>Giờ kết thúc <span>*</span></label>
-                              <input
-                                type="time"
-                                value={t.end}
-                                onChange={(e) => handleEndChange(v, e.target.value)}
-                              />
-                            </div>
+                          </div>
+                          <div className="avail-time-field">
+                            <label>Giờ kết thúc <span>*</span></label>
+                            <input
+                              type="time"
+                              value={dayTimes[days[0]]?.end || '20:00'}
+                              onChange={(e) => handleEndChange(days[0], e.target.value)}
+                            />
                           </div>
                         </div>
                       )}
                     </div>
-                  );
-                })}
+                  </div>
+                ) : (
+                  /* Individual Days Accordions */
+                  <div className="avail-accordion mt-3">
+                    {DAY_OPTS.filter(({ v }) => days.includes(v)).map(({ v, full }) => {
+                      const isOpen = !!openDays[v];
+                      const t = dayTimes[v];
+                      return (
+                        <div className={`avail-day-item${isOpen ? ' open' : ''}`} key={v}>
+                          {/* Header */}
+                          <div className="avail-day-header" onClick={() => toggleAccordion(v)}>
+                            <div className="avail-day-header__toggle">
+                              <label className="avail-toggle" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  type="checkbox"
+                                  checked={days.includes(v)}
+                                  onChange={() => toggleDay(v)}
+                                />
+                                <span className="avail-toggle__slider" />
+                              </label>
+                            </div>
+                            <span className="avail-day-header__title">{full}</span>
+                            <span className="avail-day-header__edit">
+                              {isOpen ? 'Đóng' : 'Chỉnh sửa'}
+                            </span>
+                          </div>
+
+                          {/* Body */}
+                          {isOpen && (
+                            <div className="avail-day-body">
+                              <div className="avail-time-row">
+                                <div className="avail-time-field">
+                                  <label>Thời lượng <span>*</span></label>
+                                  <select
+                                    value={t.duration}
+                                    onChange={(e) => handleDurationChange(v, e.target.value)}
+                                  >
+                                    {DURATION_OPTS.map((d) => (
+                                      <option key={d.value} value={d.value}>{d.label}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="avail-time-field">
+                                  <label>Giờ bắt đầu <span>*</span></label>
+                                  <input
+                                    type="time"
+                                    value={t.start}
+                                    onChange={(e) => handleStartChange(v, e.target.value)}
+                                  />
+                                </div>
+                                <div className="avail-time-field">
+                                  <label>Giờ kết thúc <span>*</span></label>
+                                  <input
+                                    type="time"
+                                    value={t.end}
+                                    onChange={(e) => handleEndChange(v, e.target.value)}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
-              {days.length === 0 && (
+              {days.length === 0 && !isSyncTime && (
                 <p className="text-muted small mt-2">Chọn ít nhất một ngày để cấu hình giờ.</p>
               )}
 
@@ -506,13 +568,13 @@ export default function LongTermBooking() {
               <div className="mt-4 d-flex flex-wrap gap-2">
                 <button
                   type="button"
-                  className="btn btn-primary"
-                  disabled={previewLoading || !courtId}
+                  className={preview ? "btn btn-outline-secondary" : "btn btn-primary px-4"}
+                  disabled={previewLoading || !courtId || days.length === 0 || rangeStart > rangeEnd || !rangeStart || !rangeEnd}
                   onClick={handlePreview}
                 >
                   {previewLoading ? 'Đang tính…' : 'Xem trước giá & khung giờ'}
                 </button>
-                <Link to="/venues" className="btn btn-outline-secondary">Quay lại</Link>
+                <Link to="/venues" className="btn btn-light">Quay lại</Link>
               </div>
               {previewError && <div className="alert alert-warning mt-3 mb-0">{previewError}</div>}
             </div>
@@ -578,10 +640,10 @@ export default function LongTermBooking() {
                 )}
                 <button
                   type="button"
-                  className="btn btn-secondary mt-3"
+                  className="btn btn-success btn-lg fw-bold w-100 mt-4 py-3 shadow-sm"
                   onClick={handleNext}
                 >
-                  Tiếp theo — xác nhận thông tin
+                  Tiếp theo — Chọn sân & thanh toán
                 </button>
               </div>
             </div>
