@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { ChevronUp, ChevronDown, ArrowUpDown } from 'lucide-react';
 import LongTermBookingSteps from '../components/booking/LongTermBookingSteps';
 import { getVenueCourts, previewLongTermBooking, previewDiscount } from '../api/bookingApi';
 import ShuttleDateField from '../components/ui/ShuttleDateField';
@@ -104,6 +105,7 @@ export default function LongTermBooking() {
   const [preview, setPreview] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: 'startTime', direction: 'asc' });
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -741,6 +743,49 @@ export default function LongTermBooking() {
             const availItems = allItems.filter(i => !i.isUnavailable);
             const unavailCount = allItems.filter(i => i.isUnavailable).length;
             const availTotal = availItems.reduce((s, i) => s + (i.price || 0), 0);
+
+            const sortedItems = [...allItems].sort((a, b) => {
+              let aVal = a[sortConfig.key];
+              let bVal = b[sortConfig.key];
+
+              if (sortConfig.key === 'courtName') {
+                aVal = a.courtName || '\uFFFF'; 
+                bVal = b.courtName || '\uFFFF';
+              } else if (sortConfig.key === 'status') {
+                const getPriority = (item) => {
+                  if (item.isUnavailable) return 1;
+                  if (item.isSwitched) return 2;
+                  return 3;
+                };
+                aVal = getPriority(a);
+                bVal = getPriority(b);
+              } else if (sortConfig.key === 'startTime') {
+                aVal = new Date(a.startTime).getTime();
+                bVal = new Date(b.startTime).getTime();
+              } else if (sortConfig.key === 'price') {
+                aVal = a.price || 0;
+                bVal = b.price || 0;
+              }
+
+              if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+              if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+              return 0;
+            });
+
+            const handleSort = (key) => {
+              setSortConfig(prev => ({
+                key,
+                direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+              }));
+            };
+
+            const renderSortIcon = (key) => {
+              if (sortConfig.key !== key) return <ArrowUpDown size={14} className="ms-1 text-muted opacity-50" />;
+              return sortConfig.direction === 'asc' 
+                ? <ChevronUp size={14} className="ms-1 text-primary" /> 
+                : <ChevronDown size={14} className="ms-1 text-primary" />;
+            };
+
             return (
             <div className="card mb-4">
               <div className="card-body">
@@ -782,15 +827,27 @@ export default function LongTermBooking() {
                   <table className="table table-sm table-bordered align-middle">
                     <thead className="table-light">
                       <tr>
-                        <th>Sân</th>
-                        <th>Bắt đầu</th>
-                        <th>Kết thúc</th>
-                        <th className="text-end">Giá (30p)</th>
-                        <th>Trạng thái</th>
+                        <th style={{ cursor: 'pointer', userSelect: 'none', transition: 'background 0.2s' }} onClick={() => handleSort('courtName')} 
+                            className={sortConfig.key === 'courtName' ? 'text-primary' : ''}>
+                          <div className="d-flex align-items-center">Sân {renderSortIcon('courtName')}</div>
+                        </th>
+                        <th style={{ cursor: 'pointer', userSelect: 'none', transition: 'background 0.2s' }} onClick={() => handleSort('startTime')}
+                            className={sortConfig.key === 'startTime' ? 'text-primary' : ''}>
+                          <div className="d-flex align-items-center">Bắt đầu {renderSortIcon('startTime')}</div>
+                        </th>
+                        <th className="text-muted">Kết thúc</th>
+                        <th style={{ cursor: 'pointer', userSelect: 'none', transition: 'background 0.2s' }} onClick={() => handleSort('price')}
+                            className={sortConfig.key === 'price' ? 'text-primary' : ''}>
+                          <div className="d-flex align-items-center justify-content-end">Giá (30p) {renderSortIcon('price')}</div>
+                        </th>
+                        <th style={{ cursor: 'pointer', userSelect: 'none', transition: 'background 0.2s' }} onClick={() => handleSort('status')}
+                            className={sortConfig.key === 'status' ? 'text-primary' : ''}>
+                          <div className="d-flex align-items-center">Trạng thái {renderSortIcon('status')}</div>
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {allItems.slice(0, 120).map((row, i) => {
+                      {sortedItems.slice(0, 120).map((row, i) => {
                         if (row.isUnavailable) {
                           return (
                             <tr key={i} style={{ background: '#fff5f5', opacity: 0.7 }}>
