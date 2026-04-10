@@ -617,33 +617,48 @@ export default function LongTermBooking() {
                           <h6 className="fw-bold mb-3 d-flex align-items-center gap-2">
                             <i className="feather-clock text-primary"></i> Khung giờ chung
                           </h6>
-                          <div className="avail-time-row">
-                            <div className="avail-time-field">
-                              <label>Thời lượng <span>*</span></label>
-                              <select
-                                value={dayTimes[days[0]]?.duration || 2}
-                                onChange={(e) => handleDurationChange(days[0], e.target.value)}
-                              >
-                                {DURATION_OPTS.map((d) => (
-                                  <option key={d.value} value={d.value}>{d.label}</option>
-                                ))}
-                              </select>
+                          <div className="row g-3">
+                            <div className="col-md-4">
+                              <label className="form-label small fw-semibold text-muted mb-1">Thời lượng <span className="text-danger">*</span></label>
+                              <div className="input-group input-group-sm">
+                                <span className="input-group-text bg-white border-end-0 text-primary">⏳</span>
+                                <select
+                                  className="form-select border-start-0"
+                                  value={dayTimes[days[0]]?.duration || 2}
+                                  onChange={(e) => handleDurationChange(days[0], e.target.value)}
+                                  style={{ cursor: 'pointer' }}
+                                >
+                                  {DURATION_OPTS.map((d) => (
+                                    <option key={d.value} value={d.value}>{d.label}</option>
+                                  ))}
+                                </select>
+                              </div>
                             </div>
-                            <div className="avail-time-field">
-                              <label>Giờ bắt đầu <span>*</span></label>
-                              <input
-                                type="time"
-                                value={dayTimes[days[0]]?.start || '18:00'}
-                                onChange={(e) => handleStartChange(days[0], e.target.value)}
-                              />
+                            <div className="col-md-4">
+                              <label className="form-label small fw-semibold text-muted mb-1">Giờ bắt đầu <span className="text-danger">*</span></label>
+                              <div className="input-group input-group-sm">
+                                <span className="input-group-text bg-white border-end-0 text-primary"><i className="feather-clock"></i></span>
+                                <input
+                                  className="form-control border-start-0 px-2"
+                                  type="time"
+                                  value={dayTimes[days[0]]?.start || '18:00'}
+                                  onChange={(e) => handleStartChange(days[0], e.target.value)}
+                                  style={{ cursor: 'text' }}
+                                />
+                              </div>
                             </div>
-                            <div className="avail-time-field">
-                              <label>Giờ kết thúc <span>*</span></label>
-                              <input
-                                type="time"
-                                value={dayTimes[days[0]]?.end || '20:00'}
-                                onChange={(e) => handleEndChange(days[0], e.target.value)}
-                              />
+                            <div className="col-md-4">
+                              <label className="form-label small fw-semibold text-muted mb-1">Giờ kết thúc <span className="text-danger">*</span></label>
+                              <div className="input-group input-group-sm">
+                                <span className="input-group-text bg-white border-end-0 text-primary"><i className="feather-clock"></i></span>
+                                <input
+                                  className="form-control border-start-0 px-2"
+                                  type="time"
+                                  value={dayTimes[days[0]]?.end || '20:00'}
+                                  onChange={(e) => handleEndChange(days[0], e.target.value)}
+                                  style={{ cursor: 'text' }}
+                                />
+                              </div>
                             </div>
                           </div>
                         </>
@@ -679,33 +694,46 @@ export default function LongTermBooking() {
                           {/* Body */}
                           {isOpen && (
                             <div className="avail-day-body">
-                              <div className="avail-time-row">
-                                <div className="avail-time-field">
-                                  <label>Thời lượng <span>*</span></label>
-                                  <select
-                                    value={t.duration}
-                                    onChange={(e) => handleDurationChange(v, e.target.value)}
-                                  >
-                                    {DURATION_OPTS.map((d) => (
-                                      <option key={d.value} value={d.value}>{d.label}</option>
-                                    ))}
-                                  </select>
+                              <div className="row g-3 px-3 pb-3">
+                                <div className="col-md-4">
+                                  <label className="form-label small fw-semibold text-muted mb-1">Thời lượng <span className="text-danger">*</span></label>
+                                  <div className="input-group input-group-sm">
+                                    <span className="input-group-text bg-white border-end-0 text-primary">⏳</span>
+                                    <select
+                                      className="form-select border-start-0"
+                                      value={t.duration}
+                                      onChange={(e) => handleDurationChange(v, e.target.value)}
+                                      style={{ cursor: 'pointer' }}
+                                    >
+                                      {DURATION_OPTS.map((d) => (
+                                        <option key={d.value} value={d.value}>{d.label}</option>
+                                      ))}
+                                    </select>
+                                  </div>
                                 </div>
-                                <div className="avail-time-field">
-                                  <label>Giờ bắt đầu <span>*</span></label>
-                                  <input
-                                    type="time"
-                                    value={t.start}
-                                    onChange={(e) => handleStartChange(v, e.target.value)}
-                                  />
+                                <div className="col-md-4">
+                                  <label className="form-label small fw-semibold text-muted mb-1">Giờ bắt đầu <span className="text-danger">*</span></label>
+                                  <div className="input-group input-group-sm">
+                                    <span className="input-group-text bg-white border-end-0 text-primary"><i className="feather-clock"></i></span>
+                                    <input
+                                      className="form-control border-start-0 px-2"
+                                      type="time"
+                                      value={t.start}
+                                      onChange={(e) => handleStartChange(v, e.target.value)}
+                                    />
+                                  </div>
                                 </div>
-                                <div className="avail-time-field">
-                                  <label>Giờ kết thúc <span>*</span></label>
-                                  <input
-                                    type="time"
-                                    value={t.end}
-                                    onChange={(e) => handleEndChange(v, e.target.value)}
-                                  />
+                                <div className="col-md-4">
+                                  <label className="form-label small fw-semibold text-muted mb-1">Giờ kết thúc <span className="text-danger">*</span></label>
+                                  <div className="input-group input-group-sm">
+                                    <span className="input-group-text bg-white border-end-0 text-primary"><i className="feather-clock"></i></span>
+                                    <input
+                                      className="form-control border-start-0 px-2"
+                                      type="time"
+                                      value={t.end}
+                                      onChange={(e) => handleEndChange(v, e.target.value)}
+                                    />
+                                  </div>
                                 </div>
                               </div>
                             </div>

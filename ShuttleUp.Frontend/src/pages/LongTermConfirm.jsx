@@ -331,22 +331,41 @@ export default function LongTermConfirm() {
 
               <section className="card booking-order-confirmation mb-4">
                 <h5 className="mb-3">Chi tiết lịch đặt</h5>
-                <ul className="list-unstyled small mb-0">
-                  <li className="mb-2"><i className="feather-home me-2 text-primary" />Sân: <strong>{courtName || courtId}</strong></li>
-                  <li className="mb-2"><i className="feather-calendar me-2 text-primary" />Từ {formatDateVN(rangeStart)} đến {formatDateVN(rangeEnd)}</li>
-                  <li className="mb-2"><i className="feather-repeat me-2 text-primary" />{daysLabels}</li>
-                  {dailySchedules && dailySchedules.length > 0 ? (
-                    dailySchedules.map((ds) => (
-                      <li className="mb-2" key={ds.dayOfWeek}>
-                        <i className="feather-clock me-2 text-primary" />
-                        {DOW_LABELS[ds.dayOfWeek]}: {ds.startTime} – {ds.endTime}
-                      </li>
-                    ))
-                  ) : (
-                    <li className="mb-2"><i className="feather-clock me-2 text-primary" />Giờ: {sessionStartTime} – {sessionEndTime}</li>
-                  )}
-                  <li className="mb-2"><i className="feather-layers me-2 text-primary" />{sessionCount} buổi · {slotCount} ô × 30 phút</li>
-                </ul>
+                <div className="table-responsive">
+                  <table className="table table-bordered mb-0 align-middle">
+                    <thead className="table-light">
+                      <tr>
+                        <th>Sân</th>
+                        <th>Giai đoạn</th>
+                        <th>Lịch định kỳ</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>
+                          <div className="fw-medium">{courtName || 'Sân linh hoạt'}</div>
+                          <div className="text-muted small mt-1">{sessionCount} buổi ({slotCount} ô)</div>
+                        </td>
+                        <td>
+                          <div>{formatDateVN(rangeStart)}</div>
+                          <div className="text-muted small">đến {formatDateVN(rangeEnd)}</div>
+                        </td>
+                        <td>
+                          <div className="fw-medium mb-1"><i className="feather-repeat me-1 text-primary"></i> Lặp lại: {daysLabels}</div>
+                          {dailySchedules && dailySchedules.length > 0 ? (
+                            dailySchedules.map((ds) => (
+                              <div className="small text-muted" key={ds.dayOfWeek}>
+                                &bull; {DOW_LABELS[ds.dayOfWeek]}: {ds.startTime} – {ds.endTime}
+                              </div>
+                            ))
+                          ) : (
+                            <div className="small text-muted">&bull; Giờ chung: {sessionStartTime} – {sessionEndTime}</div>
+                          )}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </section>
             </div>
 
@@ -397,8 +416,14 @@ export default function LongTermConfirm() {
                     <i className="fa-regular fa-building me-2 text-primary" />
                     <strong>{venueName}</strong>
                   </li>
-                  <li className="mb-2 text-muted small">
-                    {sessionCount} ngày có đặt · {slotCount} ô × 30 phút
+                  <li className="mb-2">
+                    <i className="feather-calendar me-2 text-primary" />
+                    {formatDateVN(rangeStart)}
+                  </li>
+                  <li className="mb-2">
+                    <i className="feather-clock me-2 text-primary" />
+                    <strong>{sessionCount} buổi:</strong> 
+                    <span className="text-muted ms-1">({slotCount} ô × 30 phút)</span>
                   </li>
                 </ul>
                 <hr />
