@@ -32,6 +32,7 @@ export default function LongTermConfirm() {
     sessionStartTime = '',
     sessionEndTime = '',
     daysOfWeek = [],
+    dailySchedules = null,
     preview = null,
   } = state;
 
@@ -158,7 +159,7 @@ export default function LongTermConfirm() {
     setSubmitError('');
     setLoading(true);
     try {
-      const result = await createLongTermBooking({
+      const payload = {
         venueId,
         courtId,
         rangeStart,
@@ -171,7 +172,11 @@ export default function LongTermConfirm() {
         note: form.note.trim() || undefined,
         couponCode: appliedCoupon || undefined,
         bookingId: existingBookingId || undefined,
-      });
+      };
+      if (dailySchedules && dailySchedules.length > 0) {
+        payload.dailySchedules = dailySchedules;
+      }
+      const result = await createLongTermBooking(payload);
       const bookingId = result.bookingId ?? result.BookingId;
       if (!bookingId) { setSubmitError('Phản hồi server không có mã đơn.'); setLoading(false); return; }
       navigate(`/booking/payment?bookingId=${bookingId}&flow=long-term`);
@@ -330,7 +335,16 @@ export default function LongTermConfirm() {
                   <li className="mb-2"><i className="feather-home me-2 text-primary" />Sân: <strong>{courtName || courtId}</strong></li>
                   <li className="mb-2"><i className="feather-calendar me-2 text-primary" />Từ {formatDateVN(rangeStart)} đến {formatDateVN(rangeEnd)}</li>
                   <li className="mb-2"><i className="feather-repeat me-2 text-primary" />{daysLabels}</li>
-                  <li className="mb-2"><i className="feather-clock me-2 text-primary" />Giờ: {sessionStartTime} – {sessionEndTime}</li>
+                  {dailySchedules && dailySchedules.length > 0 ? (
+                    dailySchedules.map((ds) => (
+                      <li className="mb-2" key={ds.dayOfWeek}>
+                        <i className="feather-clock me-2 text-primary" />
+                        {DOW_LABELS[ds.dayOfWeek]}: {ds.startTime} – {ds.endTime}
+                      </li>
+                    ))
+                  ) : (
+                    <li className="mb-2"><i className="feather-clock me-2 text-primary" />Giờ: {sessionStartTime} – {sessionEndTime}</li>
+                  )}
                   <li className="mb-2"><i className="feather-layers me-2 text-primary" />{sessionCount} buổi · {slotCount} ô × 30 phút</li>
                 </ul>
               </section>

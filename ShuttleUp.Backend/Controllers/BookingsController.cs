@@ -688,8 +688,34 @@ public class BookingsController : ControllerBase
         if (!venueOk)
             return new LongTermBuildResult { Error = BadRequest(new { message = "Cơ sở không tồn tại hoặc chưa mở đặt sân." }) };
 
-        var (normalizedItems, expandErr) = BookingSlotHelper.ExpandWeeklyLongTerm(
-            dto.CourtId, court, rs, re, dayFilter, st, et, BookingSlotHelper.MaxLongTermSlots);
+        List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)> normalizedItems;
+        string? expandErr;
+
+        // ── Nếu có DailySchedules → dùng khung giờ riêng từng ngày ──
+        if (dto.DailySchedules != null && dto.DailySchedules.Count > 0)
+        {
+            var dayTimeMap = new Dictionary<DayOfWeek, (TimeOnly Start, TimeOnly End)>();
+            foreach (var ds in dto.DailySchedules)
+            {
+                if (ds.DayOfWeek < 0 || ds.DayOfWeek > 6)
+                    return new LongTermBuildResult { Error = BadRequest(new { message = "DailySchedules chứa DayOfWeek không hợp lệ (0-6)." }) };
+                if (!TimeOnly.TryParse(ds.StartTime, out var dsStart))
+                    return new LongTermBuildResult { Error = BadRequest(new { message = $"StartTime không hợp lệ cho ngày {ds.DayOfWeek}." }) };
+                if (!TimeOnly.TryParse(ds.EndTime, out var dsEnd))
+                    return new LongTermBuildResult { Error = BadRequest(new { message = $"EndTime không hợp lệ cho ngày {ds.DayOfWeek}." }) };
+                dayTimeMap[(DayOfWeek)ds.DayOfWeek] = (dsStart, dsEnd);
+            }
+
+            (normalizedItems, expandErr) = BookingSlotHelper.ExpandWeeklyLongTermWithDailySchedules(
+                dto.CourtId, court, rs, re, dayTimeMap, BookingSlotHelper.MaxLongTermSlots);
+        }
+        else
+        {
+            // ── Fallback: dùng SessionStartTime + SessionEndTime chung ──
+            (normalizedItems, expandErr) = BookingSlotHelper.ExpandWeeklyLongTerm(
+                dto.CourtId, court, rs, re, dayFilter, st, et, BookingSlotHelper.MaxLongTermSlots);
+        }
+
         if (expandErr != null)
             return new LongTermBuildResult { Error = BadRequest(new { message = expandErr }) };
 
