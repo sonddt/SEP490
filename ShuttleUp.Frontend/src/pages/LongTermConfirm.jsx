@@ -13,6 +13,23 @@ function formatDateVN(isoDate) {
   return `${dow}, ${d}/${m}/${y}`;
 }
 
+function generateDates(startDate, endDate, selectedDays) {
+  if (!startDate || !endDate || !selectedDays || selectedDays.length === 0) return [];
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const result = [];
+  const current = new Date(start);
+  while (current <= end) {
+    if (selectedDays.includes(current.getDay())) {
+      const d = current.getDate().toString().padStart(2, '0');
+      const m = (current.getMonth() + 1).toString().padStart(2, '0');
+      result.push(`${d}/${m}/${current.getFullYear()}`);
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  return result;
+}
+
 const DOW_LABELS = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
 
 export default function LongTermConfirm() {
@@ -192,6 +209,31 @@ export default function LongTermConfirm() {
 
   const daysLabels = useMemo(() => (daysOfWeek || []).map(d => DOW_LABELS[d] || d).join(', '), [daysOfWeek]);
 
+  const usedDays = useMemo(() => {
+    if (daysOfWeek && daysOfWeek.length > 0) return daysOfWeek.map(Number);
+    if (dailySchedules && dailySchedules.length > 0) return dailySchedules.map(d => Number(d.dayOfWeek));
+    return [];
+  }, [daysOfWeek, dailySchedules]);
+
+  const actualDaysPlayed = useMemo(() => {
+    if (!rangeStart || !rangeEnd || usedDays.length === 0) return [];
+    const start = new Date(rangeStart);
+    const end = new Date(rangeEnd);
+    const result = new Set();
+    const current = new Date(start);
+    while (current <= end) {
+      if (usedDays.includes(current.getDay())) {
+        result.add(current.getDay());
+      }
+      current.setDate(current.getDate() + 1);
+    }
+    return Array.from(result);
+  }, [rangeStart, rangeEnd, usedDays]);
+
+  const sessionChips = useMemo(() => {
+    return generateDates(rangeStart, rangeEnd, usedDays);
+  }, [rangeStart, rangeEnd, usedDays]);
+
   if (!venueId || !preview) {
     return (
       <div className="main-wrapper content-below-header text-center py-5" style={{ paddingTop: '120px' }}>
@@ -248,7 +290,7 @@ export default function LongTermConfirm() {
                       <small className="text-muted">Tổng giờ</small>
                     </div>
                     <div className="text-center">
-                      <h4 className="primary-text mb-0">{Number(displayPrice).toLocaleString('vi-VN')} VNĐ</h4>
+                      <h4 className="primary-text mb-0">{Math.round(displayPrice).toLocaleString('vi-VN')} VNĐ</h4>
                       <small className="text-muted">Tổng thanh toán</small>
                     </div>
                   </div>
@@ -260,7 +302,7 @@ export default function LongTermConfirm() {
             </p>
           </section>
 
-          <div className="row">
+          <div className="row g-lg-5">
             <div className="col-12 col-lg-8">
               <section className="card booking-form mb-4">
                 <h3 className="border-bottom">Thông tin liên hệ</h3>
@@ -332,35 +374,70 @@ export default function LongTermConfirm() {
               <section className="card booking-order-confirmation mb-4">
                 <h5 className="mb-3">Chi tiết lịch đặt</h5>
                 <div className="table-responsive">
-                  <table className="table table-bordered mb-0 align-middle">
-                    <thead className="table-light">
+                  <table className="table mb-0 align-top">
+                    <thead className="table-light bg-gray-50 border-gray-50">
                       <tr>
-                        <th>Sân</th>
-                        <th>Giai đoạn</th>
-                        <th>Lịch định kỳ</th>
+                        <th className="font-semibold text-slate-700 p-3">Sân & Quy mô</th>
+                        <th className="font-semibold text-slate-700 p-3">Lịch định kỳ</th>
+                        <th className="font-semibold text-slate-700 p-3">Lịch tham gia ({sessionChips.length} ngày)</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="border-gray-50">
                       <tr>
-                        <td>
-                          <div className="fw-medium">{courtName || 'Sân linh hoạt'}</div>
-                          <div className="text-muted small mt-1">{sessionCount} buổi ({slotCount} ô)</div>
+                        {/* Column 1: Court Identity */}
+                        <td className="align-top p-4 border-end border-gray-50">
+                          <div className="fw-bold primary-text mb-1" style={{ fontSize: '15px' }}>{courtName || 'Sân linh hoạt'}</div>
+                          <div className="text-muted" style={{ fontSize: '13px' }}>
+                            {sessionCount} Buổi<br/>({slotCount > 0 && sessionCount > 0 ? (slotCount * 30 / 60 / sessionCount) : 0}h/buổi)
+                          </div>
                         </td>
-                        <td>
-                          <div>{formatDateVN(rangeStart)}</div>
-                          <div className="text-muted small">đến {formatDateVN(rangeEnd)}</div>
-                        </td>
-                        <td>
-                          <div className="fw-medium mb-1"><i className="feather-repeat me-1 text-primary"></i> Lặp lại: {daysLabels}</div>
+
+                        {/* Column 2: Schedule & Frequency */}
+                        <td className="align-top p-4 border-end border-gray-50">
                           {dailySchedules && dailySchedules.length > 0 ? (
-                            dailySchedules.map((ds) => (
-                              <div className="small text-muted" key={ds.dayOfWeek}>
-                                &bull; {DOW_LABELS[ds.dayOfWeek]}: {ds.startTime} – {ds.endTime}
-                              </div>
-                            ))
+                            <div className="d-flex flex-column gap-3">
+                              {dailySchedules.map((ds) => (
+                                <div key={ds.dayOfWeek} className="mb-2 last:mb-0">
+                                  <div className="fw-bold text-slate-800" style={{ fontSize: '14px' }}>
+                                    {ds.startTime} – {ds.endTime}
+                                  </div>
+                                  <div className="d-flex flex-wrap gap-1 mt-2">
+                                    {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((lbl, i) => (
+                                      <span key={i} className={`d-inline-flex justify-content-center align-items-center rounded-circle ${i === ds.dayOfWeek ? 'bg-primary text-white shadow-sm' : 'bg-white text-muted border border-gray-200'}`} style={{ width: '28px', height: '28px', fontSize: '11px', fontWeight: i === ds.dayOfWeek ? 600 : 400 }}>{lbl}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           ) : (
-                            <div className="small text-muted">&bull; Giờ chung: {sessionStartTime} – {sessionEndTime}</div>
+                            <div>
+                              <div className="fw-bold text-slate-800" style={{ fontSize: '14px' }}>
+                                {sessionStartTime} – {sessionEndTime}
+                              </div>
+                              <div className="d-flex flex-wrap gap-1 mt-2">
+                                {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((lbl, i) => (
+                                  <span key={i} className={`d-inline-flex justify-content-center align-items-center rounded-circle ${actualDaysPlayed.includes(i) ? 'bg-primary text-white shadow-sm' : 'bg-white text-muted border border-gray-200'}`} style={{ width: '28px', height: '28px', fontSize: '11px', fontWeight: actualDaysPlayed.includes(i) ? 600 : 400 }}>{lbl}</span>
+                                ))}
+                              </div>
+                            </div>
                           )}
+                        </td>
+
+                        {/* Column 3: Session Breakdown */}
+                        <td className="align-top p-4 border-end border-gray-50">
+                           <div className="d-flex flex-wrap gap-2">
+                             {sessionChips.map((date, idx) => {
+                               const displayDate = date.substring(0, 5); 
+                               return (
+                                 <span key={idx} className="badge bg-light text-dark border border-gray-200 px-2.5 py-1.5 rounded-pill" style={{ fontWeight: 500 }}>
+                                   {displayDate}
+                                 </span>
+                               );
+                             })}
+                           </div>
+                           <div className="text-slate-800 fw-bold mt-4 pt-3 border-top border-gray-50" style={{ fontSize: '14px' }}>
+                             Giai đoạn: {formatDateVN(rangeStart)} – {formatDateVN(rangeEnd)}
+                           </div>
                         </td>
                       </tr>
                     </tbody>
@@ -418,7 +495,7 @@ export default function LongTermConfirm() {
                   </li>
                   <li className="mb-2">
                     <i className="feather-calendar me-2 text-primary" />
-                    {formatDateVN(rangeStart)}
+                    {formatDateVN(rangeStart).split(', ')[1]} - {formatDateVN(rangeEnd).split(', ')[1]}
                   </li>
                   <li className="mb-2">
                     <i className="feather-clock me-2 text-primary" />
@@ -431,28 +508,33 @@ export default function LongTermConfirm() {
                   <span>Tổng giờ</span>
                   <strong>{totalHours}</strong>
                 </div>
-                <div className="d-flex justify-content-between align-items-center mb-2">
+                <div className="d-flex justify-content-between align-items-center">
                   <span>Giá gốc</span>
                   <strong className={discountInfo?.discountAmount > 0 ? 'text-decoration-line-through text-muted' : 'primary-text fs-5'}>
-                    {Number(totalPrice).toLocaleString('vi-VN')} VNĐ
+                    {Math.round(totalPrice).toLocaleString('vi-VN')} VNĐ
                   </strong>
                 </div>
+                {sessionCount > 0 && (
+                  <div className="d-flex justify-content-end text-muted mb-2 mt-1" style={{ fontSize: '12px' }}>
+                    {Math.round(totalPrice / sessionCount).toLocaleString('vi-VN')}đ × {sessionCount} buổi
+                  </div>
+                )}
                 {discountInfo?.discountAmount > 0 && (
                   <>
                     <div className="d-flex justify-content-between align-items-center mb-2 text-success">
                       <span><i className="feather-tag me-1" />Giảm giá</span>
-                      <strong>-{Number(discountInfo.discountAmount).toLocaleString('vi-VN')} VNĐ</strong>
+                      <strong>-{Math.round(discountInfo.discountAmount).toLocaleString('vi-VN')} VNĐ</strong>
                     </div>
                     <div className="d-flex justify-content-between align-items-center mb-3">
                       <span className="fw-bold">Thành tiền</span>
-                      <strong className="primary-text fs-4">{Number(discountInfo.finalAmount).toLocaleString('vi-VN')} VNĐ</strong>
+                      <strong className="primary-text fs-4">{Math.round(discountInfo.finalAmount).toLocaleString('vi-VN')} VNĐ</strong>
                     </div>
                   </>
                 )}
                 {!(discountInfo?.discountAmount > 0) && (
                   <div className="d-flex justify-content-between align-items-center mb-3">
                     <span className="fw-bold">Thành tiền</span>
-                    <strong className="primary-text fs-4">{Number(totalPrice).toLocaleString('vi-VN')} VNĐ</strong>
+                    <strong className="primary-text fs-4">{Math.round(totalPrice).toLocaleString('vi-VN')} VNĐ</strong>
                   </div>
                 )}
                 <div className="d-grid">
@@ -472,18 +554,10 @@ export default function LongTermConfirm() {
           <div className="text-center btn-row mt-3">
             <button
               type="button"
-              className="btn btn-primary me-3 btn-icon"
+              className="btn btn-primary btn-icon"
               onClick={() => navigate('/booking/long-term/fixed', { state: location.state })}
             >
               <i className="feather-arrow-left-circle me-1" /> Quay lại
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-icon"
-              onClick={handleSubmit}
-              disabled={loading}
-            >
-              {loading ? (isUpdating ? 'Đang cập nhật…' : 'Đang tạo đơn…') : 'Tiếp theo'} <i className="feather-arrow-right-circle ms-1" />
             </button>
           </div>
 

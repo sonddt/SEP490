@@ -68,33 +68,48 @@ export default function LongTermBooking() {
   /* ── Courts ──────────────────────────── */
   const [courts, setCourts] = useState([]);
   const [loadCourts, setLoadCourts] = useState({ loading: false, error: '' });
-  const [courtId, setCourtId] = useState('');
-  const [autoSwitchCourt, setAutoSwitchCourt] = useState(false);
-  const [pricePreference, setPricePreference] = useState('BEST');
+  const [courtId, setCourtId] = useState(venueState.courtId || '');
+  const [autoSwitchCourt, setAutoSwitchCourt] = useState(venueState.autoSwitchCourt || false);
+  const [pricePreference, setPricePreference] = useState(venueState.pricePreference || 'BEST');
 
   /* ── Date range ────────────────────────── */
-  const [rangeStart, setRangeStart] = useState(todayIso());
-  const [rangeEnd, setRangeEnd] = useState(todayIso());
+  const [rangeStart, setRangeStart] = useState(venueState.rangeStart || todayIso());
+  const [rangeEnd, setRangeEnd] = useState(venueState.rangeEnd || todayIso());
 
   const handleRangeStartChange = (ymd) => {
     setRangeStart(ymd);
-    // Auto-correction: if start is after end, move end to match start
     if (rangeEnd < ymd) {
       setRangeEnd(ymd);
     }
   };
 
   /* ── Days selection ────────────────────── */
-  const [days, setDays] = useState([]);
+  const [days, setDays] = useState(venueState.daysOfWeek || []);
 
   /* ── Sync toggle ───────────────────────── */
-  const [isSyncTime, setIsSyncTime] = useState(true);
+  const [isSyncTime, setIsSyncTime] = useState(!venueState.dailySchedules);
 
   /* ── Per-day time config ────────────────── */
   const defaultTime = { start: '18:00', end: '20:00', duration: 2 };
   const [dayTimes, setDayTimes] = useState(() => {
     const init = {};
-    DAY_OPTS.forEach(d => { init[d.v] = { ...defaultTime }; });
+    if (venueState.dailySchedules && venueState.dailySchedules.length > 0) {
+      venueState.dailySchedules.forEach(ds => {
+        init[ds.dayOfWeek] = {
+           start: ds.startTime,
+           end: ds.endTime,
+           duration: computeDuration(ds.startTime, ds.endTime)
+        };
+      });
+      DAY_OPTS.forEach(d => { if (!init[d.v]) init[d.v] = { ...defaultTime }; });
+    } else if (venueState.sessionStartTime && venueState.sessionEndTime) {
+      const dur = computeDuration(venueState.sessionStartTime, venueState.sessionEndTime);
+      DAY_OPTS.forEach(d => {
+        init[d.v] = { start: venueState.sessionStartTime, end: venueState.sessionEndTime, duration: dur };
+      });
+    } else {
+      DAY_OPTS.forEach(d => { init[d.v] = { ...defaultTime }; });
+    }
     return init;
   });
 
@@ -137,6 +152,24 @@ export default function LongTermBooking() {
     })();
     return () => { cancelled = true; };
   }, [venueId]);
+
+  /* ── Layout Resets ──────────────────────── */
+  const handleClearAll = () => {
+    setCourtId('');
+    setAutoSwitchCourt(false);
+    setPricePreference('BEST');
+    setRangeStart(todayIso());
+    setRangeEnd(todayIso());
+    setDays([]);
+    setIsSyncTime(true);
+    setDayTimes(() => {
+       const init = {};
+       DAY_OPTS.forEach(d => { init[d.v] = { ...defaultTime }; });
+       return init;
+    });
+    setPreview(null);
+    setPreviewError('');
+  };
 
   /* ── Day helpers ────────────────────────── */
   const toggleDay = (v) => {
@@ -750,7 +783,7 @@ export default function LongTermBooking() {
               )}
 
               {/* Action buttons */}
-              <div className="mt-4 d-flex flex-wrap gap-2">
+              <div className="mt-4 d-flex align-items-center flex-wrap gap-2">
                 <button
                   type="button"
                   className={preview ? "btn btn-outline-secondary" : "btn btn-primary px-4"}
@@ -759,7 +792,12 @@ export default function LongTermBooking() {
                 >
                   {previewLoading ? 'Đang tính…' : 'Xem trước giá & khung giờ'}
                 </button>
-                <Link to="/venues" className="btn btn-light">Quay lại</Link>
+                <div className="d-flex gap-2 ms-auto">
+                  <button type="button" className="btn btn-outline-danger" onClick={handleClearAll}>
+                    <i className="feather-trash-2 me-1" /> Làm mới
+                  </button>
+                  <Link to="/venues" className="btn btn-light">Quay lại</Link>
+                </div>
               </div>
               {previewError && <div className="alert alert-warning mt-3 mb-0">{previewError}</div>}
             </div>
