@@ -284,3 +284,6 @@ Kết bạn & quan hệ xã hội (Player):
    - **Price Filters Radio:** Tuỳ chọn linh hoạt giữa tiết kiệm và tối ưu. Độc lập xuất hiện khi bật Checkbox tính năng linh hoạt.
    - Bảng **Preview Tương tác:** Gồm cột "Sân", "Trạng thái". Slot nào có thay đổi do hệ thống chèn vào sẽ có badge màu cảnh báo (🔄) và lời gợi ý tự động (tooltip). Rào xoá các Slot hết sân bằng đường gạch ngang, đỏ (`✖`).
    - **Partial Booking CTA:** Nút sẽ tự động chuyển đổi văn bản sang kiểu chốt linh hoạt (ví dụ: "Đặt 8/10 buổi") thay vì block toàn bộ chuỗi hành động khi có Slot Unavailable. Phối hợp với Backend chỉ trừ tiền đúng 8 buổi.
+4. **Tinh chỉnh UI & Trải nghiệm (Frontend)**:
+   - Định dạng lại vị trí `ToastContainer` (`App.jsx`), đẩy thông báo toast xuống (`marginTop: '65px'`) để tránh bị che khuất bởi avatar người dùng ở Header.
+   - **Lưới lịch linh hoạt (`LongTermFlexible.jsx`):** Đánh dấu trạng thái `in_cart` bằng màu xanh lá (`#16a34a` - Đang chọn) cho các ô/slote hiện đang có trong giỏ hàng. Điều này giúp lịch trực quan hơn khi người chơi đã "Thêm ngày vào đơn" nhưng vẫn đang ở cùng giao diện ngày hôm đó.
