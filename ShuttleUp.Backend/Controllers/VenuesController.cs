@@ -235,11 +235,34 @@ public class VenuesController : ControllerBase
         var dayStart = day.ToDateTime(TimeOnly.MinValue);
         var dayEnd = dayStart.AddDays(1);
 
-        var booked = await _dbContext.BookingItems
+        var userId = User.Identity?.IsAuthenticated == true
+            ? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            : null;
+
+        var bookedQuery = _dbContext.BookingItems
             .AsNoTracking()
             .Where(bi => bi.Court != null && bi.Court.VenueId == id
                                               && bi.StartTime < dayEnd && bi.EndTime > dayStart
-                                              && bi.Booking != null && bi.Booking.Status != "CANCELLED")
+                                              && bi.Booking != null && bi.Booking.Status != "CANCELLED");
+
+        var now = DateTime.UtcNow;
+
+        if (userId != null)
+        {
+            bookedQuery = bookedQuery.Where(bi => 
+                bi.Booking!.Status != "HOLDING" || 
+                (bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now && bi.Booking.UserId != userId)
+            );
+        }
+        else 
+        {
+            bookedQuery = bookedQuery.Where(bi => 
+                bi.Booking!.Status != "HOLDING" || 
+                (bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now)
+            );
+        }
+
+        var booked = await bookedQuery
             .Select(bi => new
             {
                 CourtId = bi.CourtId!.Value,

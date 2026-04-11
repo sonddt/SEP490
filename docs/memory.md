@@ -323,3 +323,8 @@ Kết bạn & quan hệ xã hội (Player):
    - **UI Layout Fix:** Di chuyển bộ Action Buttons (Quay lại, Làm mới) sang góc phải để chừa không gian trống bên trái cho hành động chính (Submit / Xem khung giờ).
    - **Backend Crash on Smart Allocation:** Sửa lỗi `System.ArgumentNullException` (sum price) và `System.NullReferenceException` (court properties) ở `BookingsController.cs` khi API trả về rổ `SmartItems` rỗng hoặc lấy giá trị `.Court` trong khi nó là NULL vì khách hàng dùng "Sân Bất Kỳ (Tự Động Sắp Xếp)".
    - **Frontend Validation Block:** Nới lỏng kiểm tra bắt buộc phải điền `courtId` (vì Sân Bất Kỳ dùng ID null) ở form Xác Nhận Thanh Toán để giúp người dùng vượt qua lỗi giả "Thiếu dữ liệu lịch", đồng thời nhồi ngầm bộ config `autoSwitchCourt` và `pricePreference` xuống Backend để Server hiểu đúng ý đồ Sân Bất Kỳ.
+
+7. **Bảo toàn trạng thái Đặt Sân & Khắc phục Lỗi trùng lịch Ảo (Red slots bug)**:
+   - **Backend (BookingSlotHelper.cs & VenuesController.cs)**: Cập nhật hàm CheckSlotConflictsAsync và GetVenueAvailability để nhận parameter excludeHoldingUserId. Hệ thống tự động bỏ qua các khung giờ đang được giữ (HOLDING) tạm thời thuộc về chính user hiện tại để khắc phục triệt để lỗi "Hiển thị màu đỏ" khi người dùng từ bước Xác Nhận quay lại bước Chọn Lịch do slot bị HOLD bởi chính họ.
+   - **Frontend (BookingTimeline.jsx)**: Khôi phục lại selection đã chọn trước đó từ location.state.selectedSlots thông qua useState(initialSelections). Loại bỏ useEffect vô tình clear selections khi component mount lần đầu.
+   - **UI Bảng biểu (BookingConfirm & BookingPayment)**: Thêm tính năng Sort thông minh (hook useState và useMemo) dựa theo Sân, Giờ, hoặc giá tiền. Có mũi tên lên xuống thể hiện hướng Sort trực quan tại các bảng tóm tắt đơn đặt sân.

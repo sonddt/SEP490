@@ -199,7 +199,8 @@ public static class BookingSlotHelper
         List<Guid> courtIds,
         List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)> normalizedItems,
         CancellationToken cancellationToken = default,
-        Guid? excludeBookingId = null)
+        Guid? excludeBookingId = null,
+        string? excludeHoldingUserId = null)
     {
         if (normalizedItems.Count == 0)
             return null;
@@ -216,13 +217,28 @@ public static class BookingSlotHelper
                          && courtIds.Contains(bi.CourtId.Value)
                          && bi.StartTime < maxEnd && bi.EndTime > minStart
                          && bi.Booking != null
-                         && bi.Booking.Status != "CANCELLED"
-                         && (bi.Booking.Status != "HOLDING"
-                             || (bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now)));
+                         && bi.Booking.Status != "CANCELLED");
 
-        // Exclude the booking's own items so it doesn't conflict with itself during update-in-place
+        // Gỡ bỏ booking hiện tại khỏi việc đụng độ chính nó (khi update-in-place)
         if (excludeBookingId.HasValue)
             query = query.Where(bi => bi.BookingId != excludeBookingId.Value);
+
+        // Bỏ qua các holding đã hết hạn.
+        // Ngoài ra, bỏ qua các holding CHƯA hết hạn nhưng LÀ CỦA NGƯỜI CHƠI NÀY (Cho phép họ tạo mới và huỷ cái cũ).
+        if (excludeHoldingUserId != null)
+        {
+            query = query.Where(bi => 
+                bi.Booking!.Status != "HOLDING" ||
+                (bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now && bi.Booking.UserId != excludeHoldingUserId)
+            );
+        }
+        else
+        {
+            query = query.Where(bi => 
+                bi.Booking!.Status != "HOLDING" ||
+                (bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now)
+            );
+        }
 
         var existingItems = await query.ToListAsync(cancellationToken);
 
