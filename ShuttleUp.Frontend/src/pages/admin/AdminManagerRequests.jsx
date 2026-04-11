@@ -163,8 +163,12 @@ export default function AdminManagerRequests() {
                         return (
                           <tr key={r.id}>
                             <td className="text-muted">{rowNum}</td>
-                            <td><strong>{r.ownerName || 'N/A'}</strong></td>
-                            <td className="text-muted">{r.ownerEmail || 'N/A'}</td>
+                            <td title={r.ownerName} style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <strong>{r.ownerName || 'N/A'}</strong>
+                            </td>
+                            <td title={r.ownerEmail} className="text-muted" style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {r.ownerEmail || 'N/A'}
+                            </td>
                             <td>{requestTypeMap[r.requestType] || r.requestType || 'N/A'}</td>
                             <td>{r.taxCode || 'N/A'}</td>
                             <td>{dateStr}</td>

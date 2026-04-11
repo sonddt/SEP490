@@ -8,6 +8,8 @@ import MatchingScheduleModal from '../../components/matching/MatchingScheduleMod
 import { useAuth } from '../../context/AuthContext';
 import { parseSlotDate, buildScheduleSummary } from '../../utils/matchingScheduleSummary';
 
+import { toast } from 'react-toastify';
+
 function sameUserId(a, b) {
   if (a == null || b == null) return false;
   return String(a).toLowerCase() === String(b).toLowerCase();
@@ -81,6 +83,11 @@ export default function MatchingPostDetail() {
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [bookingSlotQuery, setBookingSlotQuery] = useState('');
   const [bookingSlotSort, setBookingSlotSort] = useState('time_asc');
+  const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null });
+
+  const confirmAction = useCallback((title, message, onConfirm) => {
+    setConfirmModal({ open: true, title, message, onConfirm });
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -200,49 +207,52 @@ export default function MatchingPostDetail() {
       setJoinMessage('');
       await load();
     } catch (err) {
-      alert(err.response?.data?.message || 'Có lỗi xảy ra');
+      toast.error(err.response?.data?.message || 'Có lỗi xảy ra');
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleCancelJoin = async () => {
-    if (!window.confirm('Bạn muốn hủy yêu cầu tham gia?')) return;
-    setActionLoading(true);
-    try {
-      await matchingApi.cancelJoin(postId);
-      await load();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Có lỗi xảy ra');
-    } finally {
-      setActionLoading(false);
-    }
+  const handleCancelJoin = () => {
+    confirmAction('Xác nhận hủy', 'Bạn muốn hủy yêu cầu tham gia?', async () => {
+      setActionLoading(true);
+      try {
+        await matchingApi.cancelJoin(postId);
+        await load();
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Có lỗi xảy ra');
+      } finally {
+        setActionLoading(false);
+      }
+    });
   };
 
-  const handleClose = async () => {
-    if (!window.confirm('Bạn chắc chắn muốn đóng bài đăng?')) return;
-    setActionLoading(true);
-    try {
-      await matchingApi.closePost(postId);
-      await load();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Có lỗi xảy ra');
-    } finally {
-      setActionLoading(false);
-    }
+  const handleClose = () => {
+    confirmAction('Đóng bài đăng', 'Bạn chắc chắn muốn đóng bài đăng?', async () => {
+      setActionLoading(true);
+      try {
+        await matchingApi.closePost(postId);
+        await load();
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Có lỗi xảy ra');
+      } finally {
+        setActionLoading(false);
+      }
+    });
   };
 
-  const handleReopen = async () => {
-    if (!window.confirm('Mở lại bài đăng để người chơi có thể xin tham gia?')) return;
-    setActionLoading(true);
-    try {
-      await matchingApi.reopenPost(postId);
-      await load();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Có lỗi xảy ra');
-    } finally {
-      setActionLoading(false);
-    }
+  const handleReopen = () => {
+    confirmAction('Mở lại bài đăng', 'Mở lại bài đăng để người chơi có thể xin tham gia?', async () => {
+      setActionLoading(true);
+      try {
+        await matchingApi.reopenPost(postId);
+        await load();
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Có lỗi xảy ra');
+      } finally {
+        setActionLoading(false);
+      }
+    });
   };
 
   const handleAcceptRequest = async (requestId) => {
@@ -250,7 +260,7 @@ export default function MatchingPostDetail() {
       await matchingApi.acceptRequest(requestId);
       await load();
     } catch (err) {
-      alert(err.response?.data?.message || 'Có lỗi xảy ra');
+      toast.error(err.response?.data?.message || 'Có lỗi xảy ra');
     }
   };
 
@@ -259,36 +269,38 @@ export default function MatchingPostDetail() {
       await matchingApi.rejectRequest(requestId, { reason });
       await load();
     } catch (err) {
-      alert(err.response?.data?.message || 'Có lỗi xảy ra');
+      toast.error(err.response?.data?.message || 'Có lỗi xảy ra');
     }
   };
 
-  const handleKick = async (memberId) => {
-    if (!window.confirm('Bạn muốn xóa thành viên này?')) return;
-    try {
-      await matchingApi.removeMember(memberId);
-      await load();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Có lỗi xảy ra');
-    }
-  };
-
-  const handleLeave = async () => {
-    if (!window.confirm('Bạn muốn rời khỏi nhóm?')) return;
-    setActionLoading(true);
-    try {
-      const myMember = post.members?.find((m) => sameUserId(m.userId, user?.id));
-      if (myMember?.memberId) {
-        await matchingApi.removeMember(myMember.memberId);
+  const handleKick = (memberId) => {
+    confirmAction('Xóa thành viên', 'Bạn muốn xóa thành viên này?', async () => {
+      try {
+        await matchingApi.removeMember(memberId);
         await load();
-      } else {
-        alert('Không tìm thấy thông tin thành viên — tải lại trang và thử lại.');
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Có lỗi xảy ra');
       }
-    } catch (err) {
-      alert(err.response?.data?.message || 'Có lỗi xảy ra');
-    } finally {
-      setActionLoading(false);
-    }
+    });
+  };
+
+  const handleLeave = () => {
+    confirmAction('Tuyệt giao', 'Bạn muốn rời khỏi nhóm?', async () => {
+      setActionLoading(true);
+      try {
+        const myMember = post.members?.find((m) => sameUserId(m.userId, user?.id));
+        if (myMember?.memberId) {
+          await matchingApi.removeMember(myMember.memberId);
+          await load();
+        } else {
+          toast.error('Không tìm thấy thông tin thành viên — tải lại trang và thử lại.');
+        }
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Có lỗi xảy ra');
+      } finally {
+        setActionLoading(false);
+      }
+    });
   };
 
   const formatPrice = (v) => {
@@ -322,7 +334,21 @@ export default function MatchingPostDetail() {
         <div className="container">
 
 
-          
+          {/* Back Button */}
+          <div style={{ marginBottom: '20px' }}>
+            <Link 
+              to="/matching" 
+              style={{ display: 'inline-flex', alignItems: 'center', color: '#64748b', fontWeight: '700', fontSize: '15px', textDecoration: 'none' }}
+              onMouseEnter={(e) => e.currentTarget.style.color = '#097E52'}
+              onMouseLeave={(e) => e.currentTarget.style.color = '#64748b'}
+            >
+              <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#fff', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                <i className="feather-arrow-left"></i>
+              </div>
+              Trở về danh sách
+            </Link>
+          </div>
+
           {/* Header Action Section - Minimal Hero */}
           <div style={{ backgroundColor: '#fff', borderRadius: '24px', padding: '32px 40px', marginBottom: '32px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
              <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
@@ -699,6 +725,34 @@ export default function MatchingPostDetail() {
         range={scheduleSummary.range}
         courtsText={scheduleSummary.courtsText}
       />
+
+      {confirmModal.open && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1050, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: '#fff', borderRadius: '20px', padding: '32px', width: '90%', maxWidth: '400px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>{confirmModal.title}</h3>
+            <p style={{ color: '#64748b', fontSize: '15px', marginBottom: '24px', fontWeight: '500' }}>{confirmModal.message}</p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button 
+                className="btn btn-outline-secondary flex-fill" 
+                onClick={() => setConfirmModal({ ...confirmModal, open: false })} 
+                style={{ borderRadius: '12px', fontWeight: '700', padding: '10px' }}
+              >
+                Hủy
+              </button>
+              <button 
+                className="btn btn-primary flex-fill" 
+                onClick={() => {
+                  setConfirmModal({ ...confirmModal, open: false });
+                  if (confirmModal.onConfirm) confirmModal.onConfirm();
+                }} 
+                style={{ borderRadius: '12px', fontWeight: '700', padding: '10px' }}
+              >
+                Đồng ý
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

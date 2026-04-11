@@ -4,6 +4,7 @@ import matchingApi from '../../api/matchingApi';
 import MatchingScheduleModal from './MatchingScheduleModal';
 import { buildScheduleSummary } from '../../utils/matchingScheduleSummary';
 import { useAuth } from '../../context/AuthContext';
+import { toast } from 'react-toastify';
 
 function sameUserId(a, b) {
   if (a == null || b == null) return false;
@@ -83,18 +84,14 @@ const scheduleLinkBtnStyle = {
 export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) {
   const { user } = useAuth();
   const [joinBusy, setJoinBusy] = useState(false);
-  const [joinNotice, setJoinNotice] = useState(null);
-  const noticeTimer = useRef(null);
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [joinMessage, setJoinMessage] = useState('');
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [scheduleModalLoading, setScheduleModalLoading] = useState(false);
   const [scheduleModalData, setScheduleModalData] = useState(null);
   const [scheduleModalError, setScheduleModalError] = useState(null);
 
-  useEffect(() => {
-    return () => {
-      if (noticeTimer.current) clearTimeout(noticeTimer.current);
-    };
-  }, []);
+ 
 
   const totalSlots = (post.requiredPlayers || 0) + 1; // +1 host
   const filled = post.membersCount || 0;
@@ -132,19 +129,18 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
     }
   }, [post.id]);
 
-  const handleQuickJoin = async () => {
+  const submitJoinRequest = async () => {
     if (!canQuickJoin || joinBusy) return;
     setJoinBusy(true);
-    setJoinNotice(null);
     try {
-      await matchingApi.joinPost(post.id, {});
-      setJoinNotice({ type: 'success', text: 'Đã gửi yêu cầu — chờ chủ bài duyệt nhé!' });
-      if (noticeTimer.current) clearTimeout(noticeTimer.current);
-      noticeTimer.current = setTimeout(() => setJoinNotice(null), 5000);
+      await matchingApi.joinPost(post.id, { message: joinMessage || undefined });
+      toast.success('Đã gửi yêu cầu tham gia! Chờ chủ bài duyệt nhé.');
+      setShowJoinModal(false);
+      setJoinMessage('');
       onJoined?.();
     } catch (err) {
       const msg = err.response?.data?.message || 'Chưa gửi được yêu cầu — bạn thử lại sau nhé.';
-      setJoinNotice({ type: 'error', text: msg });
+      toast.error(msg);
     } finally {
       setJoinBusy(false);
     }
@@ -252,8 +248,8 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
                       Chi tiết
                     </Link>
                     {canQuickJoin ? (
-                      <button onClick={handleQuickJoin} disabled={joinBusy} className="btn btn-primary" style={{ borderRadius: '10px', fontWeight: '700', padding: '8px 20px', display: 'flex', alignItems: 'center' }}>
-                         {joinBusy ? 'Đang gửi...' : <><i className="feather-user-plus me-2"></i> Xin tham gia</>}
+                      <button onClick={() => setShowJoinModal(true)} disabled={joinBusy} className="btn btn-primary" style={{ borderRadius: '10px', fontWeight: '700', padding: '8px 20px', display: 'flex', alignItems: 'center' }}>
+                         {joinBusy ? '...' : <><i className="feather-user-plus me-2"></i> Xin tham gia</>}
                       </button>
                     ) : (
                       <button disabled className="btn btn-secondary" style={{ borderRadius: '10px', fontWeight: '700', padding: '8px 20px', opacity: 0.6 }}>
@@ -264,11 +260,6 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
                 )}
               </div>
             </div>
-            {joinNotice && (
-              <div style={{ marginTop: '12px', fontSize: '13px', fontWeight: '700', color: joinNotice.type === 'success' ? '#16a34a' : '#d97706', textAlign: 'right' }}>
-                {joinNotice.text}
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -397,7 +388,7 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
                 Chi tiết
               </Link>
               {canQuickJoin ? (
-                <button onClick={handleQuickJoin} disabled={joinBusy} className="btn btn-primary flex-fill" style={{ borderRadius: '10px', fontWeight: '800', padding: '10px' }}>
+                <button onClick={() => setShowJoinModal(true)} disabled={joinBusy} className="btn btn-primary flex-fill" style={{ borderRadius: '10px', fontWeight: '800', padding: '10px' }}>
                    {joinBusy ? '...' : 'Xin tham gia'}
                 </button>
               ) : (
@@ -406,11 +397,6 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
                 </button>
               )}
             </div>
-          )}
-          {joinNotice && (
-             <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: '700', color: joinNotice.type === 'success' ? '#16a34a' : '#d97706', textAlign: 'center' }}>
-               {joinNotice.text}
-             </div>
           )}
         </div>
       </div>
@@ -423,6 +409,33 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
       loading={scheduleModalLoading}
       errorMessage={scheduleModalError}
     />
+
+    {/* Modern Join Modal */}
+    {showJoinModal && (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 1050, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(4px)' }}>
+        <div style={{ background: '#fff', borderRadius: '20px', padding: '32px', width: '90%', maxWidth: '400px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+          <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>Tham gia nhóm</h3>
+          <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '20px', fontWeight: '500' }}>{post.title}</p>
+          
+          <label style={{ fontSize: '13px', fontWeight: '700', color: '#475569', marginBottom: '8px', display: 'block' }}>Lời nhắn (tuỳ chọn)</label>
+          <textarea
+            className="form-control"
+            rows={3}
+            placeholder="Xin chào, có thể duyệt mình vào nhóm được không?"
+            value={joinMessage}
+            onChange={(e) => setJoinMessage(e.target.value)}
+            style={{ borderRadius: '12px', fontSize: '14px', padding: '12px', marginBottom: '24px' }}
+          />
+          
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button className="btn btn-outline-secondary flex-fill" onClick={() => setShowJoinModal(false)} disabled={joinBusy} style={{ borderRadius: '12px', fontWeight: '700', padding: '10px' }}>Hủy bỏ</button>
+            <button className="btn btn-primary flex-fill" onClick={submitJoinRequest} disabled={joinBusy} style={{ borderRadius: '12px', fontWeight: '700', padding: '10px' }}>
+              {joinBusy ? 'Đang gửi...' : 'Gửi yêu cầu'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 }

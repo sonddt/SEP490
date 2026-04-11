@@ -448,32 +448,36 @@ export default function ManagerBookings() {
                   return (
                     <tr key={b.id} data-manager-booking-row={b.bookingId || b.id}>
                       {/* Court */}
-                      <td>
+                      <td style={{ maxWidth: 220, overflow: 'hidden' }}>
                         <h2 className="table-avatar">
                           <span className="avatar avatar-sm flex-shrink-0">
                             <img className="avatar-img" src={b.courtImg} alt="" onError={e => { e.target.src = '/assets/img/booking/booking-01.jpg'; }} />
                           </span>
-                          <span className="table-head-name flex-grow-1">
-                            <a href="#!" onClick={e => { e.preventDefault(); setDetailModal(b); }}>
+                          <span className="table-head-name flex-grow-1" style={{ maxWidth: 'calc(100% - 40px)', overflow: 'hidden' }}>
+                            <a href="#!" onClick={e => { e.preventDefault(); setDetailModal(b); }} title={b.court} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {b.court}
                               {b.isLongTerm && (
                                 <span className="badge bg-info text-dark ms-1" style={{ fontSize: '0.65rem' }}>Lịch dài hạn</span>
                               )}
                             </a>
-                            <span><i className="feather-map-pin" style={{ fontSize: 11, marginRight: 3 }} />{b.venue}</span>
+                            <span title={b.venue} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <i className="feather-map-pin" style={{ fontSize: 11, marginRight: 3 }} />{b.venue}
+                            </span>
                           </span>
                         </h2>
                       </td>
                       {/* Player */}
-                      <td>
+                      <td style={{ maxWidth: 200, overflow: 'hidden' }}>
                         <h2 className="table-avatar">
                           <span className="avatar avatar-sm flex-shrink-0" style={{ borderRadius: '50%' }}>
                             <img className="avatar-img rounded-circle" src={b.playerImg} alt="" onError={e => { e.target.src = '/assets/img/profiles/avatar-01.jpg'; }} />
                           </span>
-                          <span className="table-head-name flex-grow-1">
-                            <a href="#!" onClick={e => e.preventDefault()}>{b.player}</a>
+                          <span className="table-head-name flex-grow-1" style={{ maxWidth: 'calc(100% - 40px)', overflow: 'hidden' }}>
+                            <a href="#!" onClick={e => e.preventDefault()} title={b.player} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {b.player}
+                            </a>
                             {b.playerAccountSub && (
-                              <span className="d-block text-muted" style={{ fontSize: 11 }}>
+                              <span className="d-block text-muted" title={`TK: ${b.playerAccountSub}`} style={{ fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 TK: {b.playerAccountSub}
                               </span>
                             )}

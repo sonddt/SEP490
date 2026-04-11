@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import UserDashboardMenu from '../../components/user/UserDashboardMenu';
 import UserProfileTabs from '../../components/user/UserProfileTabs';
+import ShuttleDateField from '../../components/ui/ShuttleDateField';
 import VietnamAddressFields from '../../components/user/VietnamAddressFields';
 import { useAuth } from '../../context/AuthContext';
 import { profileApi } from '../../api/profileApi';
@@ -472,12 +473,10 @@ export default function UserProfileEdit() {
                       <div className="col-lg-4 col-md-6">
                         <div className="input-space">
                           <label className="form-label">Ngày sinh</label>
-                          <input
-                            type="date"
-                            className="form-control"
-                            name="dateOfBirth"
-                            value={form.dateOfBirth}
-                            onChange={handleChange}
+                          <ShuttleDateField
+                            value={form.dateOfBirth ? form.dateOfBirth.substring(0, 10) : ''}
+                            onChange={(ymd) => setForm(f => ({ ...f, dateOfBirth: ymd }))}
+                            placeholder="Ngày sinh"
                           />
                         </div>
                       </div>

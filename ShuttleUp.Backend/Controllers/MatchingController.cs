@@ -92,7 +92,7 @@ public class MatchingController : ControllerBase
 
         await _activity.ApplyExpiredOpenAndFullToInactiveAsync(HttpContext.RequestAborted);
 
-        var nowUtc = DateTime.UtcNow;
+        var localTime = DateTime.Now;
         var query = _db.MatchingPosts.AsNoTracking()
             .Include(p => p.CreatorUser).ThenInclude(u => u!.AvatarFile)
             .Include(p => p.Venue)
@@ -103,7 +103,7 @@ public class MatchingController : ControllerBase
             .Where(p => p.MatchingPostItems.Any(i =>
                 i.BookingItem != null
                 && i.BookingItem.StartTime.HasValue
-                && i.BookingItem.StartTime.Value > nowUtc));
+                && i.BookingItem.StartTime.Value > localTime));
 
         // Filters
         if (!string.IsNullOrWhiteSpace(skillLevel))

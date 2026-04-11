@@ -142,6 +142,58 @@ public static class BookingSlotHelper
         return (normalizedItems, null);
     }
 
+    /// <summary>Mở rộng lịch tuần với khung giờ riêng biệt cho từng ngày (DailySchedules).</summary>
+    public static (List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)> Items, string? Error)
+        ExpandWeeklyLongTermWithDailySchedules(
+            Guid courtId,
+            Court court,
+            DateOnly rangeStart,
+            DateOnly rangeEnd,
+            Dictionary<DayOfWeek, (TimeOnly Start, TimeOnly End)> dayTimeMap,
+            int maxSlots)
+    {
+        if (rangeEnd < rangeStart)
+            return (new List<(Guid, DateTime, DateTime, decimal)>(), "Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.");
+
+        var spanDays = rangeEnd.DayNumber - rangeStart.DayNumber;
+        if (spanDays > 186)
+            return (new List<(Guid, DateTime, DateTime, decimal)>(), "Khoảng ngày không được vượt quá 6 tháng (~186 ngày).");
+
+        var normalizedItems = new List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)>();
+
+        for (var d = rangeStart; d <= rangeEnd; d = d.AddDays(1))
+        {
+            if (!dayTimeMap.TryGetValue(d.DayOfWeek, out var times))
+                continue;
+
+            if (times.End <= times.Start)
+                return (normalizedItems, $"Giờ kết thúc phải sau giờ bắt đầu ({d.DayOfWeek}).");
+
+            var dtStart = d.ToDateTime(times.Start, DateTimeKind.Unspecified);
+            var dtEnd = d.ToDateTime(times.End, DateTimeKind.Unspecified);
+
+            for (var slotStart = dtStart; slotStart < dtEnd; slotStart = slotStart.AddMinutes(30))
+            {
+                var slotEnd = slotStart.AddMinutes(30);
+                if (slotEnd > dtEnd)
+                    return (normalizedItems, "Khung giờ trong ngày phải là bội số 30 phút.");
+
+                var price = ResolveSlotPrice(court.CourtPrices.ToList(), slotStart);
+                if (price == null)
+                    return (normalizedItems, $"Chưa cấu hình giá cho sân {court.Name} tại {slotStart:HH:mm}.");
+
+                normalizedItems.Add((courtId, slotStart, slotEnd, price.Value));
+                if (normalizedItems.Count > maxSlots)
+                    return (normalizedItems, $"Vượt quá số khung tối đa ({maxSlots} ô × 30 phút). Rút ngắn khoảng ngày hoặc giảm số buổi trong tuần.");
+            }
+        }
+
+        if (normalizedItems.Count == 0)
+            return (normalizedItems, "Không có buổi nào khớp điều kiện (thứ trong tuần / khoảng ngày).");
+
+        return (normalizedItems, null);
+    }
+
     public static async Task<string?> CheckSlotConflictsAsync(
         ShuttleUpDbContext db,
         List<Guid> courtIds,

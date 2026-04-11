@@ -214,8 +214,8 @@ export default function ManagerRefunds() {
                           #{r.bookingCode}
                         </span>
                       </td>
-                      <td>{r.venueName}</td>
-                      <td>
+                      <td title={r.venueName} style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.venueName}</td>
+                      <td title={r.playerName} style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         <div>{r.playerName}</div>
                         <small className="text-muted">{r.playerPhone}</small>
                       </td>

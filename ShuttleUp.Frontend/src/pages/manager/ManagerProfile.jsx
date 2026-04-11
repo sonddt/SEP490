@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { profileApi } from '../../api/profileApi';
 import axiosClient from '../../api/axiosClient';
+import ShuttleDateField from '../../components/ui/ShuttleDateField';
 
 /* ── Compact section header (same pattern as ManagerAddVenue) ──────────── */
 function SectionHeader({ icon, iconBg, iconColor, title, subtitle }) {
@@ -505,7 +506,11 @@ export default function ManagerProfile() {
                   </div>
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-semibold text-dark mb-2">Ngày sinh</label>
-                    <input type="date" className="form-control form-control-lg bg-light border-0" value={form.dateOfBirth} onChange={(e) => setF('dateOfBirth', e.target.value)} />
+                    <ShuttleDateField
+                      value={form.dateOfBirth ? form.dateOfBirth.substring(0, 10) : ''}
+                      onChange={(ymd) => setF('dateOfBirth', ymd)}
+                      placeholder="Ngày sinh"
+                    />
                   </div>
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-semibold text-dark mb-2">Tỉnh / Thành phố</label>

@@ -15,7 +15,7 @@ public class MatchingPostActivityService : IMatchingPostActivityService
 
     public async Task ApplyExpiredOpenAndFullToInactiveAsync(CancellationToken cancellationToken = default)
     {
-        var now = DateTime.UtcNow;
+        var localTime = DateTime.Now;
 
         var toMark = await _db.MatchingPosts
             .Where(p => p.Status == "OPEN" || p.Status == "FULL")
@@ -23,7 +23,7 @@ public class MatchingPostActivityService : IMatchingPostActivityService
                 mpi.PostId == p.Id
                 && mpi.BookingItem != null
                 && mpi.BookingItem.StartTime != null
-                && mpi.BookingItem.StartTime > now))
+                && mpi.BookingItem.StartTime > localTime))
             .ToListAsync(cancellationToken);
 
         if (toMark.Count == 0)
@@ -32,7 +32,7 @@ public class MatchingPostActivityService : IMatchingPostActivityService
         foreach (var p in toMark)
         {
             p.Status = "Inactive";
-            p.UpdatedAt = now;
+            p.UpdatedAt = localTime;
         }
 
         var postIds = toMark.Select(p => p.Id).ToList();
@@ -43,7 +43,7 @@ public class MatchingPostActivityService : IMatchingPostActivityService
         foreach (var r in pending)
         {
             r.Status = "CANCELLED";
-            r.UpdatedAt = now;
+            r.UpdatedAt = localTime;
         }
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -58,20 +58,20 @@ public class MatchingPostActivityService : IMatchingPostActivityService
         if (post.Status != "OPEN" && post.Status != "FULL")
             return;
 
-        var now = DateTime.UtcNow;
+        var localTime = DateTime.Now;
         var hasFuture = await _db.MatchingPostItems
             .AnyAsync(mpi =>
                     mpi.PostId == postId
                     && mpi.BookingItem != null
                     && mpi.BookingItem.StartTime != null
-                    && mpi.BookingItem.StartTime > now,
+                    && mpi.BookingItem.StartTime > localTime,
                 cancellationToken);
 
         if (hasFuture)
             return;
 
         post.Status = "Inactive";
-        post.UpdatedAt = now;
+        post.UpdatedAt = localTime;
 
         var pending = await _db.MatchingJoinRequests
             .Where(r => r.PostId == postId && r.Status == "PENDING")
@@ -79,7 +79,7 @@ public class MatchingPostActivityService : IMatchingPostActivityService
         foreach (var r in pending)
         {
             r.Status = "CANCELLED";
-            r.UpdatedAt = now;
+            r.UpdatedAt = localTime;
         }
 
         await _db.SaveChangesAsync(cancellationToken);

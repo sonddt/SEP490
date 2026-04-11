@@ -17,5 +17,11 @@ public class LongTermScheduleDto
 
     public List<int> DaysOfWeek { get; set; } = new();
 
+    /// <summary>
+    /// Tùy chọn: khung giờ riêng cho từng ngày (khi người dùng tắt "Đồng bộ giờ").
+    /// Nếu null / rỗng, hệ thống sẽ dùng SessionStartTime + SessionEndTime chung cho tất cả DaysOfWeek.
+    /// </summary>
+    public List<DailyScheduleDto>? DailySchedules { get; set; }
+
     public string? CouponCode { get; set; }
 }
