@@ -125,7 +125,7 @@ public class BookingsController : ControllerBase
         if (normErr != null)
             return BadRequest(new { message = normErr });
 
-        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, HttpContext.RequestAborted);
+        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, HttpContext.RequestAborted, excludeBookingId: dto.BookingId, excludeHoldingUserId: userId);
         if (conflict == "CONFLICT_BOOKING")
             return Conflict(new { message = "Một hoặc nhiều khung giờ vừa được người khác đặt. Vui lòng chọn lại." });
         if (conflict == "CONFLICT_BLOCK")
@@ -729,7 +729,8 @@ public class BookingsController : ControllerBase
         if (normalizedItems.Count > BookingSlotHelper.MaxLongTermSlots)
             return new FlexibleLongTermBuildResult { Error = BadRequest(new { message = $"Vượt quá số khung tối đa ({BookingSlotHelper.MaxLongTermSlots} ô × 30 phút)." }) };
 
-        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, ct);
+        TryGetCurrentUserId(out var currentUserId);
+        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, ct, excludeBookingId: null, excludeHoldingUserId: currentUserId);
         if (conflict == "CONFLICT_BOOKING")
             return new FlexibleLongTermBuildResult { Error = Conflict(new { message = "Một hoặc nhiều khung giờ đã có người đặt. Vui lòng đổi lịch." }) };
         if (conflict == "CONFLICT_BLOCK")
@@ -869,7 +870,8 @@ public class BookingsController : ControllerBase
             return new LongTermBuildResult { Error = BadRequest(new { message = legacyExpandErr }) };
 
         var courtIds = new List<Guid> { dto.CourtId!.Value };
-        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, ct);
+        TryGetCurrentUserId(out var currentUserId);
+        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, ct, excludeBookingId: null, excludeHoldingUserId: currentUserId);
         if (conflict == "CONFLICT_BOOKING")
             return new LongTermBuildResult { Error = Conflict(new { message = "Một hoặc nhiều khung giờ đã có người đặt. Vui lòng đổi lịch." }) };
         if (conflict == "CONFLICT_BLOCK")
