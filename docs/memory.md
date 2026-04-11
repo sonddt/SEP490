@@ -331,8 +331,12 @@ Kết bạn & quan hệ xã hội (Player):
 
 8. **Tìm kiếm không dấu (toàn app FE + API Matching)**:
    - **Tiện ích:** `ShuttleUp.Frontend/src/utils/searchNormalize.js` — `normalizeSearchText` (NFD, bỏ dấu kết hợp, gộp khoảng trắng, thường); `normalizedIncludes` / `normalizedIncludesAny`.
-   - **Frontend:** `SearchableSelect.jsx`; `vietnamDivisions.js` (`normalizeKey` dùng chung helper); lọc danh sách có ô search: Manager (Bookings, Earnings, Venue list/courts, Payment bank picker), Matching (`MatchingHub` tab Của tôi/Đã tham gia, `MatchingPostDetail` slot, `MatchingComments` @mention), Admin/Manager Featured Posts (`normalizedIncludesAny`), `VenuesListing` (tên + địa điểm); `nominatimGeocode.js` — khóa cache theo chuỗi đã chuẩn hóa.
-   - **Backend:** `ShuttleUp.Backend/Utils/SearchNormalize.cs` (logic đồng bộ với JS); `MatchingController.GetOpenPosts` khi có `q`: sau khi lọc/sort DB, tải danh sách đã sort rồi lọc trong bộ nhớ theo chuỗi đã fold (ví dụ `ha noi` khớp địa chỉ có dấu), rồi phân trang — để tab "Tất cả" khớp hành vi không dấu. *(Các API search khác chỉ gửi `search` lên server vẫn phụ thuộc logic từng endpoint.)*
+   - **Frontend:** `SearchableSelect.jsx`; `vietnamDivisions.js` (`normalizeKey` dùng chung helper); lọc danh sách có ô search: Manager (Bookings, Earnings, Venue list/courts, Payment bank picker), Matching (`MatchingHub` tab Của tôi/Đã tham gia, `MatchingPostDetail` slot, `MatchingComments` @mention), Admin/Manager Featured Posts (`normalizedIncludesAny`), `VenuesListing` (tên + địa điểm); `nominatimGeocode.js`341. **Số hóa tìm kiếm thông minh (Search Normalization Upgrade)**:
+    - Cập nhật `normalizeSearchText` trong `utils/searchNormalize.js`:
+        - Tự động loại bỏ các tiền tố hành chính: `Thành phố`, `Quận`, `Huyện`, `TP`, `Q`, `P`...
+        - Xử lý Alias địa danh đa vùng: Tự động chuẩn hóa song phương (Query và DB) cho nhiều tỉnh thành lớn (**Hà Nội -> HN, HCM -> hcm, Đà Nẵng -> DN, Cần Thơ -> CT**, biểu đồ 12+ tỉnh thành).
+        - Loại bỏ dấu câu (`.`, `,`, `-`) để đảm bảo ranh giới từ sạch khi so khớp.
+ hành vi không dấu. *(Các API search khác chỉ gửi `search` lên server vẫn phụ thuộc logic từng endpoint.)*
 
 9. **Sửa build Backend: Guid vs string (excludeHoldingUserId)**:
    - `Booking.UserId` là `Guid?`; tham số `excludeHoldingUserId` của `CheckSlotConflictsAsync` phải là `Guid?` (không phải `string?`) để khớp caller `BookingsController` và biểu thức LINQ.
