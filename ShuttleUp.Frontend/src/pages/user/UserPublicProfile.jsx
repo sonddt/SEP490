@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import UserDashboardMenu from '../../components/user/UserDashboardMenu';
 import RelationshipActions from '../../components/user/RelationshipActions';
 import { profileApi } from '../../api/profileApi';
 import { buildProfileShareUrl } from '../../utils/profileQr';
@@ -48,8 +47,6 @@ export default function UserPublicProfile() {
           </ul>
         </div>
       </section>
-
-      <UserDashboardMenu />
 
       <div className="content court-bg" style={{ paddingTop: 40 }}>
         <div className="container" style={{ maxWidth: 720 }}>

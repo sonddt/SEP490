@@ -11,6 +11,7 @@ import Zoom from 'yet-another-react-lightbox/plugins/zoom';
 import Thumbnails from 'yet-another-react-lightbox/plugins/thumbnails';
 import 'yet-another-react-lightbox/styles.css';
 import 'yet-another-react-lightbox/plugins/thumbnails.css';
+import LongTermTypeModal from '../components/booking/LongTermTypeModal';
 
 const AMENITIES_LIST = [
   { key: 'parking',       label: 'Bãi đỗ xe',                  icon: 'feather-map-pin' },
@@ -59,6 +60,7 @@ export default function VenueDetails() {
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [pendingReviewBookingId, setPendingReviewBookingId] = useState(null);
+  const [isLongTermModalOpen, setIsLongTermModalOpen] = useState(false);
 
   // Build slides for lightbox
   const slides = MOCK_GALLERY.map((src) => ({ src }));
@@ -81,15 +83,7 @@ export default function VenueDetails() {
   };
 
   const handleLongTermBooking = () => {
-    const payload = {
-        venueId: venue.id,
-        venueName: venue.name,
-        venueAddress: venue.address,
-        weeklyDiscountPercent: venue.weeklyDiscountPercent,
-        monthlyDiscountPercent: venue.monthlyDiscountPercent
-    };
-    sessionStorage.setItem('booking_venue_context', JSON.stringify(payload));
-    navigate('/booking/long-term', { state: payload });
+    setIsLongTermModalOpen(true);
   };
 
   useEffect(() => {
@@ -802,6 +796,19 @@ export default function VenueDetails() {
           setPendingReviewBookingId(null);
         }}
         onSaved={handleReviewSaved}
+      />
+
+      <LongTermTypeModal 
+        isOpen={isLongTermModalOpen} 
+        onClose={() => setIsLongTermModalOpen(false)} 
+        venuePayload={venue ? {
+            venueId: venue.id,
+            venueName: venue.name,
+            venueAddress: venue.address,
+            pricePerSlot: venue.startingPrice,
+            weeklyDiscountPercent: venue.weeklyDiscountPercent,
+            monthlyDiscountPercent: venue.monthlyDiscountPercent
+        } : null}
       />
     </div>
   );

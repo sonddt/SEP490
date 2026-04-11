@@ -293,7 +293,7 @@ export default function BookingPayment() {
 
   if (loadingContext) {
     return (
-      <div className="main-wrapper content-below-header text-center py-5" style={{ paddingTop: '120px' }}>
+      <div className="main-wrapper content-below-header text-center py-5">
         <div className="spinner-border text-secondary" role="status" />
         <p className="text-muted mt-2">Đang tải thông tin thanh toán…</p>
       </div>
@@ -301,7 +301,7 @@ export default function BookingPayment() {
   }
 
   return (
-    <div className="main-wrapper" style={{ paddingTop: '96px' }}>
+    <div className="main-wrapper content-below-header">
 
       {expired && (
         <div

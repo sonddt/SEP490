@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import LongTermBookingSteps from '../components/booking/LongTermBookingSteps';
 import { useAuth } from '../context/AuthContext';
@@ -13,7 +13,30 @@ function formatDateVN(isoDate) {
   return `${dow}, ${d}/${m}/${y}`;
 }
 
+function generateDates(startDate, endDate, selectedDays) {
+  if (!startDate || !endDate || !selectedDays || selectedDays.length === 0) return [];
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const result = [];
+  const current = new Date(start);
+  while (current <= end) {
+    if (selectedDays.includes(current.getDay())) {
+      const d = current.getDate().toString().padStart(2, '0');
+      const m = (current.getMonth() + 1).toString().padStart(2, '0');
+      result.push(`${d}/${m}/${current.getFullYear()}`);
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  return result;
+}
+
 const DOW_LABELS = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+
+function computeDaysDuration(rangeStartIso, rangeEndIso) {
+  const d1 = new Date(rangeStartIso);
+  const d2 = new Date(rangeEndIso);
+  return Math.round(Math.abs(d2 - d1) / (1000 * 60 * 60 * 24)) + 1;
+}
 
 export default function LongTermConfirm() {
   const navigate = useNavigate();
@@ -34,6 +57,8 @@ export default function LongTermConfirm() {
     daysOfWeek = [],
     dailySchedules = null,
     preview = null,
+    autoSwitchCourt = false,
+    pricePreference = null,
   } = state;
 
   // Detect bookingId from state (passed back from Payment page) or URL search params (browser back button)
@@ -69,6 +94,9 @@ export default function LongTermConfirm() {
   const [couponError, setCouponError] = useState('');
   const [previewingDiscount, setPreviewingDiscount] = useState(false);
 
+  /** Giữ số giảm “đợt dài hạn” lúc chưa có mã — để tách dòng nếu API chỉ trả discountAmount tổng. */
+  const longTermDiscountBaselineRef = useRef(0);
+
   useEffect(() => {
     if (!localStorage.getItem('token')) return;
     profileApi
@@ -93,21 +121,28 @@ export default function LongTermConfirm() {
 
   useEffect(() => {
     if (!venueId || !totalPrice || !rangeStart || !rangeEnd) return;
-    const d1 = new Date(rangeStart);
-    const d2 = new Date(rangeEnd);
-    const daysDuration = Math.round(Math.abs(d2 - d1) / (1000 * 60 * 60 * 24)) + 1;
+    const daysDuration = computeDaysDuration(rangeStart, rangeEnd);
     previewDiscount({ venueId, baseAmount: totalPrice, daysDuration, couponCode: '' })
       .then(res => setDiscountInfo(res))
       .catch(() => {});
   }, [venueId, totalPrice, rangeStart, rangeEnd]);
 
+  useEffect(() => {
+    if (!discountInfo) return;
+    if (!appliedCoupon) {
+      const lt = Number(discountInfo.longTermDiscountAmount ?? 0);
+      const cp = Number(discountInfo.couponDiscountAmount ?? 0);
+      const total = Number(discountInfo.discountAmount ?? 0);
+      if (lt > 0) longTermDiscountBaselineRef.current = lt;
+      else if (cp === 0 && total > 0) longTermDiscountBaselineRef.current = total;
+    }
+  }, [discountInfo, appliedCoupon]);
+
   const fetchCouponPreview = async (code) => {
     setPreviewingDiscount(true);
     setCouponError('');
     try {
-      const d1 = new Date(rangeStart);
-      const d2 = new Date(rangeEnd);
-      const daysDuration = Math.round(Math.abs(d2 - d1) / (1000 * 60 * 60 * 24)) + 1;
+      const daysDuration = computeDaysDuration(rangeStart, rangeEnd);
       const resp = await previewDiscount({ venueId, baseAmount: totalPrice, daysDuration, couponCode: code });
       if (resp.errorMsg || resp.isValidCoupon === false) {
         setCouponError(resp.errorMsg || 'Mã giảm giá không hợp lệ.');
@@ -129,10 +164,21 @@ export default function LongTermConfirm() {
     fetchCouponPreview(couponCode.trim());
   };
 
-  const handleRemoveCoupon = () => {
+  const handleRemoveCoupon = async () => {
     setCouponCode('');
     setAppliedCoupon('');
-    setDiscountInfo(null);
+    setCouponError('');
+    if (!venueId || !totalPrice || !rangeStart || !rangeEnd) return;
+    setPreviewingDiscount(true);
+    try {
+      const daysDuration = computeDaysDuration(rangeStart, rangeEnd);
+      const resp = await previewDiscount({ venueId, baseAmount: totalPrice, daysDuration, couponCode: '' });
+      setDiscountInfo(resp);
+    } catch {
+      // Giữ giá trị cũ nếu API lỗi
+    } finally {
+      setPreviewingDiscount(false);
+    }
   };
 
   const validate = () => {
@@ -152,7 +198,7 @@ export default function LongTermConfirm() {
   const handleSubmit = async () => {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); return; }
-    if (!venueId || !courtId || !rangeStart || !rangeEnd) {
+    if (!venueId || !rangeStart || !rangeEnd || courtId === undefined) {
       setSubmitError('Thiếu dữ liệu lịch. Vui lòng làm lại từ đầu.');
       return;
     }
@@ -167,6 +213,8 @@ export default function LongTermConfirm() {
         sessionStartTime,
         sessionEndTime,
         daysOfWeek,
+        autoSwitchCourt,
+        pricePreference,
         contactName: form.name.trim(),
         contactPhone: form.phone.trim(),
         note: form.note.trim() || undefined,
@@ -192,6 +240,31 @@ export default function LongTermConfirm() {
 
   const daysLabels = useMemo(() => (daysOfWeek || []).map(d => DOW_LABELS[d] || d).join(', '), [daysOfWeek]);
 
+  const usedDays = useMemo(() => {
+    if (daysOfWeek && daysOfWeek.length > 0) return daysOfWeek.map(Number);
+    if (dailySchedules && dailySchedules.length > 0) return dailySchedules.map(d => Number(d.dayOfWeek));
+    return [];
+  }, [daysOfWeek, dailySchedules]);
+
+  const actualDaysPlayed = useMemo(() => {
+    if (!rangeStart || !rangeEnd || usedDays.length === 0) return [];
+    const start = new Date(rangeStart);
+    const end = new Date(rangeEnd);
+    const result = new Set();
+    const current = new Date(start);
+    while (current <= end) {
+      if (usedDays.includes(current.getDay())) {
+        result.add(current.getDay());
+      }
+      current.setDate(current.getDate() + 1);
+    }
+    return Array.from(result);
+  }, [rangeStart, rangeEnd, usedDays]);
+
+  const sessionChips = useMemo(() => {
+    return generateDates(rangeStart, rangeEnd, usedDays);
+  }, [rangeStart, rangeEnd, usedDays]);
+
   if (!venueId || !preview) {
     return (
       <div className="main-wrapper content-below-header text-center py-5" style={{ paddingTop: '120px' }}>
@@ -202,6 +275,33 @@ export default function LongTermConfirm() {
   }
 
   const displayPrice = discountInfo?.finalAmount ?? totalPrice;
+
+  const legacyDiscountTotal = Number(discountInfo?.discountAmount ?? 0);
+  let longTermDiscountAmount = Number(discountInfo?.longTermDiscountAmount ?? 0);
+  let couponDiscountAmount = Number(discountInfo?.couponDiscountAmount ?? 0);
+
+  if (
+    appliedCoupon &&
+    legacyDiscountTotal > 0 &&
+    longTermDiscountAmount === 0 &&
+    couponDiscountAmount === 0
+  ) {
+    const base = longTermDiscountBaselineRef.current;
+    if (base > 0 && legacyDiscountTotal >= base) {
+      longTermDiscountAmount = base;
+      couponDiscountAmount = legacyDiscountTotal - base;
+    } else if (legacyDiscountTotal > 0) {
+      couponDiscountAmount = legacyDiscountTotal;
+    }
+  }
+
+  const hasSplitDiscount =
+    discountInfo &&
+    (longTermDiscountAmount > 0 || couponDiscountAmount > 0);
+  const showLegacyDiscountRow =
+    discountInfo && !hasSplitDiscount && legacyDiscountTotal > 0;
+  const anyDiscount =
+    hasSplitDiscount || showLegacyDiscountRow;
 
   return (
     <div className="main-wrapper" style={{ paddingTop: '96px' }}>
@@ -248,7 +348,7 @@ export default function LongTermConfirm() {
                       <small className="text-muted">Tổng giờ</small>
                     </div>
                     <div className="text-center">
-                      <h4 className="primary-text mb-0">{Number(displayPrice).toLocaleString('vi-VN')} VNĐ</h4>
+                      <h4 className="primary-text mb-0">{Math.round(displayPrice).toLocaleString('vi-VN')} VNĐ</h4>
                       <small className="text-muted">Tổng thanh toán</small>
                     </div>
                   </div>
@@ -260,7 +360,7 @@ export default function LongTermConfirm() {
             </p>
           </section>
 
-          <div className="row">
+          <div className="row g-lg-5">
             <div className="col-12 col-lg-8">
               <section className="card booking-form mb-4">
                 <h3 className="border-bottom">Thông tin liên hệ</h3>
@@ -331,22 +431,76 @@ export default function LongTermConfirm() {
 
               <section className="card booking-order-confirmation mb-4">
                 <h5 className="mb-3">Chi tiết lịch đặt</h5>
-                <ul className="list-unstyled small mb-0">
-                  <li className="mb-2"><i className="feather-home me-2 text-primary" />Sân: <strong>{courtName || courtId}</strong></li>
-                  <li className="mb-2"><i className="feather-calendar me-2 text-primary" />Từ {formatDateVN(rangeStart)} đến {formatDateVN(rangeEnd)}</li>
-                  <li className="mb-2"><i className="feather-repeat me-2 text-primary" />{daysLabels}</li>
-                  {dailySchedules && dailySchedules.length > 0 ? (
-                    dailySchedules.map((ds) => (
-                      <li className="mb-2" key={ds.dayOfWeek}>
-                        <i className="feather-clock me-2 text-primary" />
-                        {DOW_LABELS[ds.dayOfWeek]}: {ds.startTime} – {ds.endTime}
-                      </li>
-                    ))
-                  ) : (
-                    <li className="mb-2"><i className="feather-clock me-2 text-primary" />Giờ: {sessionStartTime} – {sessionEndTime}</li>
-                  )}
-                  <li className="mb-2"><i className="feather-layers me-2 text-primary" />{sessionCount} buổi · {slotCount} ô × 30 phút</li>
-                </ul>
+                <div className="table-responsive">
+                  <table className="table mb-0 align-top">
+                    <thead className="table-light bg-gray-50 border-gray-50">
+                      <tr>
+                        <th className="font-semibold text-slate-700 p-3">Sân & Quy mô</th>
+                        <th className="font-semibold text-slate-700 p-3">Lịch định kỳ</th>
+                        <th className="font-semibold text-slate-700 p-3">Lịch tham gia ({sessionChips.length} ngày)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="border-gray-50">
+                      <tr>
+                        {/* Column 1: Court Identity */}
+                        <td className="align-top p-4 border-end border-gray-50">
+                          <div className="fw-bold primary-text mb-1" style={{ fontSize: '15px' }}>{courtName || 'Sân linh hoạt'}</div>
+                          <div className="text-muted" style={{ fontSize: '13px' }}>
+                            {sessionCount} Buổi<br/>({slotCount > 0 && sessionCount > 0 ? (slotCount * 30 / 60 / sessionCount) : 0}h/buổi)
+                          </div>
+                        </td>
+
+                        {/* Column 2: Schedule & Frequency */}
+                        <td className="align-top p-4 border-end border-gray-50">
+                          {dailySchedules && dailySchedules.length > 0 ? (
+                            <div className="d-flex flex-column gap-3">
+                              {dailySchedules.map((ds) => (
+                                <div key={ds.dayOfWeek} className="mb-2 last:mb-0">
+                                  <div className="fw-bold text-slate-800" style={{ fontSize: '14px' }}>
+                                    {ds.startTime} – {ds.endTime}
+                                  </div>
+                                  <div className="d-flex flex-wrap gap-1 mt-2">
+                                    {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((lbl, i) => (
+                                      <span key={i} className={`d-inline-flex justify-content-center align-items-center rounded-circle ${i === ds.dayOfWeek ? 'bg-primary text-white shadow-sm' : 'bg-white text-muted border border-gray-200'}`} style={{ width: '28px', height: '28px', fontSize: '11px', fontWeight: i === ds.dayOfWeek ? 600 : 400 }}>{lbl}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div>
+                              <div className="fw-bold text-slate-800" style={{ fontSize: '14px' }}>
+                                {sessionStartTime} – {sessionEndTime}
+                              </div>
+                              <div className="d-flex flex-wrap gap-1 mt-2">
+                                {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((lbl, i) => (
+                                  <span key={i} className={`d-inline-flex justify-content-center align-items-center rounded-circle ${actualDaysPlayed.includes(i) ? 'bg-primary text-white shadow-sm' : 'bg-white text-muted border border-gray-200'}`} style={{ width: '28px', height: '28px', fontSize: '11px', fontWeight: actualDaysPlayed.includes(i) ? 600 : 400 }}>{lbl}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Column 3: Session Breakdown */}
+                        <td className="align-top p-4 border-end border-gray-50">
+                           <div className="d-flex flex-wrap gap-2">
+                             {sessionChips.map((date, idx) => {
+                               const displayDate = date.substring(0, 5); 
+                               return (
+                                 <span key={idx} className="badge bg-light text-dark border border-gray-200 px-2.5 py-1.5 rounded-pill" style={{ fontWeight: 500 }}>
+                                   {displayDate}
+                                 </span>
+                               );
+                             })}
+                           </div>
+                           <div className="text-slate-800 fw-bold mt-4 pt-3 border-top border-gray-50" style={{ fontSize: '14px' }}>
+                             Giai đoạn: {formatDateVN(rangeStart)} – {formatDateVN(rangeEnd)}
+                           </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </section>
             </div>
 
@@ -363,7 +517,13 @@ export default function LongTermConfirm() {
                       <div>
                         <i className="feather-check-circle me-1" /> Đã áp dụng mã <strong>{appliedCoupon}</strong>
                       </div>
-                      <button className="btn btn-sm btn-outline-danger p-1" onClick={handleRemoveCoupon} title="Xóa mã">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger p-1"
+                        onClick={() => { void handleRemoveCoupon(); }}
+                        disabled={previewingDiscount}
+                        title="Xóa mã"
+                      >
                         <i className="feather-x" />
                       </button>
                     </div>
@@ -397,8 +557,14 @@ export default function LongTermConfirm() {
                     <i className="fa-regular fa-building me-2 text-primary" />
                     <strong>{venueName}</strong>
                   </li>
-                  <li className="mb-2 text-muted small">
-                    {sessionCount} ngày có đặt · {slotCount} ô × 30 phút
+                  <li className="mb-2">
+                    <i className="feather-calendar me-2 text-primary" />
+                    {formatDateVN(rangeStart).split(', ')[1]} - {formatDateVN(rangeEnd).split(', ')[1]}
+                  </li>
+                  <li className="mb-2">
+                    <i className="feather-clock me-2 text-primary" />
+                    <strong>{sessionCount} buổi:</strong> 
+                    <span className="text-muted ms-1">({slotCount} ô × 30 phút)</span>
                   </li>
                 </ul>
                 <hr />
@@ -406,28 +572,47 @@ export default function LongTermConfirm() {
                   <span>Tổng giờ</span>
                   <strong>{totalHours}</strong>
                 </div>
-                <div className="d-flex justify-content-between align-items-center mb-2">
+                <div className="d-flex justify-content-between align-items-center">
                   <span>Giá gốc</span>
-                  <strong className={discountInfo?.discountAmount > 0 ? 'text-decoration-line-through text-muted' : 'primary-text fs-5'}>
-                    {Number(totalPrice).toLocaleString('vi-VN')} VNĐ
+                  <strong className={anyDiscount ? 'text-decoration-line-through text-muted' : 'primary-text fs-5'}>
+                    {Math.round(totalPrice).toLocaleString('vi-VN')} VNĐ
                   </strong>
                 </div>
-                {discountInfo?.discountAmount > 0 && (
-                  <>
-                    <div className="d-flex justify-content-between align-items-center mb-2 text-success">
-                      <span><i className="feather-tag me-1" />Giảm giá</span>
-                      <strong>-{Number(discountInfo.discountAmount).toLocaleString('vi-VN')} VNĐ</strong>
-                    </div>
-                    <div className="d-flex justify-content-between align-items-center mb-3">
-                      <span className="fw-bold">Thành tiền</span>
-                      <strong className="primary-text fs-4">{Number(discountInfo.finalAmount).toLocaleString('vi-VN')} VNĐ</strong>
-                    </div>
-                  </>
+                {sessionCount > 0 && (
+                  <div className="d-flex justify-content-end text-muted mb-2 mt-1" style={{ fontSize: '12px' }}>
+                    {Math.round(totalPrice / sessionCount).toLocaleString('vi-VN')}đ × {sessionCount} buổi
+                  </div>
                 )}
-                {!(discountInfo?.discountAmount > 0) && (
+                {longTermDiscountAmount > 0 && (
+                  <div className="d-flex justify-content-between align-items-center mb-2 text-success">
+                    <span><i className="feather-tag me-1" />Giảm giá đợt dài hạn</span>
+                    <strong>-{Math.round(longTermDiscountAmount).toLocaleString('vi-VN')} VNĐ</strong>
+                  </div>
+                )}
+                {couponDiscountAmount > 0 && (
+                  <div className="d-flex justify-content-between align-items-center mb-2 text-success">
+                    <span>
+                      <i className="feather-gift me-1" />
+                      Giảm giá do mã ưu đãi{appliedCoupon ? ` (${appliedCoupon})` : ''}
+                    </span>
+                    <strong>-{couponDiscountAmount.toLocaleString('vi-VN')} VNĐ</strong>
+                  </div>
+                )}
+                {showLegacyDiscountRow && (
+                  <div className="d-flex justify-content-between align-items-center mb-2 text-success">
+                    <span><i className="feather-tag me-1" />Giảm giá</span>
+                    <strong>-{legacyDiscountTotal.toLocaleString('vi-VN')} VNĐ</strong>
+                  </div>
+                )}
+                {anyDiscount ? (
                   <div className="d-flex justify-content-between align-items-center mb-3">
                     <span className="fw-bold">Thành tiền</span>
-                    <strong className="primary-text fs-4">{Number(totalPrice).toLocaleString('vi-VN')} VNĐ</strong>
+                    <strong className="primary-text fs-4">{Number(discountInfo.finalAmount).toLocaleString('vi-VN')} VNĐ</strong>
+                  </div>
+                ) : (
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <span className="fw-bold">Thành tiền</span>
+                    <strong className="primary-text fs-4">{Math.round(totalPrice).toLocaleString('vi-VN')} VNĐ</strong>
                   </div>
                 )}
                 <div className="d-grid">
@@ -447,18 +632,10 @@ export default function LongTermConfirm() {
           <div className="text-center btn-row mt-3">
             <button
               type="button"
-              className="btn btn-primary me-3 btn-icon"
+              className="btn btn-primary btn-icon"
               onClick={() => navigate('/booking/long-term/fixed', { state: location.state })}
             >
               <i className="feather-arrow-left-circle me-1" /> Quay lại
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-icon"
-              onClick={handleSubmit}
-              disabled={loading}
-            >
-              {loading ? (isUpdating ? 'Đang cập nhật…' : 'Đang tạo đơn…') : 'Tiếp theo'} <i className="feather-arrow-right-circle ms-1" />
             </button>
           </div>
 

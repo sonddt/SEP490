@@ -20,7 +20,7 @@ import BookingTimeline from './pages/BookingTimeline';
 import BookingConfirm from './pages/BookingConfirm';
 import BookingPayment from './pages/BookingPayment';
 import BookingComplete from './pages/BookingComplete';
-import LongTermGateway from './pages/LongTermGateway';
+
 import LongTermBooking from './pages/LongTermBooking';
 import LongTermConfirm from './pages/LongTermConfirm';
 import LongTermFlexible from './pages/LongTermFlexible';
@@ -56,6 +56,7 @@ import MatchingEditPost from './pages/matching/MatchingEditPost';
 import MatchingPostDetail from './pages/matching/MatchingPostDetail';
 
 // Manager — Layout + Pages
+import UserLayout from './layouts/UserLayout';
 import ManagerLayout from './layouts/ManagerLayout';
 import ManagerDashboard from './pages/manager/ManagerDashboard';
 import ManagerVenueList from './pages/manager/ManagerVenueList';
@@ -112,7 +113,7 @@ function App() {
       <PageLoader />
       {showHeaderFooter && <Header transparent={location.pathname === '/'} />}
 
-      <div className={showHeaderFooter ? 'main-content' : undefined}>
+      <div>
         <Routes>
           {/* ═══ Home ═══ */}
           <Route path="/" element={<HomePage />} />
@@ -141,22 +142,31 @@ function App() {
           <Route path="/booking/confirm" element={<ProtectedRoute><BookingConfirm /></ProtectedRoute>} />
           <Route path="/booking/payment" element={<ProtectedRoute><BookingPayment /></ProtectedRoute>} />
           <Route path="/booking/complete" element={<ProtectedRoute><BookingComplete /></ProtectedRoute>} />
-          <Route path="/booking/long-term" element={<ProtectedRoute><LongTermGateway /></ProtectedRoute>} />
+
           <Route path="/booking/long-term/fixed" element={<ProtectedRoute><LongTermBooking /></ProtectedRoute>} />
           <Route path="/booking/long-term/flexible" element={<ProtectedRoute><LongTermFlexible /></ProtectedRoute>} />
           <Route path="/booking/long-term/confirm" element={<ProtectedRoute><LongTermConfirm /></ProtectedRoute>} />
           <Route path="/booking/long-term/flexible/confirm" element={<ProtectedRoute><LongTermFlexibleConfirm /></ProtectedRoute>} />
 
-          {/* ═══ Player Profile ═══ */}
+          {/* ═══ Player Profile & Features ═══ */}
           <Route path="/personalization" element={<ProtectedRoute requiredRole="PLAYER"><Personalization /></ProtectedRoute>} />
-          <Route path="/user/profile" element={<ProtectedRoute><MyProfile /></ProtectedRoute>} />
-          <Route path="/user/profile/edit" element={<ProtectedRoute><UserProfileEdit /></ProtectedRoute>} />
-          <Route path="/user/profile/manager-info" element={<ProtectedRoute><UserManagerInfo /></ProtectedRoute>} />
-          <Route path="/user/profile/change-password" element={<ProtectedRoute><UserProfileChangePassword /></ProtectedRoute>} />
-          <Route path="/user/profile/settings" element={<ProtectedRoute><UserProfileOtherSetting /></ProtectedRoute>} />
-          <Route path="/user/social/search" element={<ProtectedRoute><UserSocialSearch /></ProtectedRoute>} />
-          <Route path="/user/social/friends" element={<ProtectedRoute><UserSocialFriends /></ProtectedRoute>} />
+          
+          {/* Public Profile View (no sidebar) */}
           <Route path="/user/profile/:userId" element={<ProtectedRoute><UserPublicProfile /></ProtectedRoute>} />
+
+          {/* User Layout with Sidebar */}
+          <Route path="/user" element={<ProtectedRoute><UserLayout /></ProtectedRoute>}>
+            <Route path="profile" element={<MyProfile />} />
+            <Route path="profile/edit" element={<UserProfileEdit />} />
+            <Route path="profile/manager-info" element={<UserManagerInfo />} />
+            <Route path="profile/change-password" element={<UserProfileChangePassword />} />
+            <Route path="profile/settings" element={<UserProfileOtherSetting />} />
+            <Route path="social/search" element={<UserSocialSearch />} />
+            <Route path="social/friends" element={<UserSocialFriends />} />
+            <Route path="bookings" element={<UserBookings />} />
+            <Route path="favorites" element={<UserFavorites />} />
+            <Route path="notifications" element={<UserNotifications />} />
+          </Route>
 
           {/* Legacy /profile redirects → /user/profile */}
           <Route path="/profile" element={<Navigate to="/user/profile" replace />} />
@@ -170,9 +180,6 @@ function App() {
           <Route path="/user/my-profile" element={<Navigate to="/user/profile" replace />} />
 
           {/* Player misc */}
-          <Route path="/user/bookings" element={<ProtectedRoute><UserBookings /></ProtectedRoute>} />
-          <Route path="/user/favorites" element={<ProtectedRoute><UserFavorites /></ProtectedRoute>} />
-          <Route path="/user/notifications" element={<ProtectedRoute><UserNotifications /></ProtectedRoute>} />
           <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
           <Route path="/user/chat" element={<Navigate to="/chat" replace />} />
 
@@ -272,6 +279,7 @@ function App() {
         pauseOnHover
         draggable={false}
         limit={5}
+        style={{ marginTop: '65px' }}
       />
     </>
   );

@@ -136,7 +136,7 @@ public class BookingsController : ControllerBase
         var maxEnd = normalizedItems.Max(x => x.End);
         var daysDuration = (maxEnd.Date - minStart.Date).Days + 1;
 
-        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg) = await CalculateDiscountAsync(dto.VenueId, total, daysDuration, dto.CouponCode, userId);
+        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, _, _) = await CalculateDiscountAsync(dto.VenueId, total, daysDuration, dto.CouponCode, userId);
         if (errorMsg != null) return BadRequest(new { message = errorMsg });
 
         var policySnapshot = new CancellationPolicySnapshot
@@ -239,8 +239,41 @@ public class BookingsController : ControllerBase
         if (built.Error != null)
             return built.Error;
 
-        var total = built.NormalizedItems!.Sum(x => x.Price);
-        var sessionCount = CountDistinctSessionDays(built.NormalizedItems!);
+        // Smart allocation path
+        if (built.SmartItems != null)
+        {
+            var availableItems = built.SmartItems.Where(x => !x.IsUnavailable).ToList();
+            var total = availableItems.Sum(x => x.Price);
+            var sessionCount = availableItems.Select(x => DateOnly.FromDateTime(x.Start)).Distinct().Count();
+            var primaryCourtName = availableItems.GroupBy(x => x.CourtName).OrderByDescending(g => g.Count()).FirstOrDefault()?.Key ?? "—";
+
+            return Ok(new
+            {
+                venueId = dto.VenueId,
+                courtId = (Guid?)null,
+                courtName = primaryCourtName,
+                slotCount = availableItems.Count,
+                unavailableCount = built.SmartItems.Count(x => x.IsUnavailable),
+                sessionCount,
+                totalAmount = total,
+                isFlexible = true,
+                items = built.SmartItems.Select(x => new
+                {
+                    courtId = x.CourtId,
+                    courtName = x.CourtName,
+                    startTime = x.Start,
+                    endTime = x.End,
+                    price = x.Price,
+                    isUnavailable = x.IsUnavailable,
+                    isSwitched = x.IsSwitched,
+                    switchReason = x.SwitchReason,
+                }),
+            });
+        }
+
+        // Legacy single-court path
+        var legacyTotal = built.NormalizedItems!.Sum(x => x.Price);
+        var legacySessionCount = CountDistinctSessionDays(built.NormalizedItems!);
 
         return Ok(new
         {
@@ -248,14 +281,20 @@ public class BookingsController : ControllerBase
             courtId = dto.CourtId,
             courtName = built.Court!.Name,
             slotCount = built.NormalizedItems!.Count,
-            sessionCount,
-            totalAmount = total,
+            unavailableCount = 0,
+            sessionCount = legacySessionCount,
+            totalAmount = legacyTotal,
+            isFlexible = false,
             items = built.NormalizedItems!.Select(x => new
             {
-                courtId = x.CourtId,
+                courtId = (Guid?)x.CourtId,
+                courtName = built.Court.Name,
                 startTime = x.Start,
                 endTime = x.End,
                 price = x.Price,
+                isUnavailable = false,
+                isSwitched = false,
+                switchReason = (string?)null,
             }),
         });
     }
@@ -300,12 +339,33 @@ public class BookingsController : ControllerBase
         if (venuePolicy == null)
             return BadRequest(new { message = "Cơ sở không tồn tại hoặc chưa mở đặt sân." });
 
-        var total = built.NormalizedItems!.Sum(x => x.Price);
-        var minStart = built.NormalizedItems!.Min(x => x.Start);
-        var maxEnd = built.NormalizedItems!.Max(x => x.End);
+        decimal total = 0;
+        DateTime minStart;
+        DateTime maxEnd;
+
+        if (built.SmartItems != null)
+        {
+            var availableItems = built.SmartItems.Where(x => !x.IsUnavailable && x.CourtId.HasValue).ToList();
+            if (availableItems.Count == 0)
+                return BadRequest(new { message = "Không có khung giờ nào khả dụng để đặt." });
+
+            total = availableItems.Sum(x => x.Price);
+            minStart = availableItems.Min(x => x.Start);
+            maxEnd = availableItems.Max(x => x.End);
+        }
+        else
+        {
+            if (built.NormalizedItems == null || built.NormalizedItems.Count == 0)
+                return BadRequest(new { message = "Không có khung giờ hợp lệ." });
+
+            total = built.NormalizedItems.Sum(x => x.Price);
+            minStart = built.NormalizedItems.Min(x => x.Start);
+            maxEnd = built.NormalizedItems.Max(x => x.End);
+        }
+
         var daysDuration = (maxEnd.Date - minStart.Date).Days + 1;
 
-        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg) = await CalculateDiscountAsync(dto.VenueId, total, daysDuration, dto.CouponCode, userId);
+        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, _, _) = await CalculateDiscountAsync(dto.VenueId, total, daysDuration, dto.CouponCode, userId);
         if (errorMsg != null) return BadRequest(new { message = errorMsg });
         var policySnapshot = new CancellationPolicySnapshot
         {
@@ -357,17 +417,37 @@ public class BookingsController : ControllerBase
             CreatedAt = DateTime.UtcNow
         };
 
-        foreach (var ni in built.NormalizedItems!)
+        // Smart allocation: filter out unavailable, use SmartItems if present
+        if (built.SmartItems != null)
         {
-            booking.BookingItems.Add(new BookingItem
+            var availableItems = built.SmartItems.Where(x => !x.IsUnavailable && x.CourtId.HasValue).ToList();
+            foreach (var si in availableItems)
             {
-                Id = Guid.NewGuid(),
-                CourtId = ni.CourtId,
-                StartTime = ni.Start,
-                EndTime = ni.End,
-                FinalPrice = ni.Price,
-                Status = "HOLDING"
-            });
+                booking.BookingItems.Add(new BookingItem
+                {
+                    Id = Guid.NewGuid(),
+                    CourtId = si.CourtId!.Value,
+                    StartTime = si.Start,
+                    EndTime = si.End,
+                    FinalPrice = si.Price,
+                    Status = "HOLDING"
+                });
+            }
+        }
+        else
+        {
+            foreach (var ni in built.NormalizedItems!)
+            {
+                booking.BookingItems.Add(new BookingItem
+                {
+                    Id = Guid.NewGuid(),
+                    CourtId = ni.CourtId,
+                    StartTime = ni.Start,
+                    EndTime = ni.End,
+                    FinalPrice = ni.Price,
+                    Status = "HOLDING"
+                });
+            }
         }
 
         await using var trx = await _dbContext.Database.BeginTransactionAsync();
@@ -390,7 +470,19 @@ public class BookingsController : ControllerBase
         }
 
         var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
-        var courtById = new Dictionary<Guid, Court> { [built.Court!.Id] = built.Court };
+        
+        Dictionary<Guid, string> courtNames = new();
+        if (built.SmartItems != null)
+        {
+            foreach (var si in built.SmartItems.Where(x => x.CourtId.HasValue))
+            {
+                courtNames[si.CourtId!.Value] = si.CourtName ?? "—";
+            }
+        }
+        else if (built.Court != null)
+        {
+            courtNames[built.Court.Id] = built.Court.Name;
+        }
 
         return StatusCode(StatusCodes.Status201Created, new
         {
@@ -405,7 +497,7 @@ public class BookingsController : ControllerBase
             {
                 Id = bi.Id,
                 CourtId = bi.CourtId ?? Guid.Empty,
-                CourtName = courtById.GetValueOrDefault(bi.CourtId ?? Guid.Empty)?.Name,
+                CourtName = courtNames.GetValueOrDefault(bi.CourtId ?? Guid.Empty),
                 StartTime = bi.StartTime ?? default,
                 EndTime = bi.EndTime ?? default,
                 FinalPrice = bi.FinalPrice ?? 0,
@@ -494,7 +586,7 @@ public class BookingsController : ControllerBase
         var maxEnd = normalizedItems.Max(x => x.End);
         var daysDuration = (maxEnd.Date - minStart.Date).Days + 1;
 
-        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg) = await CalculateDiscountAsync(dto.VenueId, total, daysDuration, dto.CouponCode, userId);
+        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, _, _) = await CalculateDiscountAsync(dto.VenueId, total, daysDuration, dto.CouponCode, userId);
         if (errorMsg != null) return BadRequest(new { message = errorMsg });
         var policySnapshot = new CancellationPolicySnapshot
         {
@@ -659,6 +751,7 @@ public class BookingsController : ControllerBase
     private sealed class LongTermBuildResult
     {
         public List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)>? NormalizedItems { get; init; }
+        public List<BookingSlotHelper.SmartAllocationItem>? SmartItems { get; init; }
         public Court? Court { get; init; }
         public DateOnly? RangeStart { get; init; }
         public DateOnly? RangeEnd { get; init; }
@@ -677,21 +770,79 @@ public class BookingsController : ControllerBase
         if (dayErr != null)
             return new LongTermBuildResult { Error = BadRequest(new { message = dayErr }) };
 
-        var court = await _dbContext.Courts
-            .Include(c => c.CourtPrices)
-            .FirstOrDefaultAsync(c => c.Id == dto.CourtId && c.VenueId == dto.VenueId && c.IsActive == true && c.Status == "ACTIVE", ct);
-
-        if (court == null)
-            return new LongTermBuildResult { Error = BadRequest(new { message = "Sân không thuộc cơ sở hoặc không hoạt động." }) };
-
         var venueOk = await _dbContext.Venues.AnyAsync(v => v.Id == dto.VenueId && v.IsActive == true, ct);
         if (!venueOk)
             return new LongTermBuildResult { Error = BadRequest(new { message = "Cơ sở không tồn tại hoặc chưa mở đặt sân." }) };
 
-        List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)> normalizedItems;
-        string? expandErr;
+        bool useSmartAllocation = !dto.CourtId.HasValue || dto.AutoSwitchCourt;
 
-        // ── Nếu có DailySchedules → dùng khung giờ riêng từng ngày ──
+        // ── SMART ALLOCATION PATH ──
+        if (useSmartAllocation)
+        {
+            var allCourts = await _dbContext.Courts
+                .Include(c => c.CourtPrices)
+                .Where(c => c.VenueId == dto.VenueId && c.IsActive == true && c.Status == "ACTIVE")
+                .ToListAsync(ct);
+
+            if (allCourts.Count == 0)
+                return new LongTermBuildResult { Error = BadRequest(new { message = "Cơ sở chưa có sân nào hoạt động." }) };
+
+            // Expand time slots (court-agnostic)
+            List<(DateTime Start, DateTime End)> timeSlots;
+            string? expandErr;
+
+            if (dto.DailySchedules != null && dto.DailySchedules.Count > 0)
+            {
+                var dayTimeMap = new Dictionary<DayOfWeek, (TimeOnly Start, TimeOnly End)>();
+                foreach (var ds in dto.DailySchedules)
+                {
+                    if (ds.DayOfWeek < 0 || ds.DayOfWeek > 6)
+                        return new LongTermBuildResult { Error = BadRequest(new { message = "DailySchedules chứa DayOfWeek không hợp lệ (0-6)." }) };
+                    if (!TimeOnly.TryParse(ds.StartTime, out var dsStart))
+                        return new LongTermBuildResult { Error = BadRequest(new { message = $"StartTime không hợp lệ cho ngày {ds.DayOfWeek}." }) };
+                    if (!TimeOnly.TryParse(ds.EndTime, out var dsEnd))
+                        return new LongTermBuildResult { Error = BadRequest(new { message = $"EndTime không hợp lệ cho ngày {ds.DayOfWeek}." }) };
+                    dayTimeMap[(DayOfWeek)ds.DayOfWeek] = (dsStart, dsEnd);
+                }
+                (timeSlots, expandErr) = BookingSlotHelper.ExpandTimeSlotsWithDailySchedules(rs, re, dayTimeMap, BookingSlotHelper.MaxLongTermSlots);
+            }
+            else
+            {
+                (timeSlots, expandErr) = BookingSlotHelper.ExpandTimeSlots(rs, re, dayFilter, st, et, BookingSlotHelper.MaxLongTermSlots);
+            }
+
+            if (expandErr != null)
+                return new LongTermBuildResult { Error = BadRequest(new { message = expandErr }) };
+
+            var pricePreference = string.IsNullOrWhiteSpace(dto.PricePreference) ? "BEST" : dto.PricePreference.Trim().ToUpperInvariant();
+
+            var (smartItems, smartErr) = await BookingSlotHelper.AllocateFlexibleLongTerm(
+                _dbContext, allCourts, timeSlots, dto.CourtId, pricePreference, ct);
+
+            if (smartErr != null && smartItems.All(x => x.IsUnavailable))
+                return new LongTermBuildResult { Error = Conflict(new { message = smartErr }) };
+
+            return new LongTermBuildResult
+            {
+                SmartItems = smartItems,
+                RangeStart = rs,
+                RangeEnd = re,
+                SessionStart = st,
+                SessionEnd = et,
+            };
+        }
+
+        // ── LEGACY SINGLE-COURT PATH ──
+        var court = await _dbContext.Courts
+            .Include(c => c.CourtPrices)
+            .FirstOrDefaultAsync(c => c.Id == dto.CourtId!.Value && c.VenueId == dto.VenueId && c.IsActive == true && c.Status == "ACTIVE", ct);
+
+        if (court == null)
+            return new LongTermBuildResult { Error = BadRequest(new { message = "Sân không thuộc cơ sở hoặc không hoạt động." }) };
+
+        List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)> normalizedItems;
+        string? legacyExpandErr;
+
         if (dto.DailySchedules != null && dto.DailySchedules.Count > 0)
         {
             var dayTimeMap = new Dictionary<DayOfWeek, (TimeOnly Start, TimeOnly End)>();
@@ -705,21 +856,19 @@ public class BookingsController : ControllerBase
                     return new LongTermBuildResult { Error = BadRequest(new { message = $"EndTime không hợp lệ cho ngày {ds.DayOfWeek}." }) };
                 dayTimeMap[(DayOfWeek)ds.DayOfWeek] = (dsStart, dsEnd);
             }
-
-            (normalizedItems, expandErr) = BookingSlotHelper.ExpandWeeklyLongTermWithDailySchedules(
-                dto.CourtId, court, rs, re, dayTimeMap, BookingSlotHelper.MaxLongTermSlots);
+            (normalizedItems, legacyExpandErr) = BookingSlotHelper.ExpandWeeklyLongTermWithDailySchedules(
+                dto.CourtId!.Value, court, rs, re, dayTimeMap, BookingSlotHelper.MaxLongTermSlots);
         }
         else
         {
-            // ── Fallback: dùng SessionStartTime + SessionEndTime chung ──
-            (normalizedItems, expandErr) = BookingSlotHelper.ExpandWeeklyLongTerm(
-                dto.CourtId, court, rs, re, dayFilter, st, et, BookingSlotHelper.MaxLongTermSlots);
+            (normalizedItems, legacyExpandErr) = BookingSlotHelper.ExpandWeeklyLongTerm(
+                dto.CourtId!.Value, court, rs, re, dayFilter, st, et, BookingSlotHelper.MaxLongTermSlots);
         }
 
-        if (expandErr != null)
-            return new LongTermBuildResult { Error = BadRequest(new { message = expandErr }) };
+        if (legacyExpandErr != null)
+            return new LongTermBuildResult { Error = BadRequest(new { message = legacyExpandErr }) };
 
-        var courtIds = new List<Guid> { dto.CourtId };
+        var courtIds = new List<Guid> { dto.CourtId!.Value };
         var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, ct);
         if (conflict == "CONFLICT_BOOKING")
             return new LongTermBuildResult { Error = Conflict(new { message = "Một hoặc nhiều khung giờ đã có người đặt. Vui lòng đổi lịch." }) };
@@ -1505,7 +1654,8 @@ public class BookingsController : ControllerBase
         if (dto.DaysDuration < 1) dto.DaysDuration = 1;
 
         _ = TryGetCurrentUserId(out var previewUserId);
-        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg) = await CalculateDiscountAsync(dto.VenueId, dto.BaseAmount, dto.DaysDuration, dto.CouponCode, previewUserId);
+        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, longTermDiscountAmount, couponDiscountAmount) =
+            await CalculateDiscountAsync(dto.VenueId, dto.BaseAmount, dto.DaysDuration, dto.CouponCode, previewUserId);
 
         // We don't block the request if there is an error in calculating coupon (e.g. invalid coupon), 
         // we just return the errorMsg in response so FE can handle it (show text "Mã không hợp lệ" etc).
@@ -1517,13 +1667,15 @@ public class BookingsController : ControllerBase
         {
             baseAmount = dto.BaseAmount,
             discountAmount,
+            longTermDiscountAmount,
+            couponDiscountAmount,
             finalAmount,
             isValidCoupon = couponId != null,
             errorMsg
         });
     }
 
-    private async Task<(decimal DiscountAmount, decimal FinalAmount, Guid? CouponId, ShuttleUp.DAL.Models.VenueCoupon? CouponToUpdate, string? ErrorMsg)> CalculateDiscountAsync(
+    private async Task<(decimal DiscountAmount, decimal FinalAmount, Guid? CouponId, ShuttleUp.DAL.Models.VenueCoupon? CouponToUpdate, string? ErrorMsg, decimal LongTermDiscountAmount, decimal CouponDiscountAmount)> CalculateDiscountAsync(
         Guid venueId,
         decimal totalAmount,
         int daysDuration,
@@ -1531,7 +1683,7 @@ public class BookingsController : ControllerBase
         Guid? userIdForCouponCheck)
     {
         var venue = await _dbContext.Venues.AsNoTracking().FirstOrDefaultAsync(v => v.Id == venueId);
-        if (venue == null) return (0, totalAmount, null, null, "Venue not found");
+        if (venue == null) return (0, totalAmount, null, null, "Venue not found", 0, 0);
 
         decimal autoDiscountAmount = 0;
         
@@ -1554,17 +1706,17 @@ public class BookingsController : ControllerBase
             var codeNorm = couponCode.Trim().ToUpperInvariant();
             var coupon = await _dbContext.VenueCoupons.FirstOrDefaultAsync(c => c.VenueId == venueId && c.Code == codeNorm && c.IsActive == true);
             if (coupon == null)
-                return (0, totalAmount, null, null, "Mã giảm giá không hợp lệ hoặc đã bị khóa.");
+                return (autoDiscountAmount, totalAmount - autoDiscountAmount, null, null, "Mã giảm giá không hợp lệ hoặc đã bị khóa.", autoDiscountAmount, 0);
 
             var now = DateTime.UtcNow;
             if (now < coupon.StartDate || now > coupon.EndDate)
-                return (0, totalAmount, null, null, "Mã giảm giá không trong thời gian sử dụng.");
+                return (autoDiscountAmount, totalAmount - autoDiscountAmount, null, null, "Mã giảm giá không trong thời gian sử dụng.", autoDiscountAmount, 0);
 
             if (coupon.MinBookingValue > 0 && finalAmount < coupon.MinBookingValue)
-                return (0, totalAmount, null, null, $"Mã giảm giá yêu cầu giá trị đơn tối thiểu {coupon.MinBookingValue:N0} VNĐ (sau khi đã trừ tự động).");
+                return (autoDiscountAmount, totalAmount - autoDiscountAmount, null, null, $"Mã giảm giá yêu cầu giá trị đơn tối thiểu {coupon.MinBookingValue:N0} VNĐ (sau khi đã trừ tự động).", autoDiscountAmount, 0);
 
             if (coupon.UsageLimit.HasValue && (coupon.UsedCount ?? 0) >= coupon.UsageLimit.Value)
-                return (0, totalAmount, null, null, "Mã giảm giá đã hết lượt sử dụng.");
+                return (autoDiscountAmount, totalAmount - autoDiscountAmount, null, null, "Mã giảm giá đã hết lượt sử dụng.", autoDiscountAmount, 0);
 
             if (coupon.OneUsePerUser && userIdForCouponCheck is { } uid && uid != Guid.Empty)
             {
@@ -1574,7 +1726,7 @@ public class BookingsController : ControllerBase
                         && b.Status != null
                         && b.Status != "CANCELLED");
                 if (alreadyUsed)
-                    return (0, totalAmount, null, null, "Mã này chỉ dùng được một lần cho mỗi tài khoản. Bạn đã sử dụng trước đó.");
+                    return (autoDiscountAmount, totalAmount - autoDiscountAmount, null, null, "Mã này chỉ dùng được một lần cho mỗi tài khoản. Bạn đã sử dụng trước đó.", autoDiscountAmount, 0);
             }
 
             decimal couponDiscount = 0;
@@ -1599,7 +1751,8 @@ public class BookingsController : ControllerBase
             couponToUpdate = coupon;
         }
 
-        return (discountAmount, finalAmount, couponId, couponToUpdate, null);
+        var couponDiscountAmount = discountAmount - autoDiscountAmount;
+        return (discountAmount, finalAmount, couponId, couponToUpdate, null, autoDiscountAmount, couponDiscountAmount);
     }
 }
     

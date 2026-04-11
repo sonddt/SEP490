@@ -1,23 +1,35 @@
 # ShuttleUp - Hệ Thống Kỹ Thuật (Technical Stack)
 
-> Tài liệu tham chiếu chính thức – cập nhật theo cấu trúc project hiện tại.
+> Tài liệu tham chiếu chính thức – cập nhật theo thực tế triển khai (Tháng 4/2026).
 
 ---
 
 ## 1. Tổng Quan Kiến Trúc
 
-```
-┌─────────────────────┐     HTTPS / REST API      ┌─────────────────────┐
-│   ShuttleUp.Frontend │ ◄──────────────────────► │  ShuttleUp.Backend   │
-│   React + Vite (JS)  │     localhost:5173       │   ASP.NET Core 8     │
-└──────────┬──────────┘                          └──────────┬──────────┘
-           │                                                │
-           │                                                │  EF Core / ADO
-           │                                                ▼
-           │                                      ┌─────────────────────┐
-           │                                      │       MySQL         │
-           │                                      │   (Relational DB)   │
-           │                                      └─────────────────────┘
+Hệ thống được xây dựng theo mô hình **Decoupled Architecture** (Frontend và Backend tách biệt), giao tiếp qua REST API và SignalR cho các tính năng thời gian thực.
+
+```mermaid
+graph LR
+    subgraph Client_Side [Frontend]
+        A[React 19 + Vite 7]
+    end
+
+    subgraph Server_Side [Backend]
+        B[ASP.NET Core 8 API]
+        C[Business Logic Layer - BLL]
+        D[Data Access Layer - DAL]
+        B --> C --> D
+    end
+
+    subgraph Storage [Database & Cloud]
+        E[(MySQL 8.0)]
+        F[Cloudinary Storage]
+    end
+
+    A <-- "HTTPS / REST API" --> B
+    A <-- "WebSockets / SignalR" --> B
+    D <-- "EF Core" --> E
+    B <-- "API Keys" --> F
 ```
 
 ---
@@ -25,80 +37,66 @@
 ## 2. Chi Tiết Công Nghệ
 
 ### 2.1 Frontend
+Dựa trên nền tảng React hiện đại, tối ưu cho tốc độ và trải nghiệm người dùng SaaS.
 
-| Thành phần | Công nghệ |
-|------------|-----------|
-| Framework | React 19.x |
-| Build Tool | Vite 7.x |
-| Ngôn ngữ | JavaScript (JSX) |
-| Port mặc định | 5173 |
+| Thành phần | Công nghệ | Lưu ý |
+|------------|-----------|-------|
+| **Core Framework** | React 19.x | Sử dụng Functional Components & Hooks |
+| **Build Tool** | Vite 7.x | Cấu hình cho Hot Module Replacement (HMR) cực nhanh |
+| **Routing** | React Router 7.x | Hỗ trợ Nested Routes, Protected Routes |
+| **State Management** | Context API / Local State | Quản lý Auth, Notifications, Booking Context |
+| **Styling** | Bootstrap 5.3 + Tailwind CSS 4 | Phối hợp Utility-first CSS và Components |
+| **Real-time** | @microsoft/signalr | Nhận thông báo và chat không cần reload |
+| **Maps** | Leaflet + React Leaflet | Hiển thị vị trí sân, bản đồ tìm kiếm |
+| **UI Components** | Swiper, AOS, Lightbox | Hiệu ứng mượt mà cho slider và ảnh |
 
 ### 2.2 Backend
+Kiến trúc 3 lớp (3-Layer Architecture) đảm bảo tính mở rộng và dễ bảo trì.
 
-| Thành phần | Công nghệ |
-|------------|-----------|
-| Framework | ASP.NET Core 8 (.NET 8) |
-| Kiểu ứng dụng | Web API (REST) |
-| API Documentation | Swagger (Swashbuckle) |
+| Thành phần | Công nghệ | Tác dụng |
+|------------|-----------|----------|
+| **Core Platform** | .NET 8 (ASP.NET Core 8) | Hiệu năng cao, đa nền tảng |
+| **Web API** | ASP.NET Core Web API | RESTful standards |
+| **Real-time Hub** | SignalR | Xử lý thông báo (Notification) và Chat |
+| **Logic Layer** | ShuttleUp.BLL | Xử lý nghiệp vụ, Validation nâng cao |
+| **Data Layer** | ShuttleUp.DAL | Abstraction cho Database qua EF Core |
+| **Documentation** | Swagger / OpenAPI | Tự động sinh tài liệu API |
 
-### 2.3 Database
+### 2.3 Database & Storage
+Dữ liệu quan hệ được chuẩn hóa và lưu trữ tệp tin trên nền tảng đám mây.
 
-| Thành phần | Công nghệ |
-|------------|-----------|
-| Hệ quản trị CSDL | **MySQL** |
-| ORM / Data Access | Entity Framework Core (dự kiến) |
+| Thành phần | Công nghệ | Mô tả |
+|------------|-----------|-------|
+| **Database** | **MySQL 8.0** | Lưu trữ người dùng, sân, đặt chỗ, giao dịch |
+| **ORM** | Entity Framework Core | Mapping dữ liệu (Snake Case naming convention) |
+| **Image Hosting** | Cloudinary | Lưu trữ ảnh Sân (Venue), Profile, Minh chứng CK |
+| **Schema Source** | `Database.txt` | Single Source of Truth cho cấu trúc CSDL |
 
-### 2.4 Giao Thức & Bảo Mật
+### 2.4 Bảo Mật & Xác Thực
 
-| Thành phần | Công nghệ / Chuẩn |
-|------------|-------------------|
-| Giao thức | HTTPS, TLS 1.2+ |
-| Xác thực | JWT (dự kiến) |
-| Phân quyền | Role-Based Access Control (RBAC) |
-| Bảo mật mật khẩu | bcrypt (dự kiến) |
-
-### 2.5 Tích Hợp Bên Ngoài (dự kiến theo Report 3)
-
-| Dịch vụ | Mục đích |
-|---------|----------|
-| VietQR | Thanh toán đặt sân, phí trận đấu |
-| SMTP | Email xác thực, xác nhận booking, thông báo |
-| AWS S3 (hoặc tương đương) | Lưu ảnh venue, court, profile |
-| Google Maps API | Hiển thị địa điểm venue, chỉ đường, khoảng cách |
+- **Authentication**: JWT (JSON Web Token) cho các request API.
+- **Password Security**: Mã hóa bằng **Bcrypt**.
+- **Authorization**: Role-Based Access Control (RBAC) cho 3 nhóm: `ADMIN`, `MANAGER`, `PLAYER`.
+- **Social Auth**: Tích hợp Google OAuth (@react-oauth/google).
 
 ---
 
-## 3. Cấu Trúc Solution
+## 3. Hệ Thống Icons & Typography
 
-```
-SEP490/
-├── ShuttleUp.sln
-├── ShuttleUp.Backend/       # ASP.NET Core 8 Web API
-│   ├── Controllers/
-│   ├── Models/
-│   ├── Program.cs
-│   └── appsettings.json
-│
-└── ShuttleUp.Frontend/      # React + Vite
-    ├── src/
-    │   ├── App.jsx
-    │   └── main.jsx
-    ├── package.json
-    └── vite.config.js
-```
+Dự án áp dụng quy tắc nghiêm ngặt về font và icon để tránh lỗi hiển thị tiếng Việt:
+
+- **Typography**: Font **"Be Vietnam Pro"** (Google Font) – chuẩn diacritics Việt Nam.
+- **Icons Manager/Admin**: **Feather Icons** (Lightweight, chuyên nghiệp).
+- **Icons Player**: **FontAwesome 7** (Load qua file tĩnh để tránh xung đột Vite bundle).
 
 ---
 
-## 4. So Sánh Với Bản Report 3 Gốc
+## 4. Tích Hợp Bên Ngoài (Third-party)
 
-| Mục | Report 3 (gốc) | Thực tế |
-|-----|----------------|---------|
-| Frontend | React | React + Vite |
-| Ngôn ngữ FE | (TS mặc định) | JavaScript |
-| Backend | Spring Boot (Java) | **ASP.NET Core 8 (C#)** |
-| Database | PostgreSQL | **MySQL** |
-| Kết nối DB | JDBC | **Entity Framework Core / MySQL Connector** |
+1.  **VietQR (Napas)**: Tự động tạo mã QR thanh toán theo chuẩn ngân hàng Việt Nam.
+2.  **Notification Hub**: SignalR thông báo real-time khi có booking mới, refund, hoặc tin nhắn.
+3.  **Bank Lookup**: API VietQR để xác minh số tài khoản/ngân hàng của Chủ sân.
 
 ---
 
-*Cập nhật lần cuối: Dựa trên cấu trúc project thực tế.*
+*Cập nhật lần cuối: 10/04/2026 bởi Antigravity AI.*

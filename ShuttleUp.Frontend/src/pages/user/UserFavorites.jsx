@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import VenueCard from '../../components/courts/VenueCard';
-import UserDashboardMenu from '../../components/user/UserDashboardMenu';
 import favoritesApi from '../../api/favoritesApi';
 
 export default function UserFavorites() {
@@ -42,46 +41,53 @@ export default function UserFavorites() {
   }));
 
   return (
-    <div className="main-wrapper content-below-header">
-      {/* Breadcrumb offset equivalent */}
-      <section className="breadcrumb breadcrumb-list mb-0">
-        <span className="primary-right-round"></span>
-        <div className="container">
-          <h1 className="text-white">Sân yêu thích</h1>
-          <ul>
-            <li><Link to="/">Trang chủ</Link></li>
-            <li>Sân yêu thích</li>
-          </ul>
-        </div>
-      </section>
-
-      <UserDashboardMenu />
-      
-      <div className="content court-bg" style={{ paddingTop: 40 }}>
-        <div className="container">
-          <div className="row mb-4">
-            <div className="col-12">
-              <h2 className="mb-2" style={{ color: '#1e293b' }}>Sân yêu thích</h2>
-              <div className="text-muted">Nhấn trái tim để xoá bớt khỏi danh sách.</div>
-            </div>
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-1 flex items-center gap-2">
+              <i className="fa-solid fa-heart text-rose-500"></i>
+              Sân yêu thích
+            </h2>
+            <p className="text-slate-500 text-[13.5px] m-0">Danh sách các sân cầu lông bạn đã xem và lưu lại.</p>
           </div>
+          <div className="inline-flex bg-rose-50 text-rose-600 px-4 py-2 rounded-xl font-bold border border-rose-100 items-center gap-2 shadow-sm text-sm">
+            <i className="fa-solid fa-bookmark text-rose-500"></i>
+            {favorites.length} Sân
+          </div>
+        </div>
+      </div>
 
-          {loading && (
-            <div className="text-muted py-4">Đang tải...</div>
-          )}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-8 min-h-[500px]">
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <i className="fa-solid fa-circle-notch fa-spin text-emerald-500 text-3xl"></i>
+            <p className="text-slate-400 font-medium">Đang tải sân yêu thích...</p>
+          </div>
+        )}
 
-          {!loading && error && (
-            <div className="alert alert-danger">{error}</div>
-          )}
+        {!loading && error && (
+          <div className="alert alert-danger rounded-xl border-0 bg-rose-50 text-rose-700 py-3 px-4 shadow-sm">
+            <i className="fa-solid fa-circle-exclamation me-2"></i>{error}
+          </div>
+        )}
 
-          {!loading && !error && mappedFavorites.length === 0 && (
-            <div className="alert alert-info">
-              Bạn chưa có sân nào trong danh sách yêu thích.
+        {!loading && !error && mappedFavorites.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+              <i className="fa-regular fa-heart text-3xl text-slate-300"></i>
             </div>
-          )}
+            <h4 className="text-lg font-bold text-slate-800 mb-2">Chưa có sân yêu thích</h4>
+            <p className="text-slate-500 text-[13.5px]">Bạn chưa lưu sân cầu lông nào. Hãy khám phá và lưu lại những sân bạn thích nhé!</p>
+            <Link to="/venues" className="mt-4 flex items-center justify-center bg-emerald-600 text-white hover:bg-emerald-700 px-6 py-2.5 rounded-xl font-bold shadow-md shadow-emerald-500/20 transition-all border-0">
+              Khám phá sân ngay
+            </Link>
+          </div>
+        )}
 
-          <div className="row justify-content-center">
-            {!loading && !error && mappedFavorites.map((venue) => (
+        {!loading && !error && mappedFavorites.length > 0 && (
+          <div className="row g-4 justify-content-start">
+            {mappedFavorites.map((venue) => (
               <VenueCard
                 key={venue.id}
                 venue={venue}
@@ -96,7 +102,7 @@ export default function UserFavorites() {
               />
             ))}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

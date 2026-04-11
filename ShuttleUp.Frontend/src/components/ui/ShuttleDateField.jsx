@@ -63,9 +63,9 @@ function CalendarIcon() {
 }
 
 /**
- * @param {{ value: string, onChange: (ymd: string) => void, placeholder?: string, id?: string }} props
+ * @param {{ value: string, onChange: (ymd: string) => void, placeholder?: string, id?: string, minDate?: string }} props
  */
-export default function ShuttleDateField({ value, onChange, placeholder = 'dd/mm/yyyy', id }) {
+export default function ShuttleDateField({ value, onChange, placeholder = 'dd/mm/yyyy', id, minDate, maxDate }) {
   const [open, setOpen] = useState(false);
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
@@ -199,10 +199,13 @@ export default function ShuttleDateField({ value, onChange, placeholder = 'dd/mm
             const ymd = toYMD(cell);
             const isSel = value === ymd;
             const isTo = isSameYMD(cell, today);
+            const isDisabled = (minDate && ymd < minDate) || (maxDate && ymd > maxDate);
             return (
               <button
                 key={idx}
                 type="button"
+                disabled={isDisabled}
+                style={isDisabled ? { opacity: 0.3, cursor: 'not-allowed', background: '#f8fafc', color: '#94a3b8' } : {}}
                 className={[
                   'shuttle-cal__day',
                   !inMonth && 'shuttle-cal__day--muted',
@@ -212,6 +215,7 @@ export default function ShuttleDateField({ value, onChange, placeholder = 'dd/mm
                   .filter(Boolean)
                   .join(' ')}
                 onClick={() => {
+                  if (isDisabled) return;
                   onChange(ymd);
                   setOpen(false);
                 }}
@@ -234,8 +238,11 @@ export default function ShuttleDateField({ value, onChange, placeholder = 'dd/mm
           </button>
           <button
             type="button"
+            disabled={minDate && toYMD(new Date()) < minDate}
+            style={minDate && toYMD(new Date()) < minDate ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
             className="shuttle-cal__action shuttle-cal__action--primary"
             onClick={() => {
+              if (minDate && toYMD(new Date()) < minDate) return;
               onChange(toYMD(new Date()));
               setOpen(false);
             }}

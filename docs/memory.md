@@ -67,7 +67,7 @@ Tài liệu ghi lại các mốc làm việc theo thời gian. Đọc từ trên
 Kết bạn & quan hệ xã hội (Player):
 
 - Database: `user_privacy_settings`, `friend_requests`, `friendships`, `user_blocks` (trong `Database.txt`).
-- Backend: `SocialController` (`/api/social`) — privacy, tìm exact/name, lời mời, bạn bè, chặn, `GET relationship/{id}`; thông báo `FRIEND_REQUEST` / `FRIEND_ACCEPTED` + `deepLink` trong metadata; `ProfileController`: `GET /api/profile/{userId}` (hồ sơ tối thiểu, `relationshipState`, `pendingRequestId` khi `PENDING_IN`).
+- Backend: `SocialController` (`/api/social`) — privacy, tìm exact/name, lời mời, bạn bè, chặn, `GET relationship/{id}`; thông báo `FRIEND_REQUEST` / `FRIEND_ACCEPTED` + `deepLink` in metadata; `ProfileController`: `GET /api/profile/{userId}` (hồ sơ tối thiểu, `relationshipState`, `pendingRequestId` khi `PENDING_IN`).
 - Frontend: `/user/social/search`, `/user/social/friends` (tab Bạn bè / Đã nhận / Đã gửi), `/user/profile/:userId`; `RelationshipActions`, `socialApi`; QR (`qrcode.react`) + đọc ảnh QR (`jsqr`); `VITE_PUBLIC_APP_URL` (fallback `window.location.origin`); menu Tìm bạn / Bạn bè; `notificationTypes` + `notificationNavigation`.
 - Personalization: cho phép vào `/user/social/*` và `/user/profile/{guid}` dù chưa xong onboarding (theo kế hoạch tính năng xã hội).
 - Bình luận matching: sửa lệch giờ sau F5 (MySQL `datetime` → JSON có `Z` qua `AsUtcForJson` trong `MatchingController` GET/POST comments); giới hạn 1 comment / 0,5s / user / post (HTTP 429); `MatchingComments.jsx` parse ISO không offset như UTC + cooldown client + hiển thị `message` từ API; UI chỉ hiện 5 bình luận đầu, nút **Xem thêm** gọi một lần `pageSize = total` để tải hết.
@@ -93,7 +93,7 @@ Kết bạn & quan hệ xã hội (Player):
 3. **Frontend UI/UX**:
    - `MatchingHub.jsx`: Grid bài đăng kèm filter chuyên sâu (trình độ, ngày, khu vực) và pagination.
    - `MatchingCreate.jsx`: Stepper 4 bước (Chọn đơn sân → Chọn ca chơi → Thông tin bài → Xác nhận) kèm Preview Card trực quan. Áp dụng Rule 2 (inline validation, copywriting thân thiện).
-   - `MatchingPostDetail.jsx`: Dashboard quản lý cho host (duyệt/từ chối/kick) và seeker (form xin tham gia, countdown slots).
+   - `MatchingPostDetail.jsx`: Dashboard quản lý cho host (duyệt/tối chối/kick) và seeker (form xin tham gia, countdown slots).
    - Tích hợp `index.css`: ~370 dòng CSS tùy chỉnh cho matching (nền gradient, progress bar, circular SVG chart cho slots).
 4. **Hệ thống Thông báo**: Tích hợp notifications SignalR cho mọi hành động (xin gia nhập, duyệt, từ chối, đóng bài, bình luận mới).
 
@@ -236,22 +236,90 @@ Kết bạn & quan hệ xã hội (Player):
 
 ---
 
-*Cập nhật: gom theo ngày, bỏ trùng lặp và định dạng lại cho dễ đọc.*
-
-## 8 tháng 4, 2026 (Tối ưu Responsive Manager & Booking Tabs)
-
-1. **Sửa lỗi Sidebar mobile ẩn không hết**: 
-   - Điều chỉnh `translateX` từ `-100%` thành `calc(-100% - 30px)` trong `index.css`.
-   - Việc dịch thêm 30px giúp che hoàn toàn phần đổ bóng (box-shadow) và dải màu xanh còn sót lại do layout có lề `14px`.
-2. **Triệt tiêu Scroll ngang trên Manager Dashboard**:
-   - Khóa chiều rộng `.mgr-content` bằng `width` và `max-width` dùng `calc(100% - var(--mgr-sidebar-w) - 28px)`.
-   - Thêm `overflow-x: hidden` cho `.mgr-layout` và `.mgr-content` để đảm bảo bảng dữ liệu (table-responsive) không bao giờ đẩy vỡ khung nhìn chính.
-3. **Tối ưu Tab Booking trên Mobile (`ManagerBookings.jsx`)**:
-   - Màn hình < 768px: Thu nhỏ font (12px), padding (6px 10px) và ép `flex-wrap: wrap` để các tab xuống dòng tự nhiên.
-   - Màn hình < 480px: Chuyển sang giao diện **Grid 2x2** (`grid-template-columns: 1fr 1fr`).
-   - Các nút "Chờ duyệt", "Sắp tới", "Hoàn thành", "Đã huỷ" được căn giữa, chiếm đều không gian, giúp giao diện gọn gàng và dễ bấm trên điện thoại nhỏ.
+*Cập nhật: gom theo ngày, bổ sung các tinh chỉnh responsive quan trọng ngăn layout bị vỡ trên mobile/Laptop L.*
 
 ---
 
-*Cập nhật: gom theo ngày, bổ sung các tinh chỉnh responsive quan trọng ngăn layout bị vỡ trên mobile/Laptop L.*
+## 8 tháng 4, 2026 (Cập nhật tại chỗ - Update-in-Place cho Đơn đặt sân HOLDING)
 
+1. **Khắc phục lỗi 409 Conflict**: Xử lý vấn đề người dùng quay lại ("Back to Edit") khi đang ở trang thanh toán sẽ tạo ra booking mới bị kẹt ở trạng thái `HOLDING`, gây lỗi trùng lịch giả.
+2. **Backend API**:
+   - Các API tạo đơn (`POST /bookings`, `/bookings/long-term`) hỗ trợ thêm tham số tuỳ chọn `bookingId` để cập nhật lại booking đang `HOLDING` thay vì tạo mới.
+   - Thêm endpoint `POST /bookings/{id}/cancel-hold` để chủ động huỷ đơn `HOLDING` ngay lập tức.
+3. **Frontend Cải tiến**:
+   - Cập nhật state quản lý form đặt sân để luôn truyền `bookingId` khi quay lại chỉnh sửa.
+   - Thêm nút "Hủy đơn" trên trang thanh toán để gọi API `cancel-hold` và giải phóng sân.
+
+---
+
+## 9 tháng 4, 2026 (Hệ thống Xếp hạng Elite Owner & Tối ưu UI Thanh toán)
+
+1. **Hệ thống Xếp hạng Elite Owner**:
+   - Xây dựng hệ thống huy hiệu / xếp hạng Elite cho các chủ sân (Manager) có hiệu suất hoạt động và dịch vụ xuất sắc.
+   - Run migration lưu hạn mức xếp hạng (rank thresholds).
+   - Backend service tính toán xếp hạng tự động.
+   - Frontend hiển thị huy hiệu Elite trên Dashboard chủ sân và UI tìm kiếm/thông tin sân cho người dùng.
+2. **Soft Reminders (Nhắc nhở nhẹ) cho Đơn chờ**:
+   - Tự động nhắc nhở thanh toán (pending bookings) thông qua các Notification Job.
+3. **Tối ưu UX Thanh toán & Hoàn tiền (Manager)**:
+   - Tích hợp tính năng tải ảnh VietQR trực tiếp.
+   - Cải tiến Workflow đối soát & hoàn tiền thuận tiện với giao diện quản lý.
+
+---
+
+## 10-11 tháng 4, 2026 (Smart Court Allocation & Flexible Booking - Phân bổ sân thông minh)
+
+1. **Thuật toán Phân bổ linh hoạt 3 Pha (Backend - `BookingSlotHelper.cs`)**:
+   - Triển khai cấp độ "Sân bất kỳ" (Any Court) giải quyết triệt để tính cứng nhắc của việc đặt lịch dài hạn.
+   - **Phase 1 (Stability):** Ưu tiên tìm 1 sân trống 100% cho mọi buổi.
+   - **Phase 2 (Optimization):** Đổi sân tối thiểu, cố gắng giữ lại sân lấp kín nhất có thể.
+   - **Phase 3 (Partial & Upsell):** Loại bỏ slot hết sân, gợi ý sân Premium.
+   - Set-cap giới hạn 90 ngày được validate cứng (400 Bad Request) ở Tầng Backend (Server-level security).
+2. **DTO & Logic Backend**:
+   - Cập nhật `LongTermScheduleDto.cs`: `CourtId` chuyển sang kiểu nullable (`Guid?`).
+   - Thêm cờ `AutoSwitchCourt` (Cho phép thuật toán đổi sân nếu kẹt) và cờ `PricePreference` ("BUDGET" cho tiết kiệm, "BEST" cho linh hoạt).
+   - Truy vấn Bulk loading toàn bộ conflict trong vòng đời đặt sân lên bộ nhớ (In-memory verification) với độ trễ thấp, thay vì loop từng query DB.
+3. **Giao diện & Trải nghiệm Thông minh (Frontend - `LongTermBooking.jsx`)**:
+   - **Any Court Dropdown:** Tuỳ chọn ở đầu "🏸 Sân bất kỳ" kèm lời khuyên UI/UX.
+   - **Price Filters Radio:** Tuỳ chọn linh hoạt giữa tiết kiệm và tối ưu. Độc lập xuất hiện khi bật Checkbox tính năng linh hoạt.
+   - Bảng **Preview Tương tác:** Gồm cột "Sân", "Trạng thái". Slot no c thay đổi do hệ thống chèn vào sẽ có badge màu cảnh báo (🔄) và lời gợi ý tự động (tooltip). Rào xoá các Slot hết sân bằng đường gạch ngang, đỏ (`✖`).
+   - **Partial Booking CTA:** Nút sẽ tự động chuyển đổi văn bản sang kiểu chốt linh hoạt (ví dụ: "Đặt 8/10 buổi") thay vì block toàn bộ chuỗi hành động khi có Slot Unavailable. Phối hợp với Backend chỉ trừ tiền đúng 8 buổi.
+4. **Tinh chỉnh UI & Trải nghiệm (Frontend)**:
+   - Định dạng lại vị trí `ToastContainer` (`App.jsx`), đẩy thông báo toast xuống (`marginTop: '65px'`) để tránh bị che khuất bởi avatar người dùng ở Header.
+   - **Lưới lịch linh hoạt (`LongTermFlexible.jsx`):** Đánh dấu trạng thái `in_cart` bằng màu xanh lá (`#16a34a` - Đang chọn) cho các ô/slote hiện đang có trong giỏ hàng. Điều này giúp lịch trực quan hơn khi người chơi đã "Thêm ngày vào đơn" nhưng vẫn đang ở cùng giao diện ngày hôm đó.
+
+---
+
+## 11 tháng 4, 2026 (Đại tu giao diện Dashboard User & Tin nhắn)
+
+1. **Hiện đại hóa Dashboard (SaaS Standard)**:
+   - Tái cấu trúc bộ UI Người chơi: `UserProfileEdit.jsx`, `UserProfileChangePassword.jsx`, `UserManagerInfo.jsx`, `UserBookings.jsx`, `UserFavorites.jsx`.
+   - **Sửa lỗi hiển thị nút bấm:** Loại bỏ triệt để class `.btn` của Bootstrap gây xung đột màu chữ (trùng màu nền) trên các trang form. Chuyển sang Tailwind utility classes hoàn toàn cho các nút hành động (Emerald Green `#10b981`).
+   - **UserFavorites (Sân yêu thích):** Sửa lỗi hiển thị dữ liệu thô (JSON), chuyển sang dùng lưới `row g-4` của Bootstrap đồng bộ với component `VenueCard` để hiển thị sân đẹp như trang chủ.
+   - **UserBookings:** Cập nhật bộ lọc Tab pill-shaped và các ô select bo tròn theo chuẩn giao diện hiện đại.
+
+2. **Đại tu toàn diện Chat (`ChatPage.jsx`)**:
+   - Đập đi xây lại 100% giao diện chat theo cấu trúc mẫu `user-chat.html`.
+   - **Xử lý xung đột Layout:** Thay thế các class khoá cứng layout cũ (`chat-window`, `chat-cont-left`, `chat-cont-right`) bằng hệ thống Flexbox của Tailwind để tránh bị co rúm giao diện do CSS template gốc (`style.css`).
+   - **Fix Header Overlap:** Sử dụng container `content-below-header` để đẩy nội dung chat xuống dưới thanh Header cố định, khắc phục lỗi chat bị che khuất.
+
+3. **Quản trị Repository**:
+   - Thực hiện Commit & Merge an toàn: Xử lý conflict Git thủ công để bảo vệ mã nguồn giao diện Tailwind mới trước các cập nhật Bootstrap cũ từ remote.
+   - Commit message chuẩn hoá tiếng Anh: `fix: resolve user dashboard and chat UI alignment issues`.
+
+4. **Tinh chỉnh UI nhỏ**:
+   - Cập nhật Badge số lượng sân yêu thích (dùng `inline-flex` thay cho `.badge` để hiện rõ chữ).
+   - Căn chỉnh lại `ToastContainer` để thông báo không đè lên Avatar người dùng.
+
+5. **Giảm giá đặt lịch dài hạn — tách UI + API + chuẩn JSON**:
+   - **Lỗi đã sửa:** Trang xác nhận (`LongTermConfirm.jsx`) khi xóa mã voucher gọi `setDiscountInfo(null)` làm mất luôn giảm giá tuần/tháng; sau khi sửa: gọi lại `previewDiscount` với `couponCode: ''` và giữ hai dòng: **Giảm giá đợt dài hạn** / **Giảm giá do mã ưu đãi (mã)**.
+   - **Backend (`BookingsController.cs`):** `POST /bookings/preview-discount` trả thêm `longTermDiscountAmount`, `couponDiscountAmount` (tổng `discountAmount` giữ nguyên). Khi mã coupon không hợp lệ, preview vẫn giữ số giảm đợt dài hạn trong body (không trả tổng giảm = 0 như trước).
+   - **JSON:** `Program.cs` — `AddJsonOptions` bật `PropertyNamingPolicy = CamelCase` cho response API.
+   - **Frontend (`bookingApi.js`):** `normalizePreviewDiscountResponse` gộp camelCase + PascalCase; `previewDiscount()` luôn trả object đã chuẩn hóa. `LongTermConfirm`: `useRef` baseline giảm dài hạn khi chưa có mã — fallback tách dòng nếu API chỉ có `discountAmount` tổng.
+   - **Đồng bộ nhãn / preview:** `LongTermBooking.jsx` (khối kết quả xem trước) và `LongTermFlexibleConfirm.jsx` dùng cùng logic nhận field tách / nhãn **Giảm giá đợt dài hạn** khi phù hợp.
+
+6. **Chống sập (Resilience) luồng Đặt Lịch Dài Hạn (Long-term Booking UI & Flow)**:
+   - **Mất dữ liệu khi quay lại (Back navigation):** Xóa bỏ nút "Làm lại từ đầu" ở màn hình xác nhận, truyền thẳng State qua `location.state` giúp form ở Bước 1 hydrate lại đầy đủ mọi thông tin cấu hình thay vì reset trắng trơn màn hình.
+   - **UI Layout Fix:** Di chuyển bộ Action Buttons (Quay lại, Làm mới) sang góc phải để chừa không gian trống bên trái cho hành động chính (Submit / Xem khung giờ).
+   - **Backend Crash on Smart Allocation:** Sửa lỗi `System.ArgumentNullException` (sum price) và `System.NullReferenceException` (court properties) ở `BookingsController.cs` khi API trả về rổ `SmartItems` rỗng hoặc lấy giá trị `.Court` trong khi nó là NULL vì khách hàng dùng "Sân Bất Kỳ (Tự Động Sắp Xếp)".
+   - **Frontend Validation Block:** Nới lỏng kiểm tra bắt buộc phải điền `courtId` (vì Sân Bất Kỳ dùng ID null) ở form Xác Nhận Thanh Toán để giúp người dùng vượt qua lỗi giả "Thiếu dữ liệu lịch", đồng thời nhồi ngầm bộ config `autoSwitchCourt` và `pricePreference` xuống Backend để Server hiểu đúng ý đồ Sân Bất Kỳ.

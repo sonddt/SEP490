@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import UserDashboardMenu from '../../components/user/UserDashboardMenu';
 import { getMyBookings, cancelBooking, getCancelPreview, updateRefundBankInfo } from '../../api/bookingApi';
 
 function pad2(n) {
@@ -291,7 +290,7 @@ export default function UserBookings() {
   const canUserCancel = (b) => b.status === 'PENDING' || b.status === 'UPCOMING';
 
   return (
-    <div className="main-wrapper content-below-header">
+    <div className="space-y-6">
       {toastMsg && (
         <div
           className={`alert ${toastMsg.isError ? 'alert-danger' : 'alert-success'} shadow-sm`}
@@ -301,85 +300,80 @@ export default function UserBookings() {
           {toastMsg.msg}
         </div>
       )}
-      {/* Breadcrumb */}
-      <section className="breadcrumb breadcrumb-list mb-0">
-        <span className="primary-right-round" />
-        <div className="container">
-          <h1 className="text-white">Lịch sử đặt sân</h1>
-          <ul>
-            <li><Link to="/">Trang chủ</Link></li>
-            <li>Lịch sử đặt sân</li>
-          </ul>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6 mb-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-1 flex items-center gap-2">
+              <i className="fa-solid fa-calendar-check text-emerald-600"></i>
+              Đặt sân của tôi
+            </h2>
+            <p className="text-slate-500 text-sm m-0">Quản lý các lịch đặt sân và trạng thái thanh toán của bạn.</p>
+          </div>
         </div>
-      </section>
+      </div>
 
-      <UserDashboardMenu />
-
-      <div className="content court-bg">
-        <div className="container">
-
-          {/* ── Filter bar ──────────────────────────────────────────────── */}
-          <div className="row">
-            <div className="col-lg-12">
-              <div className="sortby-section court-sortby-section">
-                <div className="sorting-info">
-                  <div className="row d-flex align-items-center">
-                    <div className="col-xl-6 col-lg-6 col-sm-12 col-12">
-                      <div className="coach-court-list">
-                        <ul className="nav">
-                          {TABS.map(t => (
-                            <li key={t.key}>
-                              <a
-                                href="#"
-                                className={activeTab === t.key ? 'active' : ''}
-                                onClick={e => { e.preventDefault(); setActiveTab(t.key); }}
-                              >
-                                {t.label}
-                                <span className={`badge bg-${t.color} ms-2`}>
-                                  {bookings.filter(b => b.status === t.key).length}
-                                </span>
-                              </a>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                    <div className="col-xl-6 col-lg-6 col-sm-12 col-12">
-                      <div className="sortby-filter-group court-sortby">
-                        <div className="sortbyset week-bg">
-                          <div className="sorting-select">
-                            <select
-                              className="form-control select"
-                              value={timeFilter}
-                              onChange={e => setTimeFilter(e.target.value)}
-                            >
-                              <option value="week">Tuần này</option>
-                              <option value="month">Tháng này</option>
-                              <option value="all">Tất cả</option>
-                            </select>
-                          </div>
-                        </div>
-                        <div className="sortbyset">
-                          <span className="sortbytitle">Sắp xếp</span>
-                          <div className="sorting-select">
-                            <select
-                              className="form-control select"
-                              value={sortBy}
-                              onChange={e => setSortBy(e.target.value)}
-                            >
-                              <option value="newest">Mới nhất</option>
-                              <option value="oldest">Cũ nhất</option>
-                              <option value="amount">Theo giá</option>
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5">
+        <div className="sortby-section border-0 p-0 m-0">
+          <div className="sorting-info">
+            <div className="row align-items-center g-3">
+              <div className="col-xl-8 col-lg-12">
+                <div className="flex flex-wrap items-center gap-2">
+                  {TABS.map((t) => (
+                    <button
+                      key={t.key}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setActiveTab(t.key);
+                      }}
+                      className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-[13.5px] font-bold transition-all border-0 ${
+                        activeTab === t.key
+                          ? 'bg-emerald-600 text-white shadow-[0_4px_12px_rgba(5,150,105,0.25)]'
+                          : 'bg-slate-50 text-slate-500 hover:bg-emerald-50 hover:text-emerald-700 hover:shadow-sm'
+                      }`}
+                    >
+                      {t.label}
+                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold ${
+                        activeTab === t.key ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
+                      }`}>
+                        {bookings.filter(b => b.status === t.key).length}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="col-xl-4 col-lg-12">
+                <div className="flex flex-wrap items-center gap-3 justify-start xl:justify-end">
+                  <div className="relative">
+                    <select
+                      className="appearance-none bg-slate-50 border border-slate-200 text-slate-600 font-bold text-[13.5px] rounded-xl pl-4 pr-10 py-2.5 outline-none hover:border-emerald-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 cursor-pointer transition-all"
+                      value={timeFilter}
+                      onChange={e => setTimeFilter(e.target.value)}
+                    >
+                      <option value="week">Tuần này</option>
+                      <option value="month">Tháng này</option>
+                      <option value="all">Tất cả thời gian</option>
+                    </select>
+                    <i className="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] pointer-events-none"></i>
+                  </div>
+                  <div className="relative">
+                    <select
+                      className="appearance-none bg-slate-50 border border-slate-200 text-slate-600 font-bold text-[13.5px] rounded-xl pl-4 pr-10 py-2.5 outline-none hover:border-emerald-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 cursor-pointer transition-all"
+                      value={sortBy}
+                      onChange={e => setSortBy(e.target.value)}
+                    >
+                      <option value="newest">Mới nhất</option>
+                      <option value="oldest">Cũ nhất</option>
+                      <option value="amount">Theo giá</option>
+                    </select>
+                    <i className="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] pointer-events-none"></i>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+        </div>
+      </div>
 
           {/* ── Table ───────────────────────────────────────────────────── */}
           <div className="row">
@@ -395,18 +389,18 @@ export default function UserBookings() {
                             <p>Xem và quản lý các lịch đặt sân của bạn</p>
                           </div>
                         </div>
-                        <div className="col-md-6 text-end d-flex gap-2 justify-content-end flex-wrap">
+                        <div className="col-md-6 text-end d-flex gap-2 justify-content-start flex-wrap mt-3 mt-md-0 justify-content-md-end">
                           <button
                             type="button"
-                            className="btn btn-outline-secondary btn-sm"
+                            className="flex items-center justify-center bg-slate-50 text-slate-600 hover:bg-slate-100 px-5 py-2.5 rounded-xl font-bold transition-all border-0 shadow-sm disabled:opacity-50"
                             disabled={loading}
                             onClick={() => loadBookings()}
                           >
-                            <i className="feather-refresh-cw me-1" />
+                            <i className={`feather-refresh-cw me-2 ${loading ? 'fa-spin' : ''}`} />
                             {loading ? 'Đang tải…' : 'Làm mới'}
                           </button>
-                          <Link to="/venues" className="btn btn-secondary btn-sm">
-                            <i className="feather-plus me-1" />Đặt sân mới
+                          <Link to="/venues" className="flex items-center justify-center bg-slate-800 text-white hover:bg-slate-900 shadow-[0_4px_12px_rgba(0,0,0,0.15)] px-6 py-2.5 rounded-xl font-bold transition-all border-0">
+                            <i className="feather-plus me-2" />Đặt sân mới
                           </Link>
                         </div>
                       </div>
@@ -585,9 +579,6 @@ export default function UserBookings() {
               </div>
             </div>
           </div>
-
-        </div>
-      </div>
 
       {/* ── Detail Modal ───────────────────────────────────────────────── */}
       {detailBooking && (
