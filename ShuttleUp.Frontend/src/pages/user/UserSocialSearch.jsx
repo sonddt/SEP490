@@ -180,9 +180,9 @@ export default function UserSocialSearch() {
             <p className="text-slate-500 text-sm m-0">Gặp gỡ và kết nối với những người chơi cầu lông cùng đam mê.</p>
           </div>
           <div className="flex gap-2">
-            <Link to="/user/social/friends" className="btn btn-emerald-soft font-bold rounded-xl px-4 flex items-center gap-2">
-              <i className="fa-solid fa-user-group text-sm"></i>
-              Bạn bè & Lời mời
+            <Link to="/user/social/friends" className="btn btn-emerald-soft font-bold px-4 py-2.5">
+              <i className="fa-solid fa-user-group" aria-hidden />
+              <span>Bạn bè & Lời mời</span>
             </Link>
           </div>
         </div>
@@ -227,11 +227,14 @@ export default function UserSocialSearch() {
             {mode === 'exact' ? (
               <div className="space-y-3">
                 <div className="relative group">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                    <i className="fa-solid fa-magnifying-glass"></i>
-                  </div>
+                  <span
+                    className="pointer-events-none absolute left-0 top-0 z-[1] flex h-full w-12 items-center justify-center text-slate-400"
+                    aria-hidden
+                  >
+                    <i className="fa-solid fa-magnifying-glass text-[0.95rem]"></i>
+                  </span>
                   <input
-                    className="form-control rounded-xl border-slate-200 py-3 pl-10 pr-24 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
+                    className="form-control user-social-exact-search-input rounded-[0.75rem] border-slate-200 py-3 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
                     value={exactQuery}
                     onChange={(ev) => setExactQuery(ev.target.value)}
                     placeholder="Nhập chính xác email hoặc SĐT..."
@@ -239,7 +242,7 @@ export default function UserSocialSearch() {
                   />
                   <button
                     type="button"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-emerald-600 text-white rounded-lg px-4 py-1.5 text-sm font-bold hover:bg-emerald-700 transition-all disabled:opacity-50 border-0"
+                    className="btn btn-emerald absolute right-2 top-1/2 z-[2] -translate-y-1/2 px-4 py-1.5 text-sm font-bold transition-all disabled:opacity-50 border-0"
                     disabled={searching}
                     onClick={runExact}
                   >
@@ -249,11 +252,14 @@ export default function UserSocialSearch() {
               </div>
             ) : (
               <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                  <i className="fa-solid fa-user-tag"></i>
-                </div>
+                <span
+                  className="pointer-events-none absolute left-0 top-0 z-[1] flex h-full w-12 items-center justify-center text-slate-400"
+                  aria-hidden
+                >
+                  <i className="fa-solid fa-user-tag text-[0.95rem]"></i>
+                </span>
                 <input
-                  className="form-control rounded-xl border-slate-200 py-3 pl-10 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
+                  className="form-control user-social-name-search-input rounded-[0.75rem] border-slate-200 py-3 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
                   value={nameQuery}
                   onChange={(ev) => setNameQuery(ev.target.value)}
                   placeholder="Nhập tên hiển thị bạn muốn tìm..."
@@ -325,13 +331,13 @@ export default function UserSocialSearch() {
                Nếu bạn có ảnh chụp mã QR của đối phương trên thiết bị, bạn có thể tải lên để hệ thống tự động nhận diện và mở hồ sơ.
              </p>
              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onQrFile} />
-             <button 
-               type="button" 
-               className="flex items-center justify-center bg-slate-100 text-slate-600 hover:bg-slate-200 px-6 py-2.5 rounded-xl font-bold gap-2 transition-all border-0 w-full md:w-auto" 
+             <button
+               type="button"
+               className="btn btn-emerald-soft w-full px-6 py-2.5 font-bold md:w-auto"
                onClick={() => fileInputRef.current?.click()}
              >
-               <i className="fa-solid fa-image text-emerald-600"></i>
-               Chọn ảnh từ máy tính
+               <i className="fa-solid fa-image" aria-hidden />
+               <span>Chọn ảnh từ máy tính</span>
              </button>
           </div>
         </div>
@@ -351,7 +357,8 @@ export default function UserSocialSearch() {
                   <p className="text-[11px] text-slate-400 font-bold m-0 break-all">{shareUrl}</p>
                 </div>
                 <button type="button" className="btn btn-emerald-soft btn-sm font-bold shadow-sm mb-2" onClick={downloadQR}>
-                   <i className="fa-solid fa-download me-1"></i> Tải mã cá nhân
+                  <i className="fa-solid fa-download" aria-hidden />
+                  <span>Tải mã cá nhân</span>
                 </button>
                 <p className="text-xs text-slate-400 px-6">Đưa mã này cho bạn bè quét để họ tìm thấy bạn ngay lập tức.</p>
               </div>
@@ -406,11 +413,11 @@ export default function UserSocialSearch() {
                 
                 <button
                   type="button"
-                  className="flex items-center justify-center w-full bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl font-bold py-2.5 mt-4 shadow-lg shadow-emerald-500/10 border-0 transition-all gap-2"
+                  className="btn btn-emerald mt-4 w-full py-2.5 font-bold shadow-lg shadow-emerald-500/10"
                   onClick={savePrivacy}
                 >
-                  <i className="fa-solid fa-shield-check me-2"></i>
-                  Lưu thiết lập của tôi
+                  <i className="fa-solid fa-shield-check" aria-hidden />
+                  <span>Lưu thiết lập của tôi</span>
                 </button>
               </div>
             )}

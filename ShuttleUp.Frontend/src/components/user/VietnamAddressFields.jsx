@@ -1,7 +1,9 @@
+import { useMemo } from 'react';
+import SearchableSelect from '../ui/SearchableSelect';
 import { districtByCode, provinceByCode } from '../../utils/vietnamDivisions';
 
 /**
- * Tỉnh / Quận-Huyện / Phường-Xã (dropdown cascade) + địa chỉ nhà/đường (nhập tay).
+ * Tỉnh / Quận-Huyện / Phường-Xã (dropdown có tìm kiếm) + địa chỉ nhà/đường (nhập tay).
  * @param {Array|null} tree — cây từ loadVietnamDivisionTree()
  */
 export default function VietnamAddressFields({
@@ -22,68 +24,63 @@ export default function VietnamAddressFields({
   const dist = districtByCode(provinces, provinceCode, districtCode);
   const wards = dist?.w || [];
 
+  const provinceOptions = useMemo(
+    () => provinces.map((p) => ({ value: String(p.c), label: p.n })),
+    [provinces]
+  );
+  const districtOptions = useMemo(
+    () => districts.map((d) => ({ value: String(d.c), label: d.n })),
+    [districts]
+  );
+  const wardOptions = useMemo(
+    () => wards.map((w) => ({ value: String(w.c), label: w.n })),
+    [wards]
+  );
+
   return (
     <>
       <div className="col-lg-4 col-md-6">
         <div className="input-space">
-          <label className="form-label">Tỉnh / Thành phố</label>
-          <select
-            className="form-control"
-            value={provinceCode}
+          <label className="form-label user-profile-form-label">Tỉnh / Thành phố</label>
+          <SearchableSelect
+            options={provinceOptions}
+            value={provinceCode ? String(provinceCode) : ''}
+            onChange={onChangeProvinceCode}
+            placeholder={tree ? '-- Chọn tỉnh / thành phố --' : 'Đang tải danh sách...'}
             disabled={disabled || !tree}
-            onChange={(e) => onChangeProvinceCode(e.target.value)}
-          >
-            <option value="">{tree ? '-- Chọn tỉnh / thành phố --' : 'Đang tải danh sách...'}</option>
-            {provinces.map((p) => (
-              <option key={p.c} value={String(p.c)}>
-                {p.n}
-              </option>
-            ))}
-          </select>
+          />
         </div>
       </div>
 
       <div className="col-lg-4 col-md-6">
         <div className="input-space">
-          <label className="form-label">Quận / Huyện</label>
-          <select
-            className="form-control"
-            value={districtCode}
+          <label className="form-label user-profile-form-label">Quận / Huyện</label>
+          <SearchableSelect
+            options={districtOptions}
+            value={districtCode ? String(districtCode) : ''}
+            onChange={onChangeDistrictCode}
+            placeholder="-- Chọn quận / huyện --"
             disabled={disabled || !tree || !provinceCode}
-            onChange={(e) => onChangeDistrictCode(e.target.value)}
-          >
-            <option value="">-- Chọn quận / huyện --</option>
-            {districts.map((d) => (
-              <option key={d.c} value={String(d.c)}>
-                {d.n}
-              </option>
-            ))}
-          </select>
+          />
         </div>
       </div>
 
       <div className="col-lg-4 col-md-6">
         <div className="input-space">
-          <label className="form-label">Phường / Xã</label>
-          <select
-            className="form-control"
-            value={wardCode}
+          <label className="form-label user-profile-form-label">Phường / Xã</label>
+          <SearchableSelect
+            options={wardOptions}
+            value={wardCode ? String(wardCode) : ''}
+            onChange={onChangeWardCode}
+            placeholder="-- Chọn phường / xã --"
             disabled={disabled || !tree || !districtCode}
-            onChange={(e) => onChangeWardCode(e.target.value)}
-          >
-            <option value="">-- Chọn phường / xã --</option>
-            {wards.map((w) => (
-              <option key={w.c} value={String(w.c)}>
-                {w.n}
-              </option>
-            ))}
-          </select>
+          />
         </div>
       </div>
 
       <div className="col-lg-12 col-md-12">
         <div className="input-space">
-          <label className="form-label">Số nhà, tên đường</label>
+          <label className="form-label user-profile-form-label">Số nhà, tên đường</label>
           <input
             type="text"
             className="form-control"
@@ -92,7 +89,7 @@ export default function VietnamAddressFields({
             disabled={disabled}
             onChange={(e) => onStreetChange(e.target.value)}
           />
-          <small className="text-muted d-block mt-1">
+          <small className="user-profile-form-hint text-muted d-block mt-1">
             Nhập số nhà và tên đường; phường/xã chọn ở trên.
           </small>
         </div>
