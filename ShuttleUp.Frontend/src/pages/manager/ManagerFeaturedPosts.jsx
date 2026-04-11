@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { notifySuccess, notifyError } from '../../hooks/useNotification';
 import axiosClient from '../../api/axiosClient';
 import ShuttleDateField, { ShuttleTimePicker, toYMD } from '../../components/ui/ShuttleDateField';
+import { normalizedIncludesAny } from '../../utils/searchNormalize';
 
 const EMPTY_FORM = {
   title: '',
@@ -251,19 +252,18 @@ export default function ManagerFeaturedPosts() {
   const [viewMode, setViewMode] = useState('table');
 
   const filteredSorted = useMemo(() => {
-    const q = search.trim().toLowerCase();
     let arr = items.filter((row) => {
       const pub = !!row.isPublished;
       const matchStatus = filterStatus === 'all'
         || (filterStatus === 'published' && pub)
         || (filterStatus === 'draft' && !pub);
       if (!matchStatus) return false;
-      if (!q) return true;
-      const t = (row.title || '').toLowerCase();
-      const ex = (row.excerpt || '').toLowerCase();
-      const body = (row.body || '').toLowerCase();
-      const vn = (row.venueName || '').toLowerCase();
-      return t.includes(q) || ex.includes(q) || body.includes(q) || vn.includes(q);
+      return normalizedIncludesAny(search, [
+        row.title,
+        row.excerpt,
+        row.body,
+        row.venueName,
+      ]);
     });
     switch (sort) {
       case 'created_asc':

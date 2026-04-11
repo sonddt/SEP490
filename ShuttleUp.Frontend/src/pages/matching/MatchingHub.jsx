@@ -4,6 +4,7 @@ import matchingApi from '../../api/matchingApi';
 import { useAuth } from '../../context/AuthContext';
 import MatchingPostCard from '../../components/matching/MatchingPostCard';
 import ShuttleDateField from '../../components/ui/ShuttleDateField';
+import { normalizeSearchText } from '../../utils/searchNormalize';
 
 const sortOptions = [
   { value: 'newest', label: 'Mới nhất' },
@@ -46,14 +47,13 @@ function clientSortCompare(a, b, sort) {
 /** Lọc theo chuỗi: tiêu đề, địa chỉ sân, tên chủ bài — dùng cho tab Của tôi / Đã tham gia. */
 function applyClientListFilterSort(items, search, sort) {
   let list = Array.isArray(items) ? [...items] : [];
-  const q = (search || '').trim().toLowerCase();
-  if (q) {
+  const nq = normalizeSearchText(search);
+  if (nq) {
     list = list.filter((p) => {
-      const blob = [p.title, p.venueAddress, p.host?.fullName]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      return blob.includes(q);
+      const blob = normalizeSearchText(
+        [p.title, p.venueAddress, p.host?.fullName].filter(Boolean).join(' '),
+      );
+      return blob.includes(nq);
     });
   }
   const key = sort || 'newest';

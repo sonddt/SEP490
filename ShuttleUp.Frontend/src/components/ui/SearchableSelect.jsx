@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { normalizeSearchText } from '../../utils/searchNormalize';
 
 /**
  * Dropdown có ô tìm kiếm (lọc theo tên), thay cho <select> dài.
@@ -39,9 +40,9 @@ export default function SearchableSelect({
   }, [open]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return options;
-    return options.filter((o) => (o.label || '').toLowerCase().includes(q));
+    const nq = normalizeSearchText(query);
+    if (!nq) return options;
+    return options.filter((o) => normalizeSearchText(o.label || '').includes(nq));
   }, [options, query]);
 
   const baseBtn =

@@ -6,6 +6,8 @@
 
 const DISTRICT_SPLIT = '|||';
 
+import { normalizeSearchText } from './searchNormalize';
+
 let treePromise = null;
 
 export function loadVietnamDivisionTree() {
@@ -15,13 +17,9 @@ export function loadVietnamDivisionTree() {
   return treePromise;
 }
 
+/** Khớp tên địa phương (đồng bộ với tìm kiếm không dấu). */
 export function normalizeKey(s) {
-  return String(s || '')
-    .trim()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, ' ')
-    .toLowerCase();
+  return normalizeSearchText(s);
 }
 
 function stripAdminPrefix(s) {
@@ -54,6 +52,25 @@ function provinceNameMatch(p, name) {
   const b = normalizeKey(name);
   if (!b) return false;
   return a === b || a.includes(b) || b.includes(a);
+}
+
+/**
+ * Tìm tỉnh/TP trong cây theo tên hiển thị (khớp lỏng, dùng cho form gõ tên ngắn gọn).
+ */
+export function findProvinceByDisplayName(tree, provinceName) {
+  if (!tree?.length) return null;
+  return (
+    tree.find((p) => provinceNameMatch(p, provinceName)) ??
+    tree.find((p) => normalizeKey(p.n) === normalizeKey(provinceName)) ??
+    null
+  );
+}
+
+/** Danh sách tên quận/huyện (theo `d.n` trong JSON) cho một tỉnh */
+export function listDistrictNamesForProvince(tree, provinceName) {
+  const prov = findProvinceByDisplayName(tree, provinceName);
+  const list = (prov?.d || []).map((d) => d.n).filter(Boolean);
+  return [...list].sort((a, b) => a.localeCompare(b, 'vi'));
 }
 
 function districtNameMatch(d, name) {

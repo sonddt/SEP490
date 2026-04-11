@@ -6,6 +6,7 @@ import { profileApi } from '../api/profileApi';
 import { useAuth } from '../context/AuthContext';
 import { useVenueLocationAnchor } from '../hooks/useVenueLocationAnchor';
 import { distanceToVenueKm } from '../utils/geoDistance';
+import { normalizeSearchText } from '../utils/searchNormalize';
 
 const STORAGE_USE_GPS = 'shuttleup_venues_use_gps';
 
@@ -21,12 +22,6 @@ const AMENITIES_CATALOG = [
   { key: 'buy_shuttle', label: 'Mua cầu tại sân', icon: 'feather-shopping-bag' },
   { key: 'canteen', label: 'Căn tin / Quầy ăn uống', icon: 'feather-coffee' },
 ];
-
-function normalizeText(s) {
-  return String(s || '')
-    .trim()
-    .toLowerCase();
-}
 
 function parseNumOrEmpty(v) {
   const s = String(v ?? '').trim();
@@ -307,7 +302,7 @@ export default function VenuesListing() {
   }, []);
 
   const sortedVenues = useMemo(() => {
-    const kw = normalizeText(keyword);
+    const kw = normalizeSearchText(keyword);
     const minP = priceMin === '' ? null : Number(priceMin);
     const maxP = priceMax === '' ? null : Number(priceMax);
     const rad = radiusKm === '' ? null : Number(radiusKm);
@@ -332,8 +327,8 @@ export default function VenuesListing() {
 
     if (kw) {
       filtered = filtered.filter((v) => {
-        const n = normalizeText(v.name);
-        const a = normalizeText(v.location);
+        const n = normalizeSearchText(v.name);
+        const a = normalizeSearchText(v.location);
         return n.includes(kw) || a.includes(kw);
       });
     }

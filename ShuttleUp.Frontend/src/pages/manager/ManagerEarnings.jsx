@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { normalizeSearchText } from '../../utils/searchNormalize';
 
 /* ── Mock data ─────────────────────────────────────────────────────────── */
 const MOCK = [
@@ -95,14 +96,19 @@ export default function ManagerEarnings() {
   const [page, setPage]                 = useState(1);
   const itemsPerPage = 8;
 
-  const filtered = useMemo(() => MOCK.filter(t => {
-    const ms = statusFilter === 'ALL' || t.status === statusFilter;
-    const mq = t.player.toLowerCase().includes(search.toLowerCase())
-            || t.court.toLowerCase().includes(search.toLowerCase())
-            || t.refId.toLowerCase().includes(search.toLowerCase())
-            || t.venue.toLowerCase().includes(search.toLowerCase());
-    return ms && mq;
-  }), [statusFilter, search]);
+  const filtered = useMemo(() => {
+    const nq = normalizeSearchText(search);
+    return MOCK.filter((t) => {
+      const ms = statusFilter === 'ALL' || t.status === statusFilter;
+      if (!nq) return ms;
+      const mq =
+        normalizeSearchText(t.player).includes(nq) ||
+        normalizeSearchText(t.court).includes(nq) ||
+        normalizeSearchText(t.refId).includes(nq) ||
+        normalizeSearchText(t.venue).includes(nq);
+      return ms && mq;
+    });
+  }, [statusFilter, search]);
 
   const totalRevenue = MOCK.filter(t => t.status === 'PAID').reduce((a, b) => a + b.amount, 0);
   const handleClearSearch = useCallback(() => setSearch(''), []);

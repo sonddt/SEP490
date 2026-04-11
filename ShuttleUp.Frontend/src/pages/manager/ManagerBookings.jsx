@@ -4,6 +4,7 @@ import { BOOKING_STATUSES, PAYMENT_METHODS } from '../../data/bookingsMock';
 import { getManagerBookings, patchManagerBookingStatus } from '../../api/managerBookingsApi';
 import BookingDetailModal from '../../components/manager/BookingDetailModal';
 import RejectModal from '../../components/manager/RejectModal';
+import { normalizeSearchText } from '../../utils/searchNormalize';
 
 /* ── Constants ──────────────────────────────────────────────────────────── */
 const PAGE_SIZE = 8;
@@ -233,15 +234,18 @@ export default function ManagerBookings() {
     if (timeFilter === 'week')  list = list.filter(b => isThisWeek(new Date(b.date)));
     if (timeFilter === 'month') list = list.filter(b => isThisMonth(new Date(b.date)));
     if (search.trim()) {
-      const q = search.toLowerCase().trim();
-      list = list.filter(b =>
-        b.player.toLowerCase().includes(q)
-        || (b.playerAccountSub && b.playerAccountSub.toLowerCase().includes(q))
-        || b.court.toLowerCase().includes(q)
-        || b.venue.toLowerCase().includes(q)
-        || String(b.id).toLowerCase().includes(q)
-        || (b.bookingCode && b.bookingCode.toLowerCase().includes(q)),
-      );
+      const nq = normalizeSearchText(search);
+      if (nq) {
+        list = list.filter(
+          (b) =>
+            normalizeSearchText(b.player).includes(nq) ||
+            (b.playerAccountSub && normalizeSearchText(b.playerAccountSub).includes(nq)) ||
+            normalizeSearchText(b.court).includes(nq) ||
+            normalizeSearchText(b.venue).includes(nq) ||
+            normalizeSearchText(String(b.id)).includes(nq) ||
+            (b.bookingCode && normalizeSearchText(b.bookingCode).includes(nq)),
+        );
+      }
     }
     list = [...list].sort((a, b) => {
       if (sortBy === 'newest') return new Date(b.date) - new Date(a.date);
