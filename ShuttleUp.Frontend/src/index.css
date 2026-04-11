@@ -4001,3 +4001,47 @@ p, .card-body p, .matching-detail-notes p, .matching-comment-content {
   box-shadow: 0 0 0 3px rgba(9,126,82,0.12);
   outline: none;
 }
+
+
+/* ── Hero Search Box Desktop Overrides ── */
+@media (min-width: 768px) {
+  .hero-section .section-search .search-box .search-btn {
+    margin-left: 20px;
+  }
+}
+
+
+/* ── Hero Search Box Responsive Overrides ── */
+@media (max-width: 767.98px) {
+  .hero-section .section-search .search-box form {
+    display: flex !important;
+    flex-direction: column;
+    gap: 15px;
+    padding: 10px;
+  }
+  .hero-section .section-search .search-box .search-input {
+    width: 100% !important;
+    display: block !important;
+    float: none !important;
+    margin: 0 !important; /* Override the table-cell and line margin */
+  }
+  .hero-section .section-search .search-box .search-btn {
+    width: 100%;
+  }
+  .hero-section .section-search .search-box .search-btn .btn {
+    width: 100% !important;
+    border-radius: 8px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 5px !important;
+  }
+  .hero-section .section-search .search-box .search-btn .btn i {
+    display: inline-block !important; /* Bring back the icon on mobile */
+  }
+  .hero-section .section-search .search-box .search-btn .btn span.search-text {
+    display: inline-block !important; /* Keep the text for a clear CTA */
+  }
+}
+

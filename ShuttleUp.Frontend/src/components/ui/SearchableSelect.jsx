@@ -46,7 +46,7 @@ export default function SearchableSelect({
   }, [options, query]);
 
   const baseBtn =
-    'w-full flex items-center justify-between gap-2 rounded-[0.75rem] border border-slate-200 bg-[#f8fafc] py-2.5 px-3 text-left text-sm font-medium text-slate-800 transition-colors hover:border-emerald-300/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 disabled:opacity-60 disabled:pointer-events-none';
+    'w-full flex items-center justify-between gap-2 border-0 bg-transparent py-2.5 px-0 text-left text-base font-medium transition-colors focus:outline-none disabled:opacity-60 disabled:pointer-events-none appearance-none';
 
   return (
     <div ref={wrapRef} className={`relative ${className}`}>

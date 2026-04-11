@@ -61,7 +61,7 @@ export default function HeroSection() {
                         <label>Tìm kiếm Tên Sân</label>
                         <input 
                           type="text" 
-                          className="form-control" 
+                          className="form-control border-0 shadow-none bg-transparent" 
                           placeholder="Nhập tên sân..." 
                           value={keyword}
                           onChange={(e) => setKeyword(e.target.value)}
