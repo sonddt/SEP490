@@ -870,14 +870,219 @@ INSERT IGNORE INTO venues (
     TRUE, NOW()
 ),
 (
-    'c5800004-c580-4c80-8000-000000000004',
-    'a0000002-0000-0000-0000-000000000002',
-    '[MOCK GEO] Sân chưa có tọa độ',
-    '99 Võ Thị Sáu, Phường Phú Hòa, TP. Thủ Dầu Một',
-    NULL, NULL,
     'Không có lat/lng — sẽ xuống cuối khi sort Gần nhất.',
     TRUE, NOW()
 );
+
+-- ======================================================================
+-- 12 SÂN MỚI (Vùng miền Việt Nam + Đầy đủ trường dữ liệu)
+-- ======================================================================
+
+INSERT IGNORE INTO venues (
+    id, owner_user_id, name, address, lat, lng, description,
+    weekly_discount_percent, monthly_discount_percent,
+    payment_bank_name, payment_bank_bin, payment_account_number, payment_account_holder,
+    cancel_allowed, cancel_before_minutes, refund_type, refund_percent,
+    contact_name, contact_phone,
+    includes, rules, amenities,
+    is_active, created_at
+) VALUES
+(
+    'c9000001-0000-0000-0000-000000000001', 'a0000002-0000-0000-0000-000000000002',
+    'Sân Cầu Lông 368 Badminton Zone', 'Số 854 thôn Thái Bình, Bình Yên, Hạ Bằng, Hà Nội',
+    21.02891000, 105.52984700, 'Sân cầu lông đạt chuẩn thi đấu, không gian thoáng đãng.',
+    5.00, 15.00, 'Vietcombank', '970436', '1234567890', 'NGUYEN VAN A',
+    1, 120, 'PERCENT', 70.00, 'Anh Tuấn', '0986065843',
+    '["Nước uống miễn phí", "Wifi"]', '["Không hút thuốc", "Đi giày đế kếp"]', '["parking", "wifi", "shower"]',
+    TRUE, NOW()
+),
+(
+    'c9000002-0000-0000-0000-000000000002', 'b0000005-0000-0000-0000-000000000005',
+    'SÂN CẦU LÔNG KIM BÔNG', 'Kim Bông, Xã Hạ Bằng, Thạch Thất, Hà Nội',
+    21.03031200, 105.55295200, 'Sân chơi lý tưởng cho mọi lứa tuổi tại khu vực Thạch Thất.',
+    0.00, 10.00, 'MB Bank', '970422', '0335056665', 'LE THI B',
+    1, 60, 'FULL', 100.00, 'Chị Lan', '0335056665',
+    '["Vợt cho thuê", "Giày tập"]', '["Giữ gìn vệ sinh chung"]', '["parking", "canteen"]',
+    TRUE, NOW()
+),
+(
+    'c9000003-0000-0000-0000-000000000003', 'b0000006-0000-0000-0000-000000000006',
+    'Sân Cầu Lông Bao Cấp', 'Thôn 3, Thạch Hoà, Thạch Thất, Hà Nội',
+    20.99973500, 105.52110200, 'Phong cách cổ điển, gần khu công nghệ cao Láng Hòa Lạc.',
+    10.00, 20.00, 'Agribank', '970405', '999988887777', 'NGUYEN VAN C',
+    1, 180, 'NONE', NULL, 'Chú Minh', '0979504194',
+    '["Trà đá miễn phí"]', '["Không gây ồn ào sau 22h"]', '["parking"]',
+    TRUE, NOW()
+),
+(
+    'c9000004-0000-0000-0000-000000000004', 'b0000010-0000-0000-0000-000000000010',
+    'Sân Cầu Lông Victor', 'Số 5 Đống Đa, Hà Nội',
+    21.01230000, 105.82450000, 'Sân cao cấp với thảm ngọc, đèn LED siêu sáng.',
+    5.00, 12.00, 'Techcombank', '970407', '190345678901', 'PHAM VAN D',
+    1, 120, 'PERCENT', 50.00, 'Anh Hùng', '0912345678',
+    '["Phòng thay đồ", "Tủ đồ"]', '["Nghiêm cấm cá độ"]', '["parking", "wifi", "locker"]',
+    TRUE, NOW()
+),
+(
+    'c9000005-0000-0000-0000-000000000005', 'b0000011-0000-0000-0000-000000000011',
+    'Sân Cầu Lông Phan Đình Phùng', 'Quận 3, TP. Hồ Chí Minh',
+    10.78560000, 106.68520000, 'Trung tâm thể thao lâu đời và nổi tiếng nhất Sài Gòn.',
+    2.00, 8.00, 'Vietcombank', '970436', '0071001234567', 'HO THI E',
+    1, 240, 'PERCENT', 30.00, 'Quản lý Thắng', '0908123456',
+    '["Khán đài", "Căng tin"]', '["Tuân thủ giờ giấc"]', '["parking", "food", "wifi"]',
+    TRUE, NOW()
+),
+(
+    'c9000006-0000-0000-0000-000000000006', 'a0000002-0000-0000-0000-000000000002',
+    'Sân Cầu Lông T19', 'Quận 10, TP. Hồ Chí Minh',
+    10.77120000, 106.66250000, 'Sân sạch đẹp, phù hợp với sinh viên và dân văn phòng.',
+    7.00, 15.00, 'TPBank', '970423', '03456789101', 'TRAN VAN F',
+    1, 45, 'FULL', 100.00, 'Chị Mai', '0907123123',
+    '["Wifi tốc độ cao"]', '["Mặc trang phục thể thao"]', '["parking", "wifi"]',
+    TRUE, NOW()
+),
+(
+    'c9000007-0000-0000-0000-000000000007', 'b0000005-0000-0000-0000-000000000005',
+    'Sân Cầu Lông Bình Minh', 'Hải Châu, Đà Nẵng',
+    16.06540000, 108.21320000, 'Gần trung tâm thành phố Đà Nẵng, gió mát tự nhiên.',
+    5.00, 10.00, 'BIDV', '970418', '5611000123456', 'VO VAN G',
+    0, 0, 'NONE', NULL, 'Anh Dũng', '0913999888',
+    '["Nước uống sạch"]', '["Không mang chất cháy nổ"]', '["parking", "wifi"]',
+    TRUE, NOW()
+),
+(
+    'c9000008-0000-0000-0000-000000000008', 'b0000006-0000-0000-0000-000000000006',
+    'Sân Cầu Lông Đại Học Cần Thơ', 'Ninh Kiều, Cần Thơ',
+    10.03450000, 105.77230000, 'Sân trong khuôn viên trường đại học, phục vụ cả ngày.',
+    15.00, 30.00, 'VietinBank', '970415', '101001234567', 'DANG VAN H',
+    1, 300, 'FULL', 100.00, 'Thầy Nam', '0945123456',
+    '["Chỗ nghỉ ngơi"]', '["Không hút thuốc lá"]', '["parking", "wifi"]',
+    TRUE, NOW()
+),
+(
+    'c9000009-0000-0000-0000-000000000009', 'b0000010-0000-0000-0000-000000000010',
+    'Sân Cầu Lông Lạch Tray', 'Quận Ngô Quyền, Hải Phòng',
+    20.85210000, 106.69120000, 'Gần sân vận động Lạch Tray, không khí náo nhiệt.',
+    5.00, 12.00, 'Sacombank', '970403', '060123456789', 'NGUYEN THI I',
+    1, 120, 'PERCENT', 40.00, 'Anh Cường', '0936123456',
+    '["Cho mượn vợt", "Bán cầu"]', '["Giữ trật tự"]', '["parking", "canteen"]',
+    TRUE, NOW()
+),
+(
+    'c9000010-0000-0000-0000-000000000010', 'b0000011-0000-0000-0000-000000000011',
+    'Sân Cầu Lông Đền Lừ', 'Quận Hoàng Mai, Hà Nội',
+    20.98820000, 105.85640000, 'Sân trong khu đô thị mới Đền Lừ, thảm mới cực êm.',
+    4.00, 10.00, 'HDBank', '970437', '123456789123', 'LE VAN K',
+    1, 90, 'PERCENT', 60.00, 'Anh Long', '0912888777',
+    '["Wifi", "Nước uống"]', '["Để xe đúng nơi quy định"]', '["parking", "wifi"]',
+    TRUE, NOW()
+),
+(
+    'c9000011-0000-0000-0000-000000000011', 'a0000002-0000-0000-0000-000000000002',
+    'Badminton World Bắc Ninh', 'TP. Bắc Ninh',
+    21.18320000, 106.07120000, 'Trung tâm cầu lông lớn nhất tỉnh Bắc Ninh.',
+    10.00, 25.00, 'MSB', '970426', '04001012345678', 'TRAN THI L',
+    1, 60, 'PERCENT', 80.00, 'Chị Yến', '0989123456',
+    '["Huấn luyện viên", "Căng tin"]', '["Trang phục phù hợp"]', '["parking", "food", "coach"]',
+    TRUE, NOW()
+),
+(
+    'c9000012-0000-0000-0000-000000000012', 'b0000005-0000-0000-0000-000000000005',
+    'Sân Cầu Lông Bãi Cháy', 'TP. Hạ Long, Quảng Ninh',
+    20.96210000, 107.03450000, 'Gần khu du lịch, view biển, sân mới đầu tư.',
+    0.00, 5.00, 'VIB', '970441', '6017041234567', 'HOANG VAN M',
+    1, 150, 'FULL', 100.00, 'Anh Quảng', '0915123123',
+    '["Nước lạnh", "Khăn lau"]', '["Cấm vật nuôi"]', '["parking", "wifi"]',
+    TRUE, NOW()
+),
+(
+    'c9000013-0000-0000-0000-000000000013', 'b0000006-0000-0000-0000-000000000006',
+    'Sân Cầu Lông Kỳ Đồng', 'Quận 3, TP. Hồ Chí Minh',
+    10.78120000, 106.67890000, 'Sân truyền thống, không khí tập luyện hăng say.',
+    5.00, 10.00, 'ACB', '970416', '12345678', 'TRAN VAN N',
+    1, 120, 'PERCENT', 50.00, 'Anh Hùng Kỳ Đồng', '0903123456',
+    '["Thảm chuyên dụng"]', '["Không mang giày bẩn vào sân"]', '["parking", "wifi"]',
+    TRUE, NOW()
+),
+(
+    'c9000014-0000-0000-0000-000000000014', 'b0000010-0000-0000-0000-000000000010',
+    'Sân Cầu Lông Đào Duy Anh', 'Phú Nhuận, TP. Hồ Chí Minh',
+    10.80120000, 106.67450000, 'Sân đẹp, hiện đại, nằm trong khu dân cư sầm uất.',
+    0.00, 5.00, 'DongA Bank', '970406', '0101234567', 'NGUYEN THI O',
+    1, 60, 'FULL', 100.00, 'Chị Thủy', '0909123789',
+    '["Phòng tắm", "Wifi"]', '["Đi giày đế mềm"]', '["parking", "shower", "wifi"]',
+    TRUE, NOW()
+),
+(
+    'c9000015-0000-0000-0000-000000000015', 'b0000011-0000-0000-0000-000000000011',
+    'Sân Cầu Lông Lan Anh', 'Quận 10, TP. Hồ Chí Minh',
+    10.77890000, 106.67120000, 'Nằm trong câu lạc bộ Lan Anh, tiện ích cao cấp.',
+    5.00, 12.00, 'Vietcombank', '970436', '007100888999', 'PHAM THI P',
+    1, 180, 'PERCENT', 40.00, 'Anh Lễ', '0918112233',
+    '["Hồ bơi cạnh sân", "Căng tin"]', '["Mặc đồ thể thao lịch sự"]', '["parking", "pool", "food"]',
+    TRUE, NOW()
+),
+(
+    'c9000016-0000-0000-0000-000000000016', 'a0000002-0000-0000-0000-000000000002',
+    'Sân Cầu Lông Cầu Giấy', '35 Trần Quý Kiên, Hà Nội',
+    21.03670000, 105.79450000, 'Nhà thi đấu quận Cầu Giấy, quy mô lớn.',
+    10.00, 20.00, 'VietinBank', '970415', '1122334455', 'VO VAN Q',
+    1, 300, 'FULL', 100.00, 'Ban quản lý', '0243123456',
+    '["Khán đài rộng"]', '["Giữ trật tự chung"]', '["parking", "wifi"]',
+    TRUE, NOW()
+),
+(
+    'c9000017-0000-0000-0000-000000000017', 'b0000005-0000-0000-0000-000000000005',
+    'Sân Cầu Lông Nguyễn Du', 'Quận 1, TP. Hồ Chí Minh',
+    10.77450000, 106.69450000, 'Vị trí đắc địa ngay trung tâm Sài Gòn.',
+    2.00, 8.00, 'Eximbank', '970431', '20001234567', 'LE VAN R',
+    1, 60, 'PERCENT', 20.00, 'Bác Bảo', '0903000111',
+    '["Gửi xe trong tòa nhà"]', '["Không mang nước ngọt vào sân"]', '["parking", "wifi"]',
+    TRUE, NOW()
+),
+(
+    'c9000018-0000-0000-0000-000000000018', 'b0000006-0000-0000-0000-000000000006',
+    'Sân Cầu Lông Bến Tre', 'Phường 3, TP. Bến Tre',
+    10.24120000, 106.37450000, 'Sân phong trào mạnh mẽ tại xứ Dừa.',
+    10.00, 25.00, 'Agribank', '970405', '710012345678', 'NGUYEN THI S',
+    1, 120, 'FULL', 100.00, 'Chị Ba Bến Tre', '0949123456',
+    '["Kẹo dừa miễn phí"]', '["Không mang vật nuôi"]', '["parking"]',
+    TRUE, NOW()
+),
+(
+    'c9000019-0000-0000-0000-000000000019', 'b0000010-0000-0000-0000-000000000010',
+    'Sân Cầu Lông Mỹ Tho', 'TP. Mỹ Tho, Tiền Giang',
+    10.36450000, 106.35120000, 'Sân thể thao Thành phố Mỹ Tho.',
+    5.00, 12.00, 'SHB', '970443', '1002003004', 'DANG VAN T',
+    0, 0, 'NONE', NULL, 'Anh Tư Tiền Giang', '0912123456',
+    '["Vợt cho mượn"]', '["Giữ vệ sinh chung"]', '["parking", "wifi"]',
+    TRUE, NOW()
+),
+(
+    'c9000020-0000-0000-0000-000000000020', 'b0000011-0000-0000-0000-000000000011',
+    'Sân Cầu Lông Vũng Tàu', 'Phường 1, TP. Vũng Tàu',
+    10.35120000, 107.07890000, 'Gần Bãi Trước, gió biển mát rượi.',
+    8.00, 18.00, 'VIB', '970441', '0341000111222', 'TRAN THI U',
+    1, 150, 'PERCENT', 80.00, 'Anh Hải Vũng Tàu', '0981123456',
+    '["Nước suối", "Khăn lạnh"]', '["Không hút thuốc lá"]', '["parking", "wifi"]',
+    TRUE, NOW()
+);
+
+
+-- Cập nhật thông tin chi tiết cho các sân đã có để test giao diện đầy đủ
+UPDATE venues SET
+    payment_bank_name = 'Vietcombank',
+    payment_bank_bin = '970436',
+    payment_account_number = '007100111222',
+    payment_account_holder = 'CONG TY SHUTTLEUP',
+    amenities = '["parking", "wifi", "shower", "canteen"]',
+    includes = '["Trà đá", "Wifi"]',
+    rules = '["Không hút thuốc", "Đi giày chuyên dụng"]',
+    contact_name = 'Sơn Quản Lý',
+    contact_phone = '0123456789'
+WHERE id IN ('c0000001-0000-0000-0000-000000000001', 'c0000002-0000-0000-0000-000000000002');
+
+
 
 -- ======================================================================
 -- FEATURED POSTS MẪU (trang Nổi bật — sau users + venues)
@@ -954,6 +1159,31 @@ INSERT IGNORE INTO courts (id, venue_id, name, status, is_active) VALUES
 ('d5800003-c580-4c80-8000-000000000003', 'c5800003-c580-4c80-8000-000000000003', 'Sân A', 'ACTIVE', TRUE),
 ('d5800004-c580-4c80-8000-000000000004', 'c5800004-c580-4c80-8000-000000000004', 'Sân A', 'ACTIVE', TRUE);
 
+INSERT IGNORE INTO courts (id, venue_id, name, status, is_active) VALUES
+('d9010001-0000-0000-0000-000000000001', 'c9000001-0000-0000-0000-000000000001', 'Sân 1', 'ACTIVE', TRUE),
+('d9010002-0000-0000-0000-000000000002', 'c9000001-0000-0000-0000-000000000001', 'Sân 2', 'ACTIVE', TRUE),
+('d9020001-0000-0000-0000-000000000001', 'c9000002-0000-0000-0000-000000000002', 'Sân 1', 'ACTIVE', TRUE),
+('d9030001-0000-0000-0000-000000000001', 'c9000003-0000-0000-0000-000000000003', 'Sân 1', 'ACTIVE', TRUE),
+('d9040001-0000-0000-0000-000000000001', 'c9000004-0000-0000-0000-000000000004', 'Sân A', 'ACTIVE', TRUE),
+('d9040002-0000-0000-0000-000000000002', 'c9000004-0000-0000-0000-000000000004', 'Sân B', 'ACTIVE', TRUE),
+('d9050001-0000-0000-0000-000000000001', 'c9000005-0000-0000-0000-000000000005', 'Sân 1', 'ACTIVE', TRUE),
+('d9060001-0000-0000-0000-000000000001', 'c9000006-0000-0000-0000-000000000002', 'Sân 1', 'ACTIVE', TRUE),
+('d9070001-0000-0000-0000-000000000001', 'c9000007-0000-0000-0000-000000000007', 'Sân A', 'ACTIVE', TRUE),
+('d9080001-0000-0000-0000-000000000001', 'c9000008-0000-0000-0000-000000000008', 'Sân 1', 'ACTIVE', TRUE),
+('d9090001-0000-0000-0000-000000000001', 'c9000009-0000-0000-0000-000000000009', 'Sân 1', 'ACTIVE', TRUE),
+('d9100001-0000-0000-0000-000000000001', 'c9000010-0000-0000-0000-000000000010', 'Sân 1', 'ACTIVE', TRUE),
+('d9110001-0000-0000-0000-000000000001', 'c9000011-0000-0000-0000-000000000011', 'Sân 1', 'ACTIVE', TRUE),
+('d9120001-0000-0000-0000-000000000001', 'c9000012-0000-0000-0000-000000000012', 'Sân 1', 'ACTIVE', TRUE),
+('d9130001-0000-0000-0000-000000000001', 'c9000013-0000-0000-0000-000000000013', 'Sân 1', 'ACTIVE', TRUE),
+('d9140001-0000-0000-0000-000000000001', 'c9000014-0000-0000-0000-000000000014', 'Sân 1', 'ACTIVE', TRUE),
+('d9150001-0000-0000-0000-000000000001', 'c9000015-0000-0000-0000-000000000015', 'Sân 1', 'ACTIVE', TRUE),
+('d9160001-0000-0000-0000-000000000001', 'c9000016-0000-0000-0000-000000000016', 'Sân 1', 'ACTIVE', TRUE),
+('d9170001-0000-0000-0000-000000000001', 'c9000017-0000-0000-0000-000000000017', 'Sân 1', 'ACTIVE', TRUE),
+('d9180001-0000-0000-0000-000000000001', 'c9000018-0000-0000-0000-000000000018', 'Sân 1', 'ACTIVE', TRUE),
+('d9190001-0000-0000-0000-000000000001', 'c9000019-0000-0000-0000-000000000019', 'Sân 1', 'ACTIVE', TRUE),
+('d9200001-0000-0000-0000-000000000001', 'c9000020-0000-0000-0000-000000000020', 'Sân 1', 'ACTIVE', TRUE);
+
+
 -- ======================================================================
 -- COURT PRICES MẪU (weekday + weekend, 05:00–24:00 — dùng cho đặt sân & hiển thị giá)
 -- ======================================================================
@@ -982,6 +1212,14 @@ INSERT IGNORE INTO court_prices (id, court_id, start_time, end_time, price, is_w
 ('e5800006-c580-4c80-8000-000000000006', 'd5800003-c580-4c80-8000-000000000003', '05:00:00', '23:59:59', 120000, TRUE),
 ('e5800007-c580-4c80-8000-000000000007', 'd5800004-c580-4c80-8000-000000000004', '05:00:00', '23:59:59', 90000, FALSE),
 ('e5800008-c580-4c80-8000-000000000008', 'd5800004-c580-4c80-8000-000000000004', '05:00:00', '23:59:59', 110000, TRUE);
+
+-- Bảng giá mặc định cho các sân mới (uuid() cho giá)
+INSERT IGNORE INTO court_prices (id, court_id, start_time, end_time, price, is_weekend)
+SELECT UUID(), id, '05:00:00', '17:00:00', 80000, FALSE FROM courts WHERE id LIKE 'd9%';
+INSERT IGNORE INTO court_prices (id, court_id, start_time, end_time, price, is_weekend)
+SELECT UUID(), id, '17:00:00', '23:59:59', 120000, FALSE FROM courts WHERE id LIKE 'd9%';
+INSERT IGNORE INTO court_prices (id, court_id, start_time, end_time, price, is_weekend)
+SELECT UUID(), id, '05:00:00', '23:59:59', 130000, TRUE FROM courts WHERE id LIKE 'd9%';
 
 -- (Tuỳ chọn) Gán địa chỉ hồ sơ cho player mẫu — test geocode khi TẮT GPS:
 -- UPDATE users SET
