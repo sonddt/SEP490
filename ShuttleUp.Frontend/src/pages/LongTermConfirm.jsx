@@ -57,6 +57,8 @@ export default function LongTermConfirm() {
     daysOfWeek = [],
     dailySchedules = null,
     preview = null,
+    autoSwitchCourt = false,
+    pricePreference = null,
   } = state;
 
   // Detect bookingId from state (passed back from Payment page) or URL search params (browser back button)
@@ -196,7 +198,7 @@ export default function LongTermConfirm() {
   const handleSubmit = async () => {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); return; }
-    if (!venueId || !courtId || !rangeStart || !rangeEnd) {
+    if (!venueId || !rangeStart || !rangeEnd || courtId === undefined) {
       setSubmitError('Thiếu dữ liệu lịch. Vui lòng làm lại từ đầu.');
       return;
     }
@@ -211,6 +213,8 @@ export default function LongTermConfirm() {
         sessionStartTime,
         sessionEndTime,
         daysOfWeek,
+        autoSwitchCourt,
+        pricePreference,
         contactName: form.name.trim(),
         contactPhone: form.phone.trim(),
         note: form.note.trim() || undefined,

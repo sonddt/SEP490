@@ -225,8 +225,46 @@ export default function BookingTimeline() {
   const venueId      = venueState.venueId      ?? null;
   const pricePerSlot = venueState.pricePerSlot ?? 100000;
 
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const fromState = venueState.date;
+    // If user clicked standard "Back" button which explicitly pushed state
+    if (fromState && venueState.selectedSlots) return fromState;
+    if (venueId) {
+      try {
+        const savedDate = sessionStorage.getItem(`booking_last_date_${venueId}`);
+        if (savedDate) return savedDate;
+      } catch {}
+    }
+    return fromState ?? new Date().toISOString().split('T')[0];
+  });
   const [showCalendar, setShowCalendar]  = useState(false);
+
+  // Initial Selected Slots from venueState or sessionStorage (if navigating back via browser)
+  const initialSelections = useMemo(() => {
+    const init = {};
+    let hasRouterState = false;
+
+    if (venueState.selectedSlots && (venueState.date === undefined || venueState.date === selectedDate)) {
+      venueState.selectedSlots.forEach(s => {
+        if (!init[s.courtId]) init[s.courtId] = new Set();
+        init[s.courtId].add(s.slotIndex);
+      });
+      hasRouterState = Object.keys(init).length > 0;
+    }
+
+    if (!hasRouterState && venueId && selectedDate) {
+      try {
+        const saved = sessionStorage.getItem(`booking_selections_${venueId}_${selectedDate}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          Object.keys(parsed).forEach(k => {
+            init[k] = new Set(parsed[k]);
+          });
+        }
+      } catch (e) {}
+    }
+    return init;
+  }, [venueState.selectedSlots, venueState.date, selectedDate, venueId]);
 
   // Ref to measure the grid container for computing the exact "fit" minimum
   const gridContainerRef = useRef(null);
@@ -237,7 +275,7 @@ export default function BookingTimeline() {
   const [cellWidth, setCellWidth] = useState(0); // 0 = uninitialized, will be set to minCellWidth on first measure
 
   // selections: { [courtId]: Set<slotIndex> }
-  const [selections, setSelections] = useState({});
+  const [selections, setSelections] = useState(initialSelections);
 
   const [courts, setCourts] = useState([]);
   const [availabilityRows, setAvailabilityRows] = useState([]);
@@ -324,9 +362,25 @@ export default function BookingTimeline() {
     return () => { cancelled = true; };
   }, [venueId]);
 
+  // selections tracking is handled manually in calendar onChange
   useEffect(() => {
-    setSelections({});
-  }, [selectedDate]);
+    if (!venueId || !selectedDate) return;
+    try {
+      const toSave = {};
+      let hasData = false;
+      Object.keys(selections).forEach(k => {
+        if (selections[k] && selections[k].size > 0) {
+          toSave[k] = Array.from(selections[k]);
+          hasData = true;
+        }
+      });
+      const key = `booking_selections_${venueId}_${selectedDate}`;
+      if (hasData) sessionStorage.setItem(key, JSON.stringify(toSave));
+      else sessionStorage.removeItem(key);
+
+      sessionStorage.setItem(`booking_last_date_${venueId}`, selectedDate);
+    } catch (e) {}
+  }, [selections, venueId, selectedDate]);
 
   useEffect(() => {
     if (!venueId) {
@@ -811,7 +865,12 @@ export default function BookingTimeline() {
       {showCalendar && (
         <CalendarPopup
           value={selectedDate}
-          onChange={setSelectedDate}
+          onChange={d => {
+            if (d !== selectedDate) {
+              setSelectedDate(d);
+              setSelections({});
+            }
+          }}
           onClose={() => setShowCalendar(false)}
         />
       )}

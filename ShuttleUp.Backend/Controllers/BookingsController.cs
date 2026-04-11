@@ -125,7 +125,7 @@ public class BookingsController : ControllerBase
         if (normErr != null)
             return BadRequest(new { message = normErr });
 
-        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, HttpContext.RequestAborted);
+        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, HttpContext.RequestAborted, excludeBookingId: dto.BookingId, excludeHoldingUserId: userId);
         if (conflict == "CONFLICT_BOOKING")
             return Conflict(new { message = "Một hoặc nhiều khung giờ vừa được người khác đặt. Vui lòng chọn lại." });
         if (conflict == "CONFLICT_BLOCK")
@@ -339,9 +339,30 @@ public class BookingsController : ControllerBase
         if (venuePolicy == null)
             return BadRequest(new { message = "Cơ sở không tồn tại hoặc chưa mở đặt sân." });
 
-        var total = built.NormalizedItems!.Sum(x => x.Price);
-        var minStart = built.NormalizedItems!.Min(x => x.Start);
-        var maxEnd = built.NormalizedItems!.Max(x => x.End);
+        decimal total = 0;
+        DateTime minStart;
+        DateTime maxEnd;
+
+        if (built.SmartItems != null)
+        {
+            var availableItems = built.SmartItems.Where(x => !x.IsUnavailable && x.CourtId.HasValue).ToList();
+            if (availableItems.Count == 0)
+                return BadRequest(new { message = "Không có khung giờ nào khả dụng để đặt." });
+
+            total = availableItems.Sum(x => x.Price);
+            minStart = availableItems.Min(x => x.Start);
+            maxEnd = availableItems.Max(x => x.End);
+        }
+        else
+        {
+            if (built.NormalizedItems == null || built.NormalizedItems.Count == 0)
+                return BadRequest(new { message = "Không có khung giờ hợp lệ." });
+
+            total = built.NormalizedItems.Sum(x => x.Price);
+            minStart = built.NormalizedItems.Min(x => x.Start);
+            maxEnd = built.NormalizedItems.Max(x => x.End);
+        }
+
         var daysDuration = (maxEnd.Date - minStart.Date).Days + 1;
 
         var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, _, _) = await CalculateDiscountAsync(dto.VenueId, total, daysDuration, dto.CouponCode, userId);
@@ -400,10 +421,6 @@ public class BookingsController : ControllerBase
         if (built.SmartItems != null)
         {
             var availableItems = built.SmartItems.Where(x => !x.IsUnavailable && x.CourtId.HasValue).ToList();
-            if (availableItems.Count == 0)
-                return BadRequest(new { message = "Không có khung giờ nào khả dụng để đặt." });
-
-            total = availableItems.Sum(x => x.Price);
             foreach (var si in availableItems)
             {
                 booking.BookingItems.Add(new BookingItem
@@ -453,7 +470,19 @@ public class BookingsController : ControllerBase
         }
 
         var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
-        var courtById = new Dictionary<Guid, Court> { [built.Court!.Id] = built.Court };
+        
+        Dictionary<Guid, string> courtNames = new();
+        if (built.SmartItems != null)
+        {
+            foreach (var si in built.SmartItems.Where(x => x.CourtId.HasValue))
+            {
+                courtNames[si.CourtId!.Value] = si.CourtName ?? "—";
+            }
+        }
+        else if (built.Court != null)
+        {
+            courtNames[built.Court.Id] = built.Court.Name;
+        }
 
         return StatusCode(StatusCodes.Status201Created, new
         {
@@ -468,7 +497,7 @@ public class BookingsController : ControllerBase
             {
                 Id = bi.Id,
                 CourtId = bi.CourtId ?? Guid.Empty,
-                CourtName = courtById.GetValueOrDefault(bi.CourtId ?? Guid.Empty)?.Name,
+                CourtName = courtNames.GetValueOrDefault(bi.CourtId ?? Guid.Empty),
                 StartTime = bi.StartTime ?? default,
                 EndTime = bi.EndTime ?? default,
                 FinalPrice = bi.FinalPrice ?? 0,
@@ -700,7 +729,8 @@ public class BookingsController : ControllerBase
         if (normalizedItems.Count > BookingSlotHelper.MaxLongTermSlots)
             return new FlexibleLongTermBuildResult { Error = BadRequest(new { message = $"Vượt quá số khung tối đa ({BookingSlotHelper.MaxLongTermSlots} ô × 30 phút)." }) };
 
-        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, ct);
+        TryGetCurrentUserId(out var currentUserId);
+        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, ct, excludeBookingId: null, excludeHoldingUserId: currentUserId);
         if (conflict == "CONFLICT_BOOKING")
             return new FlexibleLongTermBuildResult { Error = Conflict(new { message = "Một hoặc nhiều khung giờ đã có người đặt. Vui lòng đổi lịch." }) };
         if (conflict == "CONFLICT_BLOCK")
@@ -840,7 +870,8 @@ public class BookingsController : ControllerBase
             return new LongTermBuildResult { Error = BadRequest(new { message = legacyExpandErr }) };
 
         var courtIds = new List<Guid> { dto.CourtId!.Value };
-        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, ct);
+        TryGetCurrentUserId(out var currentUserId);
+        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, ct, excludeBookingId: null, excludeHoldingUserId: currentUserId);
         if (conflict == "CONFLICT_BOOKING")
             return new LongTermBuildResult { Error = Conflict(new { message = "Một hoặc nhiều khung giờ đã có người đặt. Vui lòng đổi lịch." }) };
         if (conflict == "CONFLICT_BLOCK")

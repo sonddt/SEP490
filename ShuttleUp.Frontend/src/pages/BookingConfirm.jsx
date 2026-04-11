@@ -179,6 +179,44 @@ export default function BookingConfirm() {
     }
   };
 
+  const [sortConfig, setSortConfig] = useState({ key: 'time', dir: 'asc' });
+
+  const sortedSlots = useMemo(() => {
+    if (!selectedSlots) return [];
+    return [...selectedSlots].sort((a, b) => {
+      let aVal, bVal;
+      switch (sortConfig.key) {
+        case 'courtName':
+          aVal = a.courtName || '';
+          bVal = b.courtName || '';
+          break;
+        case 'time':
+          aVal = a.slotIndex || 0;
+          bVal = b.slotIndex || 0;
+          break;
+        case 'price':
+          aVal = a.price || 0;
+          bVal = b.price || 0;
+          break;
+        default:
+          return 0;
+      }
+      if (aVal < bVal) return sortConfig.dir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortConfig.dir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [selectedSlots, sortConfig]);
+
+  const toggleSort = (key) => setSortConfig(prev => ({
+    key,
+    dir: prev.key === key && prev.dir === 'asc' ? 'desc' : 'asc'
+  }));
+
+  const renderSortIcon = (key) => {
+    if (sortConfig.key !== key) return <i className="feather-chevron-down text-muted ms-1" style={{ fontSize: '0.8em', opacity: 0.3 }} />;
+    return <i className={`feather-chevron-${sortConfig.dir === 'asc' ? 'up' : 'down'} text-primary ms-1`} style={{ fontSize: '0.8em' }} />;
+  };
+
   return (
     <div className="main-wrapper content-below-header">
       <BookingSteps currentStep={2} />
@@ -311,13 +349,13 @@ export default function BookingConfirm() {
                   <table className="table table-bordered mb-0">
                     <thead className="table-light">
                       <tr>
-                        <th>Sân</th>
-                        <th>Giờ</th>
-                        <th className="text-end">Đơn giá (30 phút)</th>
+                        <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => toggleSort('courtName')}>Sân {renderSortIcon('courtName')}</th>
+                        <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => toggleSort('time')}>Giờ {renderSortIcon('time')}</th>
+                        <th style={{ cursor: 'pointer', userSelect: 'none' }} className="text-end" onClick={() => toggleSort('price')}>Đơn giá (30 phút) {renderSortIcon('price')}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {selectedSlots.map((s, i) => (
+                      {sortedSlots.map((s, i) => (
                         <tr key={i}>
                           <td>{s.courtName}</td>
                           <td>{s.timeEndLabel ? `${s.timeLabel} – ${s.timeEndLabel}` : s.timeLabel}</td>
