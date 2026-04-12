@@ -194,5 +194,14 @@ Kết bạn & quan hệ xã hội (Player):
 
 ---
 
-*Cập nhật: gom theo ngày, bỏ trùng lặp và định dạng lại cho dễ đọc.*
+## 12–13 tháng 4, 2026 (Hoàn thiện Report & Sửa lỗi giao diện)
+
+1. **Tinh chỉnh tính năng Báo cáo (Violation Report)**:
+   - **Backend**: Xoá `ViolationReportController.cs` (phiên bản cũ trùng lặp). Tập trung xử lý tại `ReportsController` (Player tạo) và `AdminReportsController` (Admin xử lý).
+   - **Validation**: Thêm check chống tự-report (TargetType USER) và chống spam (chỉ 1 báo cáo PENDING cho mỗi cặp user-target).
+   - **Admin UX**: Sửa dropdown trạng thái trong `AdminReports.jsx` chỉ cập nhật local state, yêu cầu bấm "Lưu" mới gửi API (tránh Admin bấm nhầm đổi trạng thái ngay lập tức).
+2. **Sửa lỗi giao diện quan trọng (Frontend Fixes)**:
+   - **Bootstrap JS**: Bổ sung `bootstrap.bundle.min.js` vào `index.html`. Sửa lỗi nút 3 chấm (...) và các dropdown trong app không hoạt động.
+   - **Chống kẹt màn hình tối (Blackout)**: Thêm cơ chế cleanup vào `App.jsx`. Tự động xóa class `modal-open` và các thẻ `modal-backdrop` dư thừa mỗi khi chuyển trang (route change), giải quyết triệt để lỗi màn hình bị tối sầm và khóa click sau khi login hoặc chuyển hướng.
+
 

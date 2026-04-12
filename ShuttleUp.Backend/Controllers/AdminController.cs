@@ -494,68 +494,99 @@ public class AdminController : ControllerBase
     [HttpGet("stats/bookings")]
     public async Task<IActionResult> GetBookingStats(
         [FromQuery] string? status,
-        [FromQuery] string? date,
+        [FromQuery] string? startDate,
+        [FromQuery] string? endDate,
+        [FromQuery] string? search,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        var totalBookings = await _db.Bookings.CountAsync();
-        var confirmedBookings = await _db.Bookings.CountAsync(b => b.Status == "Confirmed");
-        var pendingBookings = await _db.Bookings.CountAsync(b => b.Status == "Pending");
-        var cancelledBookings = await _db.Bookings.CountAsync(b => b.Status == "Cancelled");
+        if (page <= 0) page = 1;
+        if (pageSize <= 0 || pageSize > 100) pageSize = 20;
 
-        // List and Filter
+        // Build filtered query first (so summary cards match filters)
         var query = _db.Bookings
+            .AsNoTracking()
             .Include(b => b.User)
             .Include(b => b.Venue)
             .Include(b => b.BookingItems)
                 .ThenInclude(bi => bi.Court)
             .AsQueryable();
 
+        // Status filter — normalise to uppercase
         if (!string.IsNullOrWhiteSpace(status) && status != "All")
         {
-            query = query.Where(b => b.Status == status);
+            var s = status.Trim().ToUpperInvariant();
+            query = query.Where(b => b.Status == s);
         }
 
-        if (!string.IsNullOrWhiteSpace(date))
+        // Date range filter at DB level
+        // Interpret yyyy-MM-dd as Vietnam local day boundaries (UTC+7), then convert to UTC for DB compare.
+        var vnTz = GetVietnamTimeZone();
+        if (!string.IsNullOrWhiteSpace(startDate) &&
+            DateTime.TryParseExact(startDate.Trim(), "yyyy-MM-dd",
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var dtStartLocal))
         {
-            // Simple string matching for dd/MM/yyyy date filter requested by frontend
-            // In a real app we'd parse this into a date range, but we'll filter post-query for simplicity
+            var vnStart = DateTime.SpecifyKind(dtStartLocal.Date, DateTimeKind.Unspecified);
+            var utcStart = TimeZoneInfo.ConvertTimeToUtc(vnStart, vnTz);
+            query = query.Where(b => b.CreatedAt.HasValue && b.CreatedAt.Value >= utcStart);
         }
 
-        var rawList = await query
-            .OrderByDescending(b => b.CreatedAt)
-            .ToListAsync();
-
-        if (!string.IsNullOrWhiteSpace(date))
+        if (!string.IsNullOrWhiteSpace(endDate) &&
+            DateTime.TryParseExact(endDate.Trim(), "yyyy-MM-dd",
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var dtEndLocal))
         {
-            rawList = rawList.Where(b => b.CreatedAt.HasValue && b.CreatedAt.Value.ToString("dd/MM/yyyy").Contains(date)).ToList();
+            var vnEndExclusive = DateTime.SpecifyKind(dtEndLocal.Date.AddDays(1), DateTimeKind.Unspecified);
+            var utcEndExclusive = TimeZoneInfo.ConvertTimeToUtc(vnEndExclusive, vnTz);
+            query = query.Where(b => b.CreatedAt.HasValue && b.CreatedAt.Value < utcEndExclusive);
         }
 
-        var totalItems = rawList.Count;
+        // Search by player name or venue name
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var kw = search.Trim();
+            query = query.Where(b =>
+                (b.User != null && b.User.FullName.Contains(kw)) ||
+                (b.Venue != null && b.Venue.Name.Contains(kw)));
+        }
+
+        var totalItems = await query.CountAsync();
         var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
 
-        var pagedItems = rawList
+        // Summary counts — uppercase statuses (filtered)
+        var totalBookings = totalItems;
+        var confirmedBookings = await query.CountAsync(b => b.Status == "CONFIRMED");
+        var pendingBookings = await query.CountAsync(b => b.Status == "PENDING");
+        var cancelledBookings = await query.CountAsync(b => b.Status == "CANCELLED");
+
+        var pagedItems = await query
+            .OrderByDescending(b => b.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(b => new
             {
-                id = $"BK{b.Id.ToString().Substring(0, 5).ToUpper()}",
-                player = b.User?.FullName ?? "N/A",
-                venue = b.Venue?.Name ?? "N/A",
-                court = string.Join(", ", b.BookingItems.Select(bi => bi.Court?.Name)),
-                date = b.CreatedAt?.ToString("dd/MM/yyyy"),
-                time = b.BookingItems.FirstOrDefault() != null ? $"{b.BookingItems.First().StartTime:HH\\:mm}-{b.BookingItems.First().EndTime:HH\\:mm}" : "N/A",
-                amount = $"{b.TotalAmount:N0} ₫",
-                status = b.Status
-            }).ToList();
+                id        = "BK" + b.Id.ToString().Substring(0, 5).ToUpper(),
+                bookingId = b.Id,
+                player    = b.User != null ? b.User.FullName : "N/A",
+                venue     = b.Venue != null ? b.Venue.Name : "N/A",
+                court     = string.Join(", ", b.BookingItems.Select(bi => bi.Court != null ? bi.Court.Name : "")),
+                date      = b.CreatedAt != null ? TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(b.CreatedAt.Value, DateTimeKind.Utc), vnTz).ToString("dd/MM/yyyy") : "",
+                startTime = b.BookingItems.OrderBy(bi => bi.StartTime).Select(bi => bi.StartTime).FirstOrDefault(),
+                endTime   = b.BookingItems.OrderByDescending(bi => bi.EndTime).Select(bi => bi.EndTime).FirstOrDefault(),
+                amount    = b.TotalAmount ?? 0m,
+                amountFmt = string.Format("{0:N0} ₫", b.TotalAmount ?? 0),
+                status    = b.Status
+            })
+            .ToListAsync();
 
         return Ok(new
         {
             summary = new
             {
-                total = totalBookings,
+                total     = totalBookings,
                 confirmed = confirmedBookings,
-                pending = pendingBookings,
+                pending   = pendingBookings,
                 cancelled = cancelledBookings
             },
             items = pagedItems,
@@ -565,41 +596,110 @@ public class AdminController : ControllerBase
     }
 
     [HttpGet("stats/revenue")]
-    public async Task<IActionResult> GetRevenueStats()
+    public async Task<IActionResult> GetRevenueStats(
+        [FromQuery] string? startDate,
+        [FromQuery] string? endDate)
     {
-        var now = DateTime.UtcNow;
-        var startOfMonth = new DateTime(now.Year, now.Month, 1);
-        var startOfDay = now.Date;
+        // Use Vietnam day/month boundaries (UTC+7) for "today" and "this month"
+        var vnTz = GetVietnamTimeZone();
+        var nowUtc = DateTime.UtcNow;
+        var nowVn = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, vnTz);
 
-        var confirmedBookings = _db.Bookings.Where(b => b.Status == "Confirmed");
+        var vnStartOfDay = DateTime.SpecifyKind(nowVn.Date, DateTimeKind.Unspecified);
+        var startOfDayUtc = TimeZoneInfo.ConvertTimeToUtc(vnStartOfDay, vnTz);
 
-        var totalRevenue = await confirmedBookings.SumAsync(b => b.TotalAmount ?? 0);
-        var monthRevenue = await confirmedBookings.Where(b => b.CreatedAt >= startOfMonth).SumAsync(b => b.TotalAmount ?? 0);
-        var todayRevenue = await confirmedBookings.Where(b => b.CreatedAt >= startOfDay).SumAsync(b => b.TotalAmount ?? 0);
+        var vnStartOfMonth = DateTime.SpecifyKind(new DateTime(nowVn.Year, nowVn.Month, 1, 0, 0, 0), DateTimeKind.Unspecified);
+        var startOfMonthUtc = TimeZoneInfo.ConvertTimeToUtc(vnStartOfMonth, vnTz);
+
+        var vnStartOfPrevMonth = DateTime.SpecifyKind(new DateTime(nowVn.Year, nowVn.Month, 1, 0, 0, 0).AddMonths(-1), DateTimeKind.Unspecified);
+        var startOfPrevMonthUtc = TimeZoneInfo.ConvertTimeToUtc(vnStartOfPrevMonth, vnTz);
+        var endOfPrevMonthUtc = startOfMonthUtc;
+
+        // Custom date range for venue breakdown (optional)
+        DateTime? rangeStart = null, rangeEnd = null;
+        if (!string.IsNullOrWhiteSpace(startDate) &&
+            DateTime.TryParseExact(startDate.Trim(), "yyyy-MM-dd",
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var _rs))
+        {
+            var vnStart = DateTime.SpecifyKind(_rs.Date, DateTimeKind.Unspecified);
+            rangeStart = TimeZoneInfo.ConvertTimeToUtc(vnStart, vnTz);
+        }
+
+        if (!string.IsNullOrWhiteSpace(endDate) &&
+            DateTime.TryParseExact(endDate.Trim(), "yyyy-MM-dd",
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var _re))
+        {
+            var vnEndExclusive = DateTime.SpecifyKind(_re.Date.AddDays(1), DateTimeKind.Unspecified);
+            rangeEnd = TimeZoneInfo.ConvertTimeToUtc(vnEndExclusive, vnTz);
+        }
+
+        var paidStatuses = new[] { "CONFIRMED", "COMPLETED" };
+
+        var confirmedBase = _db.Bookings.Where(b => paidStatuses.Contains(b.Status));
+
+        var totalRevenue = await confirmedBase.SumAsync(b => b.TotalAmount ?? 0);
+        var monthRevenue = await confirmedBase.Where(b => b.CreatedAt >= startOfMonthUtc).SumAsync(b => b.TotalAmount ?? 0);
+        var todayRevenue = await confirmedBase.Where(b => b.CreatedAt >= startOfDayUtc).SumAsync(b => b.TotalAmount ?? 0);
         var activeVenuesCount = await _db.Venues.CountAsync(v => v.IsActive == true);
 
-        // Group by Venue
-        var venuesStats = await _db.Venues
+        // Per-venue stats with real growth (this month vs prev month)
+        var venuesRaw = await _db.Venues
+            .Where(v => v.IsActive == true)
             .Select(v => new
             {
-                id = v.Id,
-                venue = v.Name,
-                owner = v.OwnerUser != null ? v.OwnerUser.FullName : "N/A",
-                totalBookings = v.Bookings.Count(b => b.Status == "Confirmed"),
-                revenue = v.Bookings.Where(b => b.Status == "Confirmed").Sum(b => b.TotalAmount ?? 0),
-                growth = "+0%" // Simplified for now
+                v.Id,
+                venueName = v.Name,
+                ownerName = v.OwnerUser != null ? v.OwnerUser.FullName : "N/A",
+                totalBookings = v.Bookings.Count(b => paidStatuses.Contains(b.Status)),
+                revenueRaw    = v.Bookings
+                    .Where(b => paidStatuses.Contains(b.Status)
+                             && (rangeStart == null || b.CreatedAt >= rangeStart)
+                             && (rangeEnd   == null || b.CreatedAt <  rangeEnd))
+                    .Sum(b => b.TotalAmount ?? 0),
+                thisMonthRevenue = v.Bookings
+                    .Where(b => paidStatuses.Contains(b.Status) && b.CreatedAt >= startOfMonthUtc)
+                    .Sum(b => b.TotalAmount ?? 0),
+                prevMonthRevenue = v.Bookings
+                    .Where(b => paidStatuses.Contains(b.Status)
+                             && b.CreatedAt >= startOfPrevMonthUtc && b.CreatedAt < endOfPrevMonthUtc)
+                    .Sum(b => b.TotalAmount ?? 0),
             })
-            .OrderByDescending(v => v.revenue)
+            .OrderByDescending(v => v.revenueRaw)
             .ToListAsync();
+
+        var venuesStats = venuesRaw.Select(v =>
+        {
+            string growth;
+            if (v.prevMonthRevenue == 0)
+                growth = v.thisMonthRevenue > 0 ? "+100%" : "0%";
+            else
+            {
+                var pct = (v.thisMonthRevenue - v.prevMonthRevenue) / v.prevMonthRevenue * 100m;
+                growth = (pct >= 0 ? "+" : "") + Math.Round(pct, 1).ToString("0.#") + "%";
+            }
+            return new
+            {
+                id            = v.Id,
+                venue         = v.venueName,
+                owner         = v.ownerName,
+                totalBookings = v.totalBookings,
+                revenue       = v.revenueRaw,
+                thisMonthRevenue = v.thisMonthRevenue,
+                prevMonthRevenue = v.prevMonthRevenue,
+                growth
+            };
+        }).ToList();
 
         return Ok(new
         {
             summary = new
             {
-                totalRevenue = $"{totalRevenue:N0} ₫",
-                monthRevenue = $"{monthRevenue:N0} ₫",
-                todayRevenue = $"{todayRevenue:N0} ₫",
-                activeVenues = activeVenuesCount
+                totalRevenue  = $"{totalRevenue:N0} ₫",
+                monthRevenue  = $"{monthRevenue:N0} ₫",
+                todayRevenue  = $"{todayRevenue:N0} ₫",
+                activeVenues  = activeVenuesCount
             },
             venuesData = venuesStats
         });
@@ -612,6 +712,13 @@ public class AdminController : ControllerBase
         var claim = User.FindFirst(JwtRegisteredClaimNames.Sub)
                  ?? User.FindFirst(ClaimTypes.NameIdentifier);
         return Guid.TryParse(claim?.Value, out var id) ? id : Guid.Empty;
+    }
+
+    private static TimeZoneInfo GetVietnamTimeZone()
+    {
+        // Windows: "SE Asia Standard Time"; Linux: "Asia/Ho_Chi_Minh"
+        try { return TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"); }
+        catch { return TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh"); }
     }
 }
 

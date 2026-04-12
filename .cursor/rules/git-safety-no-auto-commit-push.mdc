@@ -1,0 +1,19 @@
+---
+description: Git safety: never auto commit/push; no amend/force push unless user asks
+alwaysApply: true
+---
+
+# Git Safety (ShuttleUp)
+
+## Non-negotiable
+
+- **Never create a git commit unless the user explicitly asks for a commit.**
+- **Never push (git push) unless the user explicitly asks to push.**
+- **Never amend** (`git commit --amend`) unless the user explicitly asks to amend.
+- **Never force push** (`git push --force`, `--force-with-lease`) unless the user explicitly asks for it.
+
+## Behavior
+
+- If the user did not request commit/push: finish the code changes, then **report what changed** (files/summary) and **wait**.
+- If the user requests commit/push: follow the repository’s safety protocol (inspect status/diff/log first).
+

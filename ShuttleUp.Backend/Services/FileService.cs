@@ -158,6 +158,29 @@ public class FileService : IFileService
         return MapUploadResult(result);
     }
 
+    public async Task<FileUploadResult> UploadReportAttachmentAsync(IFormFile file, Guid reportId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        var publicId = $"report_{reportId:N}_{userId:N}_{Guid.NewGuid():N}";
+        var folder = ResolveFolder(_settings.ReportAttachmentFolder);
+
+        await using var stream = file.OpenReadStream();
+        var uploadParams = new ImageUploadParams
+        {
+            File = new FileDescription(file.FileName, stream),
+            Folder = folder,
+            PublicId = publicId,
+            Overwrite = false,
+            Transformation = new Transformation()
+                .Crop("limit")
+                .Width(1600)
+                .Height(1600)
+                .FetchFormat("webp")
+        };
+
+        var result = await _cloudinary.UploadAsync(uploadParams, cancellationToken);
+        return MapUploadResult(result);
+    }
+
     private static FileUploadResult MapUploadResult(ImageUploadResult result)
     {
         if (result == null)

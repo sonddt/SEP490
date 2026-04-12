@@ -24,4 +24,6 @@ public class CloudinarySettings
     public string FeaturedPostImageFolder { get; set; } = "featured_posts";
 
     public string VenueReviewImageFolder { get; set; } = "venue_reviews";
+
+    public string ReportAttachmentFolder { get; set; } = "reports";
 }

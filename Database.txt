@@ -647,16 +647,28 @@ CREATE TABLE favorite_venues (
 -- ======================================================================
 
 
+-- target_type: 'USER' | 'VENUE' | 'MATCHING_POST' | 'BOOKING' (dispute)
+-- status: 'PENDING' | 'REVIEWING' | 'RESOLVED' | 'REJECTED'
+-- admin_action: 'WARN_USER' | 'LOCK_USER' | 'WARN_VENUE' | 'LOCK_VENUE' | 'REMOVE_POST' | 'REFUND' | 'NO_ACTION'
 CREATE TABLE violation_reports (
     id CHAR(36) PRIMARY KEY,
     reporter_user_id CHAR(36),
-    target_type VARCHAR(50),
+    target_type VARCHAR(50) NOT NULL,
     target_id CHAR(36),
-    reason VARCHAR(255),
+    reason VARCHAR(100) NOT NULL,
     description TEXT,
+    -- PENDING | REVIEWING | REFUND_PENDING | RESOLVED | REJECTED (REFUND_PENDING = admin đã yêu cầu hoàn tiền, chờ chủ sân thực hiện)
     status VARCHAR(50) DEFAULT 'PENDING',
     admin_user_id CHAR(36),
+    admin_note TEXT,
+    admin_action VARCHAR(50),
     decision_at DATETIME,
+    refund_deadline_at DATETIME NULL COMMENT 'Hạn SLA hoàn tiền khi status=REFUND_PENDING',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_violation_reports_target (target_type, target_id),
+    INDEX idx_violation_reports_status_created (status, created_at),
+    INDEX idx_violation_reports_created (created_at),
+    INDEX idx_violation_reports_refund_sla (status, refund_deadline_at),
     FOREIGN KEY (reporter_user_id) REFERENCES users(id),
     FOREIGN KEY (admin_user_id) REFERENCES users(id)
 );

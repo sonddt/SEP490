@@ -9,6 +9,7 @@ public partial class ViolationReport
 
     public Guid? ReporterUserId { get; set; }
 
+    /// <summary>USER | VENUE | MATCHING_POST | BOOKING</summary>
     public string? TargetType { get; set; }
 
     public Guid? TargetId { get; set; }
@@ -17,11 +18,22 @@ public partial class ViolationReport
 
     public string? Description { get; set; }
 
+    /// <summary>PENDING | REVIEWING | REFUND_PENDING | RESOLVED | REJECTED</summary>
     public string? Status { get; set; }
 
     public Guid? AdminUserId { get; set; }
 
+    public string? AdminNote { get; set; }
+
+    /// <summary>WARN_USER | LOCK_USER | WARN_VENUE | LOCK_VENUE | REMOVE_POST | REFUND | NO_ACTION</summary>
+    public string? AdminAction { get; set; }
+
     public DateTime? DecisionAt { get; set; }
+
+    /// <summary>Hạn xử lý hoàn tiền (khi Status = REFUND_PENDING).</summary>
+    public DateTime? RefundDeadlineAt { get; set; }
+
+    public DateTime? CreatedAt { get; set; }
 
     public virtual User? AdminUser { get; set; }
 

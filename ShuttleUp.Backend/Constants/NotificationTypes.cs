@@ -37,4 +37,19 @@ public static class NotificationTypes
 
     /// <summary>Chủ sân vừa phản hồi đánh giá — gửi cho người chơi.</summary>
     public const string VenueReviewReply = "VENUE_REVIEW_REPLY";
+
+    /// <summary>Admin yêu cầu hoàn tiền — gửi cho người chơi (khiếu nại BOOKING).</summary>
+    public const string DisputeRefundPendingPlayer = "DISPUTE_REFUND_PENDING_PLAYER";
+
+    /// <summary>Admin yêu cầu hoàn tiền — gửi cho chủ sân (khiếu nại BOOKING).</summary>
+    public const string DisputeRefundPendingManager = "DISPUTE_REFUND_PENDING_MANAGER";
+
+    /// <summary>Báo cáo vi phạm đã được xử lý xong — gửi cho người báo cáo.</summary>
+    public const string ReportResolved = "REPORT_RESOLVED";
+
+    /// <summary>Báo cáo vi phạm bị bác bỏ — gửi cho người báo cáo.</summary>
+    public const string ReportRejected = "REPORT_REJECTED";
+
+    /// <summary>Thông báo về hành động xử lý vi phạm — gửi cho đối tượng bị báo cáo.</summary>
+    public const string ReportTargetAction = "REPORT_TARGET_ACTION";
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Pomelo.EntityFrameworkCore.MySql.Scaffolding.Internal;
@@ -873,14 +873,26 @@ public partial class ShuttleUpDbContext : DbContext
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.AdminUserId).HasColumnName("admin_user_id");
+            entity.Property(e => e.AdminNote)
+                .HasColumnType("text")
+                .HasColumnName("admin_note");
+            entity.Property(e => e.AdminAction)
+                .HasMaxLength(50)
+                .HasColumnName("admin_action");
             entity.Property(e => e.DecisionAt)
                 .HasColumnType("datetime")
                 .HasColumnName("decision_at");
+            entity.Property(e => e.RefundDeadlineAt)
+                .HasColumnType("datetime")
+                .HasColumnName("refund_deadline_at");
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
             entity.Property(e => e.Description)
                 .HasColumnType("text")
                 .HasColumnName("description");
             entity.Property(e => e.Reason)
-                .HasMaxLength(255)
+                .HasMaxLength(100)
                 .HasColumnName("reason");
             entity.Property(e => e.ReporterUserId).HasColumnName("reporter_user_id");
             entity.Property(e => e.Status)
