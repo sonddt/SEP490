@@ -442,10 +442,20 @@ export default function LongTermBooking() {
         const daysDuration = Math.round(Math.abs(dEnd - dStart) / (1000 * 60 * 60 * 24)) + 1;
 
         try {
+          const availItems = (result.items || []).filter(i => !i.isUnavailable);
+          // Extract unique booked dates (ISO yyyy-MM-dd) for consecutive-day discount
+          const bookedDates = [...new Set(
+            availItems.map(i => {
+              const st = i.startTime || i.start || '';
+              return typeof st === 'string' ? st.split('T')[0] : '';
+            }).filter(Boolean)
+          )];
+
           const discountData = await previewDiscount({
             venueId: venueId,
             baseAmount: result.totalAmount,
             daysDuration: daysDuration,
+            bookedDates: bookedDates,
             couponCode: ''
           });
           finalDiscount = discountData;
@@ -556,10 +566,10 @@ export default function LongTermBooking() {
                </div>
                <div className="ps-4 ms-2 mt-1">
                  {venueState.weeklyDiscountPercent > 0 && (
-                   <div className="mb-1"><i className="feather-check-circle me-1 text-success small" /> Giảm <strong>{venueState.weeklyDiscountPercent}%</strong> khi ngày bắt đầu và kết thúc cách nhau từ 7 ngày trở lên.</div>
+                   <div className="mb-1"><i className="feather-check-circle me-1 text-success small" /> Giảm <strong>{venueState.weeklyDiscountPercent}%</strong> khi đặt sân liên tục từ 7 ngày trở lên (mỗi ngày ít nhất 1 khung giờ).</div>
                  )}
                  {venueState.monthlyDiscountPercent > 0 && (
-                   <div className="mb-1"><i className="feather-check-circle me-1 text-success small" /> Giảm <strong>{venueState.monthlyDiscountPercent}%</strong> khi ngày bắt đầu và kết thúc cách nhau từ 30 ngày trở lên.</div>
+                   <div className="mb-1"><i className="feather-check-circle me-1 text-success small" /> Giảm <strong>{venueState.monthlyDiscountPercent}%</strong> khi đặt sân liên tục từ 30 ngày trở lên (mỗi ngày ít nhất 1 khung giờ).</div>
                  )}
                  <div className="text-muted small mt-2"><i className="feather-info me-1" /> Lưu ý: Hệ thống chỉ tự động áp dụng 1 mức giảm giá cao nhất phù hợp liền mạch với kỳ hạn đặt sân.</div>
                </div>

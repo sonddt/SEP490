@@ -140,11 +140,11 @@ public class BookingsController : ControllerBase
             return Conflict(new { message = "Một số khung giờ đang bị khóa bởi chủ sân." });
 
         var total = normalizedItems.Sum(x => x.Price);
-        var minStart = normalizedItems.Min(x => x.Start);
-        var maxEnd = normalizedItems.Max(x => x.End);
-        var daysDuration = (maxEnd.Date - minStart.Date).Days + 1;
 
-        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, _, _) = await CalculateDiscountAsync(dto.VenueId, total, daysDuration, dto.CouponCode, userId);
+        // Collect actual booked dates for consecutive-day discount calculation
+        var bookedDates = normalizedItems.Select(x => x.Start).ToList();
+
+        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, _, _) = await CalculateDiscountAsync(dto.VenueId, total, bookedDates, dto.CouponCode, userId);
         if (errorMsg != null) return BadRequest(new { message = errorMsg });
 
         var policySnapshot = new CancellationPolicySnapshot
@@ -371,9 +371,14 @@ public class BookingsController : ControllerBase
             maxEnd = built.NormalizedItems.Max(x => x.End);
         }
 
-        var daysDuration = (maxEnd.Date - minStart.Date).Days + 1;
+        // Collect actual booked dates for consecutive-day discount calculation
+        List<DateTime> bookedDates;
+        if (built.SmartItems != null)
+            bookedDates = built.SmartItems.Where(x => !x.IsUnavailable && x.CourtId.HasValue).Select(x => x.Start).ToList();
+        else
+            bookedDates = built.NormalizedItems!.Select(x => x.Start).ToList();
 
-        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, _, _) = await CalculateDiscountAsync(dto.VenueId, total, daysDuration, dto.CouponCode, userId);
+        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, _, _) = await CalculateDiscountAsync(dto.VenueId, total, bookedDates, dto.CouponCode, userId);
         if (errorMsg != null) return BadRequest(new { message = errorMsg });
         var policySnapshot = new CancellationPolicySnapshot
         {
@@ -590,11 +595,11 @@ public class BookingsController : ControllerBase
 
         var normalizedItems = built.NormalizedItems!;
         var total = normalizedItems.Sum(x => x.Price);
-        var minStart = normalizedItems.Min(x => x.Start);
-        var maxEnd = normalizedItems.Max(x => x.End);
-        var daysDuration = (maxEnd.Date - minStart.Date).Days + 1;
 
-        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, _, _) = await CalculateDiscountAsync(dto.VenueId, total, daysDuration, dto.CouponCode, userId);
+        // Collect actual booked dates for consecutive-day discount calculation
+        var bookedDates = normalizedItems.Select(x => x.Start).ToList();
+
+        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, _, _) = await CalculateDiscountAsync(dto.VenueId, total, bookedDates, dto.CouponCode, userId);
         if (errorMsg != null) return BadRequest(new { message = errorMsg });
         var policySnapshot = new CancellationPolicySnapshot
         {
@@ -1733,11 +1738,29 @@ public class BookingsController : ControllerBase
         if (dto.BaseAmount <= 0)
             return BadRequest(new { message = "BaseAmount phải lớn hơn 0." });
 
-        if (dto.DaysDuration < 1) dto.DaysDuration = 1;
+        // Parse BookedDates (ISO yyyy-MM-dd) from FE — preferred over legacy DaysDuration
+        List<DateTime> bookedDates = new();
+        if (dto.BookedDates is { Count: > 0 })
+        {
+            foreach (var ds in dto.BookedDates)
+            {
+                if (DateTime.TryParse(ds, out var parsed))
+                    bookedDates.Add(parsed);
+            }
+        }
+
+        // Fallback: if FE doesn't send BookedDates yet (backward compat),
+        // generate a fake consecutive range so old behavior still works for single-day bookings.
+        if (bookedDates.Count == 0)
+        {
+            if (dto.DaysDuration < 1) dto.DaysDuration = 1;
+            // Single-day / legacy callers: treat as 1 consecutive day (no discount)
+            bookedDates.Add(DateTime.UtcNow.Date);
+        }
 
         _ = TryGetCurrentUserId(out var previewUserId);
         var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, longTermDiscountAmount, couponDiscountAmount) =
-            await CalculateDiscountAsync(dto.VenueId, dto.BaseAmount, dto.DaysDuration, dto.CouponCode, previewUserId);
+            await CalculateDiscountAsync(dto.VenueId, dto.BaseAmount, bookedDates, dto.CouponCode, previewUserId);
 
         // We don't block the request if there is an error in calculating coupon (e.g. invalid coupon), 
         // we just return the errorMsg in response so FE can handle it (show text "Mã không hợp lệ" etc).
@@ -1757,23 +1780,63 @@ public class BookingsController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Tính chuỗi ngày liên tục dài nhất từ danh sách ngày có booking.
+    /// "Liên tục" = mỗi ngày liền kề nhau, không ngắt quãng.
+    /// </summary>
+    private static int ComputeLongestConsecutiveStreak(IReadOnlyList<DateTime> bookedDates)
+    {
+        if (bookedDates == null || bookedDates.Count == 0) return 0;
+
+        var uniqueDates = bookedDates
+            .Select(d => d.Date)
+            .Distinct()
+            .OrderBy(d => d)
+            .ToList();
+
+        if (uniqueDates.Count == 0) return 0;
+        if (uniqueDates.Count == 1) return 1;
+
+        int longestStreak = 1;
+        int currentStreak = 1;
+
+        for (int i = 1; i < uniqueDates.Count; i++)
+        {
+            if ((uniqueDates[i] - uniqueDates[i - 1]).Days == 1)
+            {
+                currentStreak++;
+                if (currentStreak > longestStreak)
+                    longestStreak = currentStreak;
+            }
+            else
+            {
+                currentStreak = 1;
+            }
+        }
+
+        return longestStreak;
+    }
+
     private async Task<(decimal DiscountAmount, decimal FinalAmount, Guid? CouponId, ShuttleUp.DAL.Models.VenueCoupon? CouponToUpdate, string? ErrorMsg, decimal LongTermDiscountAmount, decimal CouponDiscountAmount)> CalculateDiscountAsync(
         Guid venueId,
         decimal totalAmount,
-        int daysDuration,
+        IReadOnlyList<DateTime> bookedDates,
         string? couponCode,
         Guid? userIdForCouponCheck)
     {
         var venue = await _dbContext.Venues.AsNoTracking().FirstOrDefaultAsync(v => v.Id == venueId);
         if (venue == null) return (0, totalAmount, null, null, "Venue not found", 0, 0);
 
+        // Tính chuỗi ngày liên tục dài nhất (consecutive streak)
+        var consecutiveStreak = ComputeLongestConsecutiveStreak(bookedDates);
+
         decimal autoDiscountAmount = 0;
         
-        if (daysDuration >= 30 && venue.MonthlyDiscountPercent > 0)
+        if (consecutiveStreak >= 30 && venue.MonthlyDiscountPercent > 0)
         {
             autoDiscountAmount = totalAmount * (venue.MonthlyDiscountPercent.Value / 100m);
         }
-        else if (daysDuration >= 7 && venue.WeeklyDiscountPercent > 0)
+        else if (consecutiveStreak >= 7 && venue.WeeklyDiscountPercent > 0)
         {
             autoDiscountAmount = totalAmount * (venue.WeeklyDiscountPercent.Value / 100m);
         }
