@@ -14,8 +14,8 @@ function padTwo(n) {
   return String(n).padStart(2, '0');
 }
 
-/** Giờ kết thúc khung cuối: ưu tiên timeEndLabel / endTime, không thì cộng 30 phút từ timeLabel. */
-function slotRangeEndLabel(lastSlot) {
+/** Giờ kết thúc khung cuối: ưu tiên timeEndLabel / endTime, không thì cộng slotDuration từ timeLabel. */
+function slotRangeEndLabel(lastSlot, slotMins = 30) {
   if (!lastSlot) return '';
   if (lastSlot.timeEndLabel) return lastSlot.timeEndLabel;
   if (lastSlot.endTime) {
@@ -27,7 +27,7 @@ function slotRangeEndLabel(lastSlot) {
   const tl = lastSlot.timeLabel;
   if (tl && /^\d{1,2}:\d{2}$/.test(String(tl).trim())) {
     const [h, m] = String(tl).split(':').map(Number);
-    const endMin = h * 60 + m + 30;
+    const endMin = h * 60 + m + slotMins;
     const eh = Math.floor(endMin / 60) % 24;
     const em = endMin % 60;
     return `${padTwo(eh)}:${padTwo(em)}`;
@@ -53,7 +53,11 @@ export default function BookingComplete() {
     bookingId     = null,
     bookingStatus = 'PENDING',
     flowLongTerm  = false,
+    slotDuration  = 30,
   } = state;
+
+  const slotMins = [30, 60, 120].includes(slotDuration) ? slotDuration : 30;
+  const slotLabelStr = slotMins < 60 ? `${slotMins}ph` : slotMins === 60 ? '1 giờ' : `${slotMins / 60} giờ`;
 
   const statusUpper = String(bookingStatus || 'PENDING').toUpperCase();
 
@@ -129,12 +133,12 @@ export default function BookingComplete() {
                     {courts.map(courtName => {
                       const slots = selectedSlots.filter(s => s.courtName === courtName);
                       const last = slots[slots.length - 1];
-                      const endLabel = slotRangeEndLabel(last);
+                      const endLabel = slotRangeEndLabel(last, slotMins);
                       return (
                         <p key={courtName} className="mb-1">
                           <strong>{courtName}:</strong>{' '}
                           {slots[0]?.timeLabel} – {endLabel}
-                          <span className="text-muted ms-1">({slots.length} ô × 30ph)</span>
+                          <span className="text-muted ms-1">({slots.length} ô × {slotLabelStr})</span>
                         </p>
                       );
                     })}

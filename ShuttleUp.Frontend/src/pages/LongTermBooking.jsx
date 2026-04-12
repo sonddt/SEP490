@@ -755,15 +755,15 @@ export default function LongTermBooking() {
                               </div>
                             </div>
                             <div className="col-md-4">
-                              <label className="form-label small fw-semibold text-muted mb-1">Giờ kết thúc <span className="text-danger">*</span></label>
+                              <label className="form-label small fw-semibold text-muted mb-1">Giờ kết thúc (tự động)</label>
                               <div className="input-group input-group-sm">
-                                <span className="input-group-text bg-white border-end-0 text-primary"><i className="feather-clock"></i></span>
+                                <span className="input-group-text border-end-0 text-muted" style={{ backgroundColor: '#f1f5f9' }}><i className="feather-clock"></i></span>
                                 <input
-                                  className="form-control border-start-0 px-2"
+                                  className="form-control border-start-0 px-2 fw-medium text-muted"
                                   type="time"
                                   value={dayTimes[days[0]]?.end || '20:00'}
-                                  onChange={(e) => handleEndChange(days[0], e.target.value)}
-                                  style={{ cursor: 'text' }}
+                                  readOnly
+                                  style={{ backgroundColor: '#f1f5f9', pointerEvents: 'none' }}
                                 />
                               </div>
                             </div>
@@ -831,14 +831,15 @@ export default function LongTermBooking() {
                                   </div>
                                 </div>
                                 <div className="col-md-4">
-                                  <label className="form-label small fw-semibold text-muted mb-1">Giờ kết thúc <span className="text-danger">*</span></label>
+                                  <label className="form-label small fw-semibold text-muted mb-1">Giờ kết thúc (tự động)</label>
                                   <div className="input-group input-group-sm">
-                                    <span className="input-group-text bg-white border-end-0 text-primary"><i className="feather-clock"></i></span>
+                                    <span className="input-group-text border-end-0 text-muted" style={{ backgroundColor: '#f1f5f9' }}><i className="feather-clock"></i></span>
                                     <input
-                                      className="form-control border-start-0 px-2"
+                                      className="form-control border-start-0 px-2 fw-medium text-muted"
                                       type="time"
                                       value={t.end}
-                                      onChange={(e) => handleEndChange(v, e.target.value)}
+                                      readOnly
+                                      style={{ backgroundColor: '#f1f5f9', pointerEvents: 'none' }}
                                     />
                                   </div>
                                 </div>
