@@ -86,7 +86,7 @@ export function normalizePreviewDiscountResponse(raw) {
 
 /**
  * @param {object} payload
- * { venueId, baseAmount, daysDuration, couponCode }
+ * { venueId, baseAmount, daysDuration, bookedDates?: string[], couponCode }
  */
 export function previewDiscount(payload) {
   return axiosClient

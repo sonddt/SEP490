@@ -90,6 +90,7 @@ export default function LongTermFlexibleConfirm() {
       venueId,
       baseAmount: totalPrice,
       daysDuration: dDuration,
+      bookedDates: [...new Set(sortedDates)],
       couponCode: ''
     }).then(res => setDiscountInfo(res)).catch(() => {});
   }, [venueId, totalPrice, selectedSlots, date]);

@@ -755,12 +755,12 @@ export default function LongTermFlexible() {
            </div>
            <div className="ps-4 ms-2 mt-1">
              {venueState.weeklyDiscountPercent > 0 && (
-               <div className="mb-1"><i className="feather-check-circle me-1 text-success small" /> Giảm <strong>{venueState.weeklyDiscountPercent}%</strong> khi ngày bắt đầu và kết thúc cách nhau từ 7 ngày trở lên.</div>
+               <div className="mb-1"><i className="feather-check-circle me-1 text-success small" /> Giảm <strong>{venueState.weeklyDiscountPercent}%</strong> khi đặt sân liên tục từ 7 ngày trở lên (mỗi ngày ít nhất 1 khung giờ).</div>
              )}
              {venueState.monthlyDiscountPercent > 0 && (
-               <div className="mb-1"><i className="feather-check-circle me-1 text-success small" /> Giảm <strong>{venueState.monthlyDiscountPercent}%</strong> khi ngày bắt đầu và kết thúc cách nhau từ 30 ngày trở lên.</div>
+               <div className="mb-1"><i className="feather-check-circle me-1 text-success small" /> Giảm <strong>{venueState.monthlyDiscountPercent}%</strong> khi đặt sân liên tục từ 30 ngày trở lên (mỗi ngày ít nhất 1 khung giờ).</div>
              )}
-             <div className="text-muted small mt-2"><i className="feather-info me-1" /> Lưu ý: Hệ thống chỉ tự động áp dụng 1 mức giảm giá cao nhất dựa theo khoảng cách thời gian từ ngày đầu tiên tới ngày cuối cùng trong đơn liền mạch này.</div>
+             <div className="text-muted small mt-2"><i className="feather-info me-1" /> Lưu ý: Hệ thống chỉ tự động áp dụng 1 mức giảm giá cao nhất. Các ngày đặt sân phải liên tục (không ngắt quãng) mới đủ điều kiện.</div>
            </div>
         </div>
       )}

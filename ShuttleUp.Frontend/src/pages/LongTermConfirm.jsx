@@ -38,6 +38,25 @@ function computeDaysDuration(rangeStartIso, rangeEndIso) {
   return Math.round(Math.abs(d2 - d1) / (1000 * 60 * 60 * 24)) + 1;
 }
 
+/** Generate actual booked date ISO strings from range + selected days of week */
+function computeBookedDatesIso(rangeStartIso, rangeEndIso, usedDays) {
+  if (!rangeStartIso || !rangeEndIso || !usedDays || usedDays.length === 0) return [];
+  const start = new Date(rangeStartIso);
+  const end = new Date(rangeEndIso);
+  const result = [];
+  const current = new Date(start);
+  while (current <= end) {
+    if (usedDays.includes(current.getDay())) {
+      const y = current.getFullYear();
+      const m = String(current.getMonth() + 1).padStart(2, '0');
+      const d = String(current.getDate()).padStart(2, '0');
+      result.push(`${y}-${m}-${d}`);
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  return result;
+}
+
 export default function LongTermConfirm() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -125,7 +144,12 @@ export default function LongTermConfirm() {
   useEffect(() => {
     if (!venueId || !totalPrice || !rangeStart || !rangeEnd) return;
     const daysDuration = computeDaysDuration(rangeStart, rangeEnd);
-    previewDiscount({ venueId, baseAmount: totalPrice, daysDuration, couponCode: '' })
+    // Compute actual booked dates for consecutive-day discount
+    const usedDayNums = daysOfWeek?.length > 0
+      ? daysOfWeek.map(Number)
+      : (dailySchedules?.map(ds => Number(ds.dayOfWeek)) || []);
+    const bookedDates = computeBookedDatesIso(rangeStart, rangeEnd, usedDayNums);
+    previewDiscount({ venueId, baseAmount: totalPrice, daysDuration, bookedDates, couponCode: '' })
       .then(res => setDiscountInfo(res))
       .catch(() => {});
   }, [venueId, totalPrice, rangeStart, rangeEnd]);
@@ -146,7 +170,11 @@ export default function LongTermConfirm() {
     setCouponError('');
     try {
       const daysDuration = computeDaysDuration(rangeStart, rangeEnd);
-      const resp = await previewDiscount({ venueId, baseAmount: totalPrice, daysDuration, couponCode: code });
+      const usedDayNums = daysOfWeek?.length > 0
+        ? daysOfWeek.map(Number)
+        : (dailySchedules?.map(ds => Number(ds.dayOfWeek)) || []);
+      const bookedDates = computeBookedDatesIso(rangeStart, rangeEnd, usedDayNums);
+      const resp = await previewDiscount({ venueId, baseAmount: totalPrice, daysDuration, bookedDates, couponCode: code });
       if (resp.errorMsg || resp.isValidCoupon === false) {
         setCouponError(resp.errorMsg || 'Mã giảm giá không hợp lệ.');
         setAppliedCoupon('');
@@ -175,7 +203,11 @@ export default function LongTermConfirm() {
     setPreviewingDiscount(true);
     try {
       const daysDuration = computeDaysDuration(rangeStart, rangeEnd);
-      const resp = await previewDiscount({ venueId, baseAmount: totalPrice, daysDuration, couponCode: '' });
+      const usedDayNums = daysOfWeek?.length > 0
+        ? daysOfWeek.map(Number)
+        : (dailySchedules?.map(ds => Number(ds.dayOfWeek)) || []);
+      const bookedDates = computeBookedDatesIso(rangeStart, rangeEnd, usedDayNums);
+      const resp = await previewDiscount({ venueId, baseAmount: totalPrice, daysDuration, bookedDates, couponCode: '' });
       setDiscountInfo(resp);
     } catch {
       // Giữ giá trị cũ nếu API lỗi
