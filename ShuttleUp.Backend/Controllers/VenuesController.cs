@@ -235,9 +235,13 @@ public class VenuesController : ControllerBase
         var dayStart = day.ToDateTime(TimeOnly.MinValue);
         var dayEnd = dayStart.AddDays(1);
 
-        var userId = User.Identity?.IsAuthenticated == true
-            ? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-            : null;
+        Guid? userId = null;
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            var claim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (Guid.TryParse(claim, out var parsed))
+                userId = parsed;
+        }
 
         var bookedQuery = _dbContext.BookingItems
             .AsNoTracking()

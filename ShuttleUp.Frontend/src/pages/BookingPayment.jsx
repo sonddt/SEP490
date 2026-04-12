@@ -36,11 +36,16 @@ function mapApiSlotsToRows(items) {
   if (!Array.isArray(items)) return [];
   return items.map((s) => {
     let timeLabel = s.timeLabel;
-    if (!timeLabel && s.startTime) {
+    let timeEndLabel = s.timeEndLabel;
+    if (s.startTime) {
       const d = new Date(s.startTime);
-      timeLabel = `${padTwo(d.getHours())}:${padTwo(d.getMinutes())}`;
+      if (!timeLabel) timeLabel = `${padTwo(d.getHours())}:${padTwo(d.getMinutes())}`;
     }
-    return { ...s, timeLabel, price: s.price ?? 0 };
+    if (s.endTime) {
+      const de = new Date(s.endTime);
+      if (!timeEndLabel) timeEndLabel = `${padTwo(de.getHours())}:${padTwo(de.getMinutes())}`;
+    }
+    return { ...s, timeLabel, timeEndLabel, price: s.price ?? 0 };
   });
 }
 
@@ -319,6 +324,19 @@ export default function BookingPayment() {
     });
   }, [selectedSlots, sortConfig]);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sortConfig, selectedSlots]);
+
+  const totalPages = Math.ceil(sortedSlots.length / ITEMS_PER_PAGE);
+  const paginatedSlots = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return sortedSlots.slice(start, start + ITEMS_PER_PAGE);
+  }, [sortedSlots, currentPage]);
+
   const toggleSort = (key) => setSortConfig(prev => ({
     key,
     dir: prev.key === key && prev.dir === 'asc' ? 'desc' : 'asc'
@@ -472,21 +490,80 @@ export default function BookingPayment() {
                     <thead className="table-light">
                       <tr>
                         <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => toggleSort('courtName')}>Sân {renderSortIcon('courtName')}</th>
-                        <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => toggleSort('time')}>Giờ bắt đầu {renderSortIcon('time')}</th>
+                        <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => toggleSort('time')}>Giờ {renderSortIcon('time')}</th>
                         <th style={{ cursor: 'pointer', userSelect: 'none' }} className="text-end" onClick={() => toggleSort('price')}>Tiền {renderSortIcon('price')}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {sortedSlots.map((s, i) => (
+                      {paginatedSlots.map((s, i) => (
                         <tr key={i}>
                           <td>{s.courtName}</td>
-                          <td>{s.timeLabel}</td>
+                          <td>{s.timeEndLabel ? `${s.timeLabel} – ${s.timeEndLabel}` : s.timeLabel}</td>
                           <td className="text-end">{(s.price ?? 0).toLocaleString('vi-VN')}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', padding: '8px 4px' }}>
+                    <span style={{ fontSize: '13px', color: '#6b7280' }}>
+                      Trang <strong style={{ color: '#111' }}>{currentPage}</strong> / {totalPages}
+                      <span style={{ color: '#9ca3af', marginLeft: '8px' }}>({sortedSlots.length} khung giờ)</span>
+                    </span>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        style={{
+                          border: '1px solid #e5e7eb', borderRadius: '8px', padding: '6px 14px',
+                          fontSize: '13px', fontWeight: 500, cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                          backgroundColor: currentPage === 1 ? '#f9fafb' : '#fff',
+                          color: currentPage === 1 ? '#d1d5db' : '#374151',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <i className="feather-chevron-left" style={{ fontSize: '12px', marginRight: '4px' }} />Trước
+                      </button>
+                      {[...Array(totalPages)].map((_, idx) => {
+                        const pg = idx + 1;
+                        const isActive = currentPage === pg;
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => setCurrentPage(pg)}
+                            style={{
+                              border: isActive ? '1px solid #16a34a' : '1px solid #e5e7eb',
+                              borderRadius: '8px', padding: '6px 12px', minWidth: '36px',
+                              fontSize: '13px', fontWeight: isActive ? 700 : 500,
+                              cursor: 'pointer',
+                              backgroundColor: isActive ? '#16a34a' : '#fff',
+                              color: isActive ? '#fff' : '#374151',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            {pg}
+                          </button>
+                        );
+                      })}
+                      <button
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        style={{
+                          border: '1px solid #e5e7eb', borderRadius: '8px', padding: '6px 14px',
+                          fontSize: '13px', fontWeight: 500, cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                          backgroundColor: currentPage === totalPages ? '#f9fafb' : '#fff',
+                          color: currentPage === totalPages ? '#d1d5db' : '#374151',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        Sau<i className="feather-chevron-right" style={{ fontSize: '12px', marginLeft: '4px' }} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
