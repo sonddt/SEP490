@@ -68,7 +68,7 @@ export default function FriendsChatRail() {
           }}
           className="btn btn-primary btn-sm shadow"
           style={{
-            borderRadius: '8px 0 0 8px',
+            borderRadius: '12px 0 0 12px',
             padding: '10px 6px',
             writingMode: 'vertical-rl',
             transform: 'rotate(180deg)',

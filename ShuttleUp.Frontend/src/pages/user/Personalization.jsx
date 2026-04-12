@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { profileApi } from '../../api/profileApi';
+import SearchableSelect from '../../components/ui/SearchableSelect';
+import { loadVietnamDivisionTree, listDistrictNamesForProvince } from '../../utils/vietnamDivisions';
 
 const PROVINCES = [
   'Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng', 'Hải Phòng', 'Cần Thơ',
@@ -18,25 +19,8 @@ const PROVINCES = [
   'Tiền Giang', 'Trà Vinh', 'Tuyên Quang', 'Vĩnh Long', 'Vĩnh Phúc', 'Yên Bái',
 ];
 
-const DISTRICTS_BY_PROVINCE = {
-  'Hà Nội': [
-    'Ba Đình', 'Hoàn Kiếm', 'Tây Hồ', 'Long Biên', 'Cầu Giấy', 'Đống Đa',
-    'Hai Bà Trưng', 'Hoàng Mai', 'Thanh Xuân', 'Sóc Sơn', 'Đông Anh',
-    'Gia Lâm', 'Nam Từ Liêm', 'Thanh Trì', 'Bắc Từ Liêm', 'Mê Linh', 'Hà Đông',
-    'Sơn Tây', 'Ba Vì', 'Phúc Thọ', 'Đan Phượng', 'Hoài Đức', 'Quốc Oai',
-    'Thạch Thất', 'Chương Mỹ', 'Thanh Oai', 'Thường Tín', 'Phú Xuyên', 'Ứng Hòa', 'Mỹ Đức'
-  ],
-  'Hồ Chí Minh': [
-    'Quận 1', 'Quận 3', 'Quận 4', 'Quận 5', 'Quận 6', 'Quận 7', 'Quận 8',
-    'Quận 10', 'Quận 11', 'Quận 12', 'Tân Bình', 'Tân Phú', 'Bình Thạnh',
-    'Phú Nhuận', 'Gò Vấp', 'Bình Tân', 'Thủ Đức', 'Nhà Bè', 'Hóc Môn', 'Củ Chi',
-    'Bình Chánh', 'Cần Giờ'
-  ]
-};
-
 const Personalization = () => {
   const { user, updateUser } = useAuth();
-  const navigate = useNavigate();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -49,8 +33,50 @@ const Personalization = () => {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [divisionTree, setDivisionTree] = useState(null);
+  const [divisionLoadError, setDivisionLoadError] = useState('');
 
-  const currentDistricts = DISTRICTS_BY_PROVINCE[formData.province] || [];
+  useEffect(() => {
+    let ok = true;
+    loadVietnamDivisionTree()
+      .then((t) => {
+        if (ok) {
+          setDivisionTree(Array.isArray(t) ? t : []);
+          setDivisionLoadError('');
+        }
+      })
+      .catch(() => {
+        if (ok) {
+          setDivisionTree(null);
+          setDivisionLoadError('Chưa tải được danh mục địa phương. Bạn tải lại trang hoặc bấm Bỏ qua nhé.');
+        }
+      });
+    return () => {
+      ok = false;
+    };
+  }, []);
+
+  const currentDistricts = useMemo(
+    () => listDistrictNamesForProvince(divisionTree, formData.province),
+    [divisionTree, formData.province]
+  );
+
+  const provinceOptions = useMemo(() => PROVINCES.map((p) => ({ value: p, label: p })), []);
+
+  const districtOptions = useMemo(
+    () => currentDistricts.map((d) => ({ value: d, label: d })),
+    [currentDistricts]
+  );
+
+  useEffect(() => {
+    if (!divisionTree?.length) return;
+    setFormData((prev) => {
+      if (!prev.district) return prev;
+      const names = listDistrictNamesForProvince(divisionTree, prev.province);
+      if (names.includes(prev.district)) return prev;
+      return { ...prev, district: '' };
+    });
+  }, [divisionTree]);
 
   const steps = [
     { id: 1, icon: 'fas fa-map-marker-alt', label: 'Vị trí', key: 'district' },
@@ -61,7 +87,12 @@ const Personalization = () => {
   ];
 
   const handleSelect = (key, value) => {
-    setFormData(prev => ({ ...prev, [key]: value }));
+    setFormData((prev) => {
+      if (key === 'province') {
+        return { ...prev, province: value, district: '' };
+      }
+      return { ...prev, [key]: value };
+    });
   };
 
   const handleNext = async () => {
@@ -191,25 +222,43 @@ const Personalization = () => {
                 <h5 className="fw-bold mb-1">📍 Vị trí yêu thích</h5>
                 <p className="text-muted mb-4" style={{ fontSize: '14px' }}>Chúng tôi sẽ gợi ý các sân thể thao gần bạn nhất</p>
                 <div className="mb-3">
-                  <label className="form-label fw-semibold">Tỉnh / Thành phố</label>
-                  <select
-                    className="form-control"
+                  <label className="form-label fw-semibold" htmlFor="personalization-province">
+                    Tỉnh / Thành phố
+                  </label>
+                  <SearchableSelect
+                    id="personalization-province"
+                    options={provinceOptions}
                     value={formData.province}
-                    onChange={(e) => handleSelect('province', e.target.value)}
-                  >
-                    {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
-                  </select>
+                    onChange={(v) => handleSelect('province', v)}
+                    placeholder="-- Chọn tỉnh / thành phố --"
+                    searchPlaceholder="Gõ tên tỉnh, thành phố…"
+                  />
                 </div>
+                {divisionLoadError && (
+                  <div className="alert alert-warning py-2 small mb-3">{divisionLoadError}</div>
+                )}
                 <div className="mb-3">
-                  <label className="form-label fw-semibold">Khu vực (Quận / Huyện)</label>
-                  <select
-                    className="form-control"
+                  <label className="form-label fw-semibold" htmlFor="personalization-district">
+                    Khu vực (Quận / Huyện)
+                  </label>
+                  <SearchableSelect
+                    id="personalization-district"
+                    options={districtOptions}
                     value={formData.district}
-                    onChange={(e) => handleSelect('district', e.target.value)}
-                  >
-                    <option value="">-- Chọn khu vực --</option>
-                    {currentDistricts.map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
+                    onChange={(v) => handleSelect('district', v)}
+                    placeholder={
+                      !divisionTree?.length && !divisionLoadError
+                        ? 'Đang tải danh sách…'
+                        : '-- Chọn khu vực --'
+                    }
+                    searchPlaceholder="Gõ tên quận, huyện…"
+                    disabled={!divisionTree?.length}
+                  />
+                  {divisionTree?.length > 0 && currentDistricts.length === 0 && (
+                    <p className="text-muted small mt-2 mb-0">
+                      Chưa tìm thấy quận/huyện cho tỉnh này trong danh mục. Thử chọn tỉnh khác hoặc bấm Bỏ qua.
+                    </p>
+                  )}
                 </div>
                 <div className="d-flex flex-wrap gap-2 mt-3">
                   {currentDistricts.map(d => (

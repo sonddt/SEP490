@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import VietnamAddressFields from '../../components/user/VietnamAddressFields';
+import ShuttleDateField from '../../components/ui/ShuttleDateField';
 import { useAuth } from '../../context/AuthContext';
 import { profileApi } from '../../api/profileApi';
 import {
@@ -12,6 +13,24 @@ import {
   resolveCodesFromProfile,
   wardByCode,
 } from '../../utils/vietnamDivisions';
+
+function sliceYmd(s) {
+  if (!s) return '';
+  const t = String(s).trim();
+  const m = t.match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : '';
+}
+
+function dobMinIso() {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 120);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function dobMaxIso() {
+  const t = new Date();
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+}
 
 function formatApiError(e, fallback) {
   const d = e?.response?.data;
@@ -142,7 +161,7 @@ export default function UserProfileEdit() {
           fullName: u.fullName || '',
           phoneNumber: u.phoneNumber || '',
           gender: u.gender || '',
-          dateOfBirth: u.dateOfBirth || '',
+          dateOfBirth: sliceYmd(u.dateOfBirth || ''),
           about: u.about || '',
           address: u.address || '',
           district: u.district || '',
@@ -378,7 +397,7 @@ export default function UserProfileEdit() {
         {/* Form Content */}
         <div className="col-lg-8 col-md-7">
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="user-profile-form space-y-6">
 
               {error && (
                 <div className="alert alert-danger mb-4 rounded-xl border-0 shadow-sm flex items-center gap-3">
@@ -395,13 +414,13 @@ export default function UserProfileEdit() {
 
               {/* Personal Information */}
               <div className="space-y-4">
-                <h5 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-                  <span className="w-1 h-5 bg-emerald-500 rounded-full"></span>
+                <h5 className="user-profile-form-section-title mb-4 flex items-center gap-2">
+                  <span className="w-1 h-5 rounded-full bg-emerald-500" aria-hidden />
                   Thông tin cá nhân
                 </h5>
                 <div className="row g-3">
                   <div className="col-lg-6">
-                    <label className="form-label text-slate-600 font-bold text-[13px]">Họ và tên</label>
+                    <label className="form-label user-profile-form-label">Họ và tên</label>
                     <input
                       type="text"
                       className={`form-control rounded-xl border-slate-200 py-2.5 ${fieldErrors.fullName ? 'is-invalid border-rose-400' : ''}`}
@@ -412,7 +431,7 @@ export default function UserProfileEdit() {
                     {fieldErrors.fullName && <div className="text-rose-500 text-[12px] mt-1 font-semibold">{fieldErrors.fullName}</div>}
                   </div>
                   <div className="col-lg-6">
-                    <label className="form-label text-slate-600 font-bold text-[13px]">Số điện thoại</label>
+                    <label className="form-label user-profile-form-label">Số điện thoại</label>
                     <input
                       type="tel"
                       className={`form-control rounded-xl border-slate-200 py-2.5 ${fieldErrors.phoneNumber ? 'is-invalid border-rose-400' : ''}`}
@@ -423,7 +442,7 @@ export default function UserProfileEdit() {
                     {fieldErrors.phoneNumber && <div className="text-rose-500 text-[12px] mt-1 font-semibold">{fieldErrors.phoneNumber}</div>}
                   </div>
                   <div className="col-lg-6">
-                    <label className="form-label text-slate-600 font-bold text-[13px]">Giới tính</label>
+                    <label className="form-label user-profile-form-label">Giới tính</label>
                     <select
                       className="form-control rounded-xl border-slate-200 py-2.5"
                       name="gender"
@@ -437,17 +456,23 @@ export default function UserProfileEdit() {
                     </select>
                   </div>
                   <div className="col-lg-6">
-                    <label className="form-label text-slate-600 font-bold text-[13px]">Ngày sinh</label>
-                    <input
-                      type="date"
-                      className="form-control rounded-xl border-slate-200 py-2.5"
-                      name="dateOfBirth"
+                    <label className="form-label user-profile-form-label" htmlFor="profile-dob">
+                      Ngày sinh
+                    </label>
+                    <ShuttleDateField
+                      id="profile-dob"
                       value={form.dateOfBirth}
-                      onChange={handleChange}
+                      onChange={(ymd) => {
+                        setForm((prev) => ({ ...prev, dateOfBirth: ymd }));
+                        if (fieldErrors.dateOfBirth) setFieldErrors((prev) => ({ ...prev, dateOfBirth: '' }));
+                      }}
+                      placeholder="Chọn ngày sinh"
+                      minDate={dobMinIso()}
+                      maxDate={dobMaxIso()}
                     />
                   </div>
                   <div className="col-12">
-                    <label className="form-label text-slate-600 font-bold text-[13px]">Giới thiệu bản thân</label>
+                    <label className="form-label user-profile-form-label">Giới thiệu bản thân</label>
                     <textarea
                       className="form-control rounded-xl border-slate-200 py-2.5"
                       name="about"
@@ -462,8 +487,8 @@ export default function UserProfileEdit() {
 
               {/* Address Section */}
               <div className="space-y-4 pt-6 mt-6 border-t border-slate-50">
-                <h5 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-                  <span className="w-1 h-5 bg-emerald-500 rounded-full"></span>
+                <h5 className="user-profile-form-section-title mb-4 flex items-center gap-2">
+                  <span className="w-1 h-5 rounded-full bg-emerald-500" aria-hidden />
                   Địa chỉ liên hệ
                 </h5>
                 {divisionLoadError && <div className="alert alert-warning text-sm rounded-xl">{divisionLoadError}</div>}
@@ -486,13 +511,13 @@ export default function UserProfileEdit() {
 
               {/* Personalization Section */}
               <div className="space-y-4 pt-6 mt-6 border-t border-slate-50">
-                <h5 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-                  <span className="w-1 h-5 bg-emerald-500 rounded-full"></span>
+                <h5 className="user-profile-form-section-title mb-4 flex items-center gap-2">
+                  <span className="w-1 h-5 rounded-full bg-emerald-500" aria-hidden />
                   Kỹ năng & Mục tiêu
                 </h5>
                 <div className="row g-3">
                   <div className="col-lg-4">
-                    <label className="form-label text-slate-600 font-bold text-[13px]">Trình độ</label>
+                    <label className="form-label user-profile-form-label">Trình độ</label>
                     <select
                       className="form-control rounded-xl border-slate-200 py-2.5"
                       name="skillLevel"
@@ -508,7 +533,7 @@ export default function UserProfileEdit() {
                     </select>
                   </div>
                   <div className="col-lg-4">
-                    <label className="form-label text-slate-600 font-bold text-[13px]">Mục tiêu</label>
+                    <label className="form-label user-profile-form-label">Mục tiêu</label>
                     <select
                       className="form-control rounded-xl border-slate-200 py-2.5"
                       name="playPurpose"
@@ -522,7 +547,7 @@ export default function UserProfileEdit() {
                     </select>
                   </div>
                   <div className="col-lg-4">
-                    <label className="form-label text-slate-600 font-bold text-[13px]">Tần suất</label>
+                    <label className="form-label user-profile-form-label">Tần suất</label>
                     <select
                       className="form-control rounded-xl border-slate-200 py-2.5"
                       name="playFrequency"
@@ -542,14 +567,15 @@ export default function UserProfileEdit() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex items-center justify-center bg-emerald-600 text-white hover:bg-emerald-700 px-8 py-2.5 rounded-xl font-bold shadow-md shadow-emerald-100 disabled:opacity-50 min-w-[140px] transition-colors"
+                  className="btn btn-emerald min-w-[140px] px-8 py-2.5 font-bold shadow-md shadow-emerald-100 disabled:opacity-50"
                 >
                   {saving ? (
                     <>
-                      <i className="fa-solid fa-spinner fa-spin me-2"></i>Đang lưu
+                      <i className="fa-solid fa-spinner fa-spin" aria-hidden />
+                      <span>Đang lưu</span>
                     </>
                   ) : (
-                    'Lưu thay đổi'
+                    <span>Lưu thay đổi</span>
                   )}
                 </button>
               </div>

@@ -20,7 +20,7 @@
 
 .shuttle-date-trigger__input {
   width: 100%;
-  border-radius: 8px;
+  border-radius: 12px;
   border: 1px solid var(--su-input-border);
   background: var(--su-input-bg);
   padding: 9px 44px 9px 14px;
@@ -215,7 +215,7 @@
 .shuttle-cal__action {
   flex: 1;
   padding: 9px 12px;
-  border-radius: 8px;
+  border-radius: 12px;
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.02em;

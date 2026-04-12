@@ -143,10 +143,8 @@ export default function UserNotifications() {
             <button
               key={t.key}
               type="button"
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-                filterTab === t.key
-                  ? 'bg-emerald-600 text-white shadow-md'
-                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+              className={`user-filter-chip flex items-center gap-2 px-4 py-2 text-sm font-bold ${
+                filterTab === t.key ? 'user-filter-chip--active' : 'user-filter-chip--idle'
               }`}
               onClick={() => setFilterTab(t.key)}
             >

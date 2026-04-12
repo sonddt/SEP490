@@ -235,13 +235,12 @@ public class VenuesController : ControllerBase
         var dayStart = day.ToDateTime(TimeOnly.MinValue);
         var dayEnd = dayStart.AddDays(1);
 
-        Guid? userId = null;
-        if (User.Identity?.IsAuthenticated == true)
-        {
-            var claim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            if (Guid.TryParse(claim, out var parsed))
-                userId = parsed;
-        }
+        var userIdClaim = User.Identity?.IsAuthenticated == true
+            ? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            : null;
+        Guid? currentUserGuid = null;
+        if (userIdClaim != null && Guid.TryParse(userIdClaim, out var parsedUserId))
+            currentUserGuid = parsedUserId;
 
         var bookedQuery = _dbContext.BookingItems
             .AsNoTracking()
@@ -251,11 +250,12 @@ public class VenuesController : ControllerBase
 
         var now = DateTime.UtcNow;
 
-        if (userId != null)
+        if (currentUserGuid != null)
         {
-            bookedQuery = bookedQuery.Where(bi => 
-                bi.Booking!.Status != "HOLDING" || 
-                (bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now && bi.Booking.UserId != userId)
+            var me = currentUserGuid.Value;
+            bookedQuery = bookedQuery.Where(bi =>
+                bi.Booking!.Status != "HOLDING" ||
+                (bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now && bi.Booking.UserId != me)
             );
         }
         else 

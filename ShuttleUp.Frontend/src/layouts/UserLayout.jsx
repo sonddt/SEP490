@@ -3,11 +3,11 @@ import UserDashboardMenu from '../components/user/UserDashboardMenu';
 
 export default function UserLayout() {
   return (
-    <div className="main-wrapper font-['Be_Vietnam_Pro'] bg-slate-50 min-h-screen content-below-header">
+    <div className="user-profile-shell main-wrapper font-['Be_Vietnam_Pro'] bg-slate-50 min-h-screen content-below-header">
       {/* Breadcrumb */}
       <section className="breadcrumb breadcrumb-list mb-0">
         <span className="primary-right-round"></span>
-        <div className="container">
+        <div className="container-fluid user-profile-container-fluid">
           <h1 className="text-white">Trang Cá Nhân</h1>
           <ul>
             <li><Link to="/">Trang chủ</Link></li>
@@ -17,17 +17,19 @@ export default function UserLayout() {
       </section>
 
       {/* Main Content Area */}
-      <div className="content pt-6 pb-16">
-        <div className="container">
-          <div className="row g-4 lg:g-5">
+      <div className="content user-profile-content">
+        <div className="container-fluid user-profile-container-fluid">
+          <div className="row user-profile-row g-4 lg:g-5">
             {/* Sidebar Column */}
-            <div className="col-lg-3 col-md-4">
+            <div className="col-12 col-md-4 col-lg-3 col-xl-2">
               <UserDashboardMenu />
             </div>
 
             {/* Outlet Column */}
-            <div className="col-lg-9 col-md-8">
-              <Outlet />
+            <div className="col-12 col-md-8 col-lg-9 col-xl-10">
+              <div className="user-profile-outlet">
+                <Outlet />
+              </div>
             </div>
           </div>
         </div>

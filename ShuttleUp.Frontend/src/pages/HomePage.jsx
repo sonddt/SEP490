@@ -6,7 +6,6 @@ import HeroSection from '../components/home/HeroSection';
 import FeaturedVenues from '../components/home/FeaturedVenues';
 import WorkSection from '../components/home/WorkSection';
 import Services from '../components/home/Services';
-import StatsCounter from '../components/home/StatsCounter';
 
 export default function HomePage() {
   useEffect(() => {
@@ -27,7 +26,6 @@ export default function HomePage() {
       <FeaturedVenues />
       <WorkSection />
       <Services />
-      <StatsCounter />
     </div>
   );
 }

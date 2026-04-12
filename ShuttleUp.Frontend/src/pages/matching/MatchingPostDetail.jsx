@@ -7,6 +7,7 @@ import MatchingComments from '../../components/matching/MatchingComments';
 import MatchingScheduleModal from '../../components/matching/MatchingScheduleModal';
 import { useAuth } from '../../context/AuthContext';
 import { parseSlotDate, buildScheduleSummary } from '../../utils/matchingScheduleSummary';
+import { normalizeSearchText } from '../../utils/searchNormalize';
 
 import { toast } from 'react-toastify';
 
@@ -124,18 +125,19 @@ export default function MatchingPostDetail() {
 
   const filteredBookingSlots = useMemo(() => {
     let items = [...sortedBookingItems];
-    const q = bookingSlotQuery.trim().toLowerCase();
-    if (q) {
+    const nq = normalizeSearchText(bookingSlotQuery);
+    if (nq) {
       items = items.filter((item) => {
-        const blob = [
-          item.courtName,
-          formatBookingSlotDetail(item),
-          item.price != null ? String(item.price) : '',
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        return blob.includes(q);
+        const blob = normalizeSearchText(
+          [
+            item.courtName,
+            formatBookingSlotDetail(item),
+            item.price != null ? String(item.price) : '',
+          ]
+            .filter(Boolean)
+            .join(' '),
+        );
+        return blob.includes(nq);
       });
     }
     const sortKey = bookingSlotSort || 'time_asc';
