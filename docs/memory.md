@@ -394,3 +394,22 @@ Kết bạn & quan hệ xã hội (Player):
    - Giải pháp: Refactor `AdminManagerRequests.jsx` sử dụng `createPortal` từ `react-dom` để render modal trực tiếp vào `document.body`, thoát khỏi các lớp layout bị giới hạn của Admin Dashboard.
 4. **Database Migration (Upcoming Tasks):**
    - Xác định lỗi schema thiếu cột `is_upcoming_reminder_sent` trong bảng `booking_items` gây crash service nhắc nhở. Cần cập nhật `Database.txt` hoặc chạy lệnh migration bổ sung.
+
+---
+
+## 13 tháng 4, 2026 (Fix Hệ thống Giảm giá Dài hạn & Quy chế Liên tục)
+
+1. **Chuẩn hoá logic giảm giá (Consecutive Day Logic):**
+   - **Vấn đề**: Trước đây hệ thống tính giảm giá Tuần (5%) và Tháng (50%) dựa trên khoảng cách giữa ngày bắt đầu và ngày kết thúc (`rangeEnd - rangeStart`). Điều này dẫn đến lỗi nghiêm trọng: khách chỉ đặt 4 ngày thứ Năm trong 1 tháng vẫn được giảm 50%.
+   - **Giải pháp - Option A (Liên tục)**: Quy chế mới yêu cầu khách phải đặt sân **mỗi ngày liên tiếp** (không được ngắt quãng dù chỉ 1 ngày).
+   - **Backend**: 
+     - Sửa `CalculateDiscountAsync` để nhận danh sách ngày thực (`List<DateTime> bookedDates`).
+     - Viết hàm `ComputeLongestConsecutiveStreak` để tìm chuỗi ngày liên tục dài nhất trong danh sách đặt sân.
+     - Chỉ áp dụng mức giảm giá nếu `streak >= 7` (Tuần) hoặc `streak >= 30` (Tháng).
+   - **API & DTO**: 
+     - Mở rộng `PreviewDiscountDto` thêm trường `BookedDates` (danh sách String ISO).
+     - Cập nhật 4 luồng: `CreateBooking` (Lẻ), `CreateLongTermBooking` (Sỉ cố định), `CreateLongTermFlexibleBooking` (Sỉ linh hoạt), và API xem trước giảm giá.
+   - **Frontend**: 
+     - Đồng bộ cả 3 trang đặt sân (`LongTermBooking`, `LongTermConfirm`, `LongTermFlexibleConfirm`) truyền danh sách ngày thực tế xuống Backend.
+     - Cập nhật nội dung chính sách UI: "giảm X% khi đặt sân **liên tục** từ Y ngày trở lên".
+
