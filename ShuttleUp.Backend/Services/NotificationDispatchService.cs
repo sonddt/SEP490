@@ -35,6 +35,7 @@ public class NotificationDispatchService : INotificationDispatchService
         object? metadata = null,
         bool sendEmail = false,
         object? bookingStatusPayload = null,
+        string? htmlBodyOverride = null,
         CancellationToken cancellationToken = default)
     {
         var metaJson = metadata == null ? null : JsonSerializer.Serialize(metadata);
@@ -85,20 +86,32 @@ public class NotificationDispatchService : INotificationDispatchService
 
         try
         {
-            var safeBody = string.IsNullOrWhiteSpace(body) ? "" : $"<p style=\"margin:12px 0;color:#334155\">{System.Net.WebUtility.HtmlEncode(body)}</p>";
-            var html = $"""
-                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
-                  <h2 style="color:#097E52">ShuttleUp</h2>
-                  <p style="font-size:16px;font-weight:600;color:#1e293b">{System.Net.WebUtility.HtmlEncode(title)}</p>
-                  {safeBody}
-                  <p style="color:#94a3b8;font-size:12px">Bạn nhận được email này vì có hoạt động liên quan tài khoản ShuttleUp.</p>
-                </div>
-                """;
-            await _email.SendHtmlEmailAsync(user.Email, user.FullName, $"[ShuttleUp] {title}", html);
+            // If caller provided a pre-built HTML template, use it directly
+            // to avoid double-encoding rich HTML content.
+            string emailHtml;
+            if (!string.IsNullOrWhiteSpace(htmlBodyOverride))
+            {
+                emailHtml = htmlBodyOverride;
+            }
+            else
+            {
+                var safeBody = string.IsNullOrWhiteSpace(body) ? "" : $"<p style=\"margin:12px 0;color:#334155\">{System.Net.WebUtility.HtmlEncode(body)}</p>";
+                emailHtml = $"""
+                    <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
+                      <h2 style="color:#097E52">ShuttleUp</h2>
+                      <p style="font-size:16px;font-weight:600;color:#1e293b">{System.Net.WebUtility.HtmlEncode(title)}</p>
+                      {safeBody}
+                      <p style="color:#94a3b8;font-size:12px">Bạn nhận được email này vì có hoạt động liên quan tài khoản ShuttleUp.</p>
+                    </div>
+                    """;
+            }
+
+            await _email.SendHtmlEmailAsync(user.Email, user.FullName, $"[ShuttleUp] {title}", emailHtml);
+            _logger.LogInformation("Email dispatched successfully to {Email} — subject: {Subject}", user.Email, title);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Gửi email thông báo thất bại cho {UserId}", userId);
+            _logger.LogWarning(ex, "Gửi email thông báo thất bại cho {UserId} ({Email})", userId, user.Email);
         }
     }
 

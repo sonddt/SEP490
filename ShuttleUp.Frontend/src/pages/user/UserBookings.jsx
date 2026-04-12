@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { getMyBookings, cancelBooking, getCancelPreview, updateRefundBankInfo } from '../../api/bookingApi';
+import { getMyBookings, cancelBooking, getCancelPreview, updateRefundBankInfo, remindOwner } from '../../api/bookingApi';
 
 function pad2(n) {
   return String(n).padStart(2, '0');
@@ -187,6 +187,8 @@ export default function UserBookings() {
   const [bankForm, setBankForm] = useState({ refundBankName: '', refundAccountNumber: '', refundAccountHolder: '' });
   const [showBankForm, setShowBankForm] = useState(null);
   const [bankSubmitting, setBankSubmitting] = useState(false);
+  const [remindLoading, setRemindLoading] = useState(null); // bookingId | null
+  const [remindCooldowns, setRemindCooldowns] = useState({}); // { bookingId: remainingMinutes }
 
   const loadBookings = useCallback(async () => {
     setLoading(true);
@@ -322,6 +324,39 @@ export default function UserBookings() {
   };
 
   const canUserCancel = (b) => b.status === 'PENDING' || b.status === 'UPCOMING';
+
+  const handleRemindOwner = async (bookingId) => {
+    setRemindLoading(bookingId);
+    try {
+      const result = await remindOwner(bookingId);
+      showToast(result?.message || 'Đã gửi nhắc nhở đến chủ sân!');
+      // Start cooldown display (60 min default)
+      setRemindCooldowns(prev => ({ ...prev, [bookingId]: 60 }));
+      // Tick down every minute
+      const iv = setInterval(() => {
+        setRemindCooldowns(prev => {
+          const mins = (prev[bookingId] || 0) - 1;
+          if (mins <= 0) {
+            clearInterval(iv);
+            const next = { ...prev };
+            delete next[bookingId];
+            return next;
+          }
+          return { ...prev, [bookingId]: mins };
+        });
+      }, 60_000);
+    } catch (e) {
+      const body = e?.response?.data;
+      if (e?.response?.status === 429 && body?.remainingMinutes) {
+        setRemindCooldowns(prev => ({ ...prev, [bookingId]: body.remainingMinutes }));
+        showToast(body.message || `Vui lòng chờ ${body.remainingMinutes} phút.`, true);
+      } else {
+        showToast(body?.message || 'Gửi nhắc nhở thất bại.', true);
+      }
+    } finally {
+      setRemindLoading(null);
+    }
+  };
 
   return (
     <div className="user-bookings-page">
@@ -561,6 +596,24 @@ export default function UserBookings() {
                                     >
                                       <i className="feather-credit-card" aria-hidden />Thanh toán lại
                                     </button>
+                                  )}
+                                  {b.status === 'PENDING' && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        className="user-booking-action"
+                                        data-variant="view"
+                                        disabled={remindLoading === b.id || !!remindCooldowns[b.id]}
+                                        onClick={() => handleRemindOwner(b.id)}
+                                        title={remindCooldowns[b.id] ? `Chờ ${remindCooldowns[b.id]} phút nữa` : 'Nhắc chủ sân duyệt đơn'}
+                                        style={remindCooldowns[b.id] ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                                      >
+                                        {remindLoading === b.id
+                                          ? <><span className="spinner-border spinner-border-sm me-1" role="status" />Đang gửi…</>
+                                          : <><i className="feather-bell" aria-hidden />{remindCooldowns[b.id] ? `Chờ ${remindCooldowns[b.id]}p` : 'Nhắc duyệt'}</>
+                                        }
+                                      </button>
+                                    </>
                                   )}
                                   {b.status === 'REFUND' && !b.refundAccountNumber && (
                                     <button

@@ -19,6 +19,9 @@ public partial class BookingItem
 
     public string? Status { get; set; }
 
+    /// <summary>True khi hệ thống đã gửi nhắc nhở "sắp đến giờ" cho khung giờ này.</summary>
+    public bool IsUpcomingReminderSent { get; set; }
+
     public virtual Booking? Booking { get; set; }
 
     public virtual Court? Court { get; set; }

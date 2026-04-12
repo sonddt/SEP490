@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.Extensions.Caching.Memory;
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
@@ -24,17 +25,23 @@ public class BookingsController : ControllerBase
     private readonly IFileService _fileService;
     private readonly INotificationDispatchService _notify;
     private readonly IMatchingPostLifecycleService _matchingPostLifecycle;
+    private readonly IMemoryCache _cache;
+    private readonly IConfiguration _configuration;
 
     public BookingsController(
         ShuttleUpDbContext dbContext,
         IFileService fileService,
         INotificationDispatchService notify,
-        IMatchingPostLifecycleService matchingPostLifecycle)
+        IMatchingPostLifecycleService matchingPostLifecycle,
+        IMemoryCache cache,
+        IConfiguration configuration)
     {
         _dbContext = dbContext;
         _fileService = fileService;
         _notify = notify;
         _matchingPostLifecycle = matchingPostLifecycle;
+        _cache = cache;
+        _configuration = configuration;
     }
 
     private bool TryGetCurrentUserId(out Guid userId)
@@ -1525,6 +1532,7 @@ public class BookingsController : ControllerBase
 
         var booking = await _dbContext.Bookings
             .Include(b => b.Venue)
+                .ThenInclude(v => v!.OwnerUser)
             .Include(b => b.Payments)
             .Include(b => b.BookingItems)
             .FirstOrDefaultAsync(b => b.Id == id && b.UserId == userId);
@@ -1614,11 +1622,69 @@ public class BookingsController : ControllerBase
         {
             try
             {
-                var notifTitle = wasHolding ? "Có đơn đặt sân mới" : "Có minh chứng thanh toán mới";
+                var notifTitle = wasHolding ? "📢 Có đơn đặt sân mới chờ duyệt" : "Có minh chứng thanh toán mới";
                 var notifBody = wasHolding
                     ? $"Mã {bookingCode} — {booking.ContactName} — {booking.FinalAmount:N0} VNĐ."
                     : $"Đơn {bookingCode} vừa có ảnh chứng từ từ người chơi.";
                 var notifType = wasHolding ? NotificationTypes.BookingNew : NotificationTypes.PaymentProof;
+
+                // Build branded HTML email for new booking alert
+                string? newBookingHtml = null;
+                if (wasHolding)
+                {
+                    var ownerName = booking.Venue?.OwnerUser?.FullName ?? "Chủ sân";
+                    var vName = booking.Venue?.Name ?? "sân";
+                    var contactName = booking.ContactName ?? "Khách hàng";
+                    var frontUrl = _configuration["App:FrontendUrl"] ?? "http://localhost:5173";
+                    var mgrLink = $"{frontUrl}/manager/bookings";
+
+                    newBookingHtml = $"""
+                        <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">
+                          <div style="background:linear-gradient(135deg,#059669,#10b981);padding:28px 24px;text-align:center">
+                            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700">🏸 ShuttleUp</h1>
+                            <p style="margin:6px 0 0;color:#d1fae5;font-size:14px">Đơn đặt sân mới</p>
+                          </div>
+                          <div style="padding:24px">
+                            <p style="color:#334155;font-size:15px;margin:0 0 16px">
+                              Xin chào <strong>{System.Net.WebUtility.HtmlEncode(ownerName)}</strong>,
+                            </p>
+                            <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:20px">
+                              <table style="width:100%;border-collapse:collapse;font-size:14px;color:#334155">
+                                <tr>
+                                  <td style="padding:6px 0;font-weight:600;width:130px">📋 Mã đơn:</td>
+                                  <td style="padding:6px 0"><strong>{bookingCode}</strong></td>
+                                </tr>
+                                <tr>
+                                  <td style="padding:6px 0;font-weight:600">👤 Khách hàng:</td>
+                                  <td style="padding:6px 0">{System.Net.WebUtility.HtmlEncode(contactName)}</td>
+                                </tr>
+                                <tr>
+                                  <td style="padding:6px 0;font-weight:600">📍 Sân:</td>
+                                  <td style="padding:6px 0">{System.Net.WebUtility.HtmlEncode(vName)}</td>
+                                </tr>
+                                <tr>
+                                  <td style="padding:6px 0;font-weight:600">💰 Tổng tiền:</td>
+                                  <td style="padding:6px 0"><strong>{booking.FinalAmount:N0} VNĐ</strong></td>
+                                </tr>
+                              </table>
+                            </div>
+                            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-bottom:20px">
+                              <p style="margin:0;color:#92400e;font-size:13px">⏰ Duyệt đơn nhanh trong vòng <strong>60 phút</strong> để duy trì huy hiệu <strong>Elite Owner</strong>!</p>
+                            </div>
+                            <div style="text-align:center;margin:20px 0">
+                              <a href="{mgrLink}"
+                                 style="display:inline-block;padding:12px 32px;background:#16a34a;color:#ffffff;
+                                        border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">
+                                Xem và duyệt đơn ngay
+                              </a>
+                            </div>
+                            <p style="color:#94a3b8;font-size:12px;margin:20px 0 0;text-align:center">
+                              Bạn nhận được email này vì có đơn đặt sân mới trên ShuttleUp.
+                            </p>
+                          </div>
+                        </div>
+                        """;
+                }
 
                 await _notify.NotifyUserAsync(
                     mgrId,
@@ -1626,11 +1692,12 @@ public class BookingsController : ControllerBase
                     notifTitle,
                     notifBody,
                     NotificationMetadataBuilder.BookingForManager(booking.Id, booking.VenueId),
-                    sendEmail: wasHolding);
+                    sendEmail: wasHolding,
+                    htmlBodyOverride: newBookingHtml);
             }
-            catch
+            catch (Exception ex)
             {
-                /* ignore */
+                _ = ex; /* swallow — do not break payment flow */
             }
         }
 
@@ -1756,5 +1823,111 @@ public class BookingsController : ControllerBase
         var couponDiscountAmount = discountAmount - autoDiscountAmount;
         return (discountAmount, finalAmount, couponId, couponToUpdate, null, autoDiscountAmount, couponDiscountAmount);
     }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  SOFT REMINDER — Người chơi giục chủ sân duyệt đơn PENDING
+    // ═══════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// POST /api/bookings/{id}/remind-owner
+    /// Gửi Email + Notification cho chủ sân nhắc duyệt đơn PENDING.
+    /// Rate-limited: 1 lần / giờ (configurable) per booking via IMemoryCache.
+    /// </summary>
+    [HttpPost("{id:guid}/remind-owner")]
+    public async Task<IActionResult> RemindOwner([FromRoute] Guid id)
+    {
+        if (!TryGetCurrentUserId(out var userId))
+            return Unauthorized(new { message = "Không xác định được người dùng." });
+
+        var booking = await _dbContext.Bookings
+            .Include(b => b.Venue)
+                .ThenInclude(v => v!.OwnerUser)
+            .Include(b => b.User)
+            .FirstOrDefaultAsync(b => b.Id == id && b.UserId == userId);
+
+        if (booking == null)
+            return NotFound(new { message = "Không tìm thấy đơn đặt sân." });
+
+        if (booking.Status != "PENDING")
+            return BadRequest(new { message = "Chỉ có thể nhắc chủ sân khi đơn đang ở trạng thái Chờ duyệt." });
+
+        var owner = booking.Venue?.OwnerUser;
+        if (owner == null)
+            return BadRequest(new { message = "Không tìm thấy thông tin chủ sân." });
+
+        // ── Rate limit via IMemoryCache ──
+        var cooldownMinutes = _configuration.GetValue("ReminderSettings:SoftReminderCooldownMinutes", 60);
+        var cacheKey = $"SoftReminder_{id}";
+        if (_cache.TryGetValue(cacheKey, out DateTime lastSent))
+        {
+            var remaining = lastSent.AddMinutes(cooldownMinutes) - DateTime.UtcNow;
+            if (remaining > TimeSpan.Zero)
+            {
+                var mins = (int)Math.Ceiling(remaining.TotalMinutes);
+                return StatusCode(429, new
+                {
+                    message = $"Bạn đã nhắc chủ sân rồi. Vui lòng chờ thêm {mins} phút nữa.",
+                    remainingMinutes = mins
+                });
+            }
+        }
+
+        // ── Build notification & email ──
+        var playerName = booking.User?.FullName ?? booking.ContactName ?? "Khách hàng";
+        var venueName = booking.Venue?.Name ?? "sân";
+        var bookingCode = booking.Id.ToString()[..8].ToUpper();
+
+        var title = $"📋 Khách hàng nhắc duyệt đơn đặt sân";
+        var body = $"{playerName} đang chờ bạn duyệt đơn #{bookingCode} tại {venueName}. "
+                 + "Vui lòng vào hệ thống để xác nhận hoặc từ chối.";
+
+        var frontendUrl = _configuration["App:FrontendUrl"] ?? "http://localhost:5173";
+        var managerLink = $"{frontendUrl}/manager/bookings";
+
+        var htmlBody = $"""
+            <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">
+              <div style="background:linear-gradient(135deg,#059669,#10b981);padding:28px 24px;text-align:center">
+                <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700">🏸 ShuttleUp</h1>
+                <p style="margin:6px 0 0;color:#d1fae5;font-size:14px">Nhắc nhở duyệt đơn đặt sân</p>
+              </div>
+              <div style="padding:24px">
+                <p style="color:#334155;font-size:15px;margin:0 0 16px">
+                  Xin chào <strong>{System.Net.WebUtility.HtmlEncode(owner.FullName ?? owner.Email ?? "Chủ sân")}</strong>,
+                </p>
+                <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin-bottom:20px">
+                  <p style="margin:0;color:#92400e;font-size:14px">
+                    ⏳ Khách hàng <strong>{System.Net.WebUtility.HtmlEncode(playerName)}</strong>
+                    đang chờ bạn duyệt đơn đặt sân <strong>#{bookingCode}</strong>
+                    tại <strong>{System.Net.WebUtility.HtmlEncode(venueName)}</strong>.
+                  </p>
+                </div>
+                <div style="text-align:center;margin:20px 0">
+                  <a href="{managerLink}"
+                     style="display:inline-block;padding:12px 32px;background:#16a34a;color:#ffffff;
+                            border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">
+                    Xem danh sách đơn đặt sân
+                  </a>
+                </div>
+                <p style="color:#94a3b8;font-size:12px;margin:20px 0 0;text-align:center">
+                  Bạn nhận được email này vì có đơn đặt sân đang chờ xử lý trên ShuttleUp.
+                </p>
+              </div>
+            </div>
+            """;
+
+        await _notify.NotifyUserAsync(
+            owner.Id,
+            NotificationTypes.BookingManagerReminder,
+            title,
+            body,
+            metadata: new { bookingId = booking.Id, venueId = booking.VenueId },
+            sendEmail: true,
+            htmlBodyOverride: htmlBody,
+            cancellationToken: HttpContext.RequestAborted);
+
+        // Set cache — hạn = cooldownMinutes
+        _cache.Set(cacheKey, DateTime.UtcNow, TimeSpan.FromMinutes(cooldownMinutes));
+
+        return Ok(new { message = "Đã gửi nhắc nhở đến chủ sân thành công!" });
+    }
 }
-    

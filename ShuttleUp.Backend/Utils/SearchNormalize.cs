@@ -9,6 +9,7 @@ public static class SearchNormalize
 {
     private static readonly Regex AdminPrefixes = new(@"\b(thanh pho|tinh|quan|huyen|thi xa|phuong|xa|tp|tx|q|p|h)\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex Punctuation = new(@"[.,\-]", RegexOptions.Compiled);
+    private static readonly Regex Whitespace = new(@"\s+", RegexOptions.Compiled);
     private static readonly Dictionary<string, string> CityAliases = new()
     {
         { "ho chi minh", "hcm" },

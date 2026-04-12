@@ -229,6 +229,11 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
                 .HasColumnName("status");
+            entity.Property(e => e.IsUpcomingReminderSent)
+                .HasColumnName("is_upcoming_reminder_sent")
+                .HasDefaultValue(false);
+
+            entity.HasIndex(e => new { e.StartTime, e.IsUpcomingReminderSent }, "idx_bi_reminder");
 
             entity.HasOne(d => d.Booking).WithMany(p => p.BookingItems)
                 .HasForeignKey(d => d.BookingId)

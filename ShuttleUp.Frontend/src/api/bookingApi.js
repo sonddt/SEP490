@@ -98,3 +98,8 @@ export function previewDiscount(payload) {
 export function cancelHold(bookingId) {
   return axiosClient.post(`/bookings/${bookingId}/cancel-hold`);
 }
+
+/** @param {string} bookingId — Soft reminder: nudge the venue owner to approve a PENDING booking */
+export function remindOwner(bookingId) {
+  return axiosClient.post(`/bookings/${bookingId}/remind-owner`);
+}
