@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronUp, ChevronDown, ArrowUpDown } from 'lucide-react';
 import LongTermBookingSteps from '../components/booking/LongTermBookingSteps';
@@ -16,16 +16,23 @@ const DAY_OPTS = [
   { v: 0, label: 'CN',  full: 'Chủ Nhật' },
 ];
 
-const DURATION_OPTS = [
-  { value: 0.5, label: '30 phút' },
-  { value: 1,   label: '1 tiếng' },
-  { value: 1.5, label: '1.5 tiếng' },
-  { value: 2,   label: '2 tiếng' },
-  { value: 2.5, label: '2.5 tiếng' },
-  { value: 3,   label: '3 tiếng' },
-  { value: 3.5, label: '3.5 tiếng' },
-  { value: 4,   label: '4 tiếng' },
-];
+/** Build duration dropdown options aligned to the venue's slot grid */
+function buildDurationOpts(slotMins = 60) {
+  const stepHours = slotMins / 60; // 0.5, 1, or 2
+  const opts = [];
+  for (let h = stepHours; h <= 4; h += stepHours) {
+    const label = h < 1 ? `${Math.round(h * 60)} phút` : h % 1 === 0 ? `${h} tiếng` : `${h} tiếng`;
+    opts.push({ value: h, label });
+  }
+  return opts;
+}
+
+/** Format slot label e.g. "30 phút", "1 giờ", "2 giờ" */
+function slotLabel(mins) {
+  if (mins < 60) return `${mins} phút`;
+  if (mins === 60) return '1 giờ';
+  return `${mins / 60} giờ`;
+}
 
 function todayIso() {
   const t = new Date();
@@ -65,6 +72,21 @@ export default function LongTermBooking() {
   const venueName = venueState.venueName ?? 'Cơ sở';
   const venueAddress = venueState.venueAddress ?? '';
 
+  /** Detect if user returned from Step 2 (editing mode) */
+  const isEditing = !!(venueState.daysOfWeek?.length > 0 && venueState.rangeStart);
+
+  /* ── Slot Duration (from venue config) ── */
+  const [slotDuration, setSlotDuration] = useState(() => {
+    const sd = venueState.slotDuration;
+    return [30, 60, 120].includes(sd) ? sd : 60;
+  });
+
+  /* Duration options — aligned to venue's slot grid */
+  const DURATION_OPTS = useMemo(() => buildDurationOpts(slotDuration), [slotDuration]);
+
+  /* Hourly price multiplier: how many slots make 1 hour */
+  const slotsPerHour = 60 / slotDuration;
+
   /* ── Courts ──────────────────────────── */
   const [courts, setCourts] = useState([]);
   const [loadCourts, setLoadCourts] = useState({ loading: false, error: '' });
@@ -90,7 +112,8 @@ export default function LongTermBooking() {
   const [isSyncTime, setIsSyncTime] = useState(!venueState.dailySchedules);
 
   /* ── Per-day time config ────────────────── */
-  const defaultTime = { start: '18:00', end: '20:00', duration: 2 };
+  const defaultDuration = slotDuration >= 120 ? 2 : 2;
+  const defaultTime = { start: '18:00', end: '20:00', duration: defaultDuration };
   const [dayTimes, setDayTimes] = useState(() => {
     const init = {};
     if (venueState.dailySchedules && venueState.dailySchedules.length > 0) {
@@ -122,9 +145,25 @@ export default function LongTermBooking() {
   const [previewError, setPreviewError] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'startTime', direction: 'asc' });
 
+  /* ── Sticky CTA visibility ─────────────── */
+  const previewRef = useRef(null);
+  const [showStickyCta, setShowStickyCta] = useState(false);
+
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, []);
+
+  /* IntersectionObserver: show sticky bar when inline CTA is out of viewport */
+  useEffect(() => {
+    if (!previewRef.current) return;
+    const el = previewRef.current;
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowStickyCta(!entry.isIntersecting),
+      { threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [preview]);
 
   useEffect(() => {
     if (!venueId) return;
@@ -152,6 +191,23 @@ export default function LongTermBooking() {
     })();
     return () => { cancelled = true; };
   }, [venueId]);
+
+  /* ── Fetch slotDuration from API if not in state ─── */
+  useEffect(() => {
+    if (!venueId) return;
+    if ([30, 60, 120].includes(venueState.slotDuration)) return;
+    (async () => {
+      try {
+        const resp = await fetch(`/api/venues/${venueId}`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const sd = data.slotDuration || data.SlotDuration || 60;
+        setSlotDuration([30, 60, 120].includes(sd) ? sd : 60);
+      } catch (err) {
+        console.warn('Failed to fetch venue slotDuration', err);
+      }
+    })();
+  }, [venueId, venueState.slotDuration]);
 
   /* ── Layout Resets ──────────────────────── */
   const handleClearAll = () => {
@@ -273,7 +329,7 @@ export default function LongTermBooking() {
         if (!times) continue;
         const startMin = toMinutes(times.start);
         const endMin = toMinutes(times.end);
-        for (let m = startMin; m < endMin; m += 30) {
+        for (let m = startMin; m < endMin; m += slotDuration) {
           const price = resolvePrice(court.prices || [], m, isWeekend);
           if (price !== null) active.add(price);
         }
@@ -312,11 +368,11 @@ export default function LongTermBooking() {
     if (maxAll === -Infinity) maxAll = 0;
 
     return {
-      budget: budget * 2,
-      min: minAll * 2,
-      max: maxAll * 2
+      budget: budget * slotsPerHour,
+      min: minAll * slotsPerHour,
+      max: maxAll * slotsPerHour
     };
-  }, [courts, courtId, days, dayTimes]);
+  }, [courts, courtId, days, dayTimes, slotDuration, slotsPerHour]);
 
   /* ── 90-day max for end date ────────────── */
   const maxEndDate = useMemo(() => {
@@ -366,6 +422,13 @@ export default function LongTermBooking() {
     }
     if (!days.length) {
       setPreviewError('Chọn ít nhất một thứ trong tuần.');
+      return;
+    }
+    /* Duration validation */
+    const firstDay = days[0];
+    const dur = computeDuration(dayTimes[firstDay]?.start, dayTimes[firstDay]?.end);
+    if (dur <= 0) {
+      setPreviewError('Giờ kết thúc phải lớn hơn giờ bắt đầu. Vui lòng kiểm tra lại khung giờ.');
       return;
     }
     setPreviewLoading(true);
@@ -423,6 +486,7 @@ export default function LongTermBooking() {
         dailySchedules: schedulePayload.dailySchedules || null,
         autoSwitchCourt: courtId ? autoSwitchCourt : false,
         pricePreference: (!courtId || autoSwitchCourt) ? pricePreference : null,
+        slotDuration,
         preview: {
           slotCount: availItems.length,
           sessionCount: preview.sessionCount,
@@ -460,6 +524,16 @@ export default function LongTermBooking() {
           <div className="card mb-4">
             <div className="card-body">
               <h3 className="mb-1">Đặt lịch dài hạn</h3>
+
+              {/* Editing mode banner */}
+              {isEditing && (
+                <div className="alert d-flex align-items-center mt-2 mb-0 py-2 border-0" style={{ backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: 8 }}>
+                  <i className="feather-edit-2 me-2 fs-5"></i>
+                  <span className="small">
+                    <strong>Bạn đang chỉnh sửa</strong> cấu hình lịch trước đó. Nhấn <em>"Xem trước giá & khung giờ"</em> để cập nhật kết quả.
+                  </span>
+                </div>
+              )}
               <p className="text-muted mb-0">
                 {venueName}
                 {venueAddress ? ` — ${venueAddress}` : ''}
@@ -809,6 +883,7 @@ export default function LongTermBooking() {
             const availItems = allItems.filter(i => !i.isUnavailable);
             const unavailCount = allItems.filter(i => i.isUnavailable).length;
             const availTotal = availItems.reduce((s, i) => s + (i.price || 0), 0);
+            const hasAnyStatusInfo = allItems.some(i => i.isUnavailable || i.isSwitched);
 
             const diPrev = preview.discountInfo;
             const pLt = Number(diPrev?.longTermDiscountAmount ?? 0);
@@ -817,6 +892,12 @@ export default function LongTermBooking() {
             const previewLongTermLine =
               pLt > 0 ? pLt : (pCp === 0 && pLeg > 0 ? pLeg : 0);
             const previewHasDiscount = previewLongTermLine > 0 || pCp > 0;
+
+            const slotMins = slotDuration;
+            const totalMins = availItems.length * slotMins;
+            const tH = Math.floor(totalMins / 60);
+            const tM = totalMins % 60;
+            const totalHoursStr = tM > 0 ? `${tH}h${tM}` : `${tH}h`;
 
             const sortedItems = [...allItems].sort((a, b) => {
               let aVal = a[sortConfig.key];
@@ -866,7 +947,8 @@ export default function LongTermBooking() {
                 <h5 className="border-bottom pb-2">Kết quả xem trước</h5>
                 <p>
                   <strong>{preview.sessionCount}</strong> buổi ·{' '}
-                  <strong>{availItems.length}</strong> ô × 30 phút
+                  <strong>{availItems.length}</strong> ô × {slotLabel(slotDuration)}
+                  <span className="text-muted ms-2">({totalHoursStr})</span>
                   {unavailCount > 0 && (
                     <span className="text-danger ms-2">(×{unavailCount} hết sân)</span>
                   )}
@@ -920,12 +1002,14 @@ export default function LongTermBooking() {
                         <th className="text-muted">Kết thúc</th>
                         <th style={{ cursor: 'pointer', userSelect: 'none', transition: 'background 0.2s' }} onClick={() => handleSort('price')}
                             className={sortConfig.key === 'price' ? 'text-primary' : ''}>
-                          <div className="d-flex align-items-center justify-content-end">Giá (30p) {renderSortIcon('price')}</div>
+                          <div className="d-flex align-items-center justify-content-end">Giá ({slotLabel(slotDuration)}) {renderSortIcon('price')}</div>
                         </th>
-                        <th style={{ cursor: 'pointer', userSelect: 'none', transition: 'background 0.2s' }} onClick={() => handleSort('status')}
-                            className={sortConfig.key === 'status' ? 'text-primary' : ''}>
-                          <div className="d-flex align-items-center">Trạng thái {renderSortIcon('status')}</div>
-                        </th>
+                        {hasAnyStatusInfo && (
+                          <th style={{ cursor: 'pointer', userSelect: 'none', transition: 'background 0.2s' }} onClick={() => handleSort('status')}
+                              className={sortConfig.key === 'status' ? 'text-primary' : ''}>
+                            <div className="d-flex align-items-center">Trạng thái {renderSortIcon('status')}</div>
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -937,14 +1021,16 @@ export default function LongTermBooking() {
                               <td className="text-muted text-decoration-line-through">{row.startTime ? new Date(row.startTime).toLocaleString('vi-VN') : ''}</td>
                               <td className="text-muted text-decoration-line-through">{row.endTime ? new Date(row.endTime).toLocaleString('vi-VN') : ''}</td>
                               <td className="text-end text-muted">—</td>
-                              <td>
-                                <span className="badge bg-danger">✖ Hết sân</span>
-                                {row.switchReason && (
-                                  <div className="text-warning small mt-1" style={{ fontSize: '11px' }}>
-                                    💡 {row.switchReason}
-                                  </div>
-                                )}
-                              </td>
+                              {hasAnyStatusInfo && (
+                                <td>
+                                  <span className="badge bg-danger">✖ Hết sân</span>
+                                  {row.switchReason && (
+                                    <div className="text-warning small mt-1" style={{ fontSize: '11px' }}>
+                                      💡 {row.switchReason}
+                                    </div>
+                                  )}
+                                </td>
+                              )}
                             </tr>
                           );
                         }
@@ -959,12 +1045,14 @@ export default function LongTermBooking() {
                             <td>{row.startTime ? new Date(row.startTime).toLocaleString('vi-VN') : ''}</td>
                             <td>{row.endTime ? new Date(row.endTime).toLocaleString('vi-VN') : ''}</td>
                             <td className="text-end">{Number(row.price).toLocaleString('vi-VN')}</td>
-                            <td>
-                              {row.isSwitched
-                                ? <span className="badge bg-warning text-dark">Đổi sân</span>
-                                : <span className="text-muted">—</span>
-                              }
-                            </td>
+                            {hasAnyStatusInfo && (
+                              <td>
+                                {row.isSwitched
+                                  ? <span className="badge bg-warning text-dark">Đổi sân</span>
+                                  : <span className="d-inline-flex align-items-center gap-1 text-success" style={{ fontSize: 12 }}><i className="feather-check-circle" style={{ fontSize: 13 }} /> Sẵn sàng</span>
+                                }
+                              </td>
+                            )}
                           </tr>
                         );
                       })}
@@ -974,21 +1062,50 @@ export default function LongTermBooking() {
                 {allItems.length > 120 && (
                   <p className="small text-muted mb-0">Chỉ hiển thị 120 dòng đầu.</p>
                 )}
-                <button
-                  type="button"
-                  className="btn btn-success btn-lg fw-bold w-100 mt-4 py-3 shadow-sm"
-                  disabled={availItems.length === 0}
-                  onClick={handleNext}
-                >
-                  {availItems.length === 0
-                    ? 'Không có buổi nào khả dụng'
-                    : unavailCount > 0
-                      ? `Tiếp theo — Đặt ${availItems.length}/${allItems.length} buổi`
-                      : 'Tiếp theo — Xác nhận & thanh toán'
-                  }
-                </button>
+                <div ref={previewRef}>
+                  <button
+                    type="button"
+                    className="btn btn-success btn-lg fw-bold w-100 mt-4 py-3 shadow-sm"
+                    disabled={availItems.length === 0}
+                    onClick={handleNext}
+                  >
+                    {availItems.length === 0
+                      ? 'Không có buổi nào khả dụng'
+                      : unavailCount > 0
+                        ? `Tiếp theo — Đặt ${availItems.length}/${allItems.length} buổi`
+                        : 'Tiếp theo — Xác nhận & thanh toán'
+                    }
+                  </button>
+                </div>
               </div>
             </div>
+            );
+          })()}
+
+          {/* ── Sticky CTA Bar ──────────────────── */}
+          {preview && showStickyCta && (() => {
+            const availItems = (preview.items || []).filter(i => !i.isUnavailable);
+            if (availItems.length === 0) return null;
+            const diPrev = preview.discountInfo;
+            const finalAmt = Number(diPrev?.finalAmount || availItems.reduce((s, i) => s + (i.price || 0), 0));
+            return (
+              <div className="lt-sticky-cta">
+                <div className="container d-flex align-items-center justify-content-between gap-3 py-2">
+                  <div className="d-flex align-items-center gap-3 text-white">
+                    <span className="fw-bold fs-5">{finalAmt.toLocaleString('vi-VN')} đ</span>
+                    <span className="opacity-75">·</span>
+                    <span className="opacity-90">{preview.sessionCount} buổi · {availItems.length} ô</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-light fw-bold px-4 py-2 text-success"
+                    onClick={handleNext}
+                    style={{ borderRadius: 8, fontSize: '0.95rem' }}
+                  >
+                    Tiếp theo — Xác nhận & thanh toán →
+                  </button>
+                </div>
+              </div>
             );
           })()}
         </div>

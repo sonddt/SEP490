@@ -4045,3 +4045,37 @@ p, .card-body p, .matching-detail-notes p, .matching-comment-content {
   }
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   Long-Term Booking — Sticky CTA Bar
+   ══════════════════════════════════════════════════════════════════ */
+.lt-sticky-cta {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1050;
+  background: linear-gradient(135deg, #065f46 0%, #097e52 100%);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.18);
+  animation: lt-sticky-slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.lt-sticky-cta .container {
+  max-width: 1140px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+@keyframes lt-sticky-slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@media (max-width: 575.98px) {
+  .lt-sticky-cta .container {
+    flex-direction: column !important;
+    gap: 8px !important;
+    text-align: center;
+  }
+  .lt-sticky-cta .btn {
+    width: 100% !important;
+  }
+}
+

@@ -817,6 +817,7 @@ export default function VenueDetails() {
             venueName: venue.name,
             venueAddress: venue.address,
             pricePerSlot: venue.startingPrice,
+            slotDuration: venue.slotDuration ?? 60,
             weeklyDiscountPercent: venue.weeklyDiscountPercent,
             monthlyDiscountPercent: venue.monthlyDiscountPercent
         } : null}

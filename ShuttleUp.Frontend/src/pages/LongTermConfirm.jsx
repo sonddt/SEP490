@@ -59,6 +59,7 @@ export default function LongTermConfirm() {
     preview = null,
     autoSwitchCourt = false,
     pricePreference = null,
+    slotDuration: stateSlotDuration = 60,
   } = state;
 
   // Detect bookingId from state (passed back from Payment page) or URL search params (browser back button)
@@ -70,7 +71,9 @@ export default function LongTermConfirm() {
   const slotCount = preview?.slotCount ?? 0;
   const sessionCount = preview?.sessionCount ?? 0;
 
-  const totalMins = slotCount * 30;
+  const slotDuration = [30, 60, 120].includes(stateSlotDuration) ? stateSlotDuration : 60;
+
+  const totalMins = slotCount * slotDuration;
   const th = Math.floor(totalMins / 60);
   const tm = totalMins % 60;
   const totalHours = tm > 0 ? `${th}h${tm}` : `${th}h`;
@@ -564,7 +567,7 @@ export default function LongTermConfirm() {
                   <li className="mb-2">
                     <i className="feather-clock me-2 text-primary" />
                     <strong>{sessionCount} buổi:</strong> 
-                    <span className="text-muted ms-1">({slotCount} ô × 30 phút)</span>
+                    <span className="text-muted ms-1">({slotCount} ô × {slotDuration < 60 ? `${slotDuration} phút` : slotDuration === 60 ? '1 giờ' : `${slotDuration / 60} giờ`})</span>
                   </li>
                 </ul>
                 <hr />
@@ -615,28 +618,25 @@ export default function LongTermConfirm() {
                     <strong className="primary-text fs-4">{Math.round(totalPrice).toLocaleString('vi-VN')} VNĐ</strong>
                   </div>
                 )}
-                <div className="d-grid">
+                <div className="d-grid gap-2">
                   <button
                     type="button"
                     onClick={handleSubmit}
                     disabled={loading}
-                    className="btn btn-secondary btn-icon"
+                    className="btn btn-success btn-icon"
                   >
               {loading ? (isUpdating ? 'Đang cập nhật…' : 'Đang tạo đơn…') : 'Tiếp theo'} <i className="feather-arrow-right-circle ms-1" />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary btn-icon"
+                    onClick={() => navigate('/booking/long-term/fixed', { state: location.state })}
+                  >
+                    <i className="feather-arrow-left-circle me-1" /> Quay lại chỉnh sửa
                   </button>
                 </div>
               </aside>
             </div>
-          </div>
-
-          <div className="text-center btn-row mt-3">
-            <button
-              type="button"
-              className="btn btn-primary btn-icon"
-              onClick={() => navigate('/booking/long-term/fixed', { state: location.state })}
-            >
-              <i className="feather-arrow-left-circle me-1" /> Quay lại
-            </button>
           </div>
 
         </div>
