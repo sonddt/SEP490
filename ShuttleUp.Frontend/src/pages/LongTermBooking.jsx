@@ -1040,7 +1040,9 @@ export default function LongTermBooking() {
                             <td className="fw-semibold">
                               {row.courtName || '—'}
                               {row.isSwitched && (
-                                <span className="badge bg-warning text-dark ms-1" title={row.switchReason || 'Đổi sân tự động'}>🔄</span>
+                                <span className="ms-2 text-warning" title={row.switchReason || 'Đổi sân tự động'}>
+                                  <i className="feather-refresh-cw" style={{ fontSize: 14 }} />
+                                </span>
                               )}
                             </td>
                             <td>{row.startTime ? new Date(row.startTime).toLocaleString('vi-VN') : ''}</td>
@@ -1049,8 +1051,8 @@ export default function LongTermBooking() {
                             {hasAnyStatusInfo && (
                               <td>
                                 {row.isSwitched
-                                  ? <span className="badge bg-warning text-dark">Đổi sân</span>
-                                  : <span className="d-inline-flex align-items-center gap-1 text-success" style={{ fontSize: 12 }}><i className="feather-check-circle" style={{ fontSize: 13 }} /> Sẵn sàng</span>
+                                  ? <span className="d-inline-flex align-items-center gap-1 text-warning" style={{ fontSize: 12, fontWeight: 500 }}><i className="feather-refresh-cw" style={{ fontSize: 13 }} /> Đổi sân</span>
+                                  : <span className="d-inline-flex align-items-center gap-1 text-success" style={{ fontSize: 12, fontWeight: 500 }}><i className="feather-check-circle" style={{ fontSize: 13 }} /> Sẵn sàng</span>
                                 }
                               </td>
                             )}
