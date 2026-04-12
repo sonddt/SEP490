@@ -244,7 +244,8 @@ public class ManagerProfileController : ControllerBase
         var hasCccdFront = cccdFrontFile != null && cccdFrontFile.Length > 0;
         var hasCccdBack = cccdBackFile != null && cccdBackFile.Length > 0;
         var hasLicenseUpload = licenseFiles.Count > 0;
-        var hasAnyUpdate = hasTaxCode || hasAddress || hasCccdFront || hasCccdBack || hasLicenseUpload;
+        var hasLicenseRetainStr = form.RetainedLicenseIds != null;
+        var hasAnyUpdate = hasTaxCode || hasAddress || hasCccdFront || hasCccdBack || hasLicenseUpload || hasLicenseRetainStr;
 
         // Validations theo request type
         if (!hasAnyUpdate)
@@ -265,10 +266,21 @@ public class ManagerProfileController : ControllerBase
                 return BadRequest(new { message = "Ảnh CCCD mặt sau không quá 5MB." });
         }
 
-        if (hasLicenseUpload)
+        var retainedIds = new List<Guid>();
+        if (!string.IsNullOrWhiteSpace(form.RetainedLicenseIds))
         {
-            if (licenseFiles.Count > 3)
-                return BadRequest(new { message = "Tối đa 3 file giấy phép kinh doanh." });
+            foreach (var idStr in form.RetainedLicenseIds.Split(',', StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (Guid.TryParse(idStr.Trim(), out var guid)) retainedIds.Add(guid);
+            }
+        }
+
+        var hasLicenseEffectiveUpdate = hasLicenseUpload || hasLicenseRetainStr;
+
+        if (hasLicenseEffectiveUpdate)
+        {
+            if (retainedIds.Count + licenseFiles.Count > 3)
+                return BadRequest(new { message = "Tổng số giấy phép (giữ lại + mới) không được quá 3 file." });
 
             foreach (var f in licenseFiles)
             {
@@ -284,10 +296,10 @@ public class ManagerProfileController : ControllerBase
             var hasCccdFrontEffective = hasCccdFront || pending?.CccdFrontFileId != null;
             var hasCccdBackEffective = hasCccdBack || pending?.CccdBackFileId != null;
             var hasLicenseEffective =
-                hasLicenseUpload ||
-                pending?.BusinessLicenseFileId1 != null ||
-                pending?.BusinessLicenseFileId2 != null ||
-                pending?.BusinessLicenseFileId3 != null;
+                hasLicenseEffectiveUpdate ? (retainedIds.Count + licenseFiles.Count > 0) :
+                (pending?.BusinessLicenseFileId1 != null ||
+                 pending?.BusinessLicenseFileId2 != null ||
+                 pending?.BusinessLicenseFileId3 != null);
 
             var hasTaxEffective = hasTaxCode || !string.IsNullOrWhiteSpace(pending?.TaxCode);
             var hasAddressEffective = hasAddress || !string.IsNullOrWhiteSpace(pending?.Address);
@@ -329,17 +341,20 @@ public class ManagerProfileController : ControllerBase
                 pending.CccdBackFileId = await UploadFileAsync(cccdBackFile!, "manager/cccd", "cccd_back");
             }
 
-            if (hasLicenseUpload)
+            if (hasLicenseEffectiveUpdate)
             {
-                pending.BusinessLicenseFileId1 = licenseFiles.Count >= 1
-                    ? await UploadFileAsync(licenseFiles[0], "manager/license", "license_1")
-                    : null;
-                pending.BusinessLicenseFileId2 = licenseFiles.Count >= 2
-                    ? await UploadFileAsync(licenseFiles[1], "manager/license", "license_2")
-                    : null;
-                pending.BusinessLicenseFileId3 = licenseFiles.Count >= 3
-                    ? await UploadFileAsync(licenseFiles[2], "manager/license", "license_3")
-                    : null;
+                var finalIds = new List<Guid>();
+                finalIds.AddRange(retainedIds);
+
+                foreach (var f in licenseFiles)
+                {
+                    var newId = await UploadFileAsync(f, "manager/license", $"license_{Guid.NewGuid().ToString().Substring(0, 5)}");
+                    finalIds.Add(newId);
+                }
+
+                pending.BusinessLicenseFileId1 = finalIds.Count >= 1 ? finalIds[0] : null;
+                pending.BusinessLicenseFileId2 = finalIds.Count >= 2 ? finalIds[1] : null;
+                pending.BusinessLicenseFileId3 = finalIds.Count >= 3 ? finalIds[2] : null;
             }
 
             // reset decision fields khi gửi lại
@@ -371,6 +386,8 @@ public class ManagerProfileController : ControllerBase
 
         public IFormFile? CccdFrontFile { get; set; }
         public IFormFile? CccdBackFile { get; set; }
+
+        public string? RetainedLicenseIds { get; set; }
 
         // FE gửi: businessLicenseFiles (multiple)
         public List<IFormFile>? BusinessLicenseFiles { get; set; }

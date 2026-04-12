@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ShuttleUp.Backend.Constants;
 using ShuttleUp.Backend.Services.Interfaces;
+using ShuttleUp.Backend.Utils;
 using ShuttleUp.DAL.Models;
 
 namespace ShuttleUp.Backend.Controllers;
@@ -92,7 +93,7 @@ public class MatchingController : ControllerBase
 
         await _activity.ApplyExpiredOpenAndFullToInactiveAsync(HttpContext.RequestAborted);
 
-        var nowUtc = DateTime.UtcNow;
+        var localTime = DateTime.Now;
         var query = _db.MatchingPosts.AsNoTracking()
             .Include(p => p.CreatorUser).ThenInclude(u => u!.AvatarFile)
             .Include(p => p.Venue)
@@ -103,7 +104,7 @@ public class MatchingController : ControllerBase
             .Where(p => p.MatchingPostItems.Any(i =>
                 i.BookingItem != null
                 && i.BookingItem.StartTime.HasValue
-                && i.BookingItem.StartTime.Value > nowUtc));
+                && i.BookingItem.StartTime.Value > localTime));
 
         // Filters
         if (!string.IsNullOrWhiteSpace(skillLevel))
@@ -112,14 +113,9 @@ public class MatchingController : ControllerBase
             query = query.Where(p => p.PlayDate == playDate);
         if (!string.IsNullOrWhiteSpace(province))
             query = query.Where(p => p.Venue != null && p.Venue.Address.Contains(province));
-        if (!string.IsNullOrWhiteSpace(q))
-        {
-            var term = q.Trim();
-            query = query.Where(p =>
-                (p.Title != null && p.Title.Contains(term))
-                || (p.Venue != null && p.Venue.Address != null && p.Venue.Address.Contains(term))
-                || (p.CreatorUser != null && p.CreatorUser.FullName != null && p.CreatorUser.FullName.Contains(term)));
-        }
+
+        var hasSearch = !string.IsNullOrWhiteSpace(q);
+        var foldQ = hasSearch ? SearchNormalize.Fold(q) : "";
 
         // Sort
         query = sort switch
@@ -131,8 +127,23 @@ public class MatchingController : ControllerBase
             _ => query.OrderByDescending(p => p.CreatedAt)
         };
 
-        var total = await query.CountAsync();
-        var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        int total;
+        List<MatchingPost> items;
+        if (!hasSearch)
+        {
+            total = await query.CountAsync();
+            items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        }
+        else
+        {
+            var all = await query.ToListAsync();
+            var filtered = all.Where(p =>
+                SearchNormalize.FoldedContains(p.Title, foldQ)
+                || SearchNormalize.FoldedContains(p.Venue?.Address, foldQ)
+                || SearchNormalize.FoldedContains(p.CreatorUser?.FullName, foldQ)).ToList();
+            total = filtered.Count;
+            items = filtered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+        }
 
         var result = items.Select(p => MapPostCard(p, me));
         return Ok(new { total, page, pageSize, items = result });

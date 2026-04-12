@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import BookingSteps from '../components/booking/BookingSteps';
 import { useAuth } from '../context/AuthContext';
 import { profileApi } from '../api/profileApi';
-import { previewDiscount } from '../api/bookingApi';
+import { previewDiscount, createBooking } from '../api/bookingApi';
 
 function formatDateVN(isoDate) {
   if (!isoDate) return '';
@@ -29,6 +29,23 @@ export default function BookingConfirm() {
     totalHours   = '0h',
   } = state;
 
+  /* Compute slotDuration from first slot's time range */
+  const slotDuration = useMemo(() => {
+    const first = selectedSlots?.[0];
+    if (!first?.startTime || !first?.endTime) return 30;
+    const s = new Date(first.startTime);
+    const e = new Date(first.endTime);
+    const diffMins = Math.round((e - s) / 60000);
+    return [30, 60, 120].includes(diffMins) ? diffMins : 30;
+  }, [selectedSlots]);
+
+  const slotLabelStr = slotDuration < 60 ? `${slotDuration} phút` : slotDuration === 60 ? '1 giờ' : `${slotDuration / 60} giờ`;
+
+  // Detect bookingId from state (passed back from Payment page) or URL search params (browser back button)
+  const [searchParams] = useSearchParams();
+  const existingBookingId = state.bookingId || searchParams.get('bookingId') || null;
+  const isUpdating = !!existingBookingId;
+
   // Group slots by court (giữ object để lấy đúng khoảng bắt đầu–kết thúc)
   const slotsByCourt = useMemo(() => {
     const map = {};
@@ -44,9 +61,9 @@ export default function BookingConfirm() {
 
   // Pre-fill từ AuthContext + GET /profile/me (axios baseURL đã có /api — không gọi /api/api/...)
   const [form, setForm] = useState({
-    name:  user?.fullName ?? '',
-    phone: (user?.phoneNumber ?? '').trim(),
-    note:  '',
+    name:  state.customerName || (user?.fullName ?? ''),
+    phone: (state.customerPhone || (user?.phoneNumber ?? '')).trim(),
+    note:  state.note || '',
   });
   const [autoFilled, setAutoFilled] = useState({
     name: !!user?.fullName,
@@ -59,6 +76,8 @@ export default function BookingConfirm() {
   const [appliedCoupon, setAppliedCoupon] = useState('');
   const [couponError, setCouponError] = useState('');
   const [previewingDiscount, setPreviewingDiscount] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
     if (!localStorage.getItem('token')) return;
@@ -137,24 +156,94 @@ export default function BookingConfirm() {
     return e;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); return; }
-    navigate('/booking/payment', {
-      state: {
-        venueId, venueName, venueAddress, date,
-        selectedSlots, totalPrice, totalHours,
-        customerName:  form.name,
-        customerPhone: form.phone,
-        note:          form.note,
-        couponCode:    appliedCoupon || null,
-        discountInfo:  discountInfo || null,
-      },
+    if (!venueId) { setSubmitError('Thiếu thông tin cơ sở.'); return; }
+
+    const items = (selectedSlots || [])
+      .filter(s => s.courtId && s.startTime && s.endTime)
+      .map(s => ({ courtId: s.courtId, startTime: s.startTime, endTime: s.endTime }));
+    if (items.length === 0) { setSubmitError('Không có khung giờ hợp lệ.'); return; }
+
+    setSubmitError('');
+    setLoading(true);
+    try {
+      const created = await createBooking({
+        venueId,
+        items,
+        contactName: form.name.trim(),
+        contactPhone: form.phone.trim(),
+        note: form.note.trim() || undefined,
+        couponCode: appliedCoupon || undefined,
+        bookingId: existingBookingId || undefined,
+      });
+      const bookingId = created.bookingId ?? created.BookingId;
+      if (!bookingId) { setSubmitError('Phản hồi server không có mã đơn.'); setLoading(false); return; }
+      navigate(`/booking/payment?bookingId=${bookingId}`);
+    } catch (err) {
+      const status = err.response?.status;
+      const msg = err.response?.data?.message || err.message || 'Không tạo được đơn.';
+      if (status === 409) setSubmitError(`${msg} Vui lòng quay lại chọn giờ.`);
+      else setSubmitError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const [sortConfig, setSortConfig] = useState({ key: 'time', dir: 'asc' });
+
+  const sortedSlots = useMemo(() => {
+    if (!selectedSlots) return [];
+    return [...selectedSlots].sort((a, b) => {
+      let aVal, bVal;
+      switch (sortConfig.key) {
+        case 'courtName':
+          aVal = a.courtName || '';
+          bVal = b.courtName || '';
+          break;
+        case 'time':
+          aVal = a.slotIndex || 0;
+          bVal = b.slotIndex || 0;
+          break;
+        case 'price':
+          aVal = a.price || 0;
+          bVal = b.price || 0;
+          break;
+        default:
+          return 0;
+      }
+      if (aVal < bVal) return sortConfig.dir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortConfig.dir === 'asc' ? 1 : -1;
+      return 0;
     });
+  }, [selectedSlots, sortConfig]);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sortConfig, selectedSlots]);
+
+  const totalPages = Math.ceil(sortedSlots.length / ITEMS_PER_PAGE);
+  const paginatedSlots = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return sortedSlots.slice(start, start + ITEMS_PER_PAGE);
+  }, [sortedSlots, currentPage]);
+
+  const toggleSort = (key) => setSortConfig(prev => ({
+    key,
+    dir: prev.key === key && prev.dir === 'asc' ? 'desc' : 'asc'
+  }));
+
+  const renderSortIcon = (key) => {
+    if (sortConfig.key !== key) return <i className="feather-chevron-down text-muted ms-1" style={{ fontSize: '0.8em', opacity: 0.3 }} />;
+    return <i className={`feather-chevron-${sortConfig.dir === 'asc' ? 'up' : 'down'} text-primary ms-1`} style={{ fontSize: '0.8em' }} />;
   };
 
   return (
-    <div className="main-wrapper" style={{ paddingTop: '96px' }}>
+    <div className="main-wrapper content-below-header">
       <BookingSteps currentStep={2} />
 
       <div className="content book-cage">
@@ -285,13 +374,13 @@ export default function BookingConfirm() {
                   <table className="table table-bordered mb-0">
                     <thead className="table-light">
                       <tr>
-                        <th>Sân</th>
-                        <th>Giờ</th>
-                        <th className="text-end">Đơn giá (30 phút)</th>
+                        <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => toggleSort('courtName')}>Sân {renderSortIcon('courtName')}</th>
+                        <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => toggleSort('time')}>Giờ {renderSortIcon('time')}</th>
+                        <th style={{ cursor: 'pointer', userSelect: 'none' }} className="text-end" onClick={() => toggleSort('price')}>Đơn giá ({slotLabelStr}) {renderSortIcon('price')}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {selectedSlots.map((s, i) => (
+                      {paginatedSlots.map((s, i) => (
                         <tr key={i}>
                           <td>{s.courtName}</td>
                           <td>{s.timeEndLabel ? `${s.timeLabel} – ${s.timeEndLabel}` : s.timeLabel}</td>
@@ -301,6 +390,65 @@ export default function BookingConfirm() {
                     </tbody>
                   </table>
                 </div>
+                
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', padding: '8px 4px' }}>
+                    <span style={{ fontSize: '13px', color: '#6b7280' }}>
+                      Trang <strong style={{ color: '#111' }}>{currentPage}</strong> / {totalPages}
+                      <span className="ms-2" style={{ color: '#9ca3af' }}>({sortedSlots.length} khung giờ)</span>
+                    </span>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        style={{
+                          border: '1px solid #e5e7eb', borderRadius: '8px', padding: '6px 14px',
+                          fontSize: '13px', fontWeight: 500, cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                          backgroundColor: currentPage === 1 ? '#f9fafb' : '#fff',
+                          color: currentPage === 1 ? '#d1d5db' : '#374151',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <i className="feather-chevron-left" style={{ fontSize: '12px', marginRight: '4px' }} />Trước
+                      </button>
+                      {[...Array(totalPages)].map((_, idx) => {
+                        const pg = idx + 1;
+                        const isActive = currentPage === pg;
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => setCurrentPage(pg)}
+                            style={{
+                              border: isActive ? '1px solid #16a34a' : '1px solid #e5e7eb',
+                              borderRadius: '8px', padding: '6px 12px', minWidth: '36px',
+                              fontSize: '13px', fontWeight: isActive ? 700 : 500,
+                              cursor: 'pointer',
+                              backgroundColor: isActive ? '#16a34a' : '#fff',
+                              color: isActive ? '#fff' : '#374151',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            {pg}
+                          </button>
+                        );
+                      })}
+                      <button
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        style={{
+                          border: '1px solid #e5e7eb', borderRadius: '8px', padding: '6px 14px',
+                          fontSize: '13px', fontWeight: 500, cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                          backgroundColor: currentPage === totalPages ? '#f9fafb' : '#fff',
+                          color: currentPage === totalPages ? '#d1d5db' : '#374151',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        Sau<i className="feather-chevron-right" style={{ fontSize: '12px', marginLeft: '4px' }} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </section>
             </div>
 
@@ -368,7 +516,7 @@ export default function BookingConfirm() {
                         <i className="feather-clock me-2 text-primary" />
                         <strong>{court}:</strong>{' '}
                         {first?.timeLabel} – {endLabel}
-                        <span className="text-muted ms-1">({slotObjs.length} ô × 30 phút)</span>
+                        <span className="text-muted ms-1">({slotObjs.length} ô × {slotLabelStr})</span>
                       </li>
                     );
                   })}
@@ -404,35 +552,26 @@ export default function BookingConfirm() {
                     <strong className="primary-text fs-4">{totalPrice.toLocaleString('vi-VN')} VNĐ</strong>
                   </div>
                 )}
-                <div className="d-grid">
+                {submitError && <div className="alert alert-danger small mb-2">{submitError}</div>}
+                <div className="d-grid gap-2">
                   <button
                     type="button"
                     onClick={handleNext}
-                    className="btn btn-secondary btn-icon"
+                    disabled={loading}
+                    className="btn btn-success btn-icon"
                   >
-                    Tiếp theo <i className="feather-arrow-right-circle ms-1" />
+                    {loading ? (isUpdating ? 'Đang cập nhật…' : 'Đang tạo đơn…') : 'Tiếp theo'} <i className="feather-arrow-right-circle ms-1" />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary btn-icon"
+                    onClick={() => navigate('/booking', { state: location.state })}
+                  >
+                    <i className="feather-arrow-left-circle me-1" /> Quay lại chỉnh sửa
                   </button>
                 </div>
               </aside>
             </div>
-          </div>
-
-          {/* Nav buttons */}
-          <div className="text-center btn-row mt-3">
-            <button
-              type="button"
-              className="btn btn-primary me-3 btn-icon"
-              onClick={() => navigate('/booking', { state: location.state })}
-            >
-              <i className="feather-arrow-left-circle me-1" /> Quay lại
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-icon"
-              onClick={handleNext}
-            >
-              Tiếp theo <i className="feather-arrow-right-circle ms-1" />
-            </button>
           </div>
 
         </div>

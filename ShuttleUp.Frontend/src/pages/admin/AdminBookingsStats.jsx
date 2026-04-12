@@ -215,9 +215,15 @@ export default function AdminBookingsStats() {
                 ) : data.items.map((b) => (
                   <tr key={b.id}>
                     <td><code>{b.id}</code></td>
-                    <td><strong>{b.player}</strong></td>
-                    <td>{b.venue}</td>
-                    <td>{b.court}</td>
+                    <td title={b.player} style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <strong>{b.player}</strong>
+                    </td>
+                    <td title={b.venue} style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {b.venue}
+                    </td>
+                    <td title={b.court} style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {b.court}
+                    </td>
                     <td>{b.date}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {b.startTime ? `${fmtTime(b.startTime)} – ${fmtTime(b.endTime)}` : 'N/A'}

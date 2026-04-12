@@ -93,6 +93,9 @@ namespace ShuttleUp.Backend
 
                 return settings;
             });
+            builder.Services.AddHostedService<ShuttleUp.Backend.Services.ExpiredHoldCleanupService>();
+            builder.Services.AddHostedService<ShuttleUp.Backend.Services.UpcomingBookingReminderService>();
+            builder.Services.AddMemoryCache();
             builder.Services.AddScoped<INotificationDispatchService, NotificationDispatchService>();
             builder.Services.AddScoped<IMatchingPostLifecycleService, MatchingPostLifecycleService>();
             builder.Services.AddScoped<IMatchingPostActivityService, MatchingPostActivityService>();
@@ -145,7 +148,11 @@ namespace ShuttleUp.Backend
             });
 
             // ── Controllers + Swagger ─────────────────────────────────────────────
-            builder.Services.AddControllers();
+            builder.Services.AddControllers()
+                .AddJsonOptions(o =>
+                {
+                    o.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+                });
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen(c =>
             {

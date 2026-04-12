@@ -35,6 +35,9 @@ export default function MatchingCreate() {
   const [bookings, setBookings] = useState([]);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [selectedItemIds, setSelectedItemIds] = useState([]);
+  const [step2Page, setStep2Page] = useState(1);
+  const ITEMS_PER_PAGE_STEP2 = 5;
+  const [showAllItems, setShowAllItems] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -76,6 +79,7 @@ export default function MatchingCreate() {
   const handleSelectBooking = (booking) => {
     setSelectedBooking(booking);
     setSelectedItemIds(booking.items?.map((i) => i.id) || []);
+    setStep2Page(1);
     setStep(2);
   };
 
@@ -268,7 +272,26 @@ export default function MatchingCreate() {
                   </div>
 
                   <div className="matching-items-list">
-                    {selectedBooking.items?.map((item) => {
+                    {(() => {
+                        const itemsStep2 = selectedBooking.items || [];
+                        const totalStep2Pages = Math.ceil(itemsStep2.length / ITEMS_PER_PAGE_STEP2);
+                        const visibleItemsStep2 = itemsStep2.slice((step2Page - 1) * ITEMS_PER_PAGE_STEP2, step2Page * ITEMS_PER_PAGE_STEP2);
+                        
+                        const getPaginationGroups = () => {
+                            const pages = [];
+                            for (let i = 1; i <= totalStep2Pages; i++) {
+                                if (i === 1 || i === totalStep2Pages || (i >= step2Page - 1 && i <= step2Page + 1)) {
+                                    pages.push(i);
+                                } else if (pages[pages.length - 1] !== '...') {
+                                    pages.push('...');
+                                }
+                            }
+                            return pages;
+                        };
+
+                        return (
+                            <>
+                                {visibleItemsStep2.map((item) => {
                       const isSelected = selectedItemIds.includes(item.id);
                       return (
                         <div 
@@ -346,6 +369,28 @@ export default function MatchingCreate() {
                         </div>
                       );
                     })}
+                    {totalStep2Pages > 1 && (
+                      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
+                        <nav>
+                          <ul className="pagination" style={{ gap: '8px', flexWrap: 'wrap', justifyContent: 'center', marginBottom: 0 }}>
+                            <li className={`page-item ${step2Page <= 1 ? 'disabled' : ''}`}>
+                              <button className="page-link" style={{ borderRadius: '10px', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', backgroundColor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', fontWeight: '700', color: '#1e293b' }} onClick={() => setStep2Page(step2Page - 1)}>‹</button>
+                            </li>
+                            {getPaginationGroups().map((p, idx) => (
+                              <li key={idx} className={`page-item ${p === '...' ? 'disabled' : ''}`}>
+                                <button className="page-link" style={{ borderRadius: '10px', minWidth: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', backgroundColor: p === step2Page ? '#097E52' : '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', fontWeight: '700', color: p === step2Page ? '#fff' : p === '...' ? '#94a3b8' : '#1e293b', padding: '0 10px', fontSize: '14px' }} onClick={() => { if (p !== '...') setStep2Page(p); }}>{p}</button>
+                              </li>
+                            ))}
+                            <li className={`page-item ${step2Page >= totalStep2Pages ? 'disabled' : ''}`}>
+                              <button className="page-link" style={{ borderRadius: '10px', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', backgroundColor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', fontWeight: '700', color: '#1e293b' }} onClick={() => setStep2Page(step2Page + 1)}>›</button>
+                            </li>
+                          </ul>
+                        </nav>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
                   </div>
 
                   {selectedItemIds.length > 0 && (
@@ -563,7 +608,7 @@ export default function MatchingCreate() {
                             
                             <div>
                                 <div style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}><i className="feather-calendar me-2"></i>Lịch trình ({selectedItems.length} ca)</div>
-                                {selectedItems.map((item) => {
+                                {(showAllItems ? selectedItems : selectedItems.slice(0, 2)).map((item) => {
                                     const dateObj = new Date(item.startTime);
                                     const dayName = formatDate(item.startTime).split(',')[0];
                                     const dayDate = dateObj.getDate();
@@ -580,6 +625,18 @@ export default function MatchingCreate() {
                                         </div>
                                     );
                                 })}
+
+                                {selectedItems.length > 2 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAllItems(!showAllItems)}
+                                        style={{ width: '100%', padding: '12px', marginTop: '4px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '12px', color: '#097E52', fontWeight: '700', fontSize: '14px', transition: 'all 0.2s' }}
+                                        onMouseEnter={(e) => e.target.style.background = '#f1f5f9'}
+                                        onMouseLeave={(e) => e.target.style.background = '#f8fafc'}
+                                    >
+                                        {showAllItems ? 'Thu gọn lịch trình' : `Xem thêm ${selectedItems.length - 2} ca chơi khác ↓`}
+                                    </button>
+                                )}
                             </div>
                         </div>
 

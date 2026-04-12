@@ -123,7 +123,7 @@ public class SocialController : ControllerBase
             new { friendUserId = accepterUserId, deepLink = $"/user/profile/{accepterUserId}" },
             false,
             null,
-            ct);
+            cancellationToken: ct);
     }
 
     /// <summary>
@@ -176,7 +176,7 @@ public class SocialController : ControllerBase
             new { friendUserId = me, deepLink = $"/user/profile/{me}" },
             false,
             null,
-            ct);
+            cancellationToken: ct);
     }
 
     /// <summary>Cài đặt cho phép tìm theo email / SĐT.</summary>
@@ -394,7 +394,7 @@ public class SocialController : ControllerBase
             new { fromUserId = me, requestId = req.Id, deepLink = $"/user/profile/{me}" },
             false,
             null,
-            CancellationToken.None);
+            cancellationToken: CancellationToken.None);
 
         return Ok(new { id = req.Id, message = "Đã gửi lời mời kết bạn." });
     }

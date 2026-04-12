@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.Extensions.Caching.Memory;
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
@@ -24,17 +25,23 @@ public class BookingsController : ControllerBase
     private readonly IFileService _fileService;
     private readonly INotificationDispatchService _notify;
     private readonly IMatchingPostLifecycleService _matchingPostLifecycle;
+    private readonly IMemoryCache _cache;
+    private readonly IConfiguration _configuration;
 
     public BookingsController(
         ShuttleUpDbContext dbContext,
         IFileService fileService,
         INotificationDispatchService notify,
-        IMatchingPostLifecycleService matchingPostLifecycle)
+        IMatchingPostLifecycleService matchingPostLifecycle,
+        IMemoryCache cache,
+        IConfiguration configuration)
     {
         _dbContext = dbContext;
         _fileService = fileService;
         _notify = notify;
         _matchingPostLifecycle = matchingPostLifecycle;
+        _cache = cache;
+        _configuration = configuration;
     }
 
     private bool TryGetCurrentUserId(out Guid userId)
@@ -87,6 +94,12 @@ public class BookingsController : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.ContactPhone))
             return BadRequest(new { message = "Vui lòng nhập số điện thoại." });
 
+        // ── Update-in-place: if bookingId is provided, update existing HOLDING record ──
+        if (dto.BookingId.HasValue)
+        {
+            return await UpdateHoldingBookingContact(dto.BookingId.Value, userId, dto.ContactName, dto.ContactPhone, dto.Note);
+        }
+
         var venuePolicy = await _dbContext.Venues
             .AsNoTracking()
             .Where(v => v.Id == dto.VenueId && v.IsActive == true)
@@ -97,6 +110,7 @@ public class BookingsController : ControllerBase
                 v.CancelBeforeMinutes,
                 v.RefundType,
                 v.RefundPercent,
+                v.SlotDuration,
             })
             .FirstOrDefaultAsync();
 
@@ -115,22 +129,22 @@ public class BookingsController : ControllerBase
 
         var courtById = courts.ToDictionary(c => c.Id);
 
-        var (normalizedItems, normErr) = BookingSlotHelper.NormalizeFromCreateItems(dto.Items, courtById);
+        var (normalizedItems, normErr) = BookingSlotHelper.NormalizeFromCreateItems(dto.Items, courtById, venuePolicy.SlotDuration);
         if (normErr != null)
             return BadRequest(new { message = normErr });
 
-        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, HttpContext.RequestAborted);
+        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, HttpContext.RequestAborted, excludeBookingId: dto.BookingId, excludeHoldingUserId: userId);
         if (conflict == "CONFLICT_BOOKING")
             return Conflict(new { message = "Một hoặc nhiều khung giờ vừa được người khác đặt. Vui lòng chọn lại." });
         if (conflict == "CONFLICT_BLOCK")
             return Conflict(new { message = "Một số khung giờ đang bị khóa bởi chủ sân." });
 
         var total = normalizedItems.Sum(x => x.Price);
-        var minStart = normalizedItems.Min(x => x.Start);
-        var maxEnd = normalizedItems.Max(x => x.End);
-        var daysDuration = (maxEnd.Date - minStart.Date).Days + 1;
 
-        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg) = await CalculateDiscountAsync(dto.VenueId, total, daysDuration, dto.CouponCode, userId);
+        // Collect actual booked dates for consecutive-day discount calculation
+        var bookedDates = normalizedItems.Select(x => x.Start).ToList();
+
+        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, _, _) = await CalculateDiscountAsync(dto.VenueId, total, bookedDates, dto.CouponCode, userId);
         if (errorMsg != null) return BadRequest(new { message = errorMsg });
 
         var policySnapshot = new CancellationPolicySnapshot
@@ -141,12 +155,15 @@ public class BookingsController : ControllerBase
             RefundPercent = venuePolicy.RefundPercent,
         };
 
+        var holdExpiry = DateTime.UtcNow.AddMinutes(5);
+
         var booking = new Booking
         {
             Id = Guid.NewGuid(),
             UserId = userId,
             VenueId = dto.VenueId,
-            Status = "PENDING",
+            Status = "HOLDING",
+            HoldExpiresAt = holdExpiry,
             TotalAmount = total,
             DiscountAmount = discountAmount,
             FinalAmount = finalAmount,
@@ -170,7 +187,7 @@ public class BookingsController : ControllerBase
                 StartTime = ni.Start,
                 EndTime = ni.End,
                 FinalPrice = ni.Price,
-                Status = "PENDING"
+                Status = "HOLDING"
             });
         }
 
@@ -199,8 +216,9 @@ public class BookingsController : ControllerBase
             BookingId = booking.Id,
             BookingCode = code,
             Status = booking.Status,
+            HoldExpiresAt = holdExpiry,
             TotalAmount = total,
-            FinalAmount = total,
+            FinalAmount = finalAmount,
             Items = booking.BookingItems.Select(bi => new BookingItemResponseDto
             {
                 Id = bi.Id,
@@ -212,28 +230,6 @@ public class BookingsController : ControllerBase
                 Status = bi.Status
             }).ToList()
         };
-
-        var ownerId = await _dbContext.Venues.AsNoTracking()
-            .Where(v => v.Id == dto.VenueId)
-            .Select(v => v.OwnerUserId)
-            .FirstOrDefaultAsync();
-        if (ownerId is { } oid && oid != Guid.Empty)
-        {
-            try
-            {
-                await _notify.NotifyUserAsync(
-                    oid,
-                    NotificationTypes.BookingNew,
-                    "Có đơn đặt sân mới",
-                    $"Mã {code} — {dto.ContactName.Trim()} — {total:N0} VNĐ.",
-                    NotificationMetadataBuilder.BookingForManager(booking.Id, dto.VenueId),
-                    sendEmail: true);
-            }
-            catch
-            {
-                /* không chặn response 201 */
-            }
-        }
 
         return StatusCode(StatusCodes.Status201Created, response);
     }
@@ -251,8 +247,41 @@ public class BookingsController : ControllerBase
         if (built.Error != null)
             return built.Error;
 
-        var total = built.NormalizedItems!.Sum(x => x.Price);
-        var sessionCount = CountDistinctSessionDays(built.NormalizedItems!);
+        // Smart allocation path
+        if (built.SmartItems != null)
+        {
+            var availableItems = built.SmartItems.Where(x => !x.IsUnavailable).ToList();
+            var total = availableItems.Sum(x => x.Price);
+            var sessionCount = availableItems.Select(x => DateOnly.FromDateTime(x.Start)).Distinct().Count();
+            var primaryCourtName = availableItems.GroupBy(x => x.CourtName).OrderByDescending(g => g.Count()).FirstOrDefault()?.Key ?? "—";
+
+            return Ok(new
+            {
+                venueId = dto.VenueId,
+                courtId = (Guid?)null,
+                courtName = primaryCourtName,
+                slotCount = availableItems.Count,
+                unavailableCount = built.SmartItems.Count(x => x.IsUnavailable),
+                sessionCount,
+                totalAmount = total,
+                isFlexible = true,
+                items = built.SmartItems.Select(x => new
+                {
+                    courtId = x.CourtId,
+                    courtName = x.CourtName,
+                    startTime = x.Start,
+                    endTime = x.End,
+                    price = x.Price,
+                    isUnavailable = x.IsUnavailable,
+                    isSwitched = x.IsSwitched,
+                    switchReason = x.SwitchReason,
+                }),
+            });
+        }
+
+        // Legacy single-court path
+        var legacyTotal = built.NormalizedItems!.Sum(x => x.Price);
+        var legacySessionCount = CountDistinctSessionDays(built.NormalizedItems!);
 
         return Ok(new
         {
@@ -260,14 +289,20 @@ public class BookingsController : ControllerBase
             courtId = dto.CourtId,
             courtName = built.Court!.Name,
             slotCount = built.NormalizedItems!.Count,
-            sessionCount,
-            totalAmount = total,
+            unavailableCount = 0,
+            sessionCount = legacySessionCount,
+            totalAmount = legacyTotal,
+            isFlexible = false,
             items = built.NormalizedItems!.Select(x => new
             {
-                courtId = x.CourtId,
+                courtId = (Guid?)x.CourtId,
+                courtName = built.Court.Name,
                 startTime = x.Start,
                 endTime = x.End,
                 price = x.Price,
+                isUnavailable = false,
+                isSwitched = false,
+                switchReason = (string?)null,
             }),
         });
     }
@@ -285,6 +320,12 @@ public class BookingsController : ControllerBase
             return BadRequest(new { message = "Vui lòng nhập họ tên." });
         if (string.IsNullOrWhiteSpace(dto.ContactPhone))
             return BadRequest(new { message = "Vui lòng nhập số điện thoại." });
+
+        // ── Update-in-place: if bookingId is provided, update existing HOLDING record ──
+        if (dto.BookingId.HasValue)
+        {
+            return await UpdateHoldingBookingContact(dto.BookingId.Value, userId, dto.ContactName, dto.ContactPhone, dto.Note);
+        }
 
         var built = await BuildLongTermNormalizedAsync(dto, HttpContext.RequestAborted);
         if (built.Error != null)
@@ -306,12 +347,38 @@ public class BookingsController : ControllerBase
         if (venuePolicy == null)
             return BadRequest(new { message = "Cơ sở không tồn tại hoặc chưa mở đặt sân." });
 
-        var total = built.NormalizedItems!.Sum(x => x.Price);
-        var minStart = built.NormalizedItems!.Min(x => x.Start);
-        var maxEnd = built.NormalizedItems!.Max(x => x.End);
-        var daysDuration = (maxEnd.Date - minStart.Date).Days + 1;
+        decimal total = 0;
+        DateTime minStart;
+        DateTime maxEnd;
 
-        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg) = await CalculateDiscountAsync(dto.VenueId, total, daysDuration, dto.CouponCode, userId);
+        if (built.SmartItems != null)
+        {
+            var availableItems = built.SmartItems.Where(x => !x.IsUnavailable && x.CourtId.HasValue).ToList();
+            if (availableItems.Count == 0)
+                return BadRequest(new { message = "Không có khung giờ nào khả dụng để đặt." });
+
+            total = availableItems.Sum(x => x.Price);
+            minStart = availableItems.Min(x => x.Start);
+            maxEnd = availableItems.Max(x => x.End);
+        }
+        else
+        {
+            if (built.NormalizedItems == null || built.NormalizedItems.Count == 0)
+                return BadRequest(new { message = "Không có khung giờ hợp lệ." });
+
+            total = built.NormalizedItems.Sum(x => x.Price);
+            minStart = built.NormalizedItems.Min(x => x.Start);
+            maxEnd = built.NormalizedItems.Max(x => x.End);
+        }
+
+        // Collect actual booked dates for consecutive-day discount calculation
+        List<DateTime> bookedDates;
+        if (built.SmartItems != null)
+            bookedDates = built.SmartItems.Where(x => !x.IsUnavailable && x.CourtId.HasValue).Select(x => x.Start).ToList();
+        else
+            bookedDates = built.NormalizedItems!.Select(x => x.Start).ToList();
+
+        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, _, _) = await CalculateDiscountAsync(dto.VenueId, total, bookedDates, dto.CouponCode, userId);
         if (errorMsg != null) return BadRequest(new { message = errorMsg });
         var policySnapshot = new CancellationPolicySnapshot
         {
@@ -320,6 +387,8 @@ public class BookingsController : ControllerBase
             RefundType = string.IsNullOrWhiteSpace(venuePolicy.RefundType) ? "NONE" : venuePolicy.RefundType!,
             RefundPercent = venuePolicy.RefundPercent,
         };
+
+        var holdExpiry = DateTime.UtcNow.AddMinutes(5);
 
         var ruleJson = JsonSerializer.Serialize(new
         {
@@ -338,7 +407,7 @@ public class BookingsController : ControllerBase
             RecurrenceRuleJson = ruleJson,
             RangeStartDate = built.RangeStart!.Value,
             RangeEndDate = built.RangeEnd!.Value,
-            Status = "PENDING",
+            Status = "HOLDING",
             CreatedAt = DateTime.UtcNow,
         };
 
@@ -348,7 +417,8 @@ public class BookingsController : ControllerBase
             UserId = userId,
             VenueId = dto.VenueId,
             SeriesId = series.Id,
-            Status = "PENDING",
+            Status = "HOLDING",
+            HoldExpiresAt = holdExpiry,
             TotalAmount = total,
             DiscountAmount = discountAmount,
             FinalAmount = finalAmount,
@@ -360,17 +430,37 @@ public class BookingsController : ControllerBase
             CreatedAt = DateTime.UtcNow
         };
 
-        foreach (var ni in built.NormalizedItems!)
+        // Smart allocation: filter out unavailable, use SmartItems if present
+        if (built.SmartItems != null)
         {
-            booking.BookingItems.Add(new BookingItem
+            var availableItems = built.SmartItems.Where(x => !x.IsUnavailable && x.CourtId.HasValue).ToList();
+            foreach (var si in availableItems)
             {
-                Id = Guid.NewGuid(),
-                CourtId = ni.CourtId,
-                StartTime = ni.Start,
-                EndTime = ni.End,
-                FinalPrice = ni.Price,
-                Status = "PENDING"
-            });
+                booking.BookingItems.Add(new BookingItem
+                {
+                    Id = Guid.NewGuid(),
+                    CourtId = si.CourtId!.Value,
+                    StartTime = si.Start,
+                    EndTime = si.End,
+                    FinalPrice = si.Price,
+                    Status = "HOLDING"
+                });
+            }
+        }
+        else
+        {
+            foreach (var ni in built.NormalizedItems!)
+            {
+                booking.BookingItems.Add(new BookingItem
+                {
+                    Id = Guid.NewGuid(),
+                    CourtId = ni.CourtId,
+                    StartTime = ni.Start,
+                    EndTime = ni.End,
+                    FinalPrice = ni.Price,
+                    Status = "HOLDING"
+                });
+            }
         }
 
         await using var trx = await _dbContext.Database.BeginTransactionAsync();
@@ -393,58 +483,39 @@ public class BookingsController : ControllerBase
         }
 
         var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
-        var courtById = new Dictionary<Guid, Court> { [built.Court!.Id] = built.Court };
-
-        var response = new BookingResponseDto
+        
+        Dictionary<Guid, string> courtNames = new();
+        if (built.SmartItems != null)
         {
-            BookingId = booking.Id,
-            BookingCode = code,
-            Status = booking.Status,
-            TotalAmount = total,
-            FinalAmount = total,
-            Items = booking.BookingItems.Select(bi => new BookingItemResponseDto
+            foreach (var si in built.SmartItems.Where(x => x.CourtId.HasValue))
             {
-                Id = bi.Id,
-                CourtId = bi.CourtId ?? Guid.Empty,
-                CourtName = courtById.GetValueOrDefault(bi.CourtId ?? Guid.Empty)?.Name,
-                StartTime = bi.StartTime ?? default,
-                EndTime = bi.EndTime ?? default,
-                FinalPrice = bi.FinalPrice ?? 0,
-                Status = bi.Status
-            }).ToList()
-        };
-
-        var ownerId = await _dbContext.Venues.AsNoTracking()
-            .Where(v => v.Id == dto.VenueId)
-            .Select(v => v.OwnerUserId)
-            .FirstOrDefaultAsync();
-        if (ownerId is { } oid && oid != Guid.Empty)
+                courtNames[si.CourtId!.Value] = si.CourtName ?? "—";
+            }
+        }
+        else if (built.Court != null)
         {
-            try
-            {
-                await _notify.NotifyUserAsync(
-                    oid,
-                    NotificationTypes.BookingNew,
-                    "Có đơn đặt lịch dài hạn mới",
-                    $"Mã {code} — {dto.ContactName.Trim()} — {built.NormalizedItems.Count} khung — {total:N0} VNĐ.",
-                    NotificationMetadataBuilder.BookingForManager(booking.Id, dto.VenueId),
-                    sendEmail: true);
-            }
-            catch
-            {
-                /* ignore */
-            }
+            courtNames[built.Court.Id] = built.Court.Name;
         }
 
         return StatusCode(StatusCodes.Status201Created, new
         {
             seriesId = series.Id,
-            response.BookingId,
-            response.BookingCode,
-            response.Status,
-            response.TotalAmount,
-            response.FinalAmount,
-            response.Items,
+            bookingId = booking.Id,
+            bookingCode = code,
+            status = booking.Status,
+            holdExpiresAt = holdExpiry,
+            totalAmount = total,
+            finalAmount,
+            items = booking.BookingItems.Select(bi => new BookingItemResponseDto
+            {
+                Id = bi.Id,
+                CourtId = bi.CourtId ?? Guid.Empty,
+                CourtName = courtNames.GetValueOrDefault(bi.CourtId ?? Guid.Empty),
+                StartTime = bi.StartTime ?? default,
+                EndTime = bi.EndTime ?? default,
+                FinalPrice = bi.FinalPrice ?? 0,
+                Status = bi.Status
+            }).ToList(),
         });
     }
 
@@ -496,6 +567,12 @@ public class BookingsController : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.ContactPhone))
             return BadRequest(new { message = "Vui lòng nhập số điện thoại." });
 
+        // ── Update-in-place: if bookingId is provided, update existing HOLDING record ──
+        if (dto.BookingId.HasValue)
+        {
+            return await UpdateHoldingBookingContact(dto.BookingId.Value, userId, dto.ContactName, dto.ContactPhone, dto.Note);
+        }
+
         var built = await BuildFlexibleLongTermAsync(dto, HttpContext.RequestAborted);
         if (built.Error != null)
             return built.Error;
@@ -518,11 +595,11 @@ public class BookingsController : ControllerBase
 
         var normalizedItems = built.NormalizedItems!;
         var total = normalizedItems.Sum(x => x.Price);
-        var minStart = normalizedItems.Min(x => x.Start);
-        var maxEnd = normalizedItems.Max(x => x.End);
-        var daysDuration = (maxEnd.Date - minStart.Date).Days + 1;
 
-        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg) = await CalculateDiscountAsync(dto.VenueId, total, daysDuration, dto.CouponCode, userId);
+        // Collect actual booked dates for consecutive-day discount calculation
+        var bookedDates = normalizedItems.Select(x => x.Start).ToList();
+
+        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, _, _) = await CalculateDiscountAsync(dto.VenueId, total, bookedDates, dto.CouponCode, userId);
         if (errorMsg != null) return BadRequest(new { message = errorMsg });
         var policySnapshot = new CancellationPolicySnapshot
         {
@@ -531,6 +608,8 @@ public class BookingsController : ControllerBase
             RefundType = string.IsNullOrWhiteSpace(venuePolicy.RefundType) ? "NONE" : venuePolicy.RefundType!,
             RefundPercent = venuePolicy.RefundPercent,
         };
+
+        var holdExpiry = DateTime.UtcNow.AddMinutes(5);
 
         var ruleJson = JsonSerializer.Serialize(new
         {
@@ -546,7 +625,7 @@ public class BookingsController : ControllerBase
             RecurrenceRuleJson = ruleJson,
             RangeStartDate = built.RangeStart!.Value,
             RangeEndDate = built.RangeEnd!.Value,
-            Status = "PENDING",
+            Status = "HOLDING",
             CreatedAt = DateTime.UtcNow,
         };
 
@@ -556,7 +635,8 @@ public class BookingsController : ControllerBase
             UserId = userId,
             VenueId = dto.VenueId,
             SeriesId = series.Id,
-            Status = "PENDING",
+            Status = "HOLDING",
+            HoldExpiresAt = holdExpiry,
             TotalAmount = total,
             DiscountAmount = discountAmount,
             FinalAmount = finalAmount,
@@ -577,7 +657,7 @@ public class BookingsController : ControllerBase
                 StartTime = ni.Start,
                 EndTime = ni.End,
                 FinalPrice = ni.Price,
-                Status = "PENDING"
+                Status = "HOLDING"
             });
         }
 
@@ -603,14 +683,16 @@ public class BookingsController : ControllerBase
         var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
         var courtById = built.CourtById!;
 
-        var response = new BookingResponseDto
+        return StatusCode(StatusCodes.Status201Created, new
         {
-            BookingId = booking.Id,
-            BookingCode = code,
-            Status = booking.Status,
-            TotalAmount = total,
-            FinalAmount = total,
-            Items = booking.BookingItems.Select(bi => new BookingItemResponseDto
+            seriesId = series.Id,
+            bookingId = booking.Id,
+            bookingCode = code,
+            status = booking.Status,
+            holdExpiresAt = holdExpiry,
+            totalAmount = total,
+            finalAmount,
+            items = booking.BookingItems.Select(bi => new BookingItemResponseDto
             {
                 Id = bi.Id,
                 CourtId = bi.CourtId ?? Guid.Empty,
@@ -619,40 +701,7 @@ public class BookingsController : ControllerBase
                 EndTime = bi.EndTime ?? default,
                 FinalPrice = bi.FinalPrice ?? 0,
                 Status = bi.Status
-            }).ToList()
-        };
-
-        var ownerId = await _dbContext.Venues.AsNoTracking()
-            .Where(v => v.Id == dto.VenueId)
-            .Select(v => v.OwnerUserId)
-            .FirstOrDefaultAsync();
-        if (ownerId is { } oid && oid != Guid.Empty)
-        {
-            try
-            {
-                await _notify.NotifyUserAsync(
-                    oid,
-                    NotificationTypes.BookingNew,
-                    "Có đơn đặt lịch dài hạn (linh hoạt) mới",
-                    $"Mã {code} — {dto.ContactName.Trim()} — {normalizedItems.Count} khung — {total:N0} VNĐ.",
-                    NotificationMetadataBuilder.BookingForManager(booking.Id, dto.VenueId),
-                    sendEmail: true);
-            }
-            catch
-            {
-                /* ignore */
-            }
-        }
-
-        return StatusCode(StatusCodes.Status201Created, new
-        {
-            seriesId = series.Id,
-            response.BookingId,
-            response.BookingCode,
-            response.Status,
-            response.TotalAmount,
-            response.FinalAmount,
-            response.Items,
+            }).ToList(),
         });
     }
 
@@ -670,8 +719,13 @@ public class BookingsController : ControllerBase
         if (dto.Items == null || dto.Items.Count == 0)
             return new FlexibleLongTermBuildResult { Error = BadRequest(new { message = "Vui lòng chọn ít nhất một khung giờ." }) };
 
-        var venueOk = await _dbContext.Venues.AnyAsync(v => v.Id == dto.VenueId && v.IsActive == true, ct);
-        if (!venueOk)
+        var venueOk = await _dbContext.Venues
+            .AsNoTracking()
+            .Where(v => v.Id == dto.VenueId && v.IsActive == true)
+            .Select(v => new { v.Id, v.SlotDuration })
+            .FirstOrDefaultAsync(ct);
+
+        if (venueOk == null)
             return new FlexibleLongTermBuildResult { Error = BadRequest(new { message = "Cơ sở không tồn tại hoặc chưa mở đặt sân." }) };
 
         var courtIds = dto.Items.Select(i => i.CourtId).Distinct().ToList();
@@ -686,14 +740,15 @@ public class BookingsController : ControllerBase
 
         var courtById = courts.ToDictionary(c => c.Id);
 
-        var (normalizedItems, normErr) = BookingSlotHelper.NormalizeFromCreateItems(dto.Items, courtById);
+        var (normalizedItems, normErr) = BookingSlotHelper.NormalizeFromCreateItems(dto.Items, courtById, venueOk.SlotDuration);
         if (normErr != null)
             return new FlexibleLongTermBuildResult { Error = BadRequest(new { message = normErr }) };
 
         if (normalizedItems.Count > BookingSlotHelper.MaxLongTermSlots)
-            return new FlexibleLongTermBuildResult { Error = BadRequest(new { message = $"Vượt quá số khung tối đa ({BookingSlotHelper.MaxLongTermSlots} ô × 30 phút)." }) };
+            return new FlexibleLongTermBuildResult { Error = BadRequest(new { message = $"Vượt quá số khung tối đa ({BookingSlotHelper.MaxLongTermSlots} ô × {venueOk.SlotDuration} phút)." }) };
 
-        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, ct);
+        TryGetCurrentUserId(out var currentUserId);
+        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, ct, excludeBookingId: null, excludeHoldingUserId: currentUserId);
         if (conflict == "CONFLICT_BOOKING")
             return new FlexibleLongTermBuildResult { Error = Conflict(new { message = "Một hoặc nhiều khung giờ đã có người đặt. Vui lòng đổi lịch." }) };
         if (conflict == "CONFLICT_BLOCK")
@@ -715,6 +770,7 @@ public class BookingsController : ControllerBase
     private sealed class LongTermBuildResult
     {
         public List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)>? NormalizedItems { get; init; }
+        public List<BookingSlotHelper.SmartAllocationItem>? SmartItems { get; init; }
         public Court? Court { get; init; }
         public DateOnly? RangeStart { get; init; }
         public DateOnly? RangeEnd { get; init; }
@@ -733,24 +789,112 @@ public class BookingsController : ControllerBase
         if (dayErr != null)
             return new LongTermBuildResult { Error = BadRequest(new { message = dayErr }) };
 
+        var venueInfo = await _dbContext.Venues
+            .AsNoTracking()
+            .Where(v => v.Id == dto.VenueId && v.IsActive == true)
+            .Select(v => new { v.Id, v.SlotDuration })
+            .FirstOrDefaultAsync(ct);
+
+        if (venueInfo == null)
+            return new LongTermBuildResult { Error = BadRequest(new { message = "Cơ sở không tồn tại hoặc chưa mở đặt sân." }) };
+
+        bool useSmartAllocation = !dto.CourtId.HasValue || dto.AutoSwitchCourt;
+
+        // ── SMART ALLOCATION PATH ──
+        if (useSmartAllocation)
+        {
+            var allCourts = await _dbContext.Courts
+                .Include(c => c.CourtPrices)
+                .Where(c => c.VenueId == dto.VenueId && c.IsActive == true && c.Status == "ACTIVE")
+                .ToListAsync(ct);
+
+            if (allCourts.Count == 0)
+                return new LongTermBuildResult { Error = BadRequest(new { message = "Cơ sở chưa có sân nào hoạt động." }) };
+
+            // Expand time slots (court-agnostic)
+            List<(DateTime Start, DateTime End)> timeSlots;
+            string? expandErr;
+
+            if (dto.DailySchedules != null && dto.DailySchedules.Count > 0)
+            {
+                var dayTimeMap = new Dictionary<DayOfWeek, (TimeOnly Start, TimeOnly End)>();
+                foreach (var ds in dto.DailySchedules)
+                {
+                    if (ds.DayOfWeek < 0 || ds.DayOfWeek > 6)
+                        return new LongTermBuildResult { Error = BadRequest(new { message = "DailySchedules chứa DayOfWeek không hợp lệ (0-6)." }) };
+                    if (!TimeOnly.TryParse(ds.StartTime, out var dsStart))
+                        return new LongTermBuildResult { Error = BadRequest(new { message = $"StartTime không hợp lệ cho ngày {ds.DayOfWeek}." }) };
+                    if (!TimeOnly.TryParse(ds.EndTime, out var dsEnd))
+                        return new LongTermBuildResult { Error = BadRequest(new { message = $"EndTime không hợp lệ cho ngày {ds.DayOfWeek}." }) };
+                    dayTimeMap[(DayOfWeek)ds.DayOfWeek] = (dsStart, dsEnd);
+                }
+                (timeSlots, expandErr) = BookingSlotHelper.ExpandTimeSlotsWithDailySchedules(rs, re, dayTimeMap, BookingSlotHelper.MaxLongTermSlots, venueInfo.SlotDuration);
+            }
+            else
+            {
+                (timeSlots, expandErr) = BookingSlotHelper.ExpandTimeSlots(rs, re, dayFilter, st, et, BookingSlotHelper.MaxLongTermSlots, venueInfo.SlotDuration);
+            }
+
+            if (expandErr != null)
+                return new LongTermBuildResult { Error = BadRequest(new { message = expandErr }) };
+
+            var pricePreference = string.IsNullOrWhiteSpace(dto.PricePreference) ? "BEST" : dto.PricePreference.Trim().ToUpperInvariant();
+
+            var (smartItems, smartErr) = await BookingSlotHelper.AllocateFlexibleLongTerm(
+                _dbContext, allCourts, timeSlots, dto.CourtId, pricePreference, ct);
+
+            if (smartErr != null && smartItems.All(x => x.IsUnavailable))
+                return new LongTermBuildResult { Error = Conflict(new { message = smartErr }) };
+
+            return new LongTermBuildResult
+            {
+                SmartItems = smartItems,
+                RangeStart = rs,
+                RangeEnd = re,
+                SessionStart = st,
+                SessionEnd = et,
+            };
+        }
+
+        // ── LEGACY SINGLE-COURT PATH ──
         var court = await _dbContext.Courts
             .Include(c => c.CourtPrices)
-            .FirstOrDefaultAsync(c => c.Id == dto.CourtId && c.VenueId == dto.VenueId && c.IsActive == true && c.Status == "ACTIVE", ct);
+            .FirstOrDefaultAsync(c => c.Id == dto.CourtId!.Value && c.VenueId == dto.VenueId && c.IsActive == true && c.Status == "ACTIVE", ct);
 
         if (court == null)
             return new LongTermBuildResult { Error = BadRequest(new { message = "Sân không thuộc cơ sở hoặc không hoạt động." }) };
 
-        var venueOk = await _dbContext.Venues.AnyAsync(v => v.Id == dto.VenueId && v.IsActive == true, ct);
-        if (!venueOk)
-            return new LongTermBuildResult { Error = BadRequest(new { message = "Cơ sở không tồn tại hoặc chưa mở đặt sân." }) };
+        List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)> normalizedItems;
+        string? legacyExpandErr;
 
-        var (normalizedItems, expandErr) = BookingSlotHelper.ExpandWeeklyLongTerm(
-            dto.CourtId, court, rs, re, dayFilter, st, et, BookingSlotHelper.MaxLongTermSlots);
-        if (expandErr != null)
-            return new LongTermBuildResult { Error = BadRequest(new { message = expandErr }) };
+        if (dto.DailySchedules != null && dto.DailySchedules.Count > 0)
+        {
+            var dayTimeMap = new Dictionary<DayOfWeek, (TimeOnly Start, TimeOnly End)>();
+            foreach (var ds in dto.DailySchedules)
+            {
+                if (ds.DayOfWeek < 0 || ds.DayOfWeek > 6)
+                    return new LongTermBuildResult { Error = BadRequest(new { message = "DailySchedules chứa DayOfWeek không hợp lệ (0-6)." }) };
+                if (!TimeOnly.TryParse(ds.StartTime, out var dsStart))
+                    return new LongTermBuildResult { Error = BadRequest(new { message = $"StartTime không hợp lệ cho ngày {ds.DayOfWeek}." }) };
+                if (!TimeOnly.TryParse(ds.EndTime, out var dsEnd))
+                    return new LongTermBuildResult { Error = BadRequest(new { message = $"EndTime không hợp lệ cho ngày {ds.DayOfWeek}." }) };
+                dayTimeMap[(DayOfWeek)ds.DayOfWeek] = (dsStart, dsEnd);
+            }
+            (normalizedItems, legacyExpandErr) = BookingSlotHelper.ExpandWeeklyLongTermWithDailySchedules(
+                dto.CourtId!.Value, court, rs, re, dayTimeMap, BookingSlotHelper.MaxLongTermSlots, venueInfo.SlotDuration);
+        }
+        else
+        {
+            (normalizedItems, legacyExpandErr) = BookingSlotHelper.ExpandWeeklyLongTerm(
+                dto.CourtId!.Value, court, rs, re, dayFilter, st, et, BookingSlotHelper.MaxLongTermSlots, venueInfo.SlotDuration);
+        }
 
-        var courtIds = new List<Guid> { dto.CourtId };
-        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, ct);
+        if (legacyExpandErr != null)
+            return new LongTermBuildResult { Error = BadRequest(new { message = legacyExpandErr }) };
+
+        var courtIds = new List<Guid> { dto.CourtId!.Value };
+        TryGetCurrentUserId(out var currentUserId);
+        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, ct, excludeBookingId: null, excludeHoldingUserId: currentUserId);
         if (conflict == "CONFLICT_BOOKING")
             return new LongTermBuildResult { Error = Conflict(new { message = "Một hoặc nhiều khung giờ đã có người đặt. Vui lòng đổi lịch." }) };
         if (conflict == "CONFLICT_BLOCK")
@@ -1172,6 +1316,120 @@ public class BookingsController : ControllerBase
     }
 
     /// <summary>
+    /// Cancel a HOLDING booking immediately, releasing the courts for others.
+    /// Only the owner of the booking can trigger this.
+    /// </summary>
+    [HttpPost("{id:guid}/cancel-hold")]
+    public async Task<IActionResult> CancelHold([FromRoute] Guid id)
+    {
+        if (!TryGetCurrentUserId(out var userId))
+            return Unauthorized(new { message = "Không xác định được người dùng." });
+
+        var booking = await _dbContext.Bookings
+            .Include(b => b.BookingItems)
+            .FirstOrDefaultAsync(b => b.Id == id);
+
+        if (booking == null)
+            return NotFound(new { message = "Không tìm thấy đơn đặt." });
+
+        // Strict ownership validation
+        if (booking.UserId != userId)
+            return Forbid();
+
+        if (booking.Status != "HOLDING")
+            return BadRequest(new { message = "Chỉ có thể huỷ đơn đang giữ chỗ (HOLDING)." });
+
+        booking.Status = "CANCELLED";
+        booking.HoldExpiresAt = null;
+
+        foreach (var item in booking.BookingItems)
+            item.Status = "CANCELLED";
+
+        // Cancel the series too, if any
+        if (booking.SeriesId is { } seriesId)
+        {
+            var series = await _dbContext.BookingSeries.FirstOrDefaultAsync(s => s.Id == seriesId);
+            if (series != null)
+                series.Status = "CANCELLED";
+        }
+
+        // Restore coupon usage if one was applied
+        if (booking.CouponId.HasValue)
+        {
+            var coupon = await _dbContext.VenueCoupons.FirstOrDefaultAsync(c => c.Id == booking.CouponId.Value);
+            if (coupon != null && (coupon.UsedCount ?? 0) > 0)
+                coupon.UsedCount = (coupon.UsedCount ?? 0) - 1;
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "Đã huỷ giữ chỗ thành công. Các khung giờ đã được giải phóng.",
+            bookingId = booking.Id,
+            status = booking.Status,
+        });
+    }
+
+    /// <summary>
+    /// Shared helper: update an existing HOLDING booking's contact info and refresh the hold timer.
+    /// Strictly validates ownership (UserId) and HOLDING status.
+    /// </summary>
+    private async Task<IActionResult> UpdateHoldingBookingContact(
+        Guid bookingId, Guid userId, string contactName, string contactPhone, string? note)
+    {
+        var booking = await _dbContext.Bookings
+            .Include(b => b.BookingItems).ThenInclude(bi => bi.Court)
+            .FirstOrDefaultAsync(b => b.Id == bookingId);
+
+        if (booking == null)
+            return NotFound(new { message = "Không tìm thấy đơn đặt." });
+
+        // Strict ownership validation
+        if (booking.UserId != userId)
+            return Forbid();
+
+        if (booking.Status != "HOLDING")
+            return BadRequest(new { message = "Chỉ có thể cập nhật đơn đang giữ chỗ (HOLDING)." });
+
+        if (booking.HoldExpiresAt != null && booking.HoldExpiresAt <= DateTime.UtcNow)
+            return BadRequest(new { message = "Thời gian giữ chỗ đã hết. Vui lòng đặt lại.", code = "HOLD_EXPIRED" });
+
+        // Update contact info
+        booking.ContactName = contactName.Trim();
+        booking.ContactPhone = contactPhone.Trim();
+        booking.GuestNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+
+        // Refresh hold timer to a new 5-minute window
+        var holdExpiry = DateTime.UtcNow.AddMinutes(5);
+        booking.HoldExpiresAt = holdExpiry;
+
+        await _dbContext.SaveChangesAsync();
+
+        var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
+
+        return Ok(new
+        {
+            bookingId = booking.Id,
+            bookingCode = code,
+            status = booking.Status,
+            holdExpiresAt = DateTime.SpecifyKind(holdExpiry, DateTimeKind.Utc),
+            totalAmount = booking.TotalAmount,
+            finalAmount = booking.FinalAmount,
+            items = booking.BookingItems.Select(bi => new BookingItemResponseDto
+            {
+                Id = bi.Id,
+                CourtId = bi.CourtId ?? Guid.Empty,
+                CourtName = bi.Court?.Name,
+                StartTime = bi.StartTime ?? default,
+                EndTime = bi.EndTime ?? default,
+                FinalPrice = bi.FinalPrice ?? 0,
+                Status = bi.Status
+            }).ToList(),
+        });
+    }
+
+    /// <summary>
     /// Player gửi / cập nhật thông tin ngân hàng nhận hoàn tiền.
     /// </summary>
     [HttpPatch("{id:guid}/refund-bank-info")]
@@ -1216,8 +1474,11 @@ public class BookingsController : ControllerBase
         if (booking == null)
             return NotFound(new { message = "Không tìm thấy đơn đặt." });
 
-        if (booking.Status != "PENDING")
-            return BadRequest(new { message = "Chỉ có thể thanh toán khi đơn đang chờ duyệt." });
+        if (booking.Status is not ("PENDING" or "HOLDING"))
+            return BadRequest(new { message = "Chỉ có thể thanh toán khi đơn đang chờ duyệt hoặc đang giữ chỗ." });
+
+        if (booking.Status == "HOLDING" && booking.HoldExpiresAt != null && booking.HoldExpiresAt <= DateTime.UtcNow)
+            return BadRequest(new { message = "Thời gian giữ chỗ đã hết. Vui lòng đặt lại.", code = "HOLD_EXPIRED" });
 
         var lastPay = booking.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
         var hasProof = lastPay != null
@@ -1238,7 +1499,8 @@ public class BookingsController : ControllerBase
             })
             .ToList();
 
-        var totalMins = booking.BookingItems.Count * 30;
+        var venueSlotDuration = booking.Venue?.SlotDuration ?? 60;
+        var totalMins = booking.BookingItems.Count * venueSlotDuration;
         var th = totalMins / 60;
         var tm = totalMins % 60;
         var totalHoursStr = tm > 0 ? $"{th}h{tm}" : $"{th}h";
@@ -1247,12 +1509,17 @@ public class BookingsController : ControllerBase
         {
             bookingId = booking.Id,
             bookingCode = code,
+            status = booking.Status,
+            holdExpiresAt = booking.HoldExpiresAt.HasValue
+                ? DateTime.SpecifyKind(booking.HoldExpiresAt.Value, DateTimeKind.Utc)
+                : (DateTime?)null,
             venueId = booking.VenueId,
             venueName = booking.Venue != null ? booking.Venue.Name : null,
             venueAddress = booking.Venue != null ? booking.Venue.Address : null,
             date = booking.BookingItems.Min(bi => bi.StartTime)?.ToString("yyyy-MM-dd"),
             totalPrice = booking.FinalAmount ?? 0,
             totalHours = totalHoursStr,
+            slotDuration = venueSlotDuration,
             customerName = booking.ContactName,
             customerPhone = booking.ContactPhone,
             note = booking.GuestNote,
@@ -1283,7 +1550,9 @@ public class BookingsController : ControllerBase
 
         var booking = await _dbContext.Bookings
             .Include(b => b.Venue)
+                .ThenInclude(v => v!.OwnerUser)
             .Include(b => b.Payments)
+            .Include(b => b.BookingItems)
             .FirstOrDefaultAsync(b => b.Id == id && b.UserId == userId);
 
         if (booking == null)
@@ -1292,8 +1561,11 @@ public class BookingsController : ControllerBase
         if (booking.Status == "CANCELLED")
             return BadRequest(new { message = "Đơn đã bị huỷ." });
 
-        if (booking.Status != "PENDING")
-            return BadRequest(new { message = "Chỉ có thể nộp minh chứng khi đơn đang chờ duyệt." });
+        if (booking.Status is not ("PENDING" or "HOLDING"))
+            return BadRequest(new { message = "Chỉ có thể nộp minh chứng khi đơn đang chờ duyệt hoặc đang giữ chỗ." });
+
+        if (booking.Status == "HOLDING" && booking.HoldExpiresAt != null && booking.HoldExpiresAt <= DateTime.UtcNow)
+            return BadRequest(new { message = "Thời gian giữ chỗ đã hết. Vui lòng đặt lại.", code = "HOLD_EXPIRED" });
 
         var methodNorm = string.IsNullOrWhiteSpace(form.Method) ? "BANK" : form.Method.Trim().ToUpperInvariant();
         var methodLabel = methodNorm == "QR" ? "QR" : "BANK_TRANSFER";
@@ -1319,6 +1591,21 @@ public class BookingsController : ControllerBase
             && existingPending.GatewayReference.StartsWith("https", StringComparison.OrdinalIgnoreCase))
         {
             return BadRequest(new { message = "Đơn đã có minh chứng thanh toán. Không gửi lại." });
+        }
+
+        var wasHolding = booking.Status == "HOLDING";
+        if (wasHolding)
+        {
+            booking.Status = "PENDING";
+            booking.HoldExpiresAt = null;
+            foreach (var item in booking.BookingItems)
+                item.Status = "PENDING";
+
+            if (booking.SeriesId is { } seriesId)
+            {
+                var series = await _dbContext.BookingSeries.FirstOrDefaultAsync(s => s.Id == seriesId);
+                if (series != null) series.Status = "PENDING";
+            }
         }
 
         Payment paymentRow;
@@ -1353,17 +1640,82 @@ public class BookingsController : ControllerBase
         {
             try
             {
+                var notifTitle = wasHolding ? "📢 Có đơn đặt sân mới chờ duyệt" : "Có minh chứng thanh toán mới";
+                var notifBody = wasHolding
+                    ? $"Mã {bookingCode} — {booking.ContactName} — {booking.FinalAmount:N0} VNĐ."
+                    : $"Đơn {bookingCode} vừa có ảnh chứng từ từ người chơi.";
+                var notifType = wasHolding ? NotificationTypes.BookingNew : NotificationTypes.PaymentProof;
+
+                // Build branded HTML email for new booking alert
+                string? newBookingHtml = null;
+                if (wasHolding)
+                {
+                    var ownerName = booking.Venue?.OwnerUser?.FullName ?? "Chủ sân";
+                    var vName = booking.Venue?.Name ?? "sân";
+                    var contactName = booking.ContactName ?? "Khách hàng";
+                    var frontUrl = _configuration["App:FrontendUrl"] ?? "http://localhost:5173";
+                    var mgrLink = $"{frontUrl}/manager/bookings";
+
+                    newBookingHtml = $"""
+                        <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">
+                          <div style="background:linear-gradient(135deg,#059669,#10b981);padding:28px 24px;text-align:center">
+                            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700">🏸 ShuttleUp</h1>
+                            <p style="margin:6px 0 0;color:#d1fae5;font-size:14px">Đơn đặt sân mới</p>
+                          </div>
+                          <div style="padding:24px">
+                            <p style="color:#334155;font-size:15px;margin:0 0 16px">
+                              Xin chào <strong>{System.Net.WebUtility.HtmlEncode(ownerName)}</strong>,
+                            </p>
+                            <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:20px">
+                              <table style="width:100%;border-collapse:collapse;font-size:14px;color:#334155">
+                                <tr>
+                                  <td style="padding:6px 0;font-weight:600;width:130px">📋 Mã đơn:</td>
+                                  <td style="padding:6px 0"><strong>{bookingCode}</strong></td>
+                                </tr>
+                                <tr>
+                                  <td style="padding:6px 0;font-weight:600">👤 Khách hàng:</td>
+                                  <td style="padding:6px 0">{System.Net.WebUtility.HtmlEncode(contactName)}</td>
+                                </tr>
+                                <tr>
+                                  <td style="padding:6px 0;font-weight:600">📍 Sân:</td>
+                                  <td style="padding:6px 0">{System.Net.WebUtility.HtmlEncode(vName)}</td>
+                                </tr>
+                                <tr>
+                                  <td style="padding:6px 0;font-weight:600">💰 Tổng tiền:</td>
+                                  <td style="padding:6px 0"><strong>{booking.FinalAmount:N0} VNĐ</strong></td>
+                                </tr>
+                              </table>
+                            </div>
+                            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-bottom:20px">
+                              <p style="margin:0;color:#92400e;font-size:13px">⏰ Duyệt đơn nhanh trong vòng <strong>60 phút</strong> để duy trì huy hiệu <strong>Elite Owner</strong>!</p>
+                            </div>
+                            <div style="text-align:center;margin:20px 0">
+                              <a href="{mgrLink}"
+                                 style="display:inline-block;padding:12px 32px;background:#16a34a;color:#ffffff;
+                                        border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">
+                                Xem và duyệt đơn ngay
+                              </a>
+                            </div>
+                            <p style="color:#94a3b8;font-size:12px;margin:20px 0 0;text-align:center">
+                              Bạn nhận được email này vì có đơn đặt sân mới trên ShuttleUp.
+                            </p>
+                          </div>
+                        </div>
+                        """;
+                }
+
                 await _notify.NotifyUserAsync(
                     mgrId,
-                    NotificationTypes.PaymentProof,
-                    "Có minh chứng thanh toán mới",
-                    $"Đơn {bookingCode} vừa có ảnh chứng từ từ người chơi.",
+                    notifType,
+                    notifTitle,
+                    notifBody,
                     NotificationMetadataBuilder.BookingForManager(booking.Id, booking.VenueId),
-                    sendEmail: false);
+                    sendEmail: wasHolding,
+                    htmlBodyOverride: newBookingHtml);
             }
-            catch
+            catch (Exception ex)
             {
-                /* ignore */
+                _ = ex; /* swallow — do not break payment flow */
             }
         }
 
@@ -1375,7 +1727,8 @@ public class BookingsController : ControllerBase
             paymentRow.Amount,
             proofUrl = secureUrl,
             bookingId = booking.Id,
-            bookingCode
+            bookingCode,
+            bookingStatus = booking.Status,
         });
     }
 
@@ -1385,10 +1738,29 @@ public class BookingsController : ControllerBase
         if (dto.BaseAmount <= 0)
             return BadRequest(new { message = "BaseAmount phải lớn hơn 0." });
 
-        if (dto.DaysDuration < 1) dto.DaysDuration = 1;
+        // Parse BookedDates (ISO yyyy-MM-dd) from FE — preferred over legacy DaysDuration
+        List<DateTime> bookedDates = new();
+        if (dto.BookedDates is { Count: > 0 })
+        {
+            foreach (var ds in dto.BookedDates)
+            {
+                if (DateTime.TryParse(ds, out var parsed))
+                    bookedDates.Add(parsed);
+            }
+        }
+
+        // Fallback: if FE doesn't send BookedDates yet (backward compat),
+        // generate a fake consecutive range so old behavior still works for single-day bookings.
+        if (bookedDates.Count == 0)
+        {
+            if (dto.DaysDuration < 1) dto.DaysDuration = 1;
+            // Single-day / legacy callers: treat as 1 consecutive day (no discount)
+            bookedDates.Add(DateTime.UtcNow.Date);
+        }
 
         _ = TryGetCurrentUserId(out var previewUserId);
-        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg) = await CalculateDiscountAsync(dto.VenueId, dto.BaseAmount, dto.DaysDuration, dto.CouponCode, previewUserId);
+        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, longTermDiscountAmount, couponDiscountAmount) =
+            await CalculateDiscountAsync(dto.VenueId, dto.BaseAmount, bookedDates, dto.CouponCode, previewUserId);
 
         // We don't block the request if there is an error in calculating coupon (e.g. invalid coupon), 
         // we just return the errorMsg in response so FE can handle it (show text "Mã không hợp lệ" etc).
@@ -1400,29 +1772,71 @@ public class BookingsController : ControllerBase
         {
             baseAmount = dto.BaseAmount,
             discountAmount,
+            longTermDiscountAmount,
+            couponDiscountAmount,
             finalAmount,
             isValidCoupon = couponId != null,
             errorMsg
         });
     }
 
-    private async Task<(decimal DiscountAmount, decimal FinalAmount, Guid? CouponId, ShuttleUp.DAL.Models.VenueCoupon? CouponToUpdate, string? ErrorMsg)> CalculateDiscountAsync(
+    /// <summary>
+    /// Tính chuỗi ngày liên tục dài nhất từ danh sách ngày có booking.
+    /// "Liên tục" = mỗi ngày liền kề nhau, không ngắt quãng.
+    /// </summary>
+    private static int ComputeLongestConsecutiveStreak(IReadOnlyList<DateTime> bookedDates)
+    {
+        if (bookedDates == null || bookedDates.Count == 0) return 0;
+
+        var uniqueDates = bookedDates
+            .Select(d => d.Date)
+            .Distinct()
+            .OrderBy(d => d)
+            .ToList();
+
+        if (uniqueDates.Count == 0) return 0;
+        if (uniqueDates.Count == 1) return 1;
+
+        int longestStreak = 1;
+        int currentStreak = 1;
+
+        for (int i = 1; i < uniqueDates.Count; i++)
+        {
+            if ((uniqueDates[i] - uniqueDates[i - 1]).Days == 1)
+            {
+                currentStreak++;
+                if (currentStreak > longestStreak)
+                    longestStreak = currentStreak;
+            }
+            else
+            {
+                currentStreak = 1;
+            }
+        }
+
+        return longestStreak;
+    }
+
+    private async Task<(decimal DiscountAmount, decimal FinalAmount, Guid? CouponId, ShuttleUp.DAL.Models.VenueCoupon? CouponToUpdate, string? ErrorMsg, decimal LongTermDiscountAmount, decimal CouponDiscountAmount)> CalculateDiscountAsync(
         Guid venueId,
         decimal totalAmount,
-        int daysDuration,
+        IReadOnlyList<DateTime> bookedDates,
         string? couponCode,
         Guid? userIdForCouponCheck)
     {
         var venue = await _dbContext.Venues.AsNoTracking().FirstOrDefaultAsync(v => v.Id == venueId);
-        if (venue == null) return (0, totalAmount, null, null, "Venue not found");
+        if (venue == null) return (0, totalAmount, null, null, "Venue not found", 0, 0);
+
+        // Tính chuỗi ngày liên tục dài nhất (consecutive streak)
+        var consecutiveStreak = ComputeLongestConsecutiveStreak(bookedDates);
 
         decimal autoDiscountAmount = 0;
         
-        if (daysDuration >= 30 && venue.MonthlyDiscountPercent > 0)
+        if (consecutiveStreak >= 30 && venue.MonthlyDiscountPercent > 0)
         {
             autoDiscountAmount = totalAmount * (venue.MonthlyDiscountPercent.Value / 100m);
         }
-        else if (daysDuration >= 7 && venue.WeeklyDiscountPercent > 0)
+        else if (consecutiveStreak >= 7 && venue.WeeklyDiscountPercent > 0)
         {
             autoDiscountAmount = totalAmount * (venue.WeeklyDiscountPercent.Value / 100m);
         }
@@ -1437,17 +1851,17 @@ public class BookingsController : ControllerBase
             var codeNorm = couponCode.Trim().ToUpperInvariant();
             var coupon = await _dbContext.VenueCoupons.FirstOrDefaultAsync(c => c.VenueId == venueId && c.Code == codeNorm && c.IsActive == true);
             if (coupon == null)
-                return (0, totalAmount, null, null, "Mã giảm giá không hợp lệ hoặc đã bị khóa.");
+                return (autoDiscountAmount, totalAmount - autoDiscountAmount, null, null, "Mã giảm giá không hợp lệ hoặc đã bị khóa.", autoDiscountAmount, 0);
 
             var now = DateTime.UtcNow;
             if (now < coupon.StartDate || now > coupon.EndDate)
-                return (0, totalAmount, null, null, "Mã giảm giá không trong thời gian sử dụng.");
+                return (autoDiscountAmount, totalAmount - autoDiscountAmount, null, null, "Mã giảm giá không trong thời gian sử dụng.", autoDiscountAmount, 0);
 
             if (coupon.MinBookingValue > 0 && finalAmount < coupon.MinBookingValue)
-                return (0, totalAmount, null, null, $"Mã giảm giá yêu cầu giá trị đơn tối thiểu {coupon.MinBookingValue:N0} VNĐ (sau khi đã trừ tự động).");
+                return (autoDiscountAmount, totalAmount - autoDiscountAmount, null, null, $"Mã giảm giá yêu cầu giá trị đơn tối thiểu {coupon.MinBookingValue:N0} VNĐ (sau khi đã trừ tự động).", autoDiscountAmount, 0);
 
             if (coupon.UsageLimit.HasValue && (coupon.UsedCount ?? 0) >= coupon.UsageLimit.Value)
-                return (0, totalAmount, null, null, "Mã giảm giá đã hết lượt sử dụng.");
+                return (autoDiscountAmount, totalAmount - autoDiscountAmount, null, null, "Mã giảm giá đã hết lượt sử dụng.", autoDiscountAmount, 0);
 
             if (coupon.OneUsePerUser && userIdForCouponCheck is { } uid && uid != Guid.Empty)
             {
@@ -1457,7 +1871,7 @@ public class BookingsController : ControllerBase
                         && b.Status != null
                         && b.Status != "CANCELLED");
                 if (alreadyUsed)
-                    return (0, totalAmount, null, null, "Mã này chỉ dùng được một lần cho mỗi tài khoản. Bạn đã sử dụng trước đó.");
+                    return (autoDiscountAmount, totalAmount - autoDiscountAmount, null, null, "Mã này chỉ dùng được một lần cho mỗi tài khoản. Bạn đã sử dụng trước đó.", autoDiscountAmount, 0);
             }
 
             decimal couponDiscount = 0;
@@ -1482,7 +1896,114 @@ public class BookingsController : ControllerBase
             couponToUpdate = coupon;
         }
 
-        return (discountAmount, finalAmount, couponId, couponToUpdate, null);
+        var couponDiscountAmount = discountAmount - autoDiscountAmount;
+        return (discountAmount, finalAmount, couponId, couponToUpdate, null, autoDiscountAmount, couponDiscountAmount);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  SOFT REMINDER — Người chơi giục chủ sân duyệt đơn PENDING
+    // ═══════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// POST /api/bookings/{id}/remind-owner
+    /// Gửi Email + Notification cho chủ sân nhắc duyệt đơn PENDING.
+    /// Rate-limited: 1 lần / giờ (configurable) per booking via IMemoryCache.
+    /// </summary>
+    [HttpPost("{id:guid}/remind-owner")]
+    public async Task<IActionResult> RemindOwner([FromRoute] Guid id)
+    {
+        if (!TryGetCurrentUserId(out var userId))
+            return Unauthorized(new { message = "Không xác định được người dùng." });
+
+        var booking = await _dbContext.Bookings
+            .Include(b => b.Venue)
+                .ThenInclude(v => v!.OwnerUser)
+            .Include(b => b.User)
+            .FirstOrDefaultAsync(b => b.Id == id && b.UserId == userId);
+
+        if (booking == null)
+            return NotFound(new { message = "Không tìm thấy đơn đặt sân." });
+
+        if (booking.Status != "PENDING")
+            return BadRequest(new { message = "Chỉ có thể nhắc chủ sân khi đơn đang ở trạng thái Chờ duyệt." });
+
+        var owner = booking.Venue?.OwnerUser;
+        if (owner == null)
+            return BadRequest(new { message = "Không tìm thấy thông tin chủ sân." });
+
+        // ── Rate limit via IMemoryCache ──
+        var cooldownMinutes = _configuration.GetValue("ReminderSettings:SoftReminderCooldownMinutes", 60);
+        var cacheKey = $"SoftReminder_{id}";
+        if (_cache.TryGetValue(cacheKey, out DateTime lastSent))
+        {
+            var remaining = lastSent.AddMinutes(cooldownMinutes) - DateTime.UtcNow;
+            if (remaining > TimeSpan.Zero)
+            {
+                var mins = (int)Math.Ceiling(remaining.TotalMinutes);
+                return StatusCode(429, new
+                {
+                    message = $"Bạn đã nhắc chủ sân rồi. Vui lòng chờ thêm {mins} phút nữa.",
+                    remainingMinutes = mins
+                });
+            }
+        }
+
+        // ── Build notification & email ──
+        var playerName = booking.User?.FullName ?? booking.ContactName ?? "Khách hàng";
+        var venueName = booking.Venue?.Name ?? "sân";
+        var bookingCode = booking.Id.ToString()[..8].ToUpper();
+
+        var title = $"📋 Khách hàng nhắc duyệt đơn đặt sân";
+        var body = $"{playerName} đang chờ bạn duyệt đơn #{bookingCode} tại {venueName}. "
+                 + "Vui lòng vào hệ thống để xác nhận hoặc từ chối.";
+
+        var frontendUrl = _configuration["App:FrontendUrl"] ?? "http://localhost:5173";
+        var managerLink = $"{frontendUrl}/manager/bookings";
+
+        var htmlBody = $"""
+            <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">
+              <div style="background:linear-gradient(135deg,#059669,#10b981);padding:28px 24px;text-align:center">
+                <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700">🏸 ShuttleUp</h1>
+                <p style="margin:6px 0 0;color:#d1fae5;font-size:14px">Nhắc nhở duyệt đơn đặt sân</p>
+              </div>
+              <div style="padding:24px">
+                <p style="color:#334155;font-size:15px;margin:0 0 16px">
+                  Xin chào <strong>{System.Net.WebUtility.HtmlEncode(owner.FullName ?? owner.Email ?? "Chủ sân")}</strong>,
+                </p>
+                <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin-bottom:20px">
+                  <p style="margin:0;color:#92400e;font-size:14px">
+                    ⏳ Khách hàng <strong>{System.Net.WebUtility.HtmlEncode(playerName)}</strong>
+                    đang chờ bạn duyệt đơn đặt sân <strong>#{bookingCode}</strong>
+                    tại <strong>{System.Net.WebUtility.HtmlEncode(venueName)}</strong>.
+                  </p>
+                </div>
+                <div style="text-align:center;margin:20px 0">
+                  <a href="{managerLink}"
+                     style="display:inline-block;padding:12px 32px;background:#16a34a;color:#ffffff;
+                            border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">
+                    Xem danh sách đơn đặt sân
+                  </a>
+                </div>
+                <p style="color:#94a3b8;font-size:12px;margin:20px 0 0;text-align:center">
+                  Bạn nhận được email này vì có đơn đặt sân đang chờ xử lý trên ShuttleUp.
+                </p>
+              </div>
+            </div>
+            """;
+
+        await _notify.NotifyUserAsync(
+            owner.Id,
+            NotificationTypes.BookingManagerReminder,
+            title,
+            body,
+            metadata: new { bookingId = booking.Id, venueId = booking.VenueId },
+            sendEmail: true,
+            htmlBodyOverride: htmlBody,
+            cancellationToken: HttpContext.RequestAborted);
+
+        // Set cache — hạn = cooldownMinutes
+        _cache.Set(cacheKey, DateTime.UtcNow, TimeSpan.FromMinutes(cooldownMinutes));
+
+        return Ok(new { message = "Đã gửi nhắc nhở đến chủ sân thành công!" });
     }
 }
-    

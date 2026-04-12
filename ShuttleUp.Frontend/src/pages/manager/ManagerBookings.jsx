@@ -4,6 +4,7 @@ import { BOOKING_STATUSES, PAYMENT_METHODS } from '../../data/bookingsMock';
 import { getManagerBookings, patchManagerBookingStatus } from '../../api/managerBookingsApi';
 import BookingDetailModal from '../../components/manager/BookingDetailModal';
 import RejectModal from '../../components/manager/RejectModal';
+import { normalizeSearchText } from '../../utils/searchNormalize';
 
 /* ── Constants ──────────────────────────────────────────────────────────── */
 const PAGE_SIZE = 8;
@@ -43,7 +44,7 @@ function mapManagerBookingFromApi(b) {
   } else uiStatus = 'PENDING';
 
   const methodRaw = (b.paymentMethod || '').toUpperCase();
-  let paymentMethod = 'CASH';
+  let paymentMethod = 'NONE';
   if (methodRaw.includes('BANK')) paymentMethod = 'BANK';
   else if (methodRaw.includes('QR')) paymentMethod = 'QR';
   else if (methodRaw.includes('VNPAY')) paymentMethod = 'VNPAY';
@@ -233,15 +234,18 @@ export default function ManagerBookings() {
     if (timeFilter === 'week')  list = list.filter(b => isThisWeek(new Date(b.date)));
     if (timeFilter === 'month') list = list.filter(b => isThisMonth(new Date(b.date)));
     if (search.trim()) {
-      const q = search.toLowerCase().trim();
-      list = list.filter(b =>
-        b.player.toLowerCase().includes(q)
-        || (b.playerAccountSub && b.playerAccountSub.toLowerCase().includes(q))
-        || b.court.toLowerCase().includes(q)
-        || b.venue.toLowerCase().includes(q)
-        || String(b.id).toLowerCase().includes(q)
-        || (b.bookingCode && b.bookingCode.toLowerCase().includes(q)),
-      );
+      const nq = normalizeSearchText(search);
+      if (nq) {
+        list = list.filter(
+          (b) =>
+            normalizeSearchText(b.player).includes(nq) ||
+            (b.playerAccountSub && normalizeSearchText(b.playerAccountSub).includes(nq)) ||
+            normalizeSearchText(b.court).includes(nq) ||
+            normalizeSearchText(b.venue).includes(nq) ||
+            normalizeSearchText(String(b.id)).includes(nq) ||
+            (b.bookingCode && normalizeSearchText(b.bookingCode).includes(nq)),
+        );
+      }
     }
     list = [...list].sort((a, b) => {
       if (sortBy === 'newest') return new Date(b.date) - new Date(a.date);
@@ -444,36 +448,40 @@ export default function ManagerBookings() {
                   </tr>
                 ) : pageItems.map(b => {
                   const st = BOOKING_STATUSES[b.status] || BOOKING_STATUSES.PENDING;
-                  const pm = PAYMENT_METHODS[b.paymentMethod] || PAYMENT_METHODS.CASH;
+                  const pm = PAYMENT_METHODS[b.paymentMethod] || PAYMENT_METHODS.NONE;
                   return (
                     <tr key={b.id} data-manager-booking-row={b.bookingId || b.id}>
                       {/* Court */}
-                      <td>
+                      <td style={{ maxWidth: 220, overflow: 'hidden' }}>
                         <h2 className="table-avatar">
                           <span className="avatar avatar-sm flex-shrink-0">
                             <img className="avatar-img" src={b.courtImg} alt="" onError={e => { e.target.src = '/assets/img/booking/booking-01.jpg'; }} />
                           </span>
-                          <span className="table-head-name flex-grow-1">
-                            <a href="#!" onClick={e => { e.preventDefault(); setDetailModal(b); }}>
+                          <span className="table-head-name flex-grow-1" style={{ maxWidth: 'calc(100% - 40px)', overflow: 'hidden' }}>
+                            <a href="#!" onClick={e => { e.preventDefault(); setDetailModal(b); }} title={b.court} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {b.court}
                               {b.isLongTerm && (
                                 <span className="badge bg-info text-dark ms-1" style={{ fontSize: '0.65rem' }}>Lịch dài hạn</span>
                               )}
                             </a>
-                            <span><i className="feather-map-pin" style={{ fontSize: 11, marginRight: 3 }} />{b.venue}</span>
+                            <span title={b.venue} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <i className="feather-map-pin" style={{ fontSize: 11, marginRight: 3 }} />{b.venue}
+                            </span>
                           </span>
                         </h2>
                       </td>
                       {/* Player */}
-                      <td>
+                      <td style={{ maxWidth: 200, overflow: 'hidden' }}>
                         <h2 className="table-avatar">
                           <span className="avatar avatar-sm flex-shrink-0" style={{ borderRadius: '50%' }}>
                             <img className="avatar-img rounded-circle" src={b.playerImg} alt="" onError={e => { e.target.src = '/assets/img/profiles/avatar-01.jpg'; }} />
                           </span>
-                          <span className="table-head-name flex-grow-1">
-                            <a href="#!" onClick={e => e.preventDefault()}>{b.player}</a>
+                          <span className="table-head-name flex-grow-1" style={{ maxWidth: 'calc(100% - 40px)', overflow: 'hidden' }}>
+                            <a href="#!" onClick={e => e.preventDefault()} title={b.player} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {b.player}
+                            </a>
                             {b.playerAccountSub && (
-                              <span className="d-block text-muted" style={{ fontSize: 11 }}>
+                              <span className="d-block text-muted" title={`TK: ${b.playerAccountSub}`} style={{ fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 TK: {b.playerAccountSub}
                               </span>
                             )}

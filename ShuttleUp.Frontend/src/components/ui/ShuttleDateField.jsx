@@ -63,9 +63,9 @@ function CalendarIcon() {
 }
 
 /**
- * @param {{ value: string, onChange: (ymd: string) => void, placeholder?: string, id?: string }} props
+ * @param {{ value: string, onChange: (ymd: string) => void, placeholder?: string, id?: string, minDate?: string }} props
  */
-export default function ShuttleDateField({ value, onChange, placeholder = 'dd/mm/yyyy', id }) {
+export default function ShuttleDateField({ value, onChange, placeholder = 'dd/mm/yyyy', id, minDate, maxDate }) {
   const [open, setOpen] = useState(false);
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
@@ -120,7 +120,7 @@ export default function ShuttleDateField({ value, onChange, placeholder = 'dd/mm
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const title = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(new Date(viewYear, viewMonth, 1));
+// title removed
 
   const prevMonth = () => {
     if (viewMonth === 0) {
@@ -159,7 +159,27 @@ export default function ShuttleDateField({ value, onChange, placeholder = 'dd/mm
               <ChevronLeft />
             </button>
           </div>
-          <div className="shuttle-cal__title">{title}</div>
+          <div className="shuttle-cal__title" style={{ display: 'flex', gap: '8px', justifyContent: 'center', flex: 1 }}>
+            <select 
+              value={viewMonth} 
+              onChange={(e) => setViewMonth(Number(e.target.value))}
+              style={{ border: 'none', background: 'transparent', fontWeight: 'bold', outline: 'none', appearance: 'menulist', padding: '0 4px', cursor: 'pointer', color: 'inherit' }}
+            >
+              {Array.from({ length: 12 }).map((_, i) => (
+                <option style={{ color: '#000' }} key={i} value={i}>Tháng {i + 1}</option>
+              ))}
+            </select>
+            <select 
+              value={viewYear} 
+              onChange={(e) => setViewYear(Number(e.target.value))}
+              style={{ border: 'none', background: 'transparent', fontWeight: 'bold', outline: 'none', appearance: 'menulist', padding: '0 4px', cursor: 'pointer', color: 'inherit' }}
+            >
+              {Array.from({ length: 151 }).map((_, i) => {
+                const y = new Date().getFullYear() - 100 + i;
+                return <option style={{ color: '#000' }} key={y} value={y}>{y}</option>;
+              })}
+            </select>
+          </div>
           <div className="shuttle-cal__nav">
             <button type="button" className="shuttle-cal__nav-btn" onClick={nextMonth} aria-label="Tháng sau">
               <ChevronRight />
@@ -179,10 +199,13 @@ export default function ShuttleDateField({ value, onChange, placeholder = 'dd/mm
             const ymd = toYMD(cell);
             const isSel = value === ymd;
             const isTo = isSameYMD(cell, today);
+            const isDisabled = (minDate && ymd < minDate) || (maxDate && ymd > maxDate);
             return (
               <button
                 key={idx}
                 type="button"
+                disabled={isDisabled}
+                style={isDisabled ? { opacity: 0.3, cursor: 'not-allowed', background: '#f8fafc', color: '#94a3b8' } : {}}
                 className={[
                   'shuttle-cal__day',
                   !inMonth && 'shuttle-cal__day--muted',
@@ -192,6 +215,7 @@ export default function ShuttleDateField({ value, onChange, placeholder = 'dd/mm
                   .filter(Boolean)
                   .join(' ')}
                 onClick={() => {
+                  if (isDisabled) return;
                   onChange(ymd);
                   setOpen(false);
                 }}
@@ -214,8 +238,11 @@ export default function ShuttleDateField({ value, onChange, placeholder = 'dd/mm
           </button>
           <button
             type="button"
+            disabled={minDate && toYMD(new Date()) < minDate}
+            style={minDate && toYMD(new Date()) < minDate ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
             className="shuttle-cal__action shuttle-cal__action--primary"
             onClick={() => {
+              if (minDate && toYMD(new Date()) < minDate) return;
               onChange(toYMD(new Date()));
               setOpen(false);
             }}

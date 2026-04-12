@@ -6,6 +6,7 @@ namespace ShuttleUp.Backend.Services.Interfaces;
 public interface INotificationDispatchService
 {
     /// <param name="bookingStatusPayload">Nếu có, gửi thêm event SignalR "bookingStatus" (tương thích client cũ).</param>
+    /// <param name="htmlBodyOverride">Nếu có, dùng nguyên HTML này cho email thay vì tự sinh từ body (tránh double-encode).</param>
     Task NotifyUserAsync(
         Guid userId,
         string type,
@@ -14,5 +15,6 @@ public interface INotificationDispatchService
         object? metadata = null,
         bool sendEmail = false,
         object? bookingStatusPayload = null,
+        string? htmlBodyOverride = null,
         CancellationToken cancellationToken = default);
 }

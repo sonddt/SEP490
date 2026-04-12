@@ -43,6 +43,7 @@ public class VenuesController : ControllerBase
                 v.Includes,
                 v.Rules,
                 v.Amenities,
+                v.SlotDuration,
                 OwnerName = v.OwnerUser != null ? v.OwnerUser.FullName : null,
                 OwnerEmail = v.OwnerUser != null ? v.OwnerUser.Email : null,
                 OwnerPhone = v.OwnerUser != null ? v.OwnerUser.PhoneNumber : null,
@@ -83,6 +84,7 @@ public class VenuesController : ControllerBase
             Includes = ParseJsonArray(raw.Includes),
             Rules = ParseJsonArray(raw.Rules),
             Amenities = ParseJsonArray(raw.Amenities),
+            raw.SlotDuration,
             raw.OwnerName,
             raw.OwnerEmail,
             raw.OwnerPhone,
@@ -235,11 +237,38 @@ public class VenuesController : ControllerBase
         var dayStart = day.ToDateTime(TimeOnly.MinValue);
         var dayEnd = dayStart.AddDays(1);
 
-        var booked = await _dbContext.BookingItems
+        var userIdClaim = User.Identity?.IsAuthenticated == true
+            ? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            : null;
+        Guid? currentUserGuid = null;
+        if (userIdClaim != null && Guid.TryParse(userIdClaim, out var parsedUserId))
+            currentUserGuid = parsedUserId;
+
+        var bookedQuery = _dbContext.BookingItems
             .AsNoTracking()
             .Where(bi => bi.Court != null && bi.Court.VenueId == id
                                               && bi.StartTime < dayEnd && bi.EndTime > dayStart
-                                              && bi.Booking != null && bi.Booking.Status != "CANCELLED")
+                                              && bi.Booking != null && bi.Booking.Status != "CANCELLED");
+
+        var now = DateTime.UtcNow;
+
+        if (currentUserGuid != null)
+        {
+            var me = currentUserGuid.Value;
+            bookedQuery = bookedQuery.Where(bi =>
+                bi.Booking!.Status != "HOLDING" ||
+                (bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now && bi.Booking.UserId != me)
+            );
+        }
+        else 
+        {
+            bookedQuery = bookedQuery.Where(bi => 
+                bi.Booking!.Status != "HOLDING" || 
+                (bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now)
+            );
+        }
+
+        var booked = await bookedQuery
             .Select(bi => new
             {
                 CourtId = bi.CourtId!.Value,

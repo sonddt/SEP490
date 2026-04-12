@@ -12,6 +12,7 @@ import {
   ConfirmModal,
   Toast,
 } from './managerCheckoutSettingsShared';
+import { normalizeSearchText } from '../../utils/searchNormalize';
 
 /* ──────────────────────────────────────────────
    BankPicker — searchable dropdown with logos
@@ -40,13 +41,14 @@ function BankPicker({ banks, value, onSelect, error, loading }) {
 
   const filtered = useMemo(() => {
     if (!search) return banks;
-    const s = search.toLowerCase();
+    const nq = normalizeSearchText(search);
+    if (!nq) return banks;
     return banks.filter(
       (b) =>
-        b.shortName.toLowerCase().includes(s) ||
-        b.name.toLowerCase().includes(s) ||
-        b.code.toLowerCase().includes(s) ||
-        b.bin.includes(s),
+        normalizeSearchText(b.shortName).includes(nq) ||
+        normalizeSearchText(b.name).includes(nq) ||
+        normalizeSearchText(b.code).includes(nq) ||
+        normalizeSearchText(b.bin).includes(nq),
     );
   }, [banks, search]);
 

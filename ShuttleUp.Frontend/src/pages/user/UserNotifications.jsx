@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import UserDashboardMenu from '../../components/user/UserDashboardMenu';
 import {
   getNotifications,
   markNotificationRead,
@@ -114,54 +113,49 @@ export default function UserNotifications() {
   };
 
   return (
-    <div className="main-wrapper content-below-header">
-      <section className="breadcrumb breadcrumb-list mb-0">
-        <span className="primary-right-round" />
-        <div className="container">
-          <h1 className="text-white">Thông báo</h1>
-          <ul>
-            <li><Link to="/">Trang chủ</Link></li>
-            <li>Thông báo</li>
-          </ul>
-        </div>
-      </section>
-
-      <UserDashboardMenu />
-
-      <div className="content court-bg">
-        <div className="container">
-
-          <div className="card border-0 shadow-sm mb-4">
-            <div className="card-body py-3">
-              <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
-                <div className="d-flex gap-2 flex-wrap">
-                  {[
-                    { key: 'all', label: 'Tất cả' },
-                    { key: 'unread', label: `Chưa đọc (${unreadCount})` },
-                    { key: 'BOOKING', label: 'Đặt sân' },
-                    { key: 'PAYMENT', label: 'Thanh toán' },
-                  ].map((t) => (
-                    <button
-                      key={t.key}
-                      type="button"
-                      className={`btn btn-sm ${filterTab === t.key ? 'btn-secondary' : 'btn-outline-secondary'}`}
-                      onClick={() => setFilterTab(t.key)}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-                {unreadCount > 0 && (
-                  <button type="button" className="btn btn-sm btn-link text-secondary" onClick={markAll}>
-                    <i className="feather-check-circle me-1" />
-                    Đánh dấu tất cả đã đọc
-                  </button>
-                )}
-              </div>
-            </div>
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6 mb-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-1 flex items-center gap-2">
+              <i className="fa-solid fa-bell text-amber-500"></i>
+              Thông báo
+            </h2>
+            <p className="text-slate-500 text-sm m-0">Cập nhật tin tức mới nhất về đặt sân và hệ thống.</p>
           </div>
+          <div className="flex gap-2">
+            {unreadCount > 0 && (
+              <button type="button" className="btn btn-emerald-soft btn-sm font-bold" onClick={markAll}>
+                <i className="fa-solid fa-check-double me-2" />
+                Đọc tất cả
+              </button>
+            )}
+          </div>
+        </div>
 
-          <div className="card border-0 shadow-sm">
+        <div className="flex gap-2 flex-wrap mt-6 pt-6 border-t border-slate-50">
+          {[
+            { key: 'all', label: 'Tất cả', icon: 'fa-list' },
+            { key: 'unread', label: `Chưa đọc (${unreadCount})`, icon: 'fa-envelope-open' },
+            { key: 'BOOKING', label: 'Đặt sân', icon: 'fa-calendar-alt' },
+            { key: 'PAYMENT', label: 'Thanh toán', icon: 'fa-credit-card' },
+          ].map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              className={`user-filter-chip flex items-center gap-2 px-4 py-2 text-sm font-bold ${
+                filterTab === t.key ? 'user-filter-chip--active' : 'user-filter-chip--idle'
+              }`}
+              onClick={() => setFilterTab(t.key)}
+            >
+              <i className={`fa-solid ${t.icon} text-[12px]`}></i>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
             {loading ? (
               <div className="card-body text-center py-5 text-muted">Đang tải…</div>
             ) : filtered.length === 0 ? (
@@ -178,53 +172,49 @@ export default function UserNotifications() {
                     return (
                       <div
                         key={n.id}
-                        role="button"
-                        tabIndex={0}
-                        className="list-group-item border-0"
-                        style={{
-                          padding: '14px 20px',
-                          background: n.isRead ? '#fff' : '#f8fbff',
-                          cursor: hasTarget || !n.isRead ? 'pointer' : 'default',
-                          borderBottom: '1px solid #f1f5f9',
-                        }}
                         onClick={() => handleOpen(n)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleOpen(n)}
+                        className={`group relative p-4 transition-all duration-300 hover:bg-slate-50 border-b border-slate-50 last:border-0 cursor-pointer ${
+                          !n.isRead ? 'bg-emerald-50/30' : ''
+                        }`}
                       >
-                        <div className="d-flex gap-3 align-items-start">
-                          <div style={{
-                            width: 40, height: 40, borderRadius: '50%',
-                            background: ti.bg, display: 'flex',
-                            alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                          }}
-                          >
-                            <i className={ti.icon} style={{ fontSize: 17, color: ti.color }} />
+                        <div className="flex gap-4">
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-105 ${
+                            n.type?.includes('BOOKING') ? 'bg-emerald-100 text-emerald-600' : 
+                            n.type?.includes('PAYMENT') ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500'
+                          }`}>
+                            <i className={`fa-solid ${
+                              n.type?.includes('BOOKING') ? 'fa-calendar-check' : 
+                              n.type?.includes('PAYMENT') ? 'fa-credit-card' : 'fa-bell'
+                            } text-lg`}></i>
                           </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div className="d-flex justify-content-between align-items-start gap-2">
-                              <div>
-                                <strong style={{ fontSize: 14, color: '#1e293b' }}>{n.title}</strong>
-                                {n.body && (
-                                  <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>{n.body}</p>
-                                )}
-                              </div>
-                              <span style={{ fontSize: 11, color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                          
+                          <div className="flex-grow min-w-0">
+                            <div className="flex justify-between items-start mb-1">
+                              <h6 className={`text-[15px] m-0 truncate pr-8 ${!n.isRead ? 'font-bold text-slate-900' : 'font-semibold text-slate-600'}`}>
+                                {n.title}
+                              </h6>
+                              <span className="text-[11px] font-bold text-slate-400 whitespace-nowrap bg-slate-100 px-2 py-0.5 rounded-full border border-slate-100">
                                 {formatTime(n.createdAt)}
                               </span>
                             </div>
+                            <p className={`text-[13px] m-0 line-clamp-2 leading-relaxed ${!n.isRead ? 'text-slate-700' : 'text-slate-500'}`}>
+                              {n.message}
+                            </p>
                           </div>
-                          {!n.isRead && (
-                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', flexShrink: 0, marginTop: 6 }} />
-                          )}
-                          <button
-                            type="button"
-                            className="btn btn-link text-muted p-0"
-                            style={{ flexShrink: 0, fontSize: 16, lineHeight: 1 }}
-                            title="Ẩn thông báo"
-                            aria-label="Ẩn thông báo"
-                            onClick={(e) => handleDelete(e, n.id)}
-                          >
-                            <i className="feather-trash-2" />
-                          </button>
+
+                          <div className="flex flex-col items-end gap-2 shrink-0">
+                            {!n.isRead && (
+                              <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-sm shadow-emerald-200"></div>
+                            )}
+                            <button
+                              type="button"
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 hover:bg-rose-50 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"
+                              onClick={(e) => handleDelete(e, n.id)}
+                              title="Xóa thông báo"
+                            >
+                              <i className="fa-solid fa-trash-can text-sm"></i>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -246,8 +236,6 @@ export default function UserNotifications() {
             )}
           </div>
 
-        </div>
-      </div>
     </div>
   );
 }

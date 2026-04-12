@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
+import { normalizeSearchText } from '../../utils/searchNormalize';
 
 const MOCK_VENUES = [
   { id: 'v1', name: 'ShuttleUp Quận 7', address: '12 Nguyễn Thị Thập, Q.7, TP.HCM', image: '/assets/img/venue/venue-01.jpg', courtCount: 3, activeCourts: 3, totalBookingsThisMonth: 42, revenueThisMonth: 12400000, status: 'active', createdAt: '01/01/2026' },
@@ -206,8 +207,12 @@ export default function ManagerVenueList() {
   }, []);
 
   const sorted = useMemo(() => {
+    const nq = normalizeSearchText(search);
     const arr = venues.filter((v) => {
-      const ms = v.name.toLowerCase().includes(search.toLowerCase()) || v.address.toLowerCase().includes(search.toLowerCase());
+      const ms =
+        !nq ||
+        normalizeSearchText(v.name).includes(nq) ||
+        normalizeSearchText(v.address).includes(nq);
       const mf = filterStatus === 'all' || v.status === filterStatus;
       return ms && mf;
     });

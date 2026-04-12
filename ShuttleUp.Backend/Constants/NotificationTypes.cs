@@ -38,6 +38,13 @@ public static class NotificationTypes
     /// <summary>Chủ sân vừa phản hồi đánh giá — gửi cho người chơi.</summary>
     public const string VenueReviewReply = "VENUE_REVIEW_REPLY";
 
+    // ── Reminders ────────────────────────────────────────────────────
+    /// <summary>Nhắc người chơi sắp đến giờ đánh cầu (background job).</summary>
+    public const string UpcomingBooking = "UPCOMING_BOOKING";
+
+    /// <summary>Người chơi giục chủ sân duyệt đơn PENDING.</summary>
+    public const string BookingManagerReminder = "BOOKING_MANAGER_REMINDER";
+
     /// <summary>Admin yêu cầu hoàn tiền — gửi cho người chơi (khiếu nại BOOKING).</summary>
     public const string DisputeRefundPendingPlayer = "DISPUTE_REFUND_PENDING_PLAYER";
 

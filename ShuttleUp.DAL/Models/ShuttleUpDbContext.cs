@@ -135,6 +135,9 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasMaxLength(50)
                 .HasDefaultValueSql("'PENDING'")
                 .HasColumnName("status");
+            entity.Property(e => e.HoldExpiresAt)
+                .HasColumnType("datetime")
+                .HasColumnName("hold_expires_at");
             entity.Property(e => e.TotalAmount)
                 .HasPrecision(15, 2)
                 .HasColumnName("total_amount");
@@ -226,6 +229,11 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
                 .HasColumnName("status");
+            entity.Property(e => e.IsUpcomingReminderSent)
+                .HasColumnName("is_upcoming_reminder_sent")
+                .HasDefaultValue(false);
+
+            entity.HasIndex(e => new { e.StartTime, e.IsUpcomingReminderSent }, "idx_bi_reminder");
 
             entity.HasOne(d => d.Booking).WithMany(p => p.BookingItems)
                 .HasForeignKey(d => d.BookingId)
@@ -1235,6 +1243,9 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasColumnName("cancel_allowed");
             entity.Property(e => e.CancelBeforeMinutes)
                 .HasColumnName("cancel_before_minutes");
+            entity.Property(e => e.SlotDuration)
+                .HasDefaultValue(60)
+                .HasColumnName("slot_duration");
             entity.Property(e => e.RefundType)
                 .HasMaxLength(20)
                 .HasColumnName("refund_type");

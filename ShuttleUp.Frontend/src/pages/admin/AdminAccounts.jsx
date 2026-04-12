@@ -142,8 +142,12 @@ export default function AdminAccounts() {
                         : items.map((u, idx) => (
                             <tr key={u.id}>
                               <td className="text-muted">{(page - 1) * 10 + idx + 1}</td>
-                              <td><strong>{u.fullName}</strong></td>
-                              <td className="text-muted">{u.email}</td>
+                              <td title={u.fullName} style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                <strong>{u.fullName}</strong>
+                              </td>
+                              <td title={u.email} className="text-muted" style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {u.email}
+                              </td>
                               <td>{roleBadge(u.roles)}</td>
                               <td>{fmtDate(u.createdAt)}</td>
                               <td>

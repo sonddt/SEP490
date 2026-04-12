@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import BookingSteps from '../components/booking/BookingSteps';
 import LongTermBookingSteps from '../components/booking/LongTermBookingSteps';
 import {
-  createBooking,
   submitPayment,
   getVenueCheckoutSettings,
   getBookingPaymentContext,
+  cancelHold,
 } from '../api/bookingApi';
 
 const FALLBACK_BANK = {
@@ -15,8 +15,6 @@ const FALLBACK_BANK = {
   name: '—',
   note: 'Nội dung CK: [SĐT] - [Tên sân] - [Ngày]',
 };
-
-const HOLD_SECONDS = 15 * 60;
 
 function formatDateVN(isoDate) {
   if (!isoDate) return '';
@@ -38,11 +36,16 @@ function mapApiSlotsToRows(items) {
   if (!Array.isArray(items)) return [];
   return items.map((s) => {
     let timeLabel = s.timeLabel;
-    if (!timeLabel && s.startTime) {
+    let timeEndLabel = s.timeEndLabel;
+    if (s.startTime) {
       const d = new Date(s.startTime);
-      timeLabel = `${padTwo(d.getHours())}:${padTwo(d.getMinutes())}`;
+      if (!timeLabel) timeLabel = `${padTwo(d.getHours())}:${padTwo(d.getMinutes())}`;
     }
-    return { ...s, timeLabel, price: s.price ?? 0 };
+    if (s.endTime) {
+      const de = new Date(s.endTime);
+      if (!timeEndLabel) timeEndLabel = `${padTwo(de.getHours())}:${padTwo(de.getMinutes())}`;
+    }
+    return { ...s, timeLabel, timeEndLabel, price: s.price ?? 0 };
   });
 }
 
@@ -53,38 +56,42 @@ export default function BookingPayment() {
   const paramBookingId = searchParams.get('bookingId');
   const isLongTermFlow = searchParams.get('flow') === 'long-term';
 
-  const initial = location.state ?? {};
-
   const [pay, setPay] = useState({
-    venueId: initial.venueId ?? null,
-    venueName: initial.venueName ?? 'Sân cầu lông',
-    venueAddress: initial.venueAddress ?? '',
-    date: initial.date ?? new Date().toISOString().split('T')[0],
-    selectedSlots: initial.selectedSlots ?? [],
-    totalPrice: initial.totalPrice ?? 0,
-    totalHours: initial.totalHours ?? '0h',
-    customerName: initial.customerName ?? '',
-    customerPhone: initial.customerPhone ?? '',
-    note: initial.note ?? '',
-    couponCode: initial.couponCode ?? null,
-    discountInfo: initial.discountInfo ?? null,
+    venueId: null,
+    venueName: 'Sân cầu lông',
+    venueAddress: '',
+    date: new Date().toISOString().split('T')[0],
+    selectedSlots: [],
+    totalPrice: 0,
+    totalHours: '0h',
+    slotDuration: 60,
+    customerName: '',
+    customerPhone: '',
+    note: '',
   });
 
-  /** Chỉ nộp CK (đã có booking — thanh toán lại) */
-  const [resumeBookingId, setResumeBookingId] = useState(paramBookingId);
-  const [resumeBookingCode, setResumeBookingCode] = useState(null);
-  const [loadingContext, setLoadingContext] = useState(!!paramBookingId);
+  const [bookingId, setBookingId] = useState(paramBookingId);
+  const [bookingCode, setBookingCode] = useState(null);
+  const [bookingStatus, setBookingStatus] = useState(null);
+  const [holdExpiresAt, setHoldExpiresAt] = useState(null);
+  const [loadingContext, setLoadingContext] = useState(true);
   const [checkoutSettings, setCheckoutSettings] = useState(null);
   const [loadingCheckout, setLoadingCheckout] = useState(false);
   const [error, setError] = useState('');
 
-  const loadResume = useCallback(async () => {
-    if (!paramBookingId) return;
+  const loadContext = useCallback(async () => {
+    if (!paramBookingId) {
+      setError('Không tìm thấy mã đơn. Vui lòng đặt lại.');
+      setLoadingContext(false);
+      return;
+    }
     setLoadingContext(true);
     try {
       const ctx = await getBookingPaymentContext(paramBookingId);
-      setResumeBookingId(ctx.bookingId);
-      setResumeBookingCode(ctx.bookingCode ?? null);
+      setBookingId(ctx.bookingId);
+      setBookingCode(ctx.bookingCode ?? null);
+      setBookingStatus(ctx.status ?? null);
+      setHoldExpiresAt(ctx.holdExpiresAt ?? null);
       setPay({
         venueId: ctx.venueId,
         venueName: ctx.venueName ?? 'Sân cầu lông',
@@ -93,20 +100,24 @@ export default function BookingPayment() {
         selectedSlots: mapApiSlotsToRows(ctx.selectedSlots),
         totalPrice: Number(ctx.totalPrice ?? 0),
         totalHours: ctx.totalHours ?? '0h',
+        slotDuration: [30, 60, 120].includes(ctx.slotDuration) ? ctx.slotDuration : 60,
         customerName: ctx.customerName ?? '',
         customerPhone: ctx.customerPhone ?? '',
         note: ctx.note ?? '',
       });
-    } catch {
-      setError('Không tải được đơn để thanh toán. Vui lòng thử từ Lịch sử đặt sân.');
+    } catch (err) {
+      const code = err.response?.data?.code;
+      if (code === 'HOLD_EXPIRED') {
+        setError('Thời gian giữ chỗ đã hết. Vui lòng đặt lại.');
+      } else {
+        setError('Không tải được đơn để thanh toán. Vui lòng thử từ Lịch sử đặt sân.');
+      }
     } finally {
       setLoadingContext(false);
     }
   }, [paramBookingId]);
 
-  useEffect(() => {
-    loadResume();
-  }, [loadResume]);
+  useEffect(() => { loadContext(); }, [loadContext]);
 
   const transferNote = useMemo(
     () => buildTransferNote(checkoutSettings?.transferNoteTemplate, {
@@ -123,9 +134,8 @@ export default function BookingPayment() {
     (async () => {
       setLoadingCheckout(true);
       try {
-        const finalPrice = pay.discountInfo ? (pay.discountInfo.finalAmount || pay.discountInfo.finalPrice) : pay.totalPrice;
         const data = await getVenueCheckoutSettings(pay.venueId, {
-          amount: finalPrice,
+          amount: pay.totalPrice,
           addInfo: transferNote,
         });
         if (!cancelled) setCheckoutSettings(data);
@@ -136,7 +146,7 @@ export default function BookingPayment() {
       }
     })();
     return () => { cancelled = true; };
-  }, [pay.venueId, pay.totalPrice, pay.discountInfo, transferNote]);
+  }, [pay.venueId, pay.totalPrice, transferNote]);
 
   const bankInfo = useMemo(() => {
     if (checkoutSettings?.bankName) {
@@ -147,10 +157,7 @@ export default function BookingPayment() {
         note: `Nội dung CK: ${transferNote}`,
       };
     }
-    return {
-      ...FALLBACK_BANK,
-      note: `Nội dung CK: ${transferNote}`,
-    };
+    return { ...FALLBACK_BANK, note: `Nội dung CK: ${transferNote}` };
   }, [checkoutSettings, transferNote]);
 
   const vietQrUrl = checkoutSettings?.vietQrImageUrl || null;
@@ -163,14 +170,8 @@ export default function BookingPayment() {
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      setError('Vui lòng chọn file ảnh (JPG, PNG, ...).');
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setError('Ảnh không được vượt quá 10 MB.');
-      return;
-    }
+    if (!file.type.startsWith('image/')) { setError('Vui lòng chọn file ảnh (JPG, PNG, ...).'); return; }
+    if (file.size > 10 * 1024 * 1024) { setError('Ảnh không được vượt quá 10 MB.'); return; }
     if (proofPreview) URL.revokeObjectURL(proofPreview);
     setProofFile(file);
     setProofPreview(URL.createObjectURL(file));
@@ -186,36 +187,47 @@ export default function BookingPayment() {
 
   useEffect(() => () => { if (proofPreview) URL.revokeObjectURL(proofPreview); }, [proofPreview]);
 
-  const [secondsLeft, setSecondsLeft] = useState(HOLD_SECONDS);
+  /* ── Server-synced countdown ── */
+  const [secondsLeft, setSecondsLeft] = useState(null);
   const [expired, setExpired] = useState(false);
   const intervalRef = useRef(null);
 
   useEffect(() => {
+    if (!holdExpiresAt) return;
+    const computeRemaining = () => {
+      let ts = holdExpiresAt;
+      if (typeof ts === 'string' && !ts.endsWith('Z') && !ts.includes('+')) ts += 'Z';
+      const diff = Math.floor((new Date(ts).getTime() - Date.now()) / 1000);
+      return Math.max(diff, 0);
+    };
+    setSecondsLeft(computeRemaining());
+    clearInterval(intervalRef.current);
     intervalRef.current = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(intervalRef.current);
-          setExpired(true);
-          return 0;
-        }
-        return prev - 1;
-      });
+      const remaining = computeRemaining();
+      setSecondsLeft(remaining);
+      if (remaining <= 0) {
+        clearInterval(intervalRef.current);
+        setExpired(true);
+      }
     }, 1000);
     return () => clearInterval(intervalRef.current);
-  }, []);
+  }, [holdExpiresAt]);
 
-  const timerMins = Math.floor(secondsLeft / 60);
-  const timerSecs = secondsLeft % 60;
-  const timerUrgent = secondsLeft <= 120;
+  const timerMins = secondsLeft != null ? Math.floor(secondsLeft / 60) : 0;
+  const timerSecs = secondsLeft != null ? secondsLeft % 60 : 0;
+  const timerUrgent = secondsLeft != null && secondsLeft <= 60;
+  const isHolding = bookingStatus === 'HOLDING';
 
   const handleExpiredOk = useCallback(() => {
-    navigate('/booking', { state: location.state, replace: true });
-  }, [navigate, location.state]);
+    if (pay.venueId) navigate(`/venues/${pay.venueId}`);
+    else navigate('/venues');
+  }, [navigate, pay.venueId]);
 
   const [agreed, setAgreed] = useState(false);
-  const [agreedRules, setAgreedRules] = useState(false);
   const [rulesExpanded, setRulesExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const navigateComplete = (payload) => {
     navigate('/booking/complete', {
@@ -226,61 +238,19 @@ export default function BookingPayment() {
   const handleConfirm = async () => {
     if (!proofFile) { setError('Vui lòng upload ảnh minh chứng chuyển khoản.'); return; }
     if (!agreed) { setError('Vui lòng đồng ý với điều khoản dịch vụ.'); return; }
-    const hasVenueRules = !!(checkoutSettings?.venueRules?.trim() || checkoutSettings?.cancellation);
-    if (hasVenueRules && !agreedRules) { setError('Vui lòng đọc và đồng ý với Quy định của sân và Chính sách hoàn tiền.'); return; }
     if (expired) { setError('Thời gian giữ chỗ đã hết. Vui lòng đặt lại.'); return; }
-    if (!pay.venueId) { setError('Thiếu thông tin cơ sở. Vui lòng chọn sân lại.'); return; }
+    if (!bookingId) { setError('Thiếu mã đơn. Vui lòng đặt lại.'); return; }
 
     setError('');
     setLoading(true);
 
     try {
-      let bookingId = resumeBookingId;
-      let bookingCodeFromApi = resumeBookingCode;
-      let bookingStatus = 'PENDING';
-
-      if (resumeBookingId) {
-        /* Thanh toán lại — chỉ upload CK */
-      } else {
-        const items = (pay.selectedSlots || [])
-          .filter(s => s.courtId && s.startTime && s.endTime)
-          .map(s => ({
-            courtId: s.courtId,
-            startTime: s.startTime,
-            endTime: s.endTime,
-          }));
-
-        if (items.length === 0) {
-          setError('Không có khung giờ hợp lệ. Vui lòng quay lại chọn giờ.');
-          setLoading(false);
-          return;
-        }
-
-        const created = await createBooking({
-          venueId: pay.venueId,
-          items,
-          contactName: pay.customerName,
-          contactPhone: pay.customerPhone,
-          note: pay.note || undefined,
-          couponCode: pay.couponCode || undefined,
-        });
-
-        bookingId = created.bookingId ?? created.BookingId;
-        bookingCodeFromApi = created.bookingCode ?? created.BookingCode;
-        bookingStatus = created.status ?? created.Status ?? 'PENDING';
-        if (!bookingId) {
-          setError('Phản hồi từ server không hợp lệ (thiếu mã đơn).');
-          setLoading(false);
-          return;
-        }
-      }
-
       const formData = new FormData();
       formData.append('method', method === 'qr' ? 'QR' : 'BANK');
       formData.append('proofImage', proofFile);
 
       const payRes = await submitPayment(bookingId, formData);
-      const bookingCode = payRes.bookingCode ?? bookingCodeFromApi ?? `SU${String(bookingId).slice(-6)}`;
+      const code = payRes.bookingCode ?? bookingCode ?? `SU${String(bookingId).slice(-6)}`;
 
       setLoading(false);
       clearInterval(intervalRef.current);
@@ -293,18 +263,25 @@ export default function BookingPayment() {
         selectedSlots: pay.selectedSlots,
         totalPrice: pay.totalPrice,
         totalHours: pay.totalHours,
+        slotDuration: pay.slotDuration,
         customerName: pay.customerName,
         customerPhone: pay.customerPhone,
         note: pay.note,
         bookingId,
         paymentMethod: method === 'qr' ? 'Quét mã QR' : 'Chuyển khoản ngân hàng',
-        bookingCode,
-        bookingStatus,
+        bookingCode: code,
+        bookingStatus: payRes.bookingStatus ?? 'PENDING',
       });
     } catch (e) {
       setLoading(false);
       const status = e.response?.status;
       const body = e.response?.data;
+      const code = body?.code;
+      if (code === 'HOLD_EXPIRED') {
+        setExpired(true);
+        setSecondsLeft(0);
+        return;
+      }
       const msg =
         (typeof body === 'string' ? body : null)
         || body?.message
@@ -312,25 +289,68 @@ export default function BookingPayment() {
         || (Array.isArray(body?.errors) ? body.errors.join(' ') : null)
         || e.message
         || 'Đã có lỗi xảy ra.';
-      if (status === 409) {
-        setError(`${msg} Bạn có thể quay lại bước chọn giờ.`);
-      } else if (status === 401) {
-        setError('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại rồi thử thanh toán.');
-      } else {
-        setError(msg);
-      }
+      if (status === 409) setError(`${msg} Bạn có thể quay lại bước chọn giờ.`);
+      else if (status === 401) setError('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại rồi thử thanh toán.');
+      else setError(msg);
     }
   };
 
-  const {
-    venueName, venueAddress, date, selectedSlots, totalPrice, totalHours,
-    customerName, customerPhone, note, discountInfo
-  } = pay;
-  const finalPriceToDisplay = discountInfo ? (discountInfo.finalAmount || discountInfo.finalPrice) : totalPrice;
+  const { venueName, venueAddress, date, selectedSlots, totalPrice, totalHours, customerName, customerPhone, note } = pay;
+
+  const [sortConfig, setSortConfig] = useState({ key: 'time', dir: 'asc' });
+
+  const sortedSlots = useMemo(() => {
+    if (!selectedSlots) return [];
+    return [...selectedSlots].sort((a, b) => {
+      let aVal, bVal;
+      switch (sortConfig.key) {
+        case 'courtName':
+          aVal = a.courtName || '';
+          bVal = b.courtName || '';
+          break;
+        case 'time':
+          aVal = a.startTime || a.timeLabel || '';
+          bVal = b.startTime || b.timeLabel || '';
+          break;
+        case 'price':
+          aVal = a.price || 0;
+          bVal = b.price || 0;
+          break;
+        default:
+          return 0;
+      }
+      if (aVal < bVal) return sortConfig.dir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortConfig.dir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [selectedSlots, sortConfig]);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sortConfig, selectedSlots]);
+
+  const totalPages = Math.ceil(sortedSlots.length / ITEMS_PER_PAGE);
+  const paginatedSlots = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return sortedSlots.slice(start, start + ITEMS_PER_PAGE);
+  }, [sortedSlots, currentPage]);
+
+  const toggleSort = (key) => setSortConfig(prev => ({
+    key,
+    dir: prev.key === key && prev.dir === 'asc' ? 'desc' : 'asc'
+  }));
+
+  const renderSortIcon = (key) => {
+    if (sortConfig.key !== key) return <i className="feather-chevron-down text-muted ms-1" style={{ fontSize: '0.8em', opacity: 0.3 }} />;
+    return <i className={`feather-chevron-${sortConfig.dir === 'asc' ? 'up' : 'down'} text-primary ms-1`} style={{ fontSize: '0.8em' }} />;
+  };
 
   if (loadingContext) {
     return (
-      <div className="main-wrapper content-below-header text-center py-5" style={{ paddingTop: '120px' }}>
+      <div className="main-wrapper content-below-header text-center py-5">
         <div className="spinner-border text-secondary" role="status" />
         <p className="text-muted mt-2">Đang tải thông tin thanh toán…</p>
       </div>
@@ -338,7 +358,7 @@ export default function BookingPayment() {
   }
 
   return (
-    <div className="main-wrapper" style={{ paddingTop: '96px' }}>
+    <div className="main-wrapper content-below-header">
 
       {expired && (
         <div
@@ -355,7 +375,7 @@ export default function BookingPayment() {
             <div style={{ fontSize: 52, lineHeight: 1, marginBottom: 12 }}>⏰</div>
             <h4 className="mb-2">Thời gian giữ chỗ đã hết!</h4>
             <p className="text-muted mb-4">
-              15 phút đã trôi qua. Các khung giờ bạn chọn đã được giải phóng để người khác đặt.
+              5 phút đã trôi qua. Các khung giờ bạn chọn đã được giải phóng để người khác đặt.
               Vui lòng thực hiện lại quá trình đặt sân.
             </p>
             <button
@@ -363,7 +383,7 @@ export default function BookingPayment() {
               className="btn btn-secondary w-100"
               onClick={handleExpiredOk}
             >
-              Quay lại chọn giờ
+              Quay lại trang sân
             </button>
           </div>
         </div>
@@ -372,7 +392,7 @@ export default function BookingPayment() {
       {isLongTermFlow ? (
         <LongTermBookingSteps
           currentStep={3}
-          bookingId={resumeBookingId || paramBookingId || undefined}
+          bookingId={bookingId || paramBookingId || undefined}
         />
       ) : (
         <BookingSteps currentStep={3} />
@@ -381,31 +401,34 @@ export default function BookingPayment() {
       <div className="content">
         <div className="container">
 
-          <div
-            className="d-flex align-items-center justify-content-center gap-3 rounded p-3 mb-4"
-            style={{
-              background: timerUrgent ? '#fff1f1' : '#f0fdf4',
-              border: `1.5px solid ${timerUrgent ? '#fca5a5' : '#6ee7b7'}`,
-              transition: 'background 0.4s, border-color 0.4s',
-            }}
-          >
-            <i
-              className="feather-clock"
-              style={{ fontSize: 22, color: timerUrgent ? '#ef4444' : 'var(--primary-color)' }}
-            />
-            <span style={{ fontWeight: 600, color: timerUrgent ? '#ef4444' : 'var(--primary-color)', fontSize: '1.05rem' }}>
-              Giữ chỗ còn: {padTwo(timerMins)}:{padTwo(timerSecs)}
-            </span>
-            <span className="text-muted small">
-              — Hoàn tất trong 15 phút, slot sẽ tự động giải phóng khi hết giờ.
-            </span>
-          </div>
+          {/* Server-synced countdown */}
+          {isHolding && secondsLeft != null && (
+            <div
+              className="d-flex align-items-center justify-content-center gap-3 rounded p-3 mb-4"
+              style={{
+                background: timerUrgent ? '#fff1f1' : '#f0fdf4',
+                border: `1.5px solid ${timerUrgent ? '#fca5a5' : '#6ee7b7'}`,
+                transition: 'background 0.4s, border-color 0.4s',
+              }}
+            >
+              <i
+                className="feather-clock"
+                style={{ fontSize: 22, color: timerUrgent ? '#ef4444' : 'var(--primary-color)' }}
+              />
+              <span style={{ fontWeight: 600, color: timerUrgent ? '#ef4444' : 'var(--primary-color)', fontSize: '1.05rem' }}>
+                Giữ chỗ còn: {padTwo(timerMins)}:{padTwo(timerSecs)}
+              </span>
+              <span className="text-muted small">
+                — Hoàn tất trong 5 phút, slot sẽ tự động giải phóng khi hết giờ.
+              </span>
+            </div>
+          )}
 
-          {resumeBookingId && (
+          {bookingCode && (
             <p className="small text-muted mb-3">
               <i className="feather-info me-1" />
-              Bạn đang <strong>thanh toán lại</strong> cho đơn chờ duyệt
-              {resumeBookingCode ? <> — mã <code>{resumeBookingCode}</code></> : null}.
+              Mã đơn: <code>{bookingCode}</code>
+              {isHolding && <> — đang giữ chỗ, vui lòng hoàn tất thanh toán.</>}
             </p>
           )}
 
@@ -444,7 +467,7 @@ export default function BookingPayment() {
                   </li>
                   <li className="mb-2">
                     <i className="feather-clock me-2 text-primary" />
-                    {totalHours} ({selectedSlots.length} ô × 30 phút)
+                    {totalHours} ({selectedSlots.length} ô × {pay.slotDuration < 60 ? `${pay.slotDuration} phút` : pay.slotDuration === 60 ? '1 giờ' : `${pay.slotDuration / 60} giờ`})
                   </li>
                   {customerName && (
                     <li className="mb-2">
@@ -467,22 +490,81 @@ export default function BookingPayment() {
                   <table className="table table-sm table-bordered mb-0">
                     <thead className="table-light">
                       <tr>
-                        <th>Sân</th>
-                        <th>Giờ bắt đầu</th>
-                        <th className="text-end">Tiền</th>
+                        <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => toggleSort('courtName')}>Sân {renderSortIcon('courtName')}</th>
+                        <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => toggleSort('time')}>Giờ {renderSortIcon('time')}</th>
+                        <th style={{ cursor: 'pointer', userSelect: 'none' }} className="text-end" onClick={() => toggleSort('price')}>Tiền {renderSortIcon('price')}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {selectedSlots.map((s, i) => (
+                      {paginatedSlots.map((s, i) => (
                         <tr key={i}>
                           <td>{s.courtName}</td>
-                          <td>{s.timeLabel}</td>
+                          <td>{s.timeEndLabel ? `${s.timeLabel} – ${s.timeEndLabel}` : s.timeLabel}</td>
                           <td className="text-end">{(s.price ?? 0).toLocaleString('vi-VN')}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', padding: '8px 4px' }}>
+                    <span style={{ fontSize: '13px', color: '#6b7280' }}>
+                      Trang <strong style={{ color: '#111' }}>{currentPage}</strong> / {totalPages}
+                      <span style={{ color: '#9ca3af', marginLeft: '8px' }}>({sortedSlots.length} khung giờ)</span>
+                    </span>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        style={{
+                          border: '1px solid #e5e7eb', borderRadius: '8px', padding: '6px 14px',
+                          fontSize: '13px', fontWeight: 500, cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                          backgroundColor: currentPage === 1 ? '#f9fafb' : '#fff',
+                          color: currentPage === 1 ? '#d1d5db' : '#374151',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <i className="feather-chevron-left" style={{ fontSize: '12px', marginRight: '4px' }} />Trước
+                      </button>
+                      {[...Array(totalPages)].map((_, idx) => {
+                        const pg = idx + 1;
+                        const isActive = currentPage === pg;
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => setCurrentPage(pg)}
+                            style={{
+                              border: isActive ? '1px solid #16a34a' : '1px solid #e5e7eb',
+                              borderRadius: '8px', padding: '6px 12px', minWidth: '36px',
+                              fontSize: '13px', fontWeight: isActive ? 700 : 500,
+                              cursor: 'pointer',
+                              backgroundColor: isActive ? '#16a34a' : '#fff',
+                              color: isActive ? '#fff' : '#374151',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            {pg}
+                          </button>
+                        );
+                      })}
+                      <button
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        style={{
+                          border: '1px solid #e5e7eb', borderRadius: '8px', padding: '6px 14px',
+                          fontSize: '13px', fontWeight: 500, cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                          backgroundColor: currentPage === totalPages ? '#f9fafb' : '#fff',
+                          color: currentPage === totalPages ? '#d1d5db' : '#374151',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        Sau<i className="feather-chevron-right" style={{ fontSize: '12px', marginLeft: '4px' }} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -535,7 +617,7 @@ export default function BookingPayment() {
                         </span>
                       </p>
                       <p className="mb-1"><strong>Chủ TK:</strong> {bankInfo.name}</p>
-                      <p className="mb-1"><strong>Số tiền:</strong> <span className="primary-text fw-semibold">{finalPriceToDisplay.toLocaleString('vi-VN')} VNĐ</span></p>
+                      <p className="mb-1"><strong>Số tiền:</strong> <span className="primary-text fw-semibold">{totalPrice.toLocaleString('vi-VN')} VNĐ</span></p>
                       <p className="mb-0 text-muted">{bankInfo.note}</p>
                     </div>
                   )}
@@ -556,7 +638,7 @@ export default function BookingPayment() {
                           Chưa cấu hình STK/BIN đủ để tạo QR. Chủ sân cần cập nhật tại Cài đặt thanh toán.
                         </div>
                       )}
-                      <p className="mt-2 mb-0 primary-text fw-semibold">{finalPriceToDisplay.toLocaleString('vi-VN')} VNĐ</p>
+                      <p className="mt-2 mb-0 primary-text fw-semibold">{totalPrice.toLocaleString('vi-VN')} VNĐ</p>
                       <p className="text-muted mt-1 mb-0" style={{ fontSize: '11px' }}>{bankInfo.note}</p>
                     </div>
                   )}
@@ -574,12 +656,8 @@ export default function BookingPayment() {
                         src={proofPreview}
                         alt="Minh chứng thanh toán"
                         style={{
-                          width: '100%',
-                          maxHeight: '220px',
-                          objectFit: 'contain',
-                          borderRadius: 10,
-                          border: '2px solid #6ee7b7',
-                          backgroundColor: '#f8fafc',
+                          width: '100%', maxHeight: '220px', objectFit: 'contain',
+                          borderRadius: 10, border: '2px solid #6ee7b7', backgroundColor: '#f8fafc',
                         }}
                       />
                       <button
@@ -587,8 +665,7 @@ export default function BookingPayment() {
                         onClick={removeProof}
                         style={{
                           position: 'absolute', top: 8, right: 8,
-                          background: 'rgba(0,0,0,0.55)',
-                          color: '#fff', border: 'none',
+                          background: 'rgba(0,0,0,0.55)', color: '#fff', border: 'none',
                           borderRadius: '50%', width: 28, height: 28,
                           cursor: 'pointer', fontSize: 14,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -605,12 +682,7 @@ export default function BookingPayment() {
                   ) : (
                     <div
                       className="d-flex flex-column align-items-center justify-content-center rounded p-4"
-                      style={{
-                        border: '2px dashed #d1fae5',
-                        background: '#f0fdf4',
-                        cursor: 'pointer',
-                        minHeight: '120px',
-                      }}
+                      style={{ border: '2px dashed #d1fae5', background: '#f0fdf4', cursor: 'pointer', minHeight: '120px' }}
                       onClick={() => fileInputRef.current?.click()}
                     >
                       <i className="feather-upload-cloud" style={{ fontSize: 32, color: 'var(--primary-color)', marginBottom: 8 }} />
@@ -635,12 +707,6 @@ export default function BookingPayment() {
                     <span>Tạm tính</span>
                     <span>{totalPrice.toLocaleString('vi-VN')} VNĐ</span>
                   </li>
-                  {discountInfo && discountInfo.discountAmount > 0 && (
-                    <li className="d-flex justify-content-between mb-2 text-success">
-                      <span>Giảm giá</span>
-                      <span>-{(discountInfo.discountAmount).toLocaleString('vi-VN')} VNĐ</span>
-                    </li>
-                  )}
                   <li className="d-flex justify-content-between mb-2">
                     <span>Phí dịch vụ</span>
                     <span>0 VNĐ</span>
@@ -648,7 +714,7 @@ export default function BookingPayment() {
                 </ul>
                 <div className="order-total d-flex justify-content-between align-items-center mb-3">
                   <h5 className="mb-0">Tổng cộng</h5>
-                  <h5 className="mb-0 primary-text">{finalPriceToDisplay.toLocaleString('vi-VN')} VNĐ</h5>
+                  <h5 className="mb-0 primary-text">{totalPrice.toLocaleString('vi-VN')} VNĐ</h5>
                 </div>
 
                 {/* ── Venue Rules + Cancellation Policy ── */}
@@ -691,20 +757,7 @@ export default function BookingPayment() {
                   </div>
                 )}
 
-                {(checkoutSettings?.venueRules?.trim() || checkoutSettings?.cancellation) && (
-                  <div className="form-check d-flex align-items-start gap-2 mb-3">
-                    <input
-                      className="form-check-input mt-1"
-                      type="checkbox"
-                      id="agreeRules"
-                      checked={agreedRules}
-                      onChange={e => { setAgreedRules(e.target.checked); setError(''); }}
-                    />
-                    <label className="form-check-label small" htmlFor="agreeRules" style={{ color: '#334155' }}>
-                      Tôi đã đọc và đồng ý với <strong>Quy định của sân</strong> và <strong>Chính sách hoàn tiền</strong>.
-                    </label>
-                  </div>
-                )}
+
 
                 <div className="form-check d-flex align-items-start gap-2 policy mb-3">
                   <input
@@ -727,11 +780,11 @@ export default function BookingPayment() {
                     type="button"
                     className="btn btn-primary"
                     onClick={handleConfirm}
-                    disabled={loading || expired || !agreed || ((checkoutSettings?.venueRules?.trim() || checkoutSettings?.cancellation) && !agreedRules)}
+                    disabled={loading || expired || !agreed}
                   >
                     {loading
                       ? <><span className="spinner-border spinner-border-sm me-2" />Đang xử lý...</>
-                      : (resumeBookingId ? `Gửi minh chứng — ${finalPriceToDisplay.toLocaleString('vi-VN')} VNĐ` : `Xác nhận đặt sân — ${finalPriceToDisplay.toLocaleString('vi-VN')} VNĐ`)
+                      : `Xác nhận thanh toán — ${totalPrice.toLocaleString('vi-VN')} VNĐ`
                     }
                   </button>
                 </div>
@@ -739,25 +792,100 @@ export default function BookingPayment() {
             </div>
           </div>
 
-          <div className="text-center btn-row mt-4">
-            {!resumeBookingId ? (
-              <button
-                type="button"
-                className="btn btn-primary me-3 btn-icon"
-                onClick={() => navigate('/booking/confirm', { state: location.state })}
-              >
-                <i className="feather-arrow-left-circle me-1" /> Quay lại
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="btn btn-outline-secondary me-3 btn-icon"
-                onClick={() => navigate('/user/bookings')}
-              >
-                <i className="feather-arrow-left-circle me-1" /> Về lịch sử đặt sân
-              </button>
-            )}
+          <div className="text-center btn-row mt-4 d-flex justify-content-center gap-3">
+            <button
+              type="button"
+              className="btn btn-primary btn-icon"
+              onClick={() => {
+                // Navigate back to the correct Confirm page, passing bookingId
+                const backState = {
+                  ...(location.state || {}),
+                  ...pay,
+                  bookingId: bookingId || paramBookingId,
+                  customerName: pay.customerName,
+                  customerPhone: pay.customerPhone,
+                  note: pay.note,
+                };
+                if (isLongTermFlow) {
+                  // For long-term flows, navigate to the generic long-term confirm
+                  // The user will need the original schedule state; we pass what we have
+                  navigate('/booking/long-term/confirm', { state: backState, replace: true });
+                } else {
+                  navigate('/booking/confirm', { state: backState, replace: true });
+                }
+              }}
+              disabled={expired || cancelling}
+            >
+              <i className="feather-edit me-1" /> Quay lại chỉnh sửa thông tin
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline-danger btn-icon"
+              onClick={() => setShowCancelDialog(true)}
+              disabled={expired || loading || cancelling}
+            >
+              <i className="feather-x-circle me-1" /> Huỷ giữ chỗ
+            </button>
           </div>
+
+          {/* Cancel confirmation dialog */}
+          {showCancelDialog && (
+            <div
+              style={{
+                position: 'fixed', inset: 0, zIndex: 9998,
+                background: 'rgba(0,0,0,0.55)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <div
+                className="card text-center p-4"
+                style={{ maxWidth: 420, width: '90%', borderRadius: 16 }}
+              >
+                <div style={{ fontSize: 44, lineHeight: 1, marginBottom: 12, color: '#ef4444' }}>
+                  <i className="feather-alert-triangle" />
+                </div>
+                <h4 className="mb-2">Xác nhận huỷ giữ chỗ?</h4>
+                <p className="text-muted mb-4">
+                  Các khung giờ bạn đã chọn sẽ được giải phóng để người khác đặt.
+                  Bạn sẽ cần thực hiện lại từ đầu nếu muốn đặt sân.
+                </p>
+                <div className="d-flex gap-3 justify-content-center">
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    onClick={() => setShowCancelDialog(false)}
+                    disabled={cancelling}
+                  >
+                    Không, quay lại
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    disabled={cancelling}
+                    onClick={async () => {
+                      setCancelling(true);
+                      try {
+                        await cancelHold(bookingId || paramBookingId);
+                        clearInterval(intervalRef.current);
+                        if (pay.venueId) navigate(`/venues/${pay.venueId}`);
+                        else navigate('/venues');
+                      } catch (e) {
+                        setError(e.response?.data?.message || 'Đã có lỗi khi huỷ giữ chỗ.');
+                        setShowCancelDialog(false);
+                      } finally {
+                        setCancelling(false);
+                      }
+                    }}
+                  >
+                    {cancelling
+                      ? <><span className="spinner-border spinner-border-sm me-2" />Đang huỷ...</>
+                      : 'Xác nhận huỷ'
+                    }
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
         </div>
       </div>

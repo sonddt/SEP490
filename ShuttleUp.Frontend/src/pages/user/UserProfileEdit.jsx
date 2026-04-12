@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import UserDashboardMenu from '../../components/user/UserDashboardMenu';
-import UserProfileTabs from '../../components/user/UserProfileTabs';
 import VietnamAddressFields from '../../components/user/VietnamAddressFields';
+import ShuttleDateField from '../../components/ui/ShuttleDateField';
 import { useAuth } from '../../context/AuthContext';
 import { profileApi } from '../../api/profileApi';
+import AvatarCropperModal from '../../components/user/AvatarCropperModal';
 import {
   districtByCode,
   formatDistrictForStorage,
@@ -14,6 +14,27 @@ import {
   resolveCodesFromProfile,
   wardByCode,
 } from '../../utils/vietnamDivisions';
+
+function sliceYmd(s) {
+  if (!s) return '';
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function dobMinIso() {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 120);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function dobMaxIso() {
+  const t = new Date();
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+}
 
 function formatApiError(e, fallback) {
   const d = e?.response?.data;
@@ -32,6 +53,8 @@ export default function UserProfileEdit() {
   const fileInputRef = useRef(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [avatarFile, setAvatarFile] = useState(null);
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [tempImageSrc, setTempImageSrc] = useState(null);
   const { user: authUser, updateUser } = useAuth();
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState(null);
 
@@ -103,8 +126,27 @@ export default function UserProfileEdit() {
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    setAvatarPreview(URL.createObjectURL(file));
-    setAvatarFile(file);
+    const url = URL.createObjectURL(file);
+    setTempImageSrc(url);
+    setCropperOpen(true);
+    e.target.value = '';
+  };
+
+  const handleCropperCancel = () => {
+    setCropperOpen(false);
+    if (tempImageSrc) URL.revokeObjectURL(tempImageSrc);
+    setTempImageSrc(null);
+  };
+
+  const handleCropperSave = (croppedBlob) => {
+    const croppedFile = new File([croppedBlob], 'avatar.jpg', { type: 'image/jpeg' });
+    const url = URL.createObjectURL(croppedBlob);
+    setAvatarPreview(url);
+    setAvatarFile(croppedFile);
+    
+    setCropperOpen(false);
+    if (tempImageSrc) URL.revokeObjectURL(tempImageSrc);
+    setTempImageSrc(null);
   };
 
   const handleReset = () => {
@@ -120,8 +162,13 @@ export default function UserProfileEdit() {
         initialSnapshotRef.current = `${initialForm.province}\n${initialForm.district}\n${initialForm.address}`;
       }
     }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     setAvatarPreview(currentAvatarUrl);
     setAvatarFile(null);
+    if (tempImageSrc) URL.revokeObjectURL(tempImageSrc);
+    setTempImageSrc(null);
     setSuccess('');
     setError('');
     setFieldErrors({});
@@ -144,7 +191,7 @@ export default function UserProfileEdit() {
           fullName: u.fullName || '',
           phoneNumber: u.phoneNumber || '',
           gender: u.gender || '',
-          dateOfBirth: u.dateOfBirth || '',
+          dateOfBirth: sliceYmd(u.dateOfBirth || ''),
           about: u.about || '',
           address: u.address || '',
           district: u.district || '',
@@ -319,305 +366,268 @@ export default function UserProfileEdit() {
   };
 
   return (
-    <div className="main-wrapper">
-
-      {/* Breadcrumb */}
-      <section className="breadcrumb breadcrumb-list mb-0">
-        <span className="primary-right-round"></span>
-        <div className="container">
-          <h1 className="text-white">Hồ sơ người dùng</h1>
-          <ul>
-            <li><Link to="/">Trang chủ</Link></li>
-            <li>Hồ sơ người dùng</li>
-          </ul>
-        </div>
-      </section>
-
-      {/* Dashboard Menu */}
-      <UserDashboardMenu />
-
-      {/* Page Content */}
-      <div className="content court-bg" style={{ paddingTop: '90px' }}>
-        <div className="container">
-
-          {/* Profile Tabs */}
-          <UserProfileTabs />
-
-          <div className="row">
-            <div className="col-sm-12">
-              <div className="profile-detail-group">
-                <div className="card">
-                  <form onSubmit={handleSubmit}>
-                    <div className="row">
-                      {error && (
-                        <div className="col-12">
-                          <div className="alert alert-danger">{error}</div>
-                        </div>
-                      )}
-                      {success && (
-                        <div className="col-12">
-                          <div className="alert alert-success">{success}</div>
-                        </div>
-                      )}
-
-                      {/* Avatar Upload */}
-                      <div className="col-md-12">
-                        <div className="file-upload-text">
-                          <div
-                            className="file-upload"
-                            style={{ cursor: 'pointer' }}
-                            onClick={() => fileInputRef.current?.click()}
-                          >
-                            {avatarPreview ? (
-                              <img
-                                src={avatarPreview}
-                                className="img-fluid rounded-circle"
-                                alt="Avatar"
-                                style={{ width: 80, height: 80, objectFit: 'cover' }}
-                              />
-                            ) : (
-                              <img
-                                src="/assets/assets/img/icons/img-icon.svg"
-                                className="img-fluid"
-                                alt="Upload"
-                              />
-                            )}
-                            <p>Tải ảnh lên</p>
-                            <span>
-                              <i className="feather-edit-3"></i>
-                              <input
-                                type="file"
-                                id="file-input"
-                                ref={fileInputRef}
-                                accept="image/jpg,image/jpeg,image/png,image/svg+xml"
-                                onChange={handleAvatarChange}
-                                style={{ display: 'none' }}
-                              />
-                            </span>
-                          </div>
-                          <h5>Tải ảnh đại diện, kích thước tối thiểu 150×150 px (JPG, PNG, SVG).</h5>
-                        </div>
-                      </div>
-
-                      {/* Personal Information Heading */}
-                      <div className="address-form-head">
-                        <h4>Thông tin cá nhân</h4>
-                      </div>
-
-                      {/* Full Name */}
-                      <div className="col-lg-4 col-md-6">
-                        <div className="input-space">
-                          <label className="form-label">Họ và tên</label>
-                          <input
-                            type="text"
-                            className={`form-control ${fieldErrors.fullName ? 'is-invalid' : ''}`}
-                            name="fullName"
-                            placeholder="Nhập họ và tên"
-                            value={form.fullName}
-                            onChange={handleChange}
-                          />
-                          {fieldErrors.fullName && <div className="invalid-feedback d-block mt-1">{fieldErrors.fullName}</div>}
-                        </div>
-                      </div>
-
-                      {/* Email (read-only) */}
-                      <div className="col-lg-4 col-md-6">
-                        <div className="input-space">
-                          <label className="form-label">Email</label>
-                          <input
-                            type="email"
-                            className="form-control"
-                            value={authUser?.email || ''}
-                            readOnly
-                            style={{ background: '#f1f5f9', cursor: 'not-allowed' }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Phone number */}
-                      <div className="col-lg-4 col-md-6">
-                        <div className="input-space">
-                          <label className="form-label">Số điện thoại</label>
-                          <input
-                            type="tel"
-                            className={`form-control ${fieldErrors.phoneNumber ? 'is-invalid' : ''}`}
-                            name="phoneNumber"
-                            placeholder="Nhập số điện thoại"
-                            value={form.phoneNumber}
-                            onChange={handleChange}
-                          />
-                          {fieldErrors.phoneNumber && <div className="invalid-feedback d-block mt-1">{fieldErrors.phoneNumber}</div>}
-                        </div>
-                      </div>
-
-                      {/* Gender */}
-                      <div className="col-lg-4 col-md-6">
-                        <div className="input-space">
-                          <label className="form-label">Giới tính</label>
-                          <select
-                            className="form-control"
-                            name="gender"
-                            value={form.gender}
-                            onChange={handleChange}
-                          >
-                            <option value="">-- Chọn giới tính --</option>
-                            <option value="MALE">Nam</option>
-                            <option value="FEMALE">Nữ</option>
-                            <option value="OTHER">Khác</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Date of Birth */}
-                      <div className="col-lg-4 col-md-6">
-                        <div className="input-space">
-                          <label className="form-label">Ngày sinh</label>
-                          <input
-                            type="date"
-                            className="form-control"
-                            name="dateOfBirth"
-                            value={form.dateOfBirth}
-                            onChange={handleChange}
-                          />
-                        </div>
-                      </div>
-
-                      {/* About */}
-                      <div className="col-lg-12 col-md-12">
-                        <div className="info-about">
-                          <label htmlFor="about" className="form-label">
-                            Giới thiệu bản thân
-                          </label>
-                          <textarea
-                            className="form-control"
-                            id="about"
-                            name="about"
-                            rows="3"
-                            placeholder="Tip: Ghi chú thêm về phong cách chơi của bạn (vui vẻ, máu lửa...), hoặc sân nhà quen thuộc..."
-                            value={form.about}
-                            onChange={handleChange}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Address Section */}
-                      <div className="address-form-head">
-                        <h4>Địa chỉ</h4>
-                      </div>
-
-                      {divisionLoadError && (
-                        <div className="col-12">
-                          <div className="alert alert-warning">{divisionLoadError}</div>
-                        </div>
-                      )}
-
-                      <VietnamAddressFields
-                        tree={divisionTree}
-                        street={form.address}
-                        onStreetChange={(v) => {
-                          setForm((f) => ({ ...f, address: v }));
-                          if (fieldErrors.address) {
-                            setFieldErrors((prev) => ({ ...prev, address: '' }));
-                          }
-                        }}
-                        provinceCode={addrCodes.p}
-                        districtCode={addrCodes.d}
-                        wardCode={addrCodes.w}
-                        onChangeProvinceCode={onProvinceCode}
-                        onChangeDistrictCode={onDistrictCode}
-                        onChangeWardCode={onWardCode}
-                        disabled={loading || saving}
-                      />
-
-                      {/* Personalization Section */}
-                      <div className="address-form-head mt-4">
-                        <h4>Mục tiêu & Kỹ năng</h4>
-                      </div>
-
-                      <div className="col-lg-4 col-md-6">
-                        <div className="input-space">
-                          <label className="form-label">Trình độ kỹ năng</label>
-                          <select
-                            className="form-control"
-                            name="skillLevel"
-                            value={form.skillLevel}
-                            onChange={handleChange}
-                          >
-                            <option value="">-- Chọn trình độ --</option>
-                            <option value="Yếu">Yếu / Mới chơi</option>
-                            <option value="Trung Bình Yếu">Trung Bình Yếu</option>
-                            <option value="Trung Bình">Trung Bình</option>
-                            <option value="Khá">Khá</option>
-                            <option value="Bán Chuyên">Bán Chuyên</option>
-                            <option value="Chuyên Nghiệp">Chuyên Nghiệp</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="col-lg-4 col-md-6">
-                        <div className="input-space">
-                          <label className="form-label">Mục tiêu chơi chính</label>
-                          <select
-                            className="form-control"
-                            name="playPurpose"
-                            value={form.playPurpose}
-                            onChange={handleChange}
-                          >
-                            <option value="">-- Chọn mục tiêu --</option>
-                            <option value="Giải trí, vận động">Giải trí, vận động</option>
-                            <option value="Tập luyện nghiêm túc">Tập luyện nghiêm túc</option>
-                            <option value="Tìm partner cố định">Tìm partner cố định</option>
-                            <option value="Đánh giải, cọ xát">Đánh giải, cọ xát</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="col-lg-4 col-md-6">
-                        <div className="input-space mb-0">
-                          <label className="form-label">Tần suất chơi</label>
-                          <select
-                            className="form-control"
-                            name="playFrequency"
-                            value={form.playFrequency}
-                            onChange={handleChange}
-                          >
-                            <option value="">-- Chọn tần suất --</option>
-                            <option value="Thỉnh thoảng">Thỉnh thoảng</option>
-                            <option value="1-2 lần/tuần">1-2 lần/tuần</option>
-                            <option value="Chỉ cuối tuần">Chỉ cuối tuần</option>
-                            <option value="Hàng ngày">Hàng ngày</option>
-                          </select>
-                        </div>
-                      </div>
-
-                    </div>
-                  </form>
-                </div>
-
-                <div className="save-changes text-end">
-                  <button
-                    type="button"
-                    className="btn btn-secondary reset-profile"
-                    onClick={handleReset}
-                  >
-                    Đặt lại
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary save-profile"
-                    onClick={handleSubmit}
-                    disabled={loading || saving}
-                  >
-                    {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
-                  </button>
-                </div>
-              </div>
-            </div>
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6 mb-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-1 flex items-center gap-2">
+              <i className="fa-solid fa-user-edit text-emerald-600"></i>
+              Cài đặt hồ sơ
+            </h2>
+            <p className="text-slate-500 text-sm m-0">Cập nhật thông tin cá nhân của bạn để người khác dễ dàng tìm thấy.</p>
           </div>
-
         </div>
       </div>
 
+      <div className="row g-4">
+        {/* Avatar Sidebar */}
+        <div className="col-lg-4 col-md-5">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6 sticky top-28">
+            <h5 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <span className="w-1 h-5 bg-emerald-500 rounded-full"></span>
+              Ảnh đại diện
+            </h5>
+            <div className="text-center p-4">
+              <div className="relative inline-block mb-4 group">
+                  <div 
+                    className="absolute inset-0 bg-emerald-500/10 rounded-full scale-110 blur-xl opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    onClick={() => fileInputRef.current?.click()}
+                  ></div>
+                <img
+                  src={avatarPreview || form.avatarUrl || '/assets/assets/img/profiles/avatar-01.jpg'}
+                  alt="Avatar Preview"
+                  className="rounded-full object-cover border-8 border-slate-50 shadow-sm relative z-10 cursor-pointer flex-shrink-0"
+                  style={{ width: '160px', height: '160px', minWidth: '160px', objectFit: 'cover' }}
+                  onClick={() => fileInputRef.current?.click()}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute bottom-2 right-2 w-10 h-10 bg-emerald-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-emerald-700 transition-colors z-20 border-4 border-white"
+                  title="Thay đổi ảnh"
+                >
+                  <i className="fa-solid fa-camera"></i>
+                </button>
+              </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                style={{ display: 'none' }}
+              />
+              <p className="text-xs text-slate-400 mt-2 px-4">
+                Chấp nhận định dạng JPG, PNG. Dung lượng tối đa 2MB.
+              </p>
+            </div>
+            <div className="mt-4 flex flex-col gap-2 pt-4 border-t border-slate-50">
+              <button onClick={handleReset} type="button" className="w-full bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl font-bold py-2.5 transition-colors border-0">
+                 Đặt lại ban đầu
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Form Content */}
+        <div className="col-lg-8 col-md-7">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6">
+            <form onSubmit={handleSubmit} className="user-profile-form space-y-6">
+
+              {error && (
+                <div className="alert alert-danger mb-4 rounded-xl border-0 shadow-sm flex items-center gap-3">
+                  <i className="fa-solid fa-circle-exclamation"></i>
+                  <span>{error}</span>
+                </div>
+              )}
+              {success && (
+                <div className="alert alert-success mb-4 rounded-xl border-0 shadow-sm flex items-center gap-3">
+                  <i className="fa-solid fa-circle-check"></i>
+                  <span>{success}</span>
+                </div>
+              )}
+
+              {/* Personal Information */}
+              <div className="space-y-4">
+                <h5 className="user-profile-form-section-title mb-4 flex items-center gap-2">
+                  <span className="w-1 h-5 rounded-full bg-emerald-500" aria-hidden />
+                  Thông tin cá nhân
+                </h5>
+                <div className="row g-3">
+                  <div className="col-lg-6">
+                    <label className="form-label user-profile-form-label">Họ và tên</label>
+                    <input
+                      type="text"
+                      className={`form-control rounded-xl border-slate-200 py-2.5 ${fieldErrors.fullName ? 'is-invalid border-rose-400' : ''}`}
+                      name="fullName"
+                      value={form.fullName}
+                      onChange={handleChange}
+                    />
+                    {fieldErrors.fullName && <div className="text-rose-500 text-[12px] mt-1 font-semibold">{fieldErrors.fullName}</div>}
+                  </div>
+                  <div className="col-lg-6">
+                    <label className="form-label user-profile-form-label">Số điện thoại</label>
+                    <input
+                      type="tel"
+                      className={`form-control rounded-xl border-slate-200 py-2.5 ${fieldErrors.phoneNumber ? 'is-invalid border-rose-400' : ''}`}
+                      name="phoneNumber"
+                      value={form.phoneNumber}
+                      onChange={handleChange}
+                    />
+                    {fieldErrors.phoneNumber && <div className="text-rose-500 text-[12px] mt-1 font-semibold">{fieldErrors.phoneNumber}</div>}
+                  </div>
+                  <div className="col-lg-6">
+                    <label className="form-label user-profile-form-label">Giới tính</label>
+                    <select
+                      className="form-control rounded-xl border-slate-200 py-2.5"
+                      name="gender"
+                      value={form.gender}
+                      onChange={handleChange}
+                    >
+                      <option value="">-- Chọn giới tính --</option>
+                      <option value="MALE">Nam</option>
+                      <option value="FEMALE">Nữ</option>
+                      <option value="OTHER">Khác</option>
+                    </select>
+                  </div>
+                  <div className="col-lg-6">
+                    <label className="form-label user-profile-form-label" htmlFor="profile-dob">
+                      Ngày sinh
+                    </label>
+                    <ShuttleDateField
+                      id="profile-dob"
+                      value={form.dateOfBirth}
+                      onChange={(ymd) => {
+                        setForm((prev) => ({ ...prev, dateOfBirth: ymd }));
+                        if (fieldErrors.dateOfBirth) setFieldErrors((prev) => ({ ...prev, dateOfBirth: '' }));
+                      }}
+                      placeholder="Chọn ngày sinh"
+                      minDate={dobMinIso()}
+                      maxDate={dobMaxIso()}
+                    />
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label user-profile-form-label">Giới thiệu bản thân</label>
+                    <textarea
+                      className="form-control rounded-xl border-slate-200 py-2.5"
+                      name="about"
+                      rows="3"
+                      placeholder="Một chút về phong cách chơi của bạn..."
+                      value={form.about}
+                      onChange={handleChange}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Address Section */}
+              <div className="space-y-4 pt-6 mt-6 border-t border-slate-50">
+                <h5 className="user-profile-form-section-title mb-4 flex items-center gap-2">
+                  <span className="w-1 h-5 rounded-full bg-emerald-500" aria-hidden />
+                  Địa chỉ liên hệ
+                </h5>
+                {divisionLoadError && <div className="alert alert-warning text-sm rounded-xl">{divisionLoadError}</div>}
+                <VietnamAddressFields
+                  tree={divisionTree}
+                  street={form.address}
+                  onStreetChange={(v) => {
+                    setForm((f) => ({ ...f, address: v }));
+                    if (fieldErrors.address) setFieldErrors((prev) => ({ ...prev, address: '' }));
+                  }}
+                  provinceCode={addrCodes.p}
+                  districtCode={addrCodes.d}
+                  wardCode={addrCodes.w}
+                  onChangeProvinceCode={onProvinceCode}
+                  onChangeDistrictCode={onDistrictCode}
+                  onChangeWardCode={onWardCode}
+                  disabled={loading || saving}
+                />
+              </div>
+
+              {/* Personalization Section */}
+              <div className="space-y-4 pt-6 mt-6 border-t border-slate-50">
+                <h5 className="user-profile-form-section-title mb-4 flex items-center gap-2">
+                  <span className="w-1 h-5 rounded-full bg-emerald-500" aria-hidden />
+                  Kỹ năng & Mục tiêu
+                </h5>
+                <div className="row g-3">
+                  <div className="col-lg-4">
+                    <label className="form-label user-profile-form-label">Trình độ</label>
+                    <select
+                      className="form-control rounded-xl border-slate-200 py-2.5"
+                      name="skillLevel"
+                      value={form.skillLevel}
+                      onChange={handleChange}
+                    >
+                      <option value="">-- Chọn trình độ --</option>
+                      <option value="Yếu">Yếu / Mới chơi</option>
+                      <option value="Trung Bình">Trung Bình</option>
+                      <option value="Khá">Khá</option>
+                      <option value="Bán Chuyên">Bán Chuyên</option>
+                      <option value="Chuyên Nghiệp">Chuyên Nghiệp</option>
+                    </select>
+                  </div>
+                  <div className="col-lg-4">
+                    <label className="form-label user-profile-form-label">Mục tiêu</label>
+                    <select
+                      className="form-control rounded-xl border-slate-200 py-2.5"
+                      name="playPurpose"
+                      value={form.playPurpose}
+                      onChange={handleChange}
+                    >
+                      <option value="">-- Chọn mục tiêu --</option>
+                      <option value="Giải trí">Giải trí, vận động</option>
+                      <option value="Tập luyện">Tập luyện nghiêm túc</option>
+                      <option value="Thi đấu">Đánh giải, cọ xát</option>
+                    </select>
+                  </div>
+                  <div className="col-lg-4">
+                    <label className="form-label user-profile-form-label">Tần suất</label>
+                    <select
+                      className="form-control rounded-xl border-slate-200 py-2.5"
+                      name="playFrequency"
+                      value={form.playFrequency}
+                      onChange={handleChange}
+                    >
+                      <option value="">-- Tần suất --</option>
+                      <option value="Thỉnh thoảng">Thỉnh thoảng</option>
+                      <option value="1-2 lần/tuần">1-2 lần/tuần</option>
+                      <option value="Hàng ngày">Hàng ngày</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-slate-50">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="bg-emerald-600 text-white hover:bg-emerald-700 min-w-[140px] px-8 py-2.5 rounded-xl font-bold shadow-md shadow-emerald-500/20 disabled:opacity-50 transition-all border-0 flex justify-center items-center gap-2"
+                >
+                  {saving ? (
+                    <>
+                      <i className="fa-solid fa-spinner fa-spin" aria-hidden />
+                      <span>Đang lưu...</span>
+                    </>
+                  ) : (
+                    <>
+                      <i className="fa-solid fa-floppy-disk" aria-hidden />
+                      <span>Lưu thay đổi</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <AvatarCropperModal
+        open={cropperOpen}
+        imageSrc={tempImageSrc}
+        onCancel={handleCropperCancel}
+        onSave={handleCropperSave}
+      />
     </div>
   );
 }

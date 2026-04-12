@@ -6,6 +6,7 @@ import { profileApi } from '../api/profileApi';
 import { useAuth } from '../context/AuthContext';
 import { useVenueLocationAnchor } from '../hooks/useVenueLocationAnchor';
 import { distanceToVenueKm } from '../utils/geoDistance';
+import { normalizeSearchText } from '../utils/searchNormalize';
 
 const STORAGE_USE_GPS = 'shuttleup_venues_use_gps';
 
@@ -21,12 +22,6 @@ const AMENITIES_CATALOG = [
   { key: 'buy_shuttle', label: 'Mua cầu tại sân', icon: 'feather-shopping-bag' },
   { key: 'canteen', label: 'Căn tin / Quầy ăn uống', icon: 'feather-coffee' },
 ];
-
-function normalizeText(s) {
-  return String(s || '')
-    .trim()
-    .toLowerCase();
-}
 
 function parseNumOrEmpty(v) {
   const s = String(v ?? '').trim();
@@ -103,7 +98,8 @@ export default function VenuesListing() {
   } = useVenueLocationAnchor(useGps, profileParts);
 
   const [sortBy, setSortBy] = useState('hybrid');
-  const [displayCount, setDisplayCount] = useState(9);
+  const [page, setPage] = useState(1);
+  const ITEMS_PER_PAGE = 9;
   const [venues, setVenues] = useState([]);
   const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
@@ -240,7 +236,7 @@ export default function VenuesListing() {
     setOrDel('sort', sortBy === 'hybrid' ? '' : sortBy);
 
     setSearchParams(next, { replace: true });
-    setDisplayCount(9);
+    setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keyword, priceMin, priceMax, ratingMin, selectedAmenities, radiusKm, sortBy]);
 
@@ -306,7 +302,7 @@ export default function VenuesListing() {
   }, []);
 
   const sortedVenues = useMemo(() => {
-    const kw = normalizeText(keyword);
+    const kw = normalizeSearchText(keyword);
     const minP = priceMin === '' ? null : Number(priceMin);
     const maxP = priceMax === '' ? null : Number(priceMax);
     const rad = radiusKm === '' ? null : Number(radiusKm);
@@ -331,8 +327,8 @@ export default function VenuesListing() {
 
     if (kw) {
       filtered = filtered.filter((v) => {
-        const n = normalizeText(v.name);
-        const a = normalizeText(v.location);
+        const n = normalizeSearchText(v.name);
+        const a = normalizeSearchText(v.location);
         return n.includes(kw) || a.includes(kw);
       });
     }
@@ -441,8 +437,20 @@ export default function VenuesListing() {
     sortBy,
   ]);
 
-  const visibleVenues = sortedVenues.slice(0, displayCount);
-  const hasMore = displayCount < sortedVenues.length;
+  const totalPages = Math.ceil(sortedVenues.length / ITEMS_PER_PAGE);
+  const visibleVenues = sortedVenues.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
+  const getPaginationGroups = () => {
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= page - 1 && i <= page + 1)) {
+            pages.push(i);
+        } else if (pages[pages.length - 1] !== '...') {
+            pages.push('...');
+        }
+    }
+    return pages;
+  };
 
   // Price slider bounds (từ dữ liệu venues)
   const priceBounds = useMemo(() => {
@@ -1023,22 +1031,26 @@ export default function VenuesListing() {
                 }}
               />
             ))}
-            <div className="col-12 text-center">
-              <div className="more-details">
-                {hasMore ? (
-                  <button
-                    type="button"
-                    className="btn btn-load"
-                    onClick={() =>
-                      setDisplayCount((c) => Math.min(c + 6, sortedVenues.length))
-                    }
-                  >
-                    Xem thêm <img src="/assets/img/icons/u_plus-square.svg" className="ms-2" alt="" />
-                  </button>
-                ) : (
-                  <p className="text-muted mb-0">Đã hiển thị tất cả sân.</p>
-                )}
-              </div>
+            <div className="col-12">
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '40px' }}>
+                  <nav>
+                    <ul className="pagination" style={{ gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                      <li className={`page-item ${page <= 1 ? 'disabled' : ''}`}>
+                        <button className="page-link" style={{ borderRadius: '12px', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', backgroundColor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', fontWeight: '700', color: '#1e293b' }} onClick={() => { setPage(page - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>‹</button>
+                      </li>
+                      {getPaginationGroups().map((p, idx) => (
+                        <li key={idx} className={`page-item ${p === '...' ? 'disabled' : ''}`}>
+                          <button className="page-link" style={{ borderRadius: '12px', minWidth: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', backgroundColor: p === page ? '#0d6efd' : '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', fontWeight: '700', color: p === page ? '#fff' : p === '...' ? '#94a3b8' : '#1e293b', padding: '0 12px' }} onClick={() => { if (p !== '...') { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); } }}>{p}</button>
+                        </li>
+                      ))}
+                      <li className={`page-item ${page >= totalPages ? 'disabled' : ''}`}>
+                        <button className="page-link" style={{ borderRadius: '12px', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', backgroundColor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', fontWeight: '700', color: '#1e293b' }} onClick={() => { setPage(page + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>›</button>
+                      </li>
+                    </ul>
+                  </nav>
+                </div>
+              )}
             </div>
           </div>
         </div>

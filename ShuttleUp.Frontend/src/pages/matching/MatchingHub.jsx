@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import matchingApi from '../../api/matchingApi';
 import { useAuth } from '../../context/AuthContext';
 import MatchingPostCard from '../../components/matching/MatchingPostCard';
+import ShuttleDateField from '../../components/ui/ShuttleDateField';
+import { normalizeSearchText } from '../../utils/searchNormalize';
 
 const sortOptions = [
   { value: 'newest', label: 'Mới nhất' },
@@ -45,14 +47,13 @@ function clientSortCompare(a, b, sort) {
 /** Lọc theo chuỗi: tiêu đề, địa chỉ sân, tên chủ bài — dùng cho tab Của tôi / Đã tham gia. */
 function applyClientListFilterSort(items, search, sort) {
   let list = Array.isArray(items) ? [...items] : [];
-  const q = (search || '').trim().toLowerCase();
-  if (q) {
+  const nq = normalizeSearchText(search);
+  if (nq) {
     list = list.filter((p) => {
-      const blob = [p.title, p.venueAddress, p.host?.fullName]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      return blob.includes(q);
+      const blob = normalizeSearchText(
+        [p.title, p.venueAddress, p.host?.fullName].filter(Boolean).join(' '),
+      );
+      return blob.includes(nq);
     });
   }
   const key = sort || 'newest';
@@ -248,7 +249,13 @@ export default function MatchingHub() {
                         </div>
                         <div style={{ flex: 1, minWidth: '180px' }}>
                             <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px' }}><i className="feather-calendar me-1"></i> Ngày chơi</label>
-                            <input type="date" className="form-control" style={{ borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '700', color: '#1e293b' }} value={filters.playDate} onChange={(e) => handleFilterChange('playDate', e.target.value)} />
+                            <div style={{ borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '700', color: '#1e293b', padding: '1px 3px' }}>
+                                <ShuttleDateField
+                                  value={filters.playDate}
+                                  onChange={(ymd) => handleFilterChange('playDate', ymd)}
+                                  placeholder="dd/mm/yyyy"
+                                />
+                            </div>
                         </div>
                         <div style={{ flex: 1, minWidth: '180px' }}>
                             <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px' }}><i className="feather-map-pin me-1"></i> Khu vực</label>

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
 import { getCourtBlocks, createCourtBlock, deleteCourtBlock } from '../../api/managerVenueApi';
+import ShuttleDateField from '../../components/ui/ShuttleDateField';
 
 const BLOCK_REASONS = [
   { value: 'MAINTENANCE', label: 'Bảo trì' },
@@ -137,8 +138,25 @@ export default function ManagerAddCourt() {
       await loadCourtBlocks();
     } catch (err) {
       setBlockError(err.response?.data?.message || err.message || 'Không xóa được.');
+      setBlockError(err.response?.data?.message || err.message || 'Không xóa được.');
     }
   };
+
+  const [venueData, setVenueData] = useState(null);
+
+  useEffect(() => {
+    if (!venueId) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await axiosClient.get(`/venues/${venueId}`);
+        if (mounted) setVenueData(res);
+      } catch (err) {
+        console.warn('Failed to load venue data for slot config', err);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [venueId]);
 
   const getFieldError = (field) => fieldErrors[field] || '';
 
@@ -345,14 +363,14 @@ export default function ManagerAddCourt() {
             {/* Pricing */}
             <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
               <div className="card-body p-4 p-md-5">
-                <SectionHeader icon="feather-dollar-sign" iconBg="#fff3cd" iconColor="#d97706" title="2. Quy định biểu giá" subtitle="Bảng giá thuê sân mặc định tính theo đơn vị giờ" />
+                <SectionHeader icon="feather-dollar-sign" iconBg="#fff3cd" iconColor="#d97706" title="2. Quy định biểu giá" subtitle={`Bảng giá thuê sân tính theo đơn vị ${venueData?.slotDuration === 30 ? '30 phút' : venueData?.slotDuration === 120 ? '2 giờ' : '1 giờ'}`} />
                 
                 <div className="row g-4 align-items-end">
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-semibold text-dark mb-2">Giá ngày thường <span className="text-danger">*</span></label>
                     <div className="input-group input-group-lg">
                       <input type="number" min={0} className={`form-control bg-light border-0 ${getFieldError('priceWeekday') ? 'is-invalid' : ''}`} placeholder="100000" value={form.priceWeekday} onChange={(e) => setField('priceWeekday', e.target.value)} />
-                      <span className="input-group-text bg-light border-0 text-muted">đ/giờ</span>
+                      <span className="input-group-text bg-light border-0 text-muted">đ / {venueData?.slotDuration === 30 ? '30 phút' : venueData?.slotDuration === 120 ? '2 giờ' : 'giờ'}</span>
                       {getFieldError('priceWeekday') && <div className="invalid-feedback">{getFieldError('priceWeekday')}</div>}
                     </div>
                   </div>
@@ -360,7 +378,7 @@ export default function ManagerAddCourt() {
                     <label className="form-label fw-semibold text-dark mb-2">Giá cuối tuần (T7, CN)</label>
                     <div className="input-group input-group-lg">
                       <input type="number" min={0} className={`form-control bg-light border-0 ${getFieldError('priceWeekend') ? 'is-invalid' : ''}`} placeholder="120000" value={form.priceWeekend} onChange={(e) => setField('priceWeekend', e.target.value)} />
-                      <span className="input-group-text bg-light border-0 text-muted">đ/giờ</span>
+                      <span className="input-group-text bg-light border-0 text-muted">đ / {venueData?.slotDuration === 30 ? '30 phút' : venueData?.slotDuration === 120 ? '2 giờ' : 'giờ'}</span>
                       {getFieldError('priceWeekend') && <div className="invalid-feedback">{getFieldError('priceWeekend')}</div>}
                     </div>
                   </div>
@@ -460,7 +478,11 @@ export default function ManagerAddCourt() {
                 <div className="row g-3 align-items-end mb-4">
                   <div className="col-12 col-md-3">
                     <label className="form-label fw-semibold small mb-1">Ngày</label>
-                    <input type="date" className="form-control bg-light border-0" value={blockForm.date} onChange={(e) => setBlockForm((p) => ({ ...p, date: e.target.value }))} />
+                    <ShuttleDateField
+                      value={blockForm.date}
+                      onChange={(ymd) => setBlockForm((p) => ({ ...p, date: ymd }))}
+                      placeholder="Chọn ngày khóa"
+                    />
                   </div>
                   <div className="col-6 col-md-2">
                     <label className="form-label fw-semibold small mb-1">Từ</label>

@@ -19,7 +19,7 @@ function CalendarPopup({ value, onChange, onClose }) {
   const firstDay   = new Date(viewYear, viewMonth, 1).getDay();
   const startOffset = (firstDay + 6) % 7; // Mon-based
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const todayIso    = today.toISOString().split('T')[0];
+  const todayIso    = localIsoDate(today);
 
   const prevMonth = () => viewMonth === 0 ? (setViewYear(y => y - 1), setViewMonth(11)) : setViewMonth(m => m - 1);
   const nextMonth = () => viewMonth === 11 ? (setViewYear(y => y + 1), setViewMonth(0)) : setViewMonth(m => m + 1);
@@ -100,6 +100,14 @@ function CalendarPopup({ value, onChange, onClose }) {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+/** Trả về chuỗi YYYY-MM-DD theo múi giờ LOCAL (không dùng UTC). */
+function localIsoDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function formatDateVN(isoDate) {
   if (!isoDate) return '';
   const [y, m, d] = isoDate.split('-');
@@ -108,16 +116,19 @@ function formatDateVN(isoDate) {
 
 const START_HOUR = 5;
 const END_HOUR = 24;
-/** Số ô 30 phút từ 5:00 đến trước 24:00 */
-const SLOT_COUNT = (END_HOUR - START_HOUR) * 2;
 
-function slotLocalBounds(dateStr, slotIndex) {
+/** Tính số ô grid dựa trên slotDuration (phút) */
+function computeSlotCount(slotDurationMins) {
+  return Math.floor((END_HOUR - START_HOUR) * 60 / slotDurationMins);
+}
+
+function slotLocalBounds(dateStr, slotIndex, slotDurationMins = 30) {
   const [y, m, d] = dateStr.split('-').map(Number);
-  const mins = START_HOUR * 60 + slotIndex * 30;
+  const mins = START_HOUR * 60 + slotIndex * slotDurationMins;
   const hh = Math.floor(mins / 60);
   const mm = mins % 60;
   const start = new Date(y, m - 1, d, hh, mm, 0, 0);
-  const end = new Date(start.getTime() + 30 * 60 * 1000);
+  const end = new Date(start.getTime() + slotDurationMins * 60 * 1000);
   return { start, end };
 }
 
@@ -138,8 +149,8 @@ function parseApiTimeToMinutes(v) {
   return h * 60 + min;
 }
 
-function getPriceForSlot(court, slotIndex, dateStr, fallbackPerSlot) {
-  const { start } = slotLocalBounds(dateStr, slotIndex);
+function getPriceForSlot(court, slotIndex, dateStr, fallbackPerSlot, slotDurationMins = 30) {
+  const { start } = slotLocalBounds(dateStr, slotIndex, slotDurationMins);
   const minutes = start.getHours() * 60 + start.getMinutes();
   const weekend = start.getDay() === 0 || start.getDay() === 6;
   const prices = court.prices || [];
@@ -184,8 +195,9 @@ function labelForBlockedInterval(iv) {
   return 'Khóa lịch';
 }
 
-function intervalsToGridBlocks(courtId, intervals, dateStr) {
+function intervalsToGridBlocks(courtId, intervals, dateStr, slotDurationMins = 30) {
   if (!intervals?.length) return [];
+  const slotCount = computeSlotCount(slotDurationMins);
   const blocks = [];
   for (const iv of intervals) {
     const ivStart = new Date(iv.start).getTime();
@@ -193,8 +205,8 @@ function intervalsToGridBlocks(courtId, intervals, dateStr) {
     if (Number.isNaN(ivStart) || Number.isNaN(ivEnd)) continue;
     let startIndex = -1;
     let endIndex = -1;
-    for (let i = 0; i < SLOT_COUNT; i++) {
-      const { start, end } = slotLocalBounds(dateStr, i);
+    for (let i = 0; i < slotCount; i++) {
+      const { start, end } = slotLocalBounds(dateStr, i, slotDurationMins);
       if (ivOverlapsSlot(ivStart, ivEnd, start.getTime(), end.getTime())) {
         if (startIndex < 0) startIndex = i;
         endIndex = i + 1;
@@ -225,8 +237,79 @@ export default function BookingTimeline() {
   const venueId      = venueState.venueId      ?? null;
   const pricePerSlot = venueState.pricePerSlot ?? 100000;
 
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  // ── Slot Duration (from venue state cache or API fallback) ──────────────
+  const [slotDuration, setSlotDuration] = useState(() => {
+    const fromState = venueState.slotDuration;
+    return [30, 60, 120].includes(fromState) ? fromState : 60;
+  });
+
+  // Only fetch from API if navigation state didn't provide slotDuration
+  // (e.g., page refresh on /booking, direct URL, or sessionStorage restore)
+  useEffect(() => {
+    if (!venueId) return;
+    // Skip API call if we already have a trusted value from navigation state
+    if ([30, 60, 120].includes(venueState.slotDuration)) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/venues/${venueId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) {
+          const sd = data.slotDuration || data.SlotDuration || 60;
+          setSlotDuration([30, 60, 120].includes(sd) ? sd : 60);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch venue slotDuration', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [venueId, venueState.slotDuration]);
+
+  // Derived grid constants based on slotDuration
+  const SLOT_COUNT = useMemo(() => computeSlotCount(slotDuration), [slotDuration]);
+
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const fromState = venueState.date;
+    // If user clicked standard "Back" button which explicitly pushed state
+    if (fromState && venueState.selectedSlots) return fromState;
+    if (venueId) {
+      try {
+        const savedDate = sessionStorage.getItem(`booking_last_date_${venueId}`);
+        if (savedDate) return savedDate;
+      } catch {}
+    }
+    return fromState ?? localIsoDate(new Date());
+  });
   const [showCalendar, setShowCalendar]  = useState(false);
+
+  // Initial Selected Slots from venueState or sessionStorage (if navigating back via browser)
+  const initialSelections = useMemo(() => {
+    const init = {};
+    let hasRouterState = false;
+
+    if (venueState.selectedSlots && (venueState.date === undefined || venueState.date === selectedDate)) {
+      venueState.selectedSlots.forEach(s => {
+        if (!init[s.courtId]) init[s.courtId] = new Set();
+        init[s.courtId].add(s.slotIndex);
+      });
+      hasRouterState = Object.keys(init).length > 0;
+    }
+
+    if (!hasRouterState && venueId && selectedDate) {
+      try {
+        const saved = sessionStorage.getItem(`booking_selections_${venueId}_${selectedDate}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          Object.keys(parsed).forEach(k => {
+            init[k] = new Set(parsed[k]);
+          });
+        }
+      } catch (e) {}
+    }
+    return init;
+  }, [venueState.selectedSlots, venueState.date, selectedDate, venueId]);
 
   // Ref to measure the grid container for computing the exact "fit" minimum
   const gridContainerRef = useRef(null);
@@ -237,7 +320,7 @@ export default function BookingTimeline() {
   const [cellWidth, setCellWidth] = useState(0); // 0 = uninitialized, will be set to minCellWidth on first measure
 
   // selections: { [courtId]: Set<slotIndex> }
-  const [selections, setSelections] = useState({});
+  const [selections, setSelections] = useState(initialSelections);
 
   const [courts, setCourts] = useState([]);
   const [availabilityRows, setAvailabilityRows] = useState([]);
@@ -286,7 +369,7 @@ export default function BookingTimeline() {
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [SLOT_COUNT]);
 
   // Minimum cell width derived from current container width
   const minCellWidth = containerWidth > 0
@@ -324,9 +407,25 @@ export default function BookingTimeline() {
     return () => { cancelled = true; };
   }, [venueId]);
 
+  // selections tracking is handled manually in calendar onChange
   useEffect(() => {
-    setSelections({});
-  }, [selectedDate]);
+    if (!venueId || !selectedDate) return;
+    try {
+      const toSave = {};
+      let hasData = false;
+      Object.keys(selections).forEach(k => {
+        if (selections[k] && selections[k].size > 0) {
+          toSave[k] = Array.from(selections[k]);
+          hasData = true;
+        }
+      });
+      const key = `booking_selections_${venueId}_${selectedDate}`;
+      if (hasData) sessionStorage.setItem(key, JSON.stringify(toSave));
+      else sessionStorage.removeItem(key);
+
+      sessionStorage.setItem(`booking_last_date_${venueId}`, selectedDate);
+    } catch (e) {}
+  }, [selections, venueId, selectedDate]);
 
   useEffect(() => {
     if (!venueId) {
@@ -358,19 +457,25 @@ export default function BookingTimeline() {
 
   const timeSlots = useMemo(() => {
     const slots = [];
-    for (let h = START_HOUR; h < END_HOUR; h++) {
-      slots.push(`${String(h).padStart(2, '0')}:00`);
-      slots.push(`${String(h).padStart(2, '0')}:30`);
+    for (let i = 0; i < SLOT_COUNT; i++) {
+      const totalMins = START_HOUR * 60 + i * slotDuration;
+      const hh = String(Math.floor(totalMins / 60)).padStart(2, '0');
+      const mm = String(totalMins % 60).padStart(2, '0');
+      slots.push(`${hh}:${mm}`);
     }
-    slots.push('24:00');
+    // Push end label
+    const endMins = START_HOUR * 60 + SLOT_COUNT * slotDuration;
+    const endHH = String(Math.floor(endMins / 60)).padStart(2, '0');
+    const endMM = String(endMins % 60).padStart(2, '0');
+    slots.push(`${endHH}:${endMM}`);
     return slots;
-  }, []);
+  }, [slotDuration, SLOT_COUNT]);
 
   const existingBookings = useMemo(() => {
     if (!availabilityRows.length) return [];
     return availabilityRows.flatMap(row =>
-      intervalsToGridBlocks(String(row.courtId), row.intervals || [], selectedDate));
-  }, [availabilityRows, selectedDate]);
+      intervalsToGridBlocks(String(row.courtId), row.intervals || [], selectedDate, slotDuration));
+  }, [availabilityRows, selectedDate, slotDuration]);
 
   // ── Cell status ──────────────────────────────────────────────────────────
   const getBookingAt = (courtId, slotIndex) =>
@@ -378,9 +483,10 @@ export default function BookingTimeline() {
 
   const isPastSlot = (slotIndex) => {
     const now = new Date();
-    const { end } = slotLocalBounds(selectedDate, slotIndex);
-    // Chỉ khóa "slot đã qua" trong ngày hiện tại; các ngày tương lai vẫn chọn bình thường.
-    if (!isSameLocalDate(end, now)) return false;
+    const { end } = slotLocalBounds(selectedDate, slotIndex, slotDuration);
+    // Nếu thời điểm kết thúc slot <= hiện tại → slot đã qua.
+    // Hoạt động đúng cho cả ngày đã qua lẫn các slot đã qua trong ngày hôm nay.
+    // Các ngày tương lai thì end > now → trả về false → vẫn chọn được.
     return end.getTime() <= now.getTime();
   };
 
@@ -491,14 +597,14 @@ export default function BookingTimeline() {
       if (!set?.size) return;
       set.forEach(slotIdx => {
         slots += 1;
-        price += getPriceForSlot(c, slotIdx, selectedDate, pricePerSlot);
+        price += getPriceForSlot(c, slotIdx, selectedDate, pricePerSlot, slotDuration);
       });
     });
-    const hours = slots * 0.5;
-    const h = Math.floor(hours);
-    const m = (hours - h) * 60;
+    const totalMinutes = slots * slotDuration;
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
     return { totalSlots: slots, totalPrice: price, totalHours: m > 0 ? `${h}h${m}` : `${h}h` };
-  }, [selections, courts, selectedDate, pricePerSlot]);
+  }, [selections, courts, selectedDate, pricePerSlot, slotDuration]);
 
   // ── Cell colour ──────────────────────────────────────────────────────────
   const getCellColor = status => {
@@ -517,16 +623,17 @@ export default function BookingTimeline() {
       Array.from(selections[c.id] ?? [])
         .sort((a, b) => a - b)
         .map(slotIdx => {
-          const { start, end } = slotLocalBounds(selectedDate, slotIdx);
+          const { start, end } = slotLocalBounds(selectedDate, slotIdx, slotDuration);
           return {
             courtId:   c.id,
             courtName: c.name,
             slotIndex: slotIdx,
             timeLabel: timeSlots[slotIdx],
             timeEndLabel: timeSlots[slotIdx + 1] ?? '',
-            price:     getPriceForSlot(c, slotIdx, selectedDate, pricePerSlot),
+            price:     getPriceForSlot(c, slotIdx, selectedDate, pricePerSlot, slotDuration),
             startTime: toLocalDateTimeString(start),
             endTime:   toLocalDateTimeString(end),
+            slotDuration,
           };
         })
     );
@@ -550,7 +657,7 @@ export default function BookingTimeline() {
   // ── Render ───────────────────────────────────────────────────────────────
   // paddingTop: 96px compensates for the fixed site navbar
   return (
-    <div style={{ backgroundColor: '#f0fdf4', minHeight: '100vh', paddingTop: '96px', paddingBottom: '80px' }}>
+    <div className="content-below-header" style={{ backgroundColor: '#f0fdf4', minHeight: '100vh', paddingBottom: '80px' }}>
 
       {/* ── Booking step progress ───────────────────────────────────────── */}
       <BookingSteps currentStep={1} />
@@ -811,7 +918,12 @@ export default function BookingTimeline() {
       {showCalendar && (
         <CalendarPopup
           value={selectedDate}
-          onChange={setSelectedDate}
+          onChange={d => {
+            if (d !== selectedDate) {
+              setSelectedDate(d);
+              setSelections({});
+            }
+          }}
           onClose={() => setShowCalendar(false)}
         />
       )}

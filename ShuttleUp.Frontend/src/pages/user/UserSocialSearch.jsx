@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import jsQR from 'jsqr';
 import { QRCodeSVG } from 'qrcode.react';
-import UserDashboardMenu from '../../components/user/UserDashboardMenu';
 import RelationshipActions from '../../components/user/RelationshipActions';
 import socialApi from '../../api/socialApi';
 import { useAuth } from '../../context/AuthContext';
@@ -148,211 +147,280 @@ export default function UserSocialSearch() {
     [navigate]
   );
 
+  const downloadQR = () => {
+    const svg = document.getElementById('my-profile-qr');
+    if (!svg) return;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+      const pngFile = canvas.toDataURL('image/png');
+      const downloadLink = document.createElement('a');
+      downloadLink.download = `shuttleup_qr_${myId}.png`;
+      downloadLink.href = pngFile;
+      downloadLink.click();
+    };
+    img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
+  };
+
   return (
-    <div className="main-wrapper content-below-header">
-      <section className="breadcrumb breadcrumb-list mb-0">
-        <span className="primary-right-round"></span>
-        <div className="container">
-          <h1 className="text-white">Tìm bạn</h1>
-          <ul>
-            <li><Link to="/">Trang chủ</Link></li>
-            <li>Tìm bạn</li>
-          </ul>
-        </div>
-      </section>
-
-      <UserDashboardMenu />
-
-      <div className="content court-bg" style={{ paddingTop: 40 }}>
-        <div className="container">
-          <div className="mb-4">
-            <Link to="/user/social/friends" className="btn btn-outline-primary btn-sm me-2">
-              Danh sách bạn & lời mời
+    <div className="space-y-6">
+      {/* Header section */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6 mb-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-1 flex items-center gap-2">
+              <i className="fa-solid fa-users text-emerald-600"></i>
+              Tìm kiếm bạn bè
+            </h2>
+            <p className="text-slate-500 text-sm m-0">Gặp gỡ và kết nối với những người chơi cầu lông cùng đam mê.</p>
+          </div>
+          <div className="flex gap-2">
+            <Link to="/user/social/friends" className="btn btn-emerald-soft font-bold px-4 py-2.5">
+              <i className="fa-solid fa-user-group" aria-hidden />
+              <span>Bạn bè & Lời mời</span>
             </Link>
           </div>
+        </div>
+      </div>
 
-          <div className="row g-4">
-            <div className="col-lg-7">
-              <div className="card border-0 shadow-sm mb-4">
-                <div className="card-body">
-                  <h2 className="h5 mb-3" style={{ color: '#1e293b' }}>
-                    Tìm kiếm
-                  </h2>
-                  <div className="btn-group mb-3" role="group">
-                    <button
-                      type="button"
-                      className={`btn btn-sm ${mode === 'exact' ? 'btn-primary' : 'btn-outline-primary'}`}
-                      onClick={() => {
-                        setMode('exact');
-                        setResults([]);
-                      }}
-                    >
-                      Email / SĐT khớp 100%
-                    </button>
-                    <button
-                      type="button"
-                      className={`btn btn-sm ${mode === 'name' ? 'btn-primary' : 'btn-outline-primary'}`}
-                      onClick={() => {
-                        setMode('name');
-                        setResults([]);
-                      }}
-                    >
-                      Gợi ý theo tên
-                    </button>
-                  </div>
+      <div className="row g-4">
+        <div className="col-lg-7">
+          {/* Search Box */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6 mb-4">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="w-1 h-5 bg-emerald-500 rounded-full"></span>
+              <h5 className="text-base font-bold text-slate-800 m-0">Công cụ tìm kiếm</h5>
+            </div>
 
-                  {mode === 'exact' && (
-                    <div className="mb-3">
-                      <label className="form-label small text-muted">Nhập đúng email hoặc số điện thoại</label>
-                      <div className="input-group">
-                        <input
-                          className="form-control"
-                          value={exactQuery}
-                          onChange={(ev) => setExactQuery(ev.target.value)}
-                          placeholder="vd: ban@email.com hoặc 090..."
-                          onKeyDown={(ev) => ev.key === 'Enter' && runExact()}
-                        />
-                        <button type="button" className="btn btn-primary" disabled={searching} onClick={runExact}>
-                          Tìm
-                        </button>
-                      </div>
-                    </div>
-                  )}
+            <div className="flex p-1 bg-slate-50 rounded-xl mb-6 w-fit">
+              <button
+                type="button"
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                  mode === 'exact' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
+                onClick={() => {
+                  setMode('exact');
+                  setResults([]);
+                }}
+              >
+                Theo Email / SĐT
+              </button>
+              <button
+                type="button"
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                  mode === 'name' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
+                onClick={() => {
+                  setMode('name');
+                  setResults([]);
+                }}
+              >
+                Gợi ý theo tên
+              </button>
+            </div>
 
-                  {mode === 'name' && (
-                    <div className="mb-3">
-                      <label className="form-label small text-muted">Gõ tên — gợi ý cập nhật sau vài giây</label>
-                      <input
-                        className="form-control"
-                        value={nameQuery}
-                        onChange={(ev) => setNameQuery(ev.target.value)}
-                        placeholder="Tên hiển thị…"
-                      />
-                    </div>
-                  )}
-
-                  {searching && <p className="text-muted small">Đang tìm…</p>}
-
-                  <ul className="list-group list-group-flush">
-                    {!searching && results.length === 0 && (mode === 'exact' ? exactQuery.trim() : nameDebounced).length > 0 && (
-                      <li className="list-group-item text-muted border-0 px-0">Không có kết quả phù hợp.</li>
-                    )}
-                    {results.map((x) => {
-                      const id = x.id ?? x.Id;
-                      const name = x.fullName ?? x.FullName ?? '';
-                      const av = x.avatarUrl ?? x.AvatarUrl;
-                      return (
-                        <li key={id} className="list-group-item border-0 border-bottom px-0 py-3">
-                          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                            <Link
-                              to={`/user/profile/${id}`}
-                              className="d-flex align-items-center text-decoration-none"
-                              style={{ color: '#1e293b' }}
-                            >
-                              {av ? (
-                                <img
-                                  src={av}
-                                  alt=""
-                                  className="rounded-circle me-2"
-                                  style={{ width: 44, height: 44, objectFit: 'cover' }}
-                                />
-                              ) : (
-                                <div
-                                  className="rounded-circle bg-light d-inline-flex align-items-center justify-content-center me-2"
-                                  style={{ width: 44, height: 44, color: '#64748b' }}
-                                >
-                                  {name.charAt(0)}
-                                </div>
-                              )}
-                              <strong>{name}</strong>
-                            </Link>
-                            <RelationshipActions
-                              otherUserId={id}
-                              chatPeerFullName={name}
-                              chatPeerAvatarUrl={av}
-                            />
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              </div>
-
-              <div className="card border-0 shadow-sm">
-                <div className="card-body">
-                  <h3 className="h6 mb-2" style={{ color: '#1e293b' }}>
-                    Quét mã từ ảnh (máy tính)
-                  </h3>
-                  <p className="small text-muted mb-2">
-                    Chọn ảnh chụp mã QR hồ sơ — hệ thống sẽ mở đúng trang nếu nhận diện được.
-                  </p>
-                  <input ref={fileInputRef} type="file" accept="image/*" className="d-none" onChange={onQrFile} />
-                  <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => fileInputRef.current?.click()}>
-                    Chọn ảnh QR
+            {mode === 'exact' ? (
+              <div className="space-y-3">
+                <div className="relative group">
+                  <span
+                    className="pointer-events-none absolute left-0 top-0 z-[1] flex h-full w-12 items-center justify-center text-slate-400"
+                    aria-hidden
+                  >
+                    <i className="fa-solid fa-magnifying-glass text-[0.95rem]"></i>
+                  </span>
+                  <input
+                    className="form-control user-social-exact-search-input rounded-[0.75rem] border-slate-200 py-3 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
+                    value={exactQuery}
+                    onChange={(ev) => setExactQuery(ev.target.value)}
+                    placeholder="Nhập chính xác email hoặc SĐT..."
+                    onKeyDown={(ev) => ev.key === 'Enter' && runExact()}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-emerald absolute right-2 top-1/2 z-[2] -translate-y-1/2 px-4 py-1.5 text-sm font-bold transition-all disabled:opacity-50 border-0"
+                    disabled={searching}
+                    onClick={runExact}
+                  >
+                    {searching ? '...' : 'Tìm ngay'}
                   </button>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="relative group">
+                <span
+                  className="pointer-events-none absolute left-0 top-0 z-[1] flex h-full w-12 items-center justify-center text-slate-400"
+                  aria-hidden
+                >
+                  <i className="fa-solid fa-user-tag text-[0.95rem]"></i>
+                </span>
+                <input
+                  className="form-control user-social-name-search-input rounded-[0.75rem] border-slate-200 py-3 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
+                  value={nameQuery}
+                  onChange={(ev) => setNameQuery(ev.target.value)}
+                  placeholder="Nhập tên hiển thị bạn muốn tìm..."
+                />
+              </div>
+            )}
 
-            <div className="col-lg-5">
-              <div className="card border-0 shadow-sm mb-4">
-                <div className="card-body text-center">
-                  <h3 className="h6 mb-2" style={{ color: '#1e293b' }}>
-                    Mã QR hồ sơ của bạn
-                  </h3>
-                  {shareUrl ? (
-                    <>
-                      <QRCodeSVG value={shareUrl} size={200} level="M" includeMargin />
-                      <p className="small text-muted mt-2 mb-0 text-break">{shareUrl}</p>
-                    </>
-                  ) : (
-                    <p className="small text-muted mb-0">Đăng nhập để tạo mã QR.</p>
-                  )}
+            {searching && (
+              <div className="mt-4 flex items-center justify-center py-4 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                <div className="flex items-center gap-2 text-slate-500 text-sm font-semibold">
+                  <i className="fa-solid fa-spinner fa-spin text-emerald-600"></i>
+                  Đang tìm kiếm dữ liệu...
                 </div>
               </div>
+            )}
 
-              <div className="card border-0 shadow-sm">
-                <div className="card-body">
-                  <h3 className="h6 mb-3" style={{ color: '#1e293b' }}>
-                    Ai có thể tìm bạn?
-                  </h3>
-                  {!privacyLoaded ? (
-                    <p className="small text-muted mb-0">Đang tải…</p>
-                  ) : (
-                    <>
-                      <div className="form-check mb-2">
-                        <input
-                          className="form-check-input"
-                          type="checkbox"
-                          id="p-email"
-                          checked={privacy.allowFindByEmail}
-                          onChange={(ev) => setPrivacy((p) => ({ ...p, allowFindByEmail: ev.target.checked }))}
-                        />
-                        <label className="form-check-label small" htmlFor="p-email">
-                          Cho phép tìm theo email (khớp 100%)
-                        </label>
-                      </div>
-                      <div className="form-check mb-3">
-                        <input
-                          className="form-check-input"
-                          type="checkbox"
-                          id="p-phone"
-                          checked={privacy.allowFindByPhone}
-                          onChange={(ev) => setPrivacy((p) => ({ ...p, allowFindByPhone: ev.target.checked }))}
-                        />
-                        <label className="form-check-label small" htmlFor="p-phone">
-                          Cho phép tìm theo số điện thoại (khớp 100%)
-                        </label>
-                      </div>
-                      <button type="button" className="btn btn-primary btn-sm" onClick={savePrivacy}>
-                        Lưu cài đặt
-                      </button>
-                    </>
-                  )}
+            <div className="mt-6 space-y-3">
+              {!searching && results.length === 0 && (mode === 'exact' ? exactQuery.trim() : nameDebounced).length > 0 && (
+                <div className="p-8 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                   <i className="fa-solid fa-user-slash text-slate-300 text-3xl mb-3"></i>
+                   <p className="text-slate-400 font-medium m-0">Không tìm thấy ai phù hợp yêu cầu này.</p>
                 </div>
-              </div>
+              )}
+              {results.map((x) => {
+                const id = x.id ?? x.Id;
+                const name = x.fullName ?? x.FullName ?? '';
+                const av = x.avatarUrl ?? x.AvatarUrl;
+                return (
+                  <div key={id} className="p-4 rounded-2xl border border-slate-100 hover:border-emerald-100 hover:bg-emerald-50/20 transition-all group shadow-sm bg-white">
+                    <div className="flex items-center justify-between gap-4">
+                      <Link to={`/user/profile/${id}`} className="flex items-center gap-3 no-underline grow min-w-0">
+                        <div className="relative shrink-0">
+                          {av ? (
+                            <img src={av} alt="" className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-sm" />
+                          ) : (
+                            <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-xl border-2 border-white shadow-sm">
+                              {name.charAt(0)}
+                            </div>
+                          )}
+                          <div className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full"></div>
+                        </div>
+                        <div className="min-w-0 overflow-hidden">
+                          <h6 className="text-[15px] font-bold text-slate-800 m-0 group-hover:text-emerald-700 transition-colors truncate">{name}</h6>
+                          <p className="text-[12px] text-slate-400 m-0 flex items-center gap-1">
+                            <i className="fa-solid fa-earth-asia text-[10px]"></i> Người đại diện phong trào
+                          </p>
+                        </div>
+                      </Link>
+                      <div className="shrink-0 flex items-center gap-2">
+                        <RelationshipActions
+                          otherUserId={id}
+                          chatPeerFullName={name}
+                          chatPeerAvatarUrl={av}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6">
+             <div className="flex items-center gap-2 mb-4">
+               <span className="w-1 h-5 bg-emerald-500 rounded-full"></span>
+               <h5 className="text-base font-bold text-slate-800 m-0">Quét mã QR từ ảnh</h5>
+             </div>
+             <p className="text-[13px] text-slate-500 mb-4 leading-relaxed">
+               Nếu bạn có ảnh chụp mã QR của đối phương trên thiết bị, bạn có thể tải lên để hệ thống tự động nhận diện và mở hồ sơ.
+             </p>
+             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onQrFile} />
+             <button
+               type="button"
+               className="btn btn-emerald-soft w-full px-6 py-2.5 font-bold md:w-auto"
+               onClick={() => fileInputRef.current?.click()}
+             >
+               <i className="fa-solid fa-image" aria-hidden />
+               <span>Chọn ảnh từ máy tính</span>
+             </button>
+          </div>
+        </div>
+
+        <div className="col-lg-5 space-y-4">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6 text-center">
+            <div className="flex items-center gap-2 mb-6 text-left">
+              <span className="w-1 h-5 bg-emerald-500 rounded-full"></span>
+              <h5 className="text-base font-bold text-slate-800 m-0">Mã QR cá nhân</h5>
+            </div>
+            {shareUrl ? (
+              <div className="flex flex-col items-center">
+                <div className="p-5 bg-emerald-50 rounded-3xl mb-4 border-4 border-white shadow-sm">
+                  <QRCodeSVG id="my-profile-qr" value={shareUrl} size={180} level="M" includeMargin={false} fgColor="#065f46" />
+                </div>
+                <div className="bg-slate-50 rounded-xl px-4 py-2 mb-2 max-w-full">
+                  <p className="text-[11px] text-slate-400 font-bold m-0 break-all">{shareUrl}</p>
+                </div>
+                <button type="button" className="btn btn-emerald-soft btn-sm font-bold shadow-sm mb-2" onClick={downloadQR}>
+                  <i className="fa-solid fa-download" aria-hidden />
+                  <span>Tải mã cá nhân</span>
+                </button>
+                <p className="text-xs text-slate-400 px-6">Đưa mã này cho bạn bè quét để họ tìm thấy bạn ngay lập tức.</p>
+              </div>
+            ) : (
+              <div className="py-12 flex flex-col items-center">
+                <i className="fa-solid fa-qrcode text-slate-200 text-5xl mb-4"></i>
+                <p className="text-slate-400 font-medium text-sm">Vui lòng đăng nhập để xem mã QR.</p>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6">
+            <div className="flex items-center gap-2 mb-6">
+              <span className="w-1 h-5 bg-emerald-500 rounded-full"></span>
+              <h5 className="text-base font-bold text-slate-800 m-0">Quyền riêng tư</h5>
+            </div>
+            {!privacyLoaded ? (
+              <div className="flex items-center gap-2 text-slate-400 py-4 font-semibold text-sm">
+                 <i className="fa-solid fa-spinner fa-spin"></i> Đang tải dữ liệu...
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-100 hover:bg-slate-50 cursor-pointer transition-all">
+                  <input
+                    className="form-check-input mt-1 shadow-none border-slate-300 pointer-events-none appearance-none w-5 h-5 rounded-md checked:bg-emerald-600 checked:border-emerald-600 transition-all cursor-pointer relative after:content-['\2713'] after:absolute after:hidden checked:after:block after:text-white after:text-[12px] after:left-1.5"
+                    style={{ pointerEvents: 'auto' }}
+                    type="checkbox"
+                    id="p-email"
+                    checked={privacy.allowFindByEmail}
+                    onChange={(ev) => setPrivacy((p) => ({ ...p, allowFindByEmail: ev.target.checked }))}
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-slate-700">Tìm kiếm theo Email</span>
+                    <span className="text-[11px] text-slate-400">Người khác có thể tìm thấy bạn nếu họ biết chính xác email.</span>
+                  </div>
+                </label>
+                
+                <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-100 hover:bg-slate-50 cursor-pointer transition-all">
+                  <input
+                    className="form-check-input mt-1 shadow-none border-slate-300 pointer-events-none appearance-none w-5 h-5 rounded-md checked:bg-emerald-600 checked:border-emerald-600 transition-all cursor-pointer relative after:content-['\2713'] after:absolute after:hidden checked:after:block after:text-white after:text-[12px] after:left-1.5"
+                    style={{ pointerEvents: 'auto' }}
+                    type="checkbox"
+                    id="p-phone"
+                    checked={privacy.allowFindByPhone}
+                    onChange={(ev) => setPrivacy((p) => ({ ...p, allowFindByPhone: ev.target.checked }))}
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-slate-700">Tìm kiếm theo Số điện thoại</span>
+                    <span className="text-[11px] text-slate-400">Người khác có thể tìm thấy bạn nếu họ biết chính xác SĐT.</span>
+                  </div>
+                </label>
+                
+                <button
+                  type="button"
+                  className="btn btn-emerald mt-4 w-full py-2.5 font-bold shadow-lg shadow-emerald-500/10"
+                  onClick={savePrivacy}
+                >
+                  <i className="fa-solid fa-shield-check" aria-hidden />
+                  <span>Lưu thiết lập của tôi</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
+import { normalizeSearchText } from '../../utils/searchNormalize';
 import StarRatingDisplay from '../../components/common/StarRatingDisplay';
 import RichText from '../../components/common/RichText';
 
@@ -151,8 +152,15 @@ export default function ManagerVenueCourts() {
     return true;
   });
   if (search.trim()) {
-    const q = search.toLowerCase().trim();
-    filtered = filtered.filter(c => c.name.toLowerCase().includes(q) || (c.type || '').toLowerCase().includes(q) || (c.surface || '').toLowerCase().includes(q));
+    const nq = normalizeSearchText(search);
+    if (nq) {
+      filtered = filtered.filter(
+        (c) =>
+          normalizeSearchText(c.name).includes(nq) ||
+          normalizeSearchText(c.type).includes(nq) ||
+          normalizeSearchText(c.surface).includes(nq),
+      );
+    }
   }
   if (sortBy === 'price') filtered = [...filtered].sort((a, b) => a.pricePerHour - b.pricePerHour);
   if (sortBy === 'name') filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
@@ -183,7 +191,15 @@ export default function ManagerVenueCourts() {
           </div>
         </div>
         <div className="d-flex gap-2">
-          <Link to={`/manager/venues/${venueId}/coupons`} className="btn fw-semibold mgr-btn-lift" style={{ background: '#fef3c7', color: '#d97706', border: 'none' }}>
+          <Link
+            to={`/manager/venues/${venueId}/coupons`}
+            className="btn fw-semibold mgr-btn-lift"
+            style={{
+              background: '#fff7ed',
+              color: '#9a3412',
+              border: '1px solid #fdba74',
+            }}
+          >
             <i className="feather-tag" /> Quản lý Voucher
           </Link>
           <Link to={`/manager/venues/${venueId}/courts/add`} className="btn btn-secondary vc-hero__cta">

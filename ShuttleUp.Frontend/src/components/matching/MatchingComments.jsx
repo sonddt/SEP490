@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import matchingApi from '../../api/matchingApi';
 import { useAuth } from '../../context/AuthContext';
 import CommentRichText from './CommentRichText';
+import { normalizeSearchText } from '../../utils/searchNormalize';
 
 const defaultAvatar = '/assets/img/profiles/avatar-01.jpg';
 const COMMENT_COOLDOWN_MS = 500;
@@ -72,9 +73,9 @@ export default function MatchingComments({ postId, isHost = false, postMembers =
   const fileInputRef = useRef(null);
 
   const filteredMentions = useMemo(() => {
-    const q = mentionQuery.trim().toLowerCase();
-    if (!q) return mentionMembers.slice(0, 8);
-    return mentionMembers.filter((m) => m.fullName.toLowerCase().includes(q)).slice(0, 8);
+    const nq = normalizeSearchText(mentionQuery);
+    if (!nq) return mentionMembers.slice(0, 8);
+    return mentionMembers.filter((m) => normalizeSearchText(m.fullName).includes(nq)).slice(0, 8);
   }, [mentionMembers, mentionQuery]);
 
   const canSubmitNew = Boolean(

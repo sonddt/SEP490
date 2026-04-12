@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import UserDashboardMenu from '../../components/user/UserDashboardMenu';
 import UserProfileTabs from '../../components/user/UserProfileTabs';
 import { changePassword } from '../../api/authApi';
 import { useAuth } from '../../context/AuthContext';
@@ -88,156 +87,132 @@ export default function UserProfileChangePassword() {
   };
 
   return (
-    <div className="main-wrapper">
-
-      {/* Breadcrumb */}
-      <section className="breadcrumb breadcrumb-list mb-0">
-        <span className="primary-right-round"></span>
-        <div className="container">
-          <h1 className="text-white">Hồ sơ người dùng</h1>
-          <ul>
-            <li><Link to="/">Trang chủ</Link></li>
-            <li>Đổi mật khẩu</li>
-          </ul>
-        </div>
-      </section>
-
-      {/* Dashboard Menu */}
-      <UserDashboardMenu />
-
-      {/* Page Content */}
-      <div className="content court-bg" style={{ paddingTop: '90px' }}>
-        <div className="container">
-
-          {/* Profile Tabs */}
-          <UserProfileTabs />
-
-          <div className="row">
-            <div className="col-sm-12">
-              <div className="profile-detail-group">
-                <div className="card">
-                  <form onSubmit={handleSubmit}>
-                    <div className="row">
-
-                      {/* Alert */}
-                      {error && (
-                        <div className="col-12">
-                          <div className="alert alert-danger">{error}</div>
-                        </div>
-                      )}
-                      {success && (
-                        <div className="col-12">
-                          <div className="alert alert-success">{success}</div>
-                        </div>
-                      )}
-
-                      {/* Current Password */}
-                      <div className="col-lg-12">
-                        <div className="appoint-head">
-                          <h4>Mật khẩu hiện tại</h4>
-                        </div>
-                        <div className="input-space other-setting-form">
-                          <label className="form-label">Nhập mật khẩu hiện tại</label>
-                          <div className="pass-group group-img">
-                            <i
-                              className={`toggle-password ${show.current ? 'feather-eye' : 'feather-eye-off'}`}
-                              onClick={() => setShow((s) => ({ ...s, current: !s.current }))}
-                              style={{ cursor: 'pointer' }}
-                            />
-                            <input
-                              type={show.current ? 'text' : 'password'}
-                              className={`form-control pass-input ${fieldErrors.currentPassword ? 'is-invalid' : ''}`}
-                              name="currentPassword"
-                              placeholder="Mật khẩu hiện tại"
-                              value={form.currentPassword}
-                              onChange={handleChange}
-                            />
-                          </div>
-                          {fieldErrors.currentPassword && <div className="invalid-feedback d-block mt-1">{fieldErrors.currentPassword}</div>}
-                        </div>
-                      </div>
-
-                      {/* New Password */}
-                      <div className="col-lg-12">
-                        <div className="appoint-head">
-                          <h4>Mật khẩu mới</h4>
-                        </div>
-                        <div className="input-space other-setting-form">
-                          <label className="form-label">Nhập mật khẩu mới (tối thiểu 8 ký tự)</label>
-                          <div className="pass-group group-img">
-                            <i
-                              className={`toggle-password ${show.newPw ? 'feather-eye' : 'feather-eye-off'}`}
-                              onClick={() => setShow((s) => ({ ...s, newPw: !s.newPw }))}
-                              style={{ cursor: 'pointer' }}
-                            />
-                            <input
-                              type={show.newPw ? 'text' : 'password'}
-                              className={`form-control pass-input ${fieldErrors.newPassword ? 'is-invalid' : ''}`}
-                              name="newPassword"
-                              placeholder="Mật khẩu mới"
-                              value={form.newPassword}
-                              onChange={handleChange}
-                            />
-                          </div>
-                          {fieldErrors.newPassword && <div className="invalid-feedback d-block mt-1">{fieldErrors.newPassword}</div>}
-                        </div>
-                      </div>
-
-                      {/* Confirm Password */}
-                      <div className="col-lg-12">
-                        <div className="appoint-head">
-                          <h4>Xác nhận mật khẩu mới</h4>
-                        </div>
-                        <div className="input-space other-setting-form">
-                          <label className="form-label">Nhập lại mật khẩu mới</label>
-                          <div className="pass-group group-img">
-                            <i
-                              className={`toggle-password-confirm ${show.confirm ? 'feather-eye' : 'feather-eye-off'}`}
-                              onClick={() => setShow((s) => ({ ...s, confirm: !s.confirm }))}
-                              style={{ cursor: 'pointer' }}
-                            />
-                            <input
-                              type={show.confirm ? 'text' : 'password'}
-                              className={`form-control pass-confirm ${fieldErrors.confirmPassword ? 'is-invalid' : ''}`}
-                              name="confirmPassword"
-                              placeholder="Xác nhận mật khẩu mới"
-                              value={form.confirmPassword}
-                              onChange={handleChange}
-                            />
-                          </div>
-                          {fieldErrors.confirmPassword && <div className="invalid-feedback d-block mt-1">{fieldErrors.confirmPassword}</div>}
-                        </div>
-                      </div>
-
-                    </div>
-                  </form>
-                </div>
-
-                <div className="save-changes text-end">
-                  <button
-                    type="button"
-                    className="btn btn-secondary reset-profile"
-                    onClick={handleReset}
-                    disabled={loading}
-                  >
-                    Đặt lại
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary save-profile"
-                    onClick={handleSubmit}
-                    disabled={loading}
-                  >
-                    {loading ? 'Đang lưu...' : 'Lưu thay đổi'}
-                  </button>
-                </div>
-              </div>
-            </div>
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6 mb-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-1 flex items-center gap-2">
+              <i className="fa-solid fa-shield-halved text-emerald-600"></i>
+              Đổi mật khẩu
+            </h2>
+            <p className="text-slate-500 text-sm m-0">Đảm bảo tài khoản của bạn luôn được bảo vệ bằng mật khẩu mạnh.</p>
           </div>
-
         </div>
       </div>
 
+      <div className="max-w-2xl">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="alert alert-danger rounded-xl border-0 shadow-sm flex items-center gap-3 bg-rose-50 text-rose-700 py-3 px-4">
+                <i className="fa-solid fa-circle-exclamation text-rose-500"></i>
+                <span className="font-semibold text-sm">{error}</span>
+              </div>
+            )}
+            {success && (
+              <div className="alert alert-success rounded-xl border-0 shadow-sm flex items-center gap-3 bg-emerald-50 text-emerald-700 py-3 px-4">
+                <i className="fa-solid fa-circle-check text-emerald-500"></i>
+                <span className="font-semibold text-sm">{success}</span>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[13px] font-bold text-slate-600 px-1">Mật khẩu hiện tại</label>
+                <div className="pass-group relative">
+                  <input
+                    type={show.current ? 'text' : 'password'}
+                    className={`form-control rounded-xl border-slate-200 py-3 px-4 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all ${fieldErrors.currentPassword ? 'border-rose-400 bg-rose-50/20' : ''}`}
+                    name="currentPassword"
+                    placeholder="********"
+                    value={form.currentPassword}
+                    onChange={handleChange}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShow((s) => ({ ...s, current: !s.current }))}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 bg-transparent border-0 p-0"
+                  >
+                    <i className={`fa-solid ${show.current ? 'fa-eye' : 'fa-eye-slash'}`}></i>
+                  </button>
+                </div>
+                {fieldErrors.currentPassword && <div className="text-rose-500 text-[11px] font-bold px-1 mt-1">{fieldErrors.currentPassword}</div>}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[13px] font-bold text-slate-600 px-1">Mật khẩu mới</label>
+                <div className="pass-group relative">
+                  <input
+                    type={show.newPw ? 'text' : 'password'}
+                    className={`form-control rounded-xl border-slate-200 py-3 px-4 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all ${fieldErrors.newPassword ? 'border-rose-400 bg-rose-50/20' : ''}`}
+                    name="newPassword"
+                    placeholder="Ít nhất 6 ký tự"
+                    value={form.newPassword}
+                    onChange={handleChange}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShow((s) => ({ ...s, newPw: !s.newPw }))}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 bg-transparent border-0 p-0"
+                  >
+                    <i className={`fa-solid ${show.newPw ? 'fa-eye' : 'fa-eye-slash'}`}></i>
+                  </button>
+                </div>
+                {fieldErrors.newPassword && <div className="text-rose-500 text-[11px] font-bold px-1 mt-1">{fieldErrors.newPassword}</div>}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[13px] font-bold text-slate-600 px-1">Xác nhận mật khẩu</label>
+                <div className="pass-group relative">
+                  <input
+                    type={show.confirm ? 'text' : 'password'}
+                    className={`form-control rounded-xl border-slate-200 py-3 px-4 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all ${fieldErrors.confirmPassword ? 'border-rose-400 bg-rose-50/20' : ''}`}
+                    name="confirmPassword"
+                    placeholder="Nhập lại mật khẩu mới"
+                    value={form.confirmPassword}
+                    onChange={handleChange}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShow((s) => ({ ...s, confirm: !s.confirm }))}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 bg-transparent border-0 p-0"
+                  >
+                    <i className={`fa-solid ${show.confirm ? 'fa-eye' : 'fa-eye-slash'}`}></i>
+                  </button>
+                </div>
+                {fieldErrors.confirmPassword && <div className="text-rose-500 text-[11px] font-bold px-1 mt-1">{fieldErrors.confirmPassword}</div>}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-6 border-t border-slate-50 mt-8">
+              <button
+                type="button"
+                className="btn user-form-cancel px-6 py-2.5 rounded-[0.75rem] font-bold"
+                onClick={handleReset}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn btn-emerald px-8 py-2.5 font-bold shadow-lg shadow-emerald-500/10 disabled:opacity-50"
+              >
+                {loading ? (
+                  <>
+                    <i className="fa-solid fa-spinner fa-spin" aria-hidden />
+                    <span>Đang xử lý</span>
+                  </>
+                ) : (
+                  <>
+                    <i className="fa-solid fa-save" aria-hidden />
+                    <span>Đổi mật khẩu</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }

@@ -18,6 +18,9 @@ public partial class Booking
 
     public string? Status { get; set; }
 
+    /// <summary>UTC deadline for HOLDING status; null when not holding.</summary>
+    public DateTime? HoldExpiresAt { get; set; }
+
     public decimal? TotalAmount { get; set; }
 
     public decimal? DiscountAmount { get; set; }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import axiosClient from '../../api/axiosClient';
+import { normalizedIncludesAny } from '../../utils/searchNormalize';
 
 const EMPTY_FORM = {
   title: '',
@@ -275,9 +276,9 @@ function AdminFeaturedTable({ rows, onEdit, onDelete }) {
                     </div>
                   </td>
                   <td>
-                    <div className="fw-semibold" style={{ color: '#1e293b' }}>{row.title}</div>
+                    <div className="fw-semibold text-truncate-1" style={{ color: '#1e293b', minWidth: 160 }}>{row.title}</div>
                     {row.excerpt && (
-                      <div className="text-muted small mt-1" style={{ maxWidth: 360, lineHeight: 1.35 }}>
+                      <div className="text-muted small mt-1 text-truncate-2" style={{ maxWidth: 360, lineHeight: 1.35 }}>
                         {row.excerpt}
                       </div>
                     )}
@@ -484,7 +485,7 @@ function AdminFeaturedPostCard({ row, onEdit, onDelete }) {
 
       <div className="flex-grow-1 d-flex flex-column p-3" style={{ gap: 10 }}>
         <div>
-          <h6 className="fw-bold mb-2" style={{ fontSize: 15, color: '#1e293b', lineHeight: 1.35 }}>
+          <h6 className="fw-bold mb-2 text-truncate-2" style={{ fontSize: 15, color: '#1e293b', lineHeight: 1.35, minHeight: 40 }}>
             {row.title}
           </h6>
           <span
@@ -499,7 +500,7 @@ function AdminFeaturedPostCard({ row, onEdit, onDelete }) {
         </div>
 
         {row.excerpt && (
-          <p className="small text-muted mb-0" style={{ lineHeight: 1.45 }}>{row.excerpt}</p>
+          <p className="small text-muted mb-0 text-truncate-2" style={{ lineHeight: 1.45, minHeight: 36 }}>{row.excerpt}</p>
         )}
 
         {row.venueName && (
@@ -602,21 +603,20 @@ export default function AdminFeaturedPosts() {
   const [viewMode, setViewMode] = useState('table');
 
   const filteredSorted = useMemo(() => {
-    const q = search.trim().toLowerCase();
     let arr = items.filter((row) => {
       const pub = !!row.isPublished;
       const matchStatus = filterStatus === 'all'
         || (filterStatus === 'published' && pub)
         || (filterStatus === 'draft' && !pub);
       if (!matchStatus) return false;
-      if (!q) return true;
-      const t = (row.title || '').toLowerCase();
-      const ex = (row.excerpt || '').toLowerCase();
-      const body = (row.body || '').toLowerCase();
-      const vn = (row.venueName || '').toLowerCase();
-      const an = (row.authorName || '').toLowerCase();
-      const ar = (row.authorRole || '').toLowerCase();
-      return t.includes(q) || ex.includes(q) || body.includes(q) || vn.includes(q) || an.includes(q) || ar.includes(q);
+      return normalizedIncludesAny(search, [
+        row.title,
+        row.excerpt,
+        row.body,
+        row.venueName,
+        row.authorName,
+        row.authorRole,
+      ]);
     });
     switch (sort) {
       case 'created_asc':

@@ -155,6 +155,7 @@ public class ManagerVenuesController : ControllerBase
             Includes = request.Includes != null ? JsonSerializer.Serialize(request.Includes) : null,
             Rules = request.Rules != null ? JsonSerializer.Serialize(request.Rules) : null,
             Amenities = request.Amenities != null ? JsonSerializer.Serialize(request.Amenities) : null,
+            SlotDuration = request.SlotDuration == 30 || request.SlotDuration == 120 ? request.SlotDuration : 60
         };
 
         await _venueService.CreateAsync(venue);
@@ -209,6 +210,28 @@ public class ManagerVenuesController : ControllerBase
         venue.Includes = request.Includes != null ? JsonSerializer.Serialize(request.Includes) : null;
         venue.Rules = request.Rules != null ? JsonSerializer.Serialize(request.Rules) : null;
         venue.Amenities = request.Amenities != null ? JsonSerializer.Serialize(request.Amenities) : null;
+
+        // ── SlotDuration change guard ──────────────────────────────────
+        var newSlotDuration = request.SlotDuration == 30 || request.SlotDuration == 120
+            ? request.SlotDuration : 60;
+
+        if (newSlotDuration != venue.SlotDuration)
+        {
+            var now = DateTime.UtcNow;
+            var hasFutureBookings = await _dbContext.BookingItems
+                .AnyAsync(bi =>
+                    bi.Booking != null
+                    && bi.Booking.VenueId == venueId
+                    && bi.StartTime.HasValue
+                    && bi.StartTime.Value > now
+                    && bi.Booking.Status != null
+                    && bi.Booking.Status != "CANCELLED");
+
+            if (hasFutureBookings)
+                return BadRequest(new { message = "Không thể thay đổi đơn vị giờ chẵn khi còn đơn đặt sân trong tương lai. Vui lòng chờ đến khi tất cả đơn hiện tại hoàn tất hoặc bị huỷ." });
+        }
+
+        venue.SlotDuration = newSlotDuration;
 
         await _venueService.UpdateAsync(venue);
 

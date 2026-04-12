@@ -13,4 +13,9 @@ public class CreateBookingRequestDto
     public string? Note { get; set; }
 
     public string? CouponCode { get; set; }
+
+    /// <summary>
+    /// Optional: if provided, update the existing HOLDING booking instead of creating a new one.
+    /// </summary>
+    public Guid? BookingId { get; set; }
 }

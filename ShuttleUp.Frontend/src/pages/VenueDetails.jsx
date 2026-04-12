@@ -12,6 +12,7 @@ import Zoom from 'yet-another-react-lightbox/plugins/zoom';
 import Thumbnails from 'yet-another-react-lightbox/plugins/thumbnails';
 import 'yet-another-react-lightbox/styles.css';
 import 'yet-another-react-lightbox/plugins/thumbnails.css';
+import LongTermTypeModal from '../components/booking/LongTermTypeModal';
 
 const AMENITIES_LIST = [
   { key: 'parking',       label: 'Bãi đỗ xe',                  icon: 'feather-map-pin' },
@@ -46,6 +47,7 @@ export default function VenueDetails() {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
+  const isAdmin = user?.roles?.includes('ADMIN');
 
   // ALL hooks MUST be declared before any conditional return (React Rules of Hooks)
   const [venue, setVenue] = useState(null);
@@ -61,6 +63,7 @@ export default function VenueDetails() {
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [pendingReviewBookingId, setPendingReviewBookingId] = useState(null);
   const [reportOpen, setReportOpen] = useState(false);
+  const [isLongTermModalOpen, setIsLongTermModalOpen] = useState(false);
 
   // Build slides for lightbox
   const slides = MOCK_GALLERY.map((src) => ({ src }));
@@ -77,21 +80,14 @@ export default function VenueDetails() {
         venueAddress: venue.address,
         pricePerSlot: venue.startingPrice,
         currency: venue.currency,
+        slotDuration: venue.slotDuration ?? 60,
     };
     sessionStorage.setItem('booking_venue_context', JSON.stringify(payload));
     navigate('/booking', { state: payload });
   };
 
   const handleLongTermBooking = () => {
-    const payload = {
-        venueId: venue.id,
-        venueName: venue.name,
-        venueAddress: venue.address,
-        weeklyDiscountPercent: venue.weeklyDiscountPercent,
-        monthlyDiscountPercent: venue.monthlyDiscountPercent
-    };
-    sessionStorage.setItem('booking_venue_context', JSON.stringify(payload));
-    navigate('/booking/long-term', { state: payload });
+    setIsLongTermModalOpen(true);
   };
 
   useEffect(() => {
@@ -128,6 +124,7 @@ export default function VenueDetails() {
           includes: Array.isArray(data.includes) ? data.includes : (Array.isArray(data.Includes) ? data.Includes : null),
           rules: Array.isArray(data.rules) ? data.rules : (Array.isArray(data.Rules) ? data.Rules : null),
           amenities: Array.isArray(data.amenities) ? data.amenities : (Array.isArray(data.Amenities) ? data.Amenities : null),
+          slotDuration: data.slotDuration || data.SlotDuration || 60,
         });
       } catch (err) {
         setError(err.message || 'Oops... Có lỗi nảy sinh khi tải thông tin sân.');
@@ -752,22 +749,30 @@ export default function VenueDetails() {
                   </li>
                 </ul>
                 <div className="d-grid btn-block mt-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={handleBooking}
-                    className="btn btn-secondary d-inline-flex justify-content-center align-items-center"
-                  >
-                    <i className="feather-calendar" />
-                    <span className="ms-2">ĐẶT LỊCH</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleLongTermBooking}
-                    className="btn btn-outline-primary d-inline-flex justify-content-center align-items-center"
-                  >
-                    <i className="feather-repeat" />
-                    <span className="ms-2">ĐẶT LỊCH DÀI HẠN</span>
-                  </button>
+                  {isAdmin ? (
+                    <div className="alert alert-warning text-center mb-0 p-2" style={{ fontSize: '13px' }}>
+                      <i className="feather-alert-triangle me-1" /> Tài khoản Quản trị không thể thao tác đặt sân.
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleBooking}
+                        className="btn btn-secondary d-inline-flex justify-content-center align-items-center"
+                      >
+                        <i className="feather-calendar" />
+                        <span className="ms-2">ĐẶT LỊCH</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleLongTermBooking}
+                        className="btn btn-outline-primary d-inline-flex justify-content-center align-items-center"
+                      >
+                        <i className="feather-repeat" />
+                        <span className="ms-2">ĐẶT LỊCH DÀI HẠN</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -821,6 +826,20 @@ export default function VenueDetails() {
           setPendingReviewBookingId(null);
         }}
         onSaved={handleReviewSaved}
+      />
+
+      <LongTermTypeModal 
+        isOpen={isLongTermModalOpen} 
+        onClose={() => setIsLongTermModalOpen(false)} 
+        venuePayload={venue ? {
+            venueId: venue.id,
+            venueName: venue.name,
+            venueAddress: venue.address,
+            pricePerSlot: venue.startingPrice,
+            slotDuration: venue.slotDuration ?? 60,
+            weeklyDiscountPercent: venue.weeklyDiscountPercent,
+            monthlyDiscountPercent: venue.monthlyDiscountPercent
+        } : null}
       />
     </div>
   );

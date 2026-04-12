@@ -71,14 +71,17 @@ export default function Login() {
     }
 
     // Chỉ cho phép đường dẫn nội bộ (tránh open redirect)
+    // ADMIN luôn được redirect về /admin/dashboard, bỏ qua returnUrl từ trang user
+    const isAdmin = roles?.includes('ADMIN');
     const safeReturnUrl = (() => {
+      if (isAdmin) return null; // Admin không follow returnUrl từ trang user
       if (!returnUrl || typeof returnUrl !== 'string') return null;
       if (!returnUrl.startsWith('/') || returnUrl.startsWith('//')) return null;
       return returnUrl;
     })();
 
     if (safeReturnUrl) return navigate(safeReturnUrl);
-    if (roles?.includes('ADMIN')) return navigate('/admin/dashboard');
+    if (isAdmin) return navigate('/admin/dashboard');
     if (roles?.includes('MANAGER') && tab === 'manager') return navigate('/manager/venues');
     return navigate('/venues');
   };

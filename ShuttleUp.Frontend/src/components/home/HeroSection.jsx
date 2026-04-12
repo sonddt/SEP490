@@ -1,6 +1,36 @@
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import SearchableSelect from '../ui/SearchableSelect';
+import { loadVietnamDivisionTree } from '../../utils/vietnamDivisions';
 
 export default function HeroSection() {
+  const [keyword, setKeyword] = useState('');
+  const [locationStr, setLocationStr] = useState('');
+  const [tree, setTree] = useState(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    loadVietnamDivisionTree().then(setTree).catch(() => {});
+  }, []);
+
+  const provinceOptions = useMemo(() => {
+    if (!tree) return [];
+    return tree.map((p) => ({ value: p.n, label: p.n }));
+  }, [tree]);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const queryParts = [];
+    if (keyword) queryParts.push(keyword);
+    if (locationStr) queryParts.push(locationStr);
+    
+    if (queryParts.length > 0) {
+      navigate(`/venues?q=${encodeURIComponent(queryParts.join(' '))}`);
+    } else {
+      navigate('/venues');
+    }
+  };
+
   return (
     <section className="hero-section">
       <div className="banner-cock-one">
@@ -25,32 +55,37 @@ export default function HeroSection() {
                   Khám phá tiềm năng thể thao của bạn với các sân tập hiện đại, quy trình đặt lịch nhanh chóng và dễ dàng.
                 </p>
                 <div className="search-box">
-                  <form onSubmit={(e) => e.preventDefault()}>
+                  <form onSubmit={handleSearch}>
                     <div className="search-input line">
                       <div className="form-group mb-0">
-                        <label>Tìm kiếm</label>
-                        <select className="select form-control">
-                          <option>Sân cầu lông</option>
-                          <option>Quản lý sân</option>
-                        </select>
+                        <label>Tìm kiếm Tên Sân</label>
+                        <input 
+                          type="text" 
+                          className="form-control border-0 shadow-none bg-transparent" 
+                          placeholder="Nhập tên sân..." 
+                          value={keyword}
+                          onChange={(e) => setKeyword(e.target.value)}
+                        />
                       </div>
                     </div>
                     <div className="search-input">
                       <div className="form-group mb-0">
-                        <label>Khu vực</label>
-                        <select className="form-control select">
-                          <option value="">Chọn địa điểm</option>
-                          <option>Hồ Chí Minh</option>
-                          <option>Hà Nội</option>
-                          <option>Đà Nẵng</option>
-                          <option>Cần Thơ</option>
-                        </select>
+                        <label>Khu vực (Tỉnh/Thành)</label>
+                        <SearchableSelect
+                          options={provinceOptions}
+                          value={locationStr}
+                          onChange={setLocationStr}
+                          placeholder={tree ? '-- Chọn tỉnh / thành phố --' : 'Đang tải...'}
+                          searchPlaceholder="Tìm kiếm..."
+                          emptyLabel="Đang tải danh sách..."
+                          notFoundLabel="Không tìm thấy khu vực"
+                        />
                       </div>
                     </div>
                     <div className="search-btn">
-                      <Link to="/venues" className="btn">
+                      <button type="submit" className="btn border-0 outline-none">
                         <i className="feather-search"></i><span className="search-text">Tìm kiếm</span>
-                      </Link>
+                      </button>
                     </div>
                   </form>
                 </div>

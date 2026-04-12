@@ -25,6 +25,8 @@ public class BookingResponseDto
 
     public string? Status { get; set; }
 
+    public DateTime? HoldExpiresAt { get; set; }
+
     public decimal TotalAmount { get; set; }
 
     public decimal FinalAmount { get; set; }
