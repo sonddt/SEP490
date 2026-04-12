@@ -341,3 +341,19 @@ Kết bạn & quan hệ xã hội (Player):
 9. **Sửa build Backend: Guid vs string (excludeHoldingUserId)**:
    - `Booking.UserId` là `Guid?`; tham số `excludeHoldingUserId` của `CheckSlotConflictsAsync` phải là `Guid?` (không phải `string?`) để khớp caller `BookingsController` và biểu thức LINQ.
    - `VenuesController` (availability theo ngày): parse claim `NameIdentifier` bằng `Guid.TryParse`, dùng `Guid` trong `Where` so với `Booking.UserId` (trước đó so chuỗi với `Guid?` gây CS0019).
+
+10. **Hệ thống Đặc Quyền Chủ Sân (Elite Owner System)**:
+    - **Backend**: Thêm cơ chế đánh giá xếp hạng chủ sân. Những chủ sân duyệt nhanh các đơn đặt sân PENDING dướí 60 phút sẽ được gắn cờ `IsElite`. (Logic hỗ trợ UI badge tại `ManagerProvider` và `VenueCard`).
+    - **Frontend**: Hiển thị huy hiệu Elite / Nhanh Nhạy cực kỳ uy tín trên thẻ sân ở màn hình Khám Phá và tại Dashboard Quản Lý (Badge Gradient với Icon vương miện).
+
+11. **Tối ưu Hóa Quy trình "Update-in-place" cho Đặt Sân**:
+    - **Giải quyết lỗi 409 Conflict**: Thay vì ném lỗi khi khách quay lại trang đặt sân và hệ thống phát hiện họ đang có một lịch HOLDING trùng lập, nay Controller tự động nhận diện `bookingId` truyền lên để "Cập nhật hóa" (Update-in-place) biên lai HOLDING hiện hữu (Tên Khách, SĐT, Ghi chú) thay vì tạo mới.
+    - **API Hỗ trợ**: Bổ sung POST `/api/bookings/{id}/cancel-hold` để giải phóng cọc khi khách chủ động "Hủy Đơn Đang Treo" trên UI.
+
+12. **Bệ phóng Email Tự Động (Production Email Dispatching System)**:
+    - **Cấu hình SMTP**: Đấu nối `appsettings.json` vào luồng gửi đi của `ShuttleUp` (tài khoản Gmail dự án).
+    - **Email Templates**: Thiết kế các khung Email HTML thương hiệu sang trọng (Màu xanh Forest) không bị vỡ do lỗi mã hóa kép thay vì text chay thô.
+    - **3 Luồng Giao Tiếp**: 
+      1. Background Worker (Chạy ngầm cứ 5 phút/lần) tự quét các đơn `CONFIRMED` sắp đến giờ (dưới 2h) để nhắc Nhở Người Chơi lên đồ đi vận động.
+      2. Thông báo Owner ngay khi có "Đơn Mới" (kèm cảnh báo ranh giới 60 phút để giữ rank Elite !).
+      3. Tính năng "Soft Reminder" (Khách hối thúc duyệt) kèm bộ đếm lùi tản nhiệt trên UI + Cache Rate Limit gửi về Chủ sân.
