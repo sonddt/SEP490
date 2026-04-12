@@ -230,7 +230,7 @@ export default function LongTermConfirm() {
       const result = await createLongTermBooking(payload);
       const bookingId = result.bookingId ?? result.BookingId;
       if (!bookingId) { setSubmitError('Phản hồi server không có mã đơn.'); setLoading(false); return; }
-      navigate(`/booking/payment?bookingId=${bookingId}&flow=long-term`);
+      navigate(`/booking/payment?bookingId=${bookingId}&flow=long-term`, { state: { ...state, bookingId } });
     } catch (err) {
       const status = err.response?.status;
       const msg = err.response?.data?.message || err.message || 'Không tạo được đơn.';

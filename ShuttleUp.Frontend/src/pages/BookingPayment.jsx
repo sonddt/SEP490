@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import BookingSteps from '../components/booking/BookingSteps';
 import LongTermBookingSteps from '../components/booking/LongTermBookingSteps';
 import {
@@ -51,6 +51,7 @@ function mapApiSlotsToRows(items) {
 
 export default function BookingPayment() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const paramBookingId = searchParams.get('bookingId');
   const isLongTermFlow = searchParams.get('flow') === 'long-term';
@@ -798,6 +799,7 @@ export default function BookingPayment() {
               onClick={() => {
                 // Navigate back to the correct Confirm page, passing bookingId
                 const backState = {
+                  ...(location.state || {}),
                   ...pay,
                   bookingId: bookingId || paramBookingId,
                   customerName: pay.customerName,
