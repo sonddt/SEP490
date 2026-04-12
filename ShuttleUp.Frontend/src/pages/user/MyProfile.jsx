@@ -67,6 +67,16 @@ export default function MyProfile() {
     return parts.length ? parts.join(', ') : 'Chưa cập nhật';
   };
 
+  const formatGender = (g) => {
+    if (!g) return null;
+    switch (g.toUpperCase()) {
+      case 'MALE': return 'Nam';
+      case 'FEMALE': return 'Nữ';
+      case 'OTHER': return 'Khác';
+      default: return g;
+    }
+  };
+
   const managerBadge = (() => {
     const s = (managerProfile?.status || '').toUpperCase();
     if (s === 'APPROVED') return <span className="badge bg-success">APPROVED</span>;
@@ -131,7 +141,7 @@ export default function MyProfile() {
               </div>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 text-slate-600 border border-slate-100">
                 <i className="fa-solid fa-user text-slate-400 text-[13px]"></i>
-                <span className="text-[13px] font-semibold">{u?.gender ? u.gender : 'Giới tính'}</span>
+                <span className="text-[13px] font-semibold">{u?.gender ? formatGender(u.gender) : 'Giới tính'}</span>
               </div>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 text-slate-600 border border-slate-100">
                 <i className="fa-solid fa-cake-candles text-slate-400 text-[13px]"></i>
@@ -171,7 +181,7 @@ export default function MyProfile() {
           Thông tin cá nhân
         </h4>
         <div className="p-5 rounded-2xl bg-slate-50/50 border border-slate-100 text-slate-600 leading-relaxed font-medium text-[14.5px]">
-          {u?.gender ? `Giới tính: ${u.gender}. ` : ''}
+          {u?.gender ? `Giới tính: ${formatGender(u.gender)}. ` : ''}
           {u?.dateOfBirth ? `Ngày sinh: ${formatDate(u?.dateOfBirth)}. ` : ''}
           {u?.about ? u.about : (u?.gender || u?.dateOfBirth ? '' : 'Chưa có thông tin giới thiệu.')}
         </div>

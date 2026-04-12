@@ -357,3 +357,20 @@ Kết bạn & quan hệ xã hội (Player):
       1. Background Worker (Chạy ngầm cứ 5 phút/lần) tự quét các đơn `CONFIRMED` sắp đến giờ (dưới 2h) để nhắc Nhở Người Chơi lên đồ đi vận động.
       2. Thông báo Owner ngay khi có "Đơn Mới" (kèm cảnh báo ranh giới 60 phút để giữ rank Elite !).
       3. Tính năng "Soft Reminder" (Khách hối thúc duyệt) kèm bộ đếm lùi tản nhiệt trên UI + Cache Rate Limit gửi về Chủ sân.
+
+---
+
+## 12–13 tháng 4, 2026 (Ổn định hồ sơ Quản lý & UI Admin)
+
+1. **Sửa lỗi mất Giấy phép kinh doanh (Manager Profile):**
+   - **Vấn đề**: Khi Manager cập nhật thông tin (như mã số thuế/địa chỉ) mà không thay đổi giấy phép, các file giấy phép cũ bị xóa sạch do backend hiểu nhầm là lệnh xóa hết.
+   - **Giải pháp**: Frontend (`UserManagerInfo.jsx`) thêm trạng thái `licensesDirty`. Chỉ khi người chơi thực sự thêm hoặc xóa file giấy phép thì mới gửi field `retainedLicenseIds` lên API.
+   - **API (`managerProfileApi.js`)**: Điều chỉnh để field `retainedLicenseIds` là tùy chọn, chỉ đính kèm vào `FormData` khi có flag `licensesDirty`. Backend sẽ giữ nguyên các slot hiện tại nếu không nhận được field này.
+2. **Điều hướng Đăng nhập Admin (Login Redirection):**
+   - Sửa lỗi Admin sau khi đăng nhập vẫn bị kẹt ở trang Profile của Player hoặc trang trước đó.
+   - Cập nhật `Login.jsx`: Bổ sung logic kiểm tra role sau khi đăng nhập thành công. Nếu là `ADMIN`, hệ thống sẽ luôn ưu tiên điều hướng về `/admin/dashboard`.
+3. **UI Admin (Lightbox Image Preview):**
+   - Sửa lỗi Modal xem ảnh giấy phép bị sidebar và header che mất (do xung đột z-index và stacking context).
+   - Giải pháp: Refactor `AdminManagerRequests.jsx` sử dụng `createPortal` từ `react-dom` để render modal trực tiếp vào `document.body`, thoát khỏi các lớp layout bị giới hạn của Admin Dashboard.
+4. **Database Migration (Upcoming Tasks):**
+   - Xác định lỗi schema thiếu cột `is_upcoming_reminder_sent` trong bảng `booking_items` gây crash service nhắc nhở. Cần cập nhật `Database.txt` hoặc chạy lệnh migration bổ sung.

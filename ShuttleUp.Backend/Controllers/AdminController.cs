@@ -429,12 +429,19 @@ public class AdminController : ControllerBase
         if (request.CccdBackFileId != null)
             snapshot.CccdBackFileId = request.CccdBackFileId;
 
-        if (request.BusinessLicenseFileId1 != null)
+        // Cập nhật tất cả 3 slot giấy phép nếu ít nhất 1 slot có giá trị trong request.
+        // Điều này cho phép CAP_NHAT xóa một số ảnh cũ (set về null) trong khi vẫn giữ ảnh còn lại.
+        bool hasAnyLicenseInRequest =
+            request.BusinessLicenseFileId1 != null ||
+            request.BusinessLicenseFileId2 != null ||
+            request.BusinessLicenseFileId3 != null;
+
+        if (hasAnyLicenseInRequest)
+        {
             snapshot.BusinessLicenseFileId1 = request.BusinessLicenseFileId1;
-        if (request.BusinessLicenseFileId2 != null)
             snapshot.BusinessLicenseFileId2 = request.BusinessLicenseFileId2;
-        if (request.BusinessLicenseFileId3 != null)
             snapshot.BusinessLicenseFileId3 = request.BusinessLicenseFileId3;
+        }
 
         snapshot.Status = "APPROVED";
         snapshot.AdminUserId = adminId;

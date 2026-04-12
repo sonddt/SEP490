@@ -4,6 +4,7 @@ import VietnamAddressFields from '../../components/user/VietnamAddressFields';
 import ShuttleDateField from '../../components/ui/ShuttleDateField';
 import { useAuth } from '../../context/AuthContext';
 import { profileApi } from '../../api/profileApi';
+import AvatarCropperModal from '../../components/user/AvatarCropperModal';
 import {
   districtByCode,
   formatDistrictForStorage,
@@ -16,9 +17,12 @@ import {
 
 function sliceYmd(s) {
   if (!s) return '';
-  const t = String(s).trim();
-  const m = t.match(/^(\d{4}-\d{2}-\d{2})/);
-  return m ? m[1] : '';
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function dobMinIso() {
@@ -49,6 +53,8 @@ export default function UserProfileEdit() {
   const fileInputRef = useRef(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [avatarFile, setAvatarFile] = useState(null);
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [tempImageSrc, setTempImageSrc] = useState(null);
   const { user: authUser, updateUser } = useAuth();
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState(null);
 
@@ -120,8 +126,27 @@ export default function UserProfileEdit() {
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    setAvatarPreview(URL.createObjectURL(file));
-    setAvatarFile(file);
+    const url = URL.createObjectURL(file);
+    setTempImageSrc(url);
+    setCropperOpen(true);
+    e.target.value = '';
+  };
+
+  const handleCropperCancel = () => {
+    setCropperOpen(false);
+    if (tempImageSrc) URL.revokeObjectURL(tempImageSrc);
+    setTempImageSrc(null);
+  };
+
+  const handleCropperSave = (croppedBlob) => {
+    const croppedFile = new File([croppedBlob], 'avatar.jpg', { type: 'image/jpeg' });
+    const url = URL.createObjectURL(croppedBlob);
+    setAvatarPreview(url);
+    setAvatarFile(croppedFile);
+    
+    setCropperOpen(false);
+    if (tempImageSrc) URL.revokeObjectURL(tempImageSrc);
+    setTempImageSrc(null);
   };
 
   const handleReset = () => {
@@ -137,8 +162,13 @@ export default function UserProfileEdit() {
         initialSnapshotRef.current = `${initialForm.province}\n${initialForm.district}\n${initialForm.address}`;
       }
     }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     setAvatarPreview(currentAvatarUrl);
     setAvatarFile(null);
+    if (tempImageSrc) URL.revokeObjectURL(tempImageSrc);
+    setTempImageSrc(null);
     setSuccess('');
     setError('');
     setFieldErrors({});
@@ -359,11 +389,16 @@ export default function UserProfileEdit() {
             </h5>
             <div className="text-center p-4">
               <div className="relative inline-block mb-4 group">
-                <div className="absolute inset-0 bg-emerald-500/10 rounded-full scale-110 blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div 
+                    className="absolute inset-0 bg-emerald-500/10 rounded-full scale-110 blur-xl opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    onClick={() => fileInputRef.current?.click()}
+                  ></div>
                 <img
                   src={avatarPreview || form.avatarUrl || '/assets/assets/img/profiles/avatar-01.jpg'}
                   alt="Avatar Preview"
-                  className="w-40 h-40 rounded-full object-cover border-8 border-slate-50 shadow-sm relative z-10"
+                  className="rounded-full object-cover border-8 border-slate-50 shadow-sm relative z-10 cursor-pointer flex-shrink-0"
+                  style={{ width: '160px', height: '160px', minWidth: '160px', objectFit: 'cover' }}
+                  onClick={() => fileInputRef.current?.click()}
                 />
                 <button
                   type="button"
@@ -375,7 +410,7 @@ export default function UserProfileEdit() {
                 </button>
               </div>
               <input
-                type="input"
+                type="file"
                 ref={fileInputRef}
                 className="hidden"
                 accept="image/*"
@@ -387,7 +422,7 @@ export default function UserProfileEdit() {
               </p>
             </div>
             <div className="mt-4 flex flex-col gap-2 pt-4 border-t border-slate-50">
-              <button onClick={handleReset} type="button" className="btn bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl font-bold py-2.5">
+              <button onClick={handleReset} type="button" className="w-full bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl font-bold py-2.5 transition-colors border-0">
                  Đặt lại ban đầu
               </button>
             </div>
@@ -567,15 +602,18 @@ export default function UserProfileEdit() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="btn btn-emerald min-w-[140px] px-8 py-2.5 font-bold shadow-md shadow-emerald-100 disabled:opacity-50"
+                  className="bg-emerald-600 text-white hover:bg-emerald-700 min-w-[140px] px-8 py-2.5 rounded-xl font-bold shadow-md shadow-emerald-500/20 disabled:opacity-50 transition-all border-0 flex justify-center items-center gap-2"
                 >
                   {saving ? (
                     <>
                       <i className="fa-solid fa-spinner fa-spin" aria-hidden />
-                      <span>Đang lưu</span>
+                      <span>Đang lưu...</span>
                     </>
                   ) : (
-                    <span>Lưu thay đổi</span>
+                    <>
+                      <i className="fa-solid fa-floppy-disk" aria-hidden />
+                      <span>Lưu thay đổi</span>
+                    </>
                   )}
                 </button>
               </div>
@@ -583,6 +621,13 @@ export default function UserProfileEdit() {
           </div>
         </div>
       </div>
+
+      <AvatarCropperModal
+        open={cropperOpen}
+        imageSrc={tempImageSrc}
+        onCancel={handleCropperCancel}
+        onSave={handleCropperSave}
+      />
     </div>
   );
 }

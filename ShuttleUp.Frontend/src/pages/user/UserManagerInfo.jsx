@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom';
 import UserProfileTabs from '../../components/user/UserProfileTabs';
 import { managerProfileApi } from '../../api/managerProfileApi';
 import { useAuth } from '../../context/AuthContext';
+import { useNotification } from '../../hooks/useNotification';
 
 export default function UserManagerInfo() {
   const { user } = useAuth();
+  const { notifySuccess, notifyError, notifyInfo } = useNotification();
   const isManager = user?.roles?.includes('MANAGER');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -23,6 +25,7 @@ export default function UserManagerInfo() {
   const [cccdFrontFile, setCccdFrontFile] = useState(null);
   const [cccdBackFile, setCccdBackFile] = useState(null);
   const [businessLicenseFiles, setBusinessLicenseFiles] = useState([]);
+  const [licensesDirty, setLicensesDirty] = useState(false);
 
   // Docs hiện tại (đến từ BE: snapshot APPROVED hoặc request PENDING gần nhất)
   const [existingCccdFrontUrl, setExistingCccdFrontUrl] = useState(null);
@@ -95,6 +98,11 @@ export default function UserManagerInfo() {
     setBusinessLicenseObjectPreviews(previews);
     return () => previews.forEach((p) => URL.revokeObjectURL(p.url));
   }, [businessLicenseFiles]);
+
+  const handleRemoveBusinessLicenseFile = (idxToRemove) => {
+    setBusinessLicenseFiles(prev => prev.filter((_, i) => i !== idxToRemove));
+    setLicensesDirty(true);
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -201,20 +209,25 @@ export default function UserManagerInfo() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMsg('');
     setErr('');
     setFieldErrors({});
     if (!requireFullName()) return;
     if (!validateManagerFields()) return;
 
     setSaving(true);
+    notifyInfo('Đang tải dữ liệu hồ sơ lên hệ thống, vui lòng chờ...');
     try {
       const res = await managerProfileApi.updateMe({
         taxCode: form.taxCode?.trim() || null,
         address: form.address?.trim() || null,
         cccdFrontFile,
         cccdBackFile,
-        businessLicenseFiles
+        businessLicenseFiles,
+        retainedLicenseIds: existingBusinessLicenseFiles
+          .map(f => f.id ?? f.Id ?? null)
+          .filter(Boolean)
+          .join(','),
+        licensesDirty: licensesDirty || (businessLicenseFiles?.length > 0)
       });
       // Refresh để hiển thị docs vừa upload (kể cả khi PENDING chưa duyệt)
       const data = await managerProfileApi.getMe();
@@ -227,10 +240,14 @@ export default function UserManagerInfo() {
       setExistingCccdFrontUrl(data.cccdFrontUrl ?? null);
       setExistingCccdBackUrl(data.cccdBackUrl ?? null);
       setExistingBusinessLicenseFiles(data.businessLicenseFiles ?? []);
+      setBusinessLicenseFiles([]);
+      setLicensesDirty(false);
 
-      setMsg('Tuyệt vời! Đã gửi thông tin Quản lý. Vui lòng chờ Admin duyệt nha.');
+      notifySuccess('Tuyệt vời! Đã cập nhật thông tin Quản lý sân thành công.');
     } catch (e2) {
-      setErr(e2.response?.data?.message || 'Oops... Gửi đơn thất bại, bạn thử lại nhé!');
+      const errMsg = e2.response?.data?.message || 'Oops... Gửi đơn thất bại, bạn thử lại nhé!';
+      setErr(errMsg);
+      notifyError(errMsg);
     } finally {
       setSaving(false);
     }
@@ -245,6 +262,11 @@ export default function UserManagerInfo() {
       ? <span className="badge bg-success">ĐÃ ĐĂNG KÝ</span>
       : <span className="badge bg-secondary">CHƯA ĐĂNG KÝ</span>;
   })();
+
+  const handleRemoveExistingBusinessLicense = (idToRemove) => {
+    setExistingBusinessLicenseFiles(prev => prev.filter(f => f.id !== idToRemove));
+    setLicensesDirty(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -285,12 +307,6 @@ export default function UserManagerInfo() {
               <span className="font-semibold text-sm">{err}</span>
             </div>
           )}
-          {msg && (
-            <div className="alert alert-success rounded-xl border-0 shadow-sm flex items-center gap-3 bg-emerald-50 text-emerald-700 py-3 px-4 mb-6">
-              <i className="fa-solid fa-circle-check text-emerald-500"></i>
-              <span className="font-semibold text-sm">{msg}</span>
-            </div>
-          )}
 
           {loading ? (
             <div className="flex flex-col items-center py-10 gap-3">
@@ -309,14 +325,16 @@ export default function UserManagerInfo() {
                   <div className={`relative group border-2 border-dashed rounded-2xl p-4 transition-all ${fieldErrors.cccdFrontFile ? 'border-rose-200 bg-rose-50/20' : 'border-slate-100 hover:border-emerald-200 hover:bg-slate-50'}`}>
                     <input
                       type="file"
-                      className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                      title=""
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      style={{ top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }}
                       accept="image/png,image/jpeg"
                       onChange={(e) => {
                         setCccdFrontFile(e.target.files?.[0] ?? null);
                         if (fieldErrors.cccdFrontFile) setFieldErrors(prev => ({ ...prev, cccdFrontFile: '' }));
                       }}
                     />
-                    <div className="flex flex-col items-center text-center py-4">
+                    <div className="flex flex-col items-center text-center py-4 pointer-events-none relative z-0">
                       {cccdFrontObjectUrl || existingCccdFrontUrl ? (
                          <div className="relative w-full aspect-[1.6/1] rounded-xl overflow-hidden shadow-sm group-hover:shadow-md transition-all">
                             <img
@@ -351,14 +369,16 @@ export default function UserManagerInfo() {
                   <div className={`relative group border-2 border-dashed rounded-2xl p-4 transition-all ${fieldErrors.cccdBackFile ? 'border-rose-200 bg-rose-50/20' : 'border-slate-100 hover:border-emerald-200 hover:bg-slate-50'}`}>
                     <input
                       type="file"
-                      className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                      title=""
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      style={{ top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }}
                       accept="image/png,image/jpeg"
                       onChange={(e) => {
                         setCccdBackFile(e.target.files?.[0] ?? null);
                         if (fieldErrors.cccdBackFile) setFieldErrors(prev => ({ ...prev, cccdBackFile: '' }));
                       }}
                     />
-                    <div className="flex flex-col items-center text-center py-4">
+                    <div className="flex flex-col items-center text-center py-4 pointer-events-none relative z-0">
                       {cccdBackObjectUrl || existingCccdBackUrl ? (
                          <div className="relative w-full aspect-[1.6/1] rounded-xl overflow-hidden shadow-sm group-hover:shadow-md transition-all">
                             <img
@@ -396,7 +416,7 @@ export default function UserManagerInfo() {
                         </div>
                         <input
                           type="text"
-                          className="form-control rounded-xl border-slate-200 py-3 pl-10 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all px-4 font-bold text-slate-700"
+                          className="form-control rounded-xl border-slate-200 py-3 !pl-10 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all pr-4 font-bold text-slate-700"
                           name="taxCode"
                           value={form.taxCode}
                           onChange={handleChange}
@@ -414,7 +434,7 @@ export default function UserManagerInfo() {
                         </div>
                         <input
                           type="text"
-                          className="form-control rounded-xl border-slate-200 py-3 pl-10 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all px-4 font-medium"
+                          className="form-control rounded-xl border-slate-200 py-3 !pl-10 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all pr-4 font-medium"
                           name="address"
                           value={form.address}
                           onChange={handleChange}
@@ -434,49 +454,92 @@ export default function UserManagerInfo() {
                    <div className={`relative group border-2 border-dashed rounded-2xl p-8 transition-all flex flex-col items-center text-center ${fieldErrors.businessLicenseFiles ? 'border-rose-200 bg-rose-50/20' : 'border-slate-100 hover:border-emerald-200 hover:bg-slate-50'}`}>
                       <input
                         type="file"
-                        className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                        title=""
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        style={{ top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }}
                         accept="image/png,image/jpeg,application/pdf"
                         multiple
                         onChange={(e) => {
-                          const files = Array.from(e.target.files ?? []);
-                          if (files.length > 3) {
-                            setErr('Chỉ được tải lên tối đa 3 file giấy phép kinh doanh thôi nha.');
-                            setBusinessLicenseFiles(files.slice(0, 3));
-                            return;
-                          }
-                          setBusinessLicenseFiles(files);
-                          if (fieldErrors.businessLicenseFiles && files.length > 0) setFieldErrors(p => ({ ...p, businessLicenseFiles: '' }));
-                          setErr('');
+                          const newFiles = Array.from(e.target.files ?? []);
+                          setBusinessLicenseFiles(prev => {
+                            const merged = [...prev, ...newFiles];
+                            const currentExistingCount = existingBusinessLicenseFiles?.length || 0;
+                            if (merged.length + currentExistingCount > 3) {
+                              setErr('Chỉ được tải lên tổng cộng tối đa 3 file giấy phép kinh doanh thôi nha.');
+                              return merged.slice(0, 3 - currentExistingCount);
+                            }
+                            setErr('');
+                            return merged;
+                          });
+                          setLicensesDirty(true);
+                          if (fieldErrors.businessLicenseFiles) setFieldErrors(p => ({ ...p, businessLicenseFiles: '' }));
+                          // Reset input so the same file could be selected again
+                          e.target.value = '';
                         }}
                       />
-                      <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center text-slate-300 mb-4 group-hover:text-emerald-500 group-hover:scale-110 transition-all">
-                        <i className="fa-solid fa-cloud-arrow-up text-2xl"></i>
+                      <div className="pointer-events-none relative z-0 flex flex-col items-center">
+                        <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center text-slate-300 mb-4 group-hover:text-emerald-500 group-hover:scale-110 transition-all">
+                          <i className="fa-solid fa-cloud-arrow-up text-2xl"></i>
+                        </div>
+                        <p className="text-slate-600 font-bold m-0">Chọn hoặc kéo thả các tài liệu kinh doanh</p>
+                        <p className="text-[12px] text-slate-400 mt-1">Chấp nhận JPG, PNG, PDF (Tối đa 5MB mỗi file)</p>
                       </div>
-                      <p className="text-slate-600 font-bold m-0">Chọn hoặc kéo thả các tài liệu kinh doanh</p>
-                      <p className="text-[12px] text-slate-400 mt-1">Chấp nhận JPG, PNG, PDF (Tối đa 5MB mỗi file)</p>
                    </div>
                    {fieldErrors.businessLicenseFiles && <div className="text-rose-500 text-[11px] font-bold text-center">{fieldErrors.businessLicenseFiles}</div>}
 
                    {((businessLicenseObjectPreviews && businessLicenseObjectPreviews.length > 0) ||
                                  (existingBusinessLicenseFiles && existingBusinessLicenseFiles.length > 0)) && (
-                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-6">
-                        {(businessLicenseObjectPreviews?.length > 0
-                          ? businessLicenseObjectPreviews
-                          : existingBusinessLicenseFiles
-                        ).map((f, idx) => {
+                     <div className="grid grid-cols-3 gap-3 mt-6">
+                        {existingBusinessLicenseFiles?.map((f) => {
                           const mime = f.mimeType || f.MimeType || '';
                           const isImg = (mime || '').toString().startsWith('image/');
                           return (
-                            <div key={f.id ?? `${f.name ?? 'file'}_${idx}`} className="group relative bg-slate-50 rounded-xl p-2 border border-slate-100">
-                               <div className="aspect-square bg-white rounded-lg overflow-hidden flex items-center justify-center mb-2 shadow-sm">
-                                  {isImg ? (
+                            <div key={f.id ?? String(f.url)} className="group relative bg-slate-50 rounded-xl p-2 border border-slate-100">
+                               <div className="w-full h-24 bg-white rounded-lg overflow-hidden flex items-center justify-center mb-2 shadow-sm">
+                                   <button
+                                     type="button"
+                                     onClick={() => handleRemoveExistingBusinessLicense(f.id)}
+                                     className="absolute -top-2 -right-2 bg-rose-500 text-white w-5 h-5 rounded-full flex justify-center items-center text-[10px] shadow-sm z-20 hover:bg-rose-600 border-2 border-white cursor-pointer"
+                                   >
+                                     <i className="fa-solid fa-xmark"></i>
+                                   </button>
+                                   {isImg ? (
                                     <img src={f.url} className="w-full h-full object-cover" alt="license" />
                                   ) : (
                                     <i className="fa-solid fa-file-pdf text-3xl text-rose-500"></i>
                                   )}
                                </div>
                                <div className="px-1 overflow-hidden">
-                                  <p className="text-[10px] font-bold text-slate-600 truncate mb-1">{f.name || 'document_' + (idx+1)}</p>
+                                  <p className="text-[10px] font-bold text-slate-600 truncate mb-1">{f.name || 'document_existing'}</p>
+                                  {!isImg && (
+                                    <a href={f.url} target="_blank" rel="noreferrer" className="text-[10px] text-emerald-600 font-bold no-underline">XEM CHI TIẾT <i className="fa-solid fa-arrow-up-right-from-square text-[8px]"></i></a>
+                                  )}
+                               </div>
+                            </div>
+                          );
+                        })}
+
+                        {businessLicenseObjectPreviews?.map((f, idx) => {
+                          const mime = f.mimeType || f.MimeType || '';
+                          const isImg = (mime || '').toString().startsWith('image/');
+                          return (
+                            <div key={`new_${idx}`} className="group relative bg-slate-50 rounded-xl p-2 border border-slate-100">
+                               <div className="w-full h-24 bg-white rounded-lg overflow-hidden flex items-center justify-center mb-2 shadow-sm">
+                                   <button
+                                     type="button"
+                                     onClick={() => handleRemoveBusinessLicenseFile(idx)}
+                                     className="absolute -top-2 -right-2 bg-rose-500 text-white w-5 h-5 rounded-full flex justify-center items-center text-[10px] shadow-sm z-20 hover:bg-rose-600 border-2 border-white cursor-pointer"
+                                   >
+                                     <i className="fa-solid fa-xmark"></i>
+                                   </button>
+                                   {isImg ? (
+                                    <img src={f.url} className="w-full h-full object-cover" alt="license" />
+                                  ) : (
+                                    <i className="fa-solid fa-file-pdf text-3xl text-rose-500"></i>
+                                  )}
+                               </div>
+                               <div className="px-1 overflow-hidden">
+                                  <p className="text-[10px] font-bold text-slate-600 truncate mb-1">{f.name || 'document_new_' + (idx+1)}</p>
                                   {!isImg && (
                                     <a href={f.url} target="_blank" rel="noreferrer" className="text-[10px] text-emerald-600 font-bold no-underline">XEM CHI TIẾT <i className="fa-solid fa-arrow-up-right-from-square text-[8px]"></i></a>
                                   )}

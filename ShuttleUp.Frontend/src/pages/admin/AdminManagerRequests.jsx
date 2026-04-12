@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 
 // ── Hooks & API ────────────────────────────────────────────────────────────
@@ -28,6 +29,7 @@ export default function AdminManagerRequests() {
   const [confirmAction, setConfirmAction] = useState(null); // { request, action }
   const [actionNote, setActionNote] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [lightboxImg, setLightboxImg] = useState(null); // url of zoomed image
 
   // Fetch Requests
   const fetchRequests = useCallback(async () => {
@@ -231,7 +233,7 @@ export default function AdminManagerRequests() {
       {/* ── Modal: Detail ──────────────────────────────────── */}
       {selected && (
         <div className="modal fade show d-block" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setSelected(null)}>
-          <div className="modal-dialog modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-dialog modal-dialog-centered modal-lg" onClick={(e) => e.stopPropagation()}>
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Chi tiết Yêu cầu</h5>
@@ -262,19 +264,23 @@ export default function AdminManagerRequests() {
                   <div className="col-12 mt-3">
                     <label className="text-muted" style={{ fontSize: '0.82rem' }}>CCCD / CMND</label>
                     {selected.cccdFrontUrl || selected.cccdBackUrl ? (
-                      <div className="d-flex gap-2">
+                      <div className="d-flex gap-2 flex-wrap">
                         {selected.cccdFrontUrl && (
                           <img
                             src={selected.cccdFrontUrl}
                             alt="CCCD mặt trước"
-                            style={{ width: 140, height: 100, objectFit: 'cover', borderRadius: 8 }}
+                            style={{ width: 200, height: 130, objectFit: 'cover', borderRadius: 8, cursor: 'zoom-in', border: '2px solid #dee2e6' }}
+                            onClick={() => setLightboxImg(selected.cccdFrontUrl)}
+                            title="Click để phóng to"
                           />
                         )}
                         {selected.cccdBackUrl && (
                           <img
                             src={selected.cccdBackUrl}
                             alt="CCCD mặt sau"
-                            style={{ width: 140, height: 100, objectFit: 'cover', borderRadius: 8 }}
+                            style={{ width: 200, height: 130, objectFit: 'cover', borderRadius: 8, cursor: 'zoom-in', border: '2px solid #dee2e6' }}
+                            onClick={() => setLightboxImg(selected.cccdBackUrl)}
+                            title="Click để phóng to"
                           />
                         )}
                       </div>
@@ -286,24 +292,32 @@ export default function AdminManagerRequests() {
                     <label className="text-muted" style={{ fontSize: '0.82rem' }}>Mã số thuế</label>
                     <div className="text-break"><strong>{selected.taxCode || 'N/A'}</strong></div>
                   </div>
-                  <div className="col-6">
+                  <div className="col-12">
                     <label className="text-muted" style={{ fontSize: '0.82rem' }}>Giấy phép KD</label>
-                    <div className="d-flex flex-column gap-2">
+                    <div className="d-flex flex-row flex-wrap gap-2 mt-1">
                       {selected.businessLicenseFiles && selected.businessLicenseFiles.length > 0 ? (
                         selected.businessLicenseFiles.map((f, idx) => {
                           const isImage = (f.mimeType || '').startsWith('image/');
                           return (
                             <div key={f.id ?? idx}>
                               {isImage ? (
-                                <img src={f.url} alt={`Giấy phép ${idx + 1}`} style={{ width: 160, height: 110, objectFit: 'cover', borderRadius: 8 }} />
+                                <img
+                                  src={f.url}
+                                  alt={`Giấy phép ${idx + 1}`}
+                                  style={{ width: 160, height: 110, objectFit: 'cover', borderRadius: 8, cursor: 'zoom-in', border: '2px solid #dee2e6' }}
+                                  onClick={() => setLightboxImg(f.url)}
+                                  title="Click để phóng to"
+                                />
                               ) : (
-                                <a href={f.url} target="_blank" rel="noreferrer">Xem PDF {idx + 1}</a>
+                                <a href={f.url} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-secondary">
+                                  <i className="feather-file-text me-1"></i>Xem PDF {idx + 1}
+                                </a>
                               )}
                             </div>
                           );
                         })
                       ) : (
-                        <div className="text-break"><strong>N/A</strong></div>
+                        <strong>N/A</strong>
                       )}
                     </div>
                   </div>
@@ -317,7 +331,7 @@ export default function AdminManagerRequests() {
                       <div className="col-12"><hr className="my-1" /></div>
                       <div className="col-6">
                         <label className="text-muted" style={{ fontSize: '0.82rem' }}>Ngày xử lý</label>
-                        <div>{new Date(selected.decisionAt).toLocaleString('vi-VN')}</div>
+                        <div>{selected.decisionAt ? new Date(selected.decisionAt).toLocaleString('vi-VN') : 'N/A'}</div>
                       </div>
                       <div className="col-6">
                         <label className="text-muted" style={{ fontSize: '0.82rem' }}>Admin xử lý</label>
@@ -405,6 +419,40 @@ export default function AdminManagerRequests() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Lightbox: render tại document.body để thoát stacking context của admin sidebar ── */}
+      {lightboxImg && createPortal(
+        <div
+          onClick={() => setLightboxImg(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 99999,
+            background: 'rgba(0,0,0,0.88)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'zoom-out'
+          }}
+        >
+          <button
+            onClick={() => setLightboxImg(null)}
+            style={{
+              position: 'absolute', top: 16, right: 20,
+              background: 'rgba(255,255,255,0.15)', border: 'none',
+              color: '#fff', fontSize: 24, borderRadius: 8,
+              width: 40, height: 40, cursor: 'pointer', lineHeight: 1
+            }}
+          >✕</button>
+          <img
+            src={lightboxImg}
+            alt="Phóng to"
+            onClick={e => e.stopPropagation()}
+            style={{
+              maxWidth: '90vw', maxHeight: '88vh',
+              borderRadius: 12, boxShadow: '0 8px 48px rgba(0,0,0,0.6)',
+              objectFit: 'contain', cursor: 'default'
+            }}
+          />
+        </div>,
+        document.body
       )}
     </>
   );
