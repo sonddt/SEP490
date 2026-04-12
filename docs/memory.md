@@ -413,3 +413,11 @@ Kết bạn & quan hệ xã hội (Player):
      - Đồng bộ cả 3 trang đặt sân (`LongTermBooking`, `LongTermConfirm`, `LongTermFlexibleConfirm`) truyền danh sách ngày thực tế xuống Backend.
      - Cập nhật nội dung chính sách UI: "giảm X% khi đặt sân **liên tục** từ Y ngày trở lên".
 
+2. **Khắc phục lỗi đứt gãy State của React Router (Back Navigation)**:
+   - **Tình trạng**: Di chuyển ngược từ `BookingPayment` (màn Thanh toán) về lại `LongTermConfirm` (màn Xác nhận) bị mất các metadata quan trọng của luồng dài hạn (như thứ trong tuần, giờ cụ thể), dẫn đến việc form ở Bước 1 bị reset rỗng khi lùi về.
+   - **Giải pháp**: Xây dựng cầu nối truyền state thông suốt. Bổ sung `location.state` vào tham số `navigate` của `LongTermConfirm.jsx` sang `BookingPayment.jsx`. Tại màn thanh toán, tiến hành hợp nhất `...(location.state || {})` vào biến `backState` trước khi trả hành khách về tuyến đường cũ.
+   - Bổ sung kịp thời import hook `useLocation` bị thiếu gây lỗi trắng trang màn hình.
+
+3. **Cải tiến UI Đồng Bộ Cảnh Báo "Đổi Sân" (LongTermBooking.jsx)**:
+   - Đồng bộ hoàn toàn tín hiệu thiết kế giữa Trạng thái "Đổi Sân" và "Sẵn Sàng".
+   - Loại bỏ nhãn thẻ block thô cứng và emoji. Định dạng chữ mỏng `d-inline-flex gap-1 text-warning`, kết hợp biểu tượng `<i className="feather-refresh-cw" />` bo góc tương tự phong thái của `feather-check-circle text-success`. Tạo cảm giác chuyên nghiệp, liền lạc của một Web App thứ thiệt.
