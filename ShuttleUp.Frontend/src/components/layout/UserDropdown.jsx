@@ -122,32 +122,38 @@ export default function UserDropdown({
         </div>
 
         {/* Menu items */}
-        <div style={{ padding: '6px 0', background: '#fff' }}>
-          <DropItem to={profilePath} icon="feather-user" label="Hồ sơ của tôi" onNav={handleNav} />
+        {!isAdmin ? (
+          <div style={{ padding: '6px 0', background: '#fff' }}>
+            <DropItem to={profilePath} icon="feather-user" label="Hồ sơ của tôi" onNav={handleNav} />
 
-          {(showSwitchToPlayer || (!isAdmin && isManager && showSwitchToPlayer)) && (
-            <DropItem to={switchToPlayerPath} icon="feather-refresh-cw" label="Chế độ người chơi" onNav={handleNav} />
-          )}
+            {(showSwitchToPlayer || (isManager && showSwitchToPlayer)) && (
+              <DropItem to={switchToPlayerPath} icon="feather-refresh-cw" label="Chế độ người chơi" onNav={handleNav} />
+            )}
 
-          {(showManagerAccess ?? (isManager && !isAdmin)) && (
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={handleManagerAccess}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleManagerAccess(); }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '9px 18px', color: '#475569', fontSize: 14,
-                cursor: 'pointer', transition: 'background 0.15s',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-            >
-              <i className="feather-briefcase" style={{ fontSize: 15, color: '#94a3b8', width: 18, textAlign: 'center' }} />
-              Quản lý sân
-            </div>
-          )}
-        </div>
+            {(showManagerAccess ?? isManager) && (
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={handleManagerAccess}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleManagerAccess(); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '9px 18px', color: '#475569', fontSize: 14,
+                  cursor: 'pointer', transition: 'background 0.15s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              >
+                <i className="feather-briefcase" style={{ fontSize: 15, color: '#94a3b8', width: 18, textAlign: 'center' }} />
+                Quản lý sân
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ padding: '6px 0', background: '#fff' }}>
+            <DropItem to="/admin/dashboard" icon="feather-shield" label="Trang Quản trị" onNav={handleNav} />
+          </div>
+        )}
 
         {/* Logout */}
         <div style={{ borderTop: '1px solid #f1f5f9', background: '#fff' }}>

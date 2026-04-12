@@ -46,6 +46,7 @@ export default function VenueDetails() {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
+  const isAdmin = user?.roles?.includes('ADMIN');
 
   // ALL hooks MUST be declared before any conditional return (React Rules of Hooks)
   const [venue, setVenue] = useState(null);
@@ -739,22 +740,30 @@ export default function VenueDetails() {
                   </li>
                 </ul>
                 <div className="d-grid btn-block mt-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={handleBooking}
-                    className="btn btn-secondary d-inline-flex justify-content-center align-items-center"
-                  >
-                    <i className="feather-calendar" />
-                    <span className="ms-2">ĐẶT LỊCH</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleLongTermBooking}
-                    className="btn btn-outline-primary d-inline-flex justify-content-center align-items-center"
-                  >
-                    <i className="feather-repeat" />
-                    <span className="ms-2">ĐẶT LỊCH DÀI HẠN</span>
-                  </button>
+                  {isAdmin ? (
+                    <div className="alert alert-warning text-center mb-0 p-2" style={{ fontSize: '13px' }}>
+                      <i className="feather-alert-triangle me-1" /> Tài khoản Quản trị không thể thao tác đặt sân.
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleBooking}
+                        className="btn btn-secondary d-inline-flex justify-content-center align-items-center"
+                      >
+                        <i className="feather-calendar" />
+                        <span className="ms-2">ĐẶT LỊCH</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleLongTermBooking}
+                        className="btn btn-outline-primary d-inline-flex justify-content-center align-items-center"
+                      >
+                        <i className="feather-repeat" />
+                        <span className="ms-2">ĐẶT LỊCH DÀI HẠN</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
