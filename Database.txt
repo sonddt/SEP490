@@ -248,6 +248,7 @@ CREATE TABLE venues (
     payment_note VARCHAR(1000) NULL COMMENT 'Ghi chú hướng dẫn thanh toán cho người chơi',
     cancel_allowed TINYINT(1) NOT NULL DEFAULT 1,
     cancel_before_minutes INT NOT NULL DEFAULT 120,
+    slot_duration INT NOT NULL DEFAULT 60,
     refund_type VARCHAR(20) NOT NULL DEFAULT 'NONE' COMMENT 'NONE|PERCENT|FULL',
     refund_percent DECIMAL(5,2) NULL,
     thumbnail_file_id CHAR(36),
@@ -1582,5 +1583,9 @@ SELECT 'Files',               COUNT(*)          FROM files      UNION ALL
 SELECT 'VenueFiles',          COUNT(*)          FROM venue_files UNION ALL
 SELECT 'FeaturedPosts',       COUNT(*)          FROM featured_posts UNION ALL
 SELECT 'Reviews',             COUNT(*)          FROM venue_reviews;
+
+SET @col_sd := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'slot_duration');
+SET @sql_sd := IF(@col_sd = 0, 'ALTER TABLE venues ADD COLUMN slot_duration INT NOT NULL DEFAULT 60', 'SELECT 1');
+PREPARE stmt_sd FROM @sql_sd; EXECUTE stmt_sd; DEALLOCATE PREPARE stmt_sd;
 
 SET FOREIGN_KEY_CHECKS = 1;

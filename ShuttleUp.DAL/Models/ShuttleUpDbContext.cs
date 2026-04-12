@@ -1243,6 +1243,9 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasColumnName("cancel_allowed");
             entity.Property(e => e.CancelBeforeMinutes)
                 .HasColumnName("cancel_before_minutes");
+            entity.Property(e => e.SlotDuration)
+                .HasDefaultValue(60)
+                .HasColumnName("slot_duration");
             entity.Property(e => e.RefundType)
                 .HasMaxLength(20)
                 .HasColumnName("refund_type");

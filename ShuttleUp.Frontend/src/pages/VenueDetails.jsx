@@ -77,6 +77,7 @@ export default function VenueDetails() {
         venueAddress: venue.address,
         pricePerSlot: venue.startingPrice,
         currency: venue.currency,
+        slotDuration: venue.slotDuration ?? 60,
     };
     sessionStorage.setItem('booking_venue_context', JSON.stringify(payload));
     navigate('/booking', { state: payload });
@@ -120,6 +121,7 @@ export default function VenueDetails() {
           includes: Array.isArray(data.includes) ? data.includes : (Array.isArray(data.Includes) ? data.Includes : null),
           rules: Array.isArray(data.rules) ? data.rules : (Array.isArray(data.Rules) ? data.Rules : null),
           amenities: Array.isArray(data.amenities) ? data.amenities : (Array.isArray(data.Amenities) ? data.Amenities : null),
+          slotDuration: data.slotDuration || data.SlotDuration || 60,
         });
       } catch (err) {
         setError(err.message || 'Oops... Có lỗi nảy sinh khi tải thông tin sân.');

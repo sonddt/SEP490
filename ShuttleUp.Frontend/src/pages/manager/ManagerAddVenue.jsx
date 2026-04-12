@@ -162,6 +162,7 @@ export default function ManagerAddVenue() {
     includes: [],
     rules: [],
     amenities: [],
+    slotDuration: 60,
   });
 
   const DAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
@@ -312,6 +313,7 @@ export default function ManagerAddVenue() {
           includes: Array.isArray(res?.includes) ? res.includes : (Array.isArray(res?.Includes) ? res.Includes : []),
           rules: Array.isArray(res?.rules) ? res.rules : (Array.isArray(res?.Rules) ? res.Rules : []),
           amenities: Array.isArray(res?.amenities) ? res.amenities : (Array.isArray(res?.Amenities) ? res.Amenities : []),
+          slotDuration: res?.slotDuration || res?.SlotDuration || 60,
         }));
       } catch (err) {
         console.error('Failed to load venue', err);
@@ -434,6 +436,7 @@ export default function ManagerAddVenue() {
         includes: form.includes.filter(s => s.trim()),
         rules: form.rules.filter(s => s.trim()),
         amenities: form.amenities,
+        slotDuration: form.slotDuration ? Number(form.slotDuration) : 60,
       };
 
       let id = venueId;
@@ -602,6 +605,15 @@ export default function ManagerAddVenue() {
                     <label className="form-label fw-semibold text-dark mb-2">Số điện thoại</label>
                     <input type="tel" className={`form-control form-control-lg bg-light border-0 ${getFieldError('contactPhone') ? 'is-invalid' : ''}`} placeholder="0901234567" value={form.contactPhone} onChange={(e) => setField('contactPhone', e.target.value)} />
                     {getFieldError('contactPhone') && <div className="invalid-feedback">{getFieldError('contactPhone')}</div>}
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label fw-semibold text-dark mb-2">Đơn vị giờ chẵn (Booking Slot Increment) <span className="text-danger">*</span></label>
+                    <select className="form-select form-select-lg bg-light border-0" value={form.slotDuration} onChange={(e) => setField('slotDuration', Number(e.target.value))}>
+                      <option value={60}>1 Giờ (Mặc định)</option>
+                      <option value={30}>30 Phút</option>
+                      <option value={120}>2 Giờ</option>
+                    </select>
+                    <div className="form-text mt-2 text-muted">Hệ thống sẽ chia lưới hiển thị lịch chơi theo đơn vị được chọn.</div>
                   </div>
                 </div>
               </div>

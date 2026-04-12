@@ -19,7 +19,7 @@ function CalendarPopup({ value, onChange, onClose }) {
   const firstDay   = new Date(viewYear, viewMonth, 1).getDay();
   const startOffset = (firstDay + 6) % 7; // Mon-based
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const todayIso    = today.toISOString().split('T')[0];
+  const todayIso    = localIsoDate(today);
 
   const prevMonth = () => viewMonth === 0 ? (setViewYear(y => y - 1), setViewMonth(11)) : setViewMonth(m => m - 1);
   const nextMonth = () => viewMonth === 11 ? (setViewYear(y => y + 1), setViewMonth(0)) : setViewMonth(m => m + 1);
@@ -100,6 +100,14 @@ function CalendarPopup({ value, onChange, onClose }) {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+/** Trả về chuỗi YYYY-MM-DD theo múi giờ LOCAL (không dùng UTC). */
+function localIsoDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function formatDateVN(isoDate) {
   if (!isoDate) return '';
   const [y, m, d] = isoDate.split('-');
@@ -108,16 +116,19 @@ function formatDateVN(isoDate) {
 
 const START_HOUR = 5;
 const END_HOUR = 24;
-/** Số ô 30 phút từ 5:00 đến trước 24:00 */
-const SLOT_COUNT = (END_HOUR - START_HOUR) * 2;
 
-function slotLocalBounds(dateStr, slotIndex) {
+/** Tính số ô grid dựa trên slotDuration (phút) */
+function computeSlotCount(slotDurationMins) {
+  return Math.floor((END_HOUR - START_HOUR) * 60 / slotDurationMins);
+}
+
+function slotLocalBounds(dateStr, slotIndex, slotDurationMins = 30) {
   const [y, m, d] = dateStr.split('-').map(Number);
-  const mins = START_HOUR * 60 + slotIndex * 30;
+  const mins = START_HOUR * 60 + slotIndex * slotDurationMins;
   const hh = Math.floor(mins / 60);
   const mm = mins % 60;
   const start = new Date(y, m - 1, d, hh, mm, 0, 0);
-  const end = new Date(start.getTime() + 30 * 60 * 1000);
+  const end = new Date(start.getTime() + slotDurationMins * 60 * 1000);
   return { start, end };
 }
 
@@ -138,8 +149,8 @@ function parseApiTimeToMinutes(v) {
   return h * 60 + min;
 }
 
-function getPriceForSlot(court, slotIndex, dateStr, fallbackPerSlot) {
-  const { start } = slotLocalBounds(dateStr, slotIndex);
+function getPriceForSlot(court, slotIndex, dateStr, fallbackPerSlot, slotDurationMins = 30) {
+  const { start } = slotLocalBounds(dateStr, slotIndex, slotDurationMins);
   const minutes = start.getHours() * 60 + start.getMinutes();
   const weekend = start.getDay() === 0 || start.getDay() === 6;
   const prices = court.prices || [];
@@ -226,8 +237,9 @@ function labelForBlockedInterval(iv) {
   return 'Khóa lịch';
 }
 
-function intervalsToGridBlocks(courtId, intervals, dateStr) {
+function intervalsToGridBlocks(courtId, intervals, dateStr, slotDurationMins = 30) {
   if (!intervals?.length) return [];
+  const slotCount = computeSlotCount(slotDurationMins);
   const blocks = [];
   for (const iv of intervals) {
     const ivStart = new Date(iv.start).getTime();
@@ -235,8 +247,8 @@ function intervalsToGridBlocks(courtId, intervals, dateStr) {
     if (Number.isNaN(ivStart) || Number.isNaN(ivEnd)) continue;
     let startIndex = -1;
     let endIndex = -1;
-    for (let i = 0; i < SLOT_COUNT; i++) {
-      const { start, end } = slotLocalBounds(dateStr, i);
+    for (let i = 0; i < slotCount; i++) {
+      const { start, end } = slotLocalBounds(dateStr, i, slotDurationMins);
       if (ivOverlapsSlot(ivStart, ivEnd, start.getTime(), end.getTime())) {
         if (startIndex < 0) startIndex = i;
         endIndex = i + 1;
@@ -274,7 +286,35 @@ export default function LongTermFlexible() {
   const venueId      = venueState.venueId      ?? null;
   const pricePerSlot = venueState.pricePerSlot ?? 100000;
 
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  // ── Slot Duration (from venue state cache or API fallback) ──────────────
+  const [slotDuration, setSlotDuration] = useState(() => {
+    const fromState = venueState.slotDuration;
+    return [30, 60, 120].includes(fromState) ? fromState : 60;
+  });
+
+  useEffect(() => {
+    if (!venueId) return;
+    if ([30, 60, 120].includes(venueState.slotDuration)) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/venues/${venueId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) {
+          const sd = data.slotDuration || data.SlotDuration || 60;
+          setSlotDuration([30, 60, 120].includes(sd) ? sd : 60);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch venue slotDuration', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [venueId, venueState.slotDuration]);
+
+  const SLOT_COUNT = useMemo(() => computeSlotCount(slotDuration), [slotDuration]);
+
+  const [selectedDate, setSelectedDate] = useState(localIsoDate(new Date()));
   const [showCalendar, setShowCalendar]  = useState(false);
 
   // Ref to measure the grid container for computing the exact "fit" minimum
@@ -328,7 +368,7 @@ export default function LongTermFlexible() {
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [SLOT_COUNT]);
 
   // Minimum cell width derived from current container width
   const minCellWidth = containerWidth > 0
@@ -400,19 +440,24 @@ export default function LongTermFlexible() {
 
   const timeSlots = useMemo(() => {
     const slots = [];
-    for (let h = START_HOUR; h < END_HOUR; h++) {
-      slots.push(`${String(h).padStart(2, '0')}:00`);
-      slots.push(`${String(h).padStart(2, '0')}:30`);
+    for (let i = 0; i < SLOT_COUNT; i++) {
+      const totalMins = START_HOUR * 60 + i * slotDuration;
+      const hh = String(Math.floor(totalMins / 60)).padStart(2, '0');
+      const mm = String(totalMins % 60).padStart(2, '0');
+      slots.push(`${hh}:${mm}`);
     }
-    slots.push('24:00');
+    const endMins = START_HOUR * 60 + SLOT_COUNT * slotDuration;
+    const endHH = String(Math.floor(endMins / 60)).padStart(2, '0');
+    const endMM = String(endMins % 60).padStart(2, '0');
+    slots.push(`${endHH}:${endMM}`);
     return slots;
-  }, []);
+  }, [slotDuration, SLOT_COUNT]);
 
   const existingBookings = useMemo(() => {
     if (!availabilityRows.length) return [];
     return availabilityRows.flatMap(row =>
-      intervalsToGridBlocks(String(row.courtId), row.intervals || [], selectedDate));
-  }, [availabilityRows, selectedDate]);
+      intervalsToGridBlocks(String(row.courtId), row.intervals || [], selectedDate, slotDuration));
+  }, [availabilityRows, selectedDate, slotDuration]);
 
   // ── Cell status ──────────────────────────────────────────────────────────
   const getBookingAt = (courtId, slotIndex) =>
@@ -420,9 +465,8 @@ export default function LongTermFlexible() {
 
   const isPastSlot = (slotIndex) => {
     const now = new Date();
-    const { end } = slotLocalBounds(selectedDate, slotIndex);
-    // Chỉ khóa "slot đã qua" trong ngày hiện tại; các ngày tương lai vẫn chọn bình thường.
-    if (!isSameLocalDate(end, now)) return false;
+    const { end } = slotLocalBounds(selectedDate, slotIndex, slotDuration);
+    // Nếu thời điểm kết thúc slot <= hiện tại → slot đã qua.
     return end.getTime() <= now.getTime();
   };
 
@@ -540,14 +584,14 @@ export default function LongTermFlexible() {
       if (!set?.size) return;
       set.forEach(slotIdx => {
         slots += 1;
-        price += getPriceForSlot(c, slotIdx, selectedDate, pricePerSlot);
+        price += getPriceForSlot(c, slotIdx, selectedDate, pricePerSlot, slotDuration);
       });
     });
-    const hours = slots * 0.5;
-    const h = Math.floor(hours);
-    const m = (hours - h) * 60;
+    const totalMinutes = slots * slotDuration;
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
     return { totalSlots: slots, totalPrice: price, totalHours: m > 0 ? `${h}h${m}` : `${h}h` };
-  }, [selections, courts, selectedDate, pricePerSlot]);
+  }, [selections, courts, selectedDate, pricePerSlot, slotDuration]);
 
   // ── Cell colour ──────────────────────────────────────────────────────────
   const getCellColor = status => {
@@ -625,7 +669,7 @@ export default function LongTermFlexible() {
     }
 
     const sortedDates = [...new Set(cart.map((l) => l.date))].sort();
-    const date = sortedDates[0] ?? new Date().toISOString().split('T')[0];
+    const date = sortedDates[0] ?? localIsoDate(new Date());
 
     navigate('/booking/long-term/flexible/confirm', {
       state: {
