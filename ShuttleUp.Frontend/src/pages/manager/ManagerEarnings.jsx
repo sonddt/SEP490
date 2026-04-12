@@ -1,28 +1,15 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-
-/* ── Mock data ─────────────────────────────────────────────────────────── */
-const MOCK = [
-  { id: 1, refId: 'INV-001', court: 'Sân 1', venue: 'ShuttleUp Q7', courtImg: '/assets/img/booking/booking-01.jpg', player: 'Nguyễn Văn A', playerImg: '/assets/img/profiles/avatar-01.jpg', dateDisplay: 'Th 5, 12/03/2026', timeRange: '08:00 – 10:00', amount: 240000, paidOn: '12/03/2026', status: 'PAID' },
-  { id: 2, refId: 'INV-002', court: 'Sân 2', venue: 'ShuttleUp Q7', courtImg: '/assets/img/booking/booking-02.jpg', player: 'Trần Thị B', playerImg: '/assets/img/profiles/avatar-02.jpg', dateDisplay: 'Th 5, 12/03/2026', timeRange: '10:00 – 12:00', amount: 240000, paidOn: '12/03/2026', status: 'PAID' },
-  { id: 3, refId: 'INV-003', court: 'Sân 1', venue: 'ShuttleUp Q7', courtImg: '/assets/img/booking/booking-01.jpg', player: 'Lê Văn C', playerImg: '/assets/img/profiles/avatar-03.jpg', dateDisplay: 'Th 4, 11/03/2026', timeRange: '14:00 – 16:00', amount: 320000, paidOn: '11/03/2026', status: 'PAID' },
-  { id: 4, refId: 'INV-004', court: 'Sân 3', venue: 'ShuttleUp Q7', courtImg: '/assets/img/booking/booking-03.jpg', player: 'Phạm Thị D', playerImg: '/assets/img/profiles/avatar-04.jpg', dateDisplay: 'Th 4, 11/03/2026', timeRange: '16:00 – 18:00', amount: 400000, paidOn: '—', status: 'PENDING' },
-  { id: 5, refId: 'INV-005', court: 'Sân 2', venue: 'ShuttleUp Q7', courtImg: '/assets/img/booking/booking-02.jpg', player: 'Hoàng Văn E', playerImg: '/assets/img/profiles/avatar-01.jpg', dateDisplay: 'Th 3, 10/03/2026', timeRange: '06:00 – 08:00', amount: 240000, paidOn: '10/03/2026', status: 'PAID' },
-  { id: 6, refId: 'INV-006', court: 'Sân 1', venue: 'ShuttleUp Bình Thạnh', courtImg: '/assets/img/booking/booking-01.jpg', player: 'Mai Thị F', playerImg: '/assets/img/profiles/avatar-02.jpg', dateDisplay: 'Th 3, 10/03/2026', timeRange: '08:00 – 10:00', amount: 280000, paidOn: '10/03/2026', status: 'PAID' },
-  { id: 7, refId: 'INV-007', court: 'Sân 2', venue: 'ShuttleUp Bình Thạnh', courtImg: '/assets/img/booking/booking-02.jpg', player: 'Vũ Văn G', playerImg: '/assets/img/profiles/avatar-03.jpg', dateDisplay: 'Th 2, 09/03/2026', timeRange: '10:00 – 12:00', amount: 280000, paidOn: '—', status: 'CANCELLED' },
-];
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import * as XLSX from 'xlsx';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import axiosClient from '../../api/axiosClient';
+import { notifyError, notifyInfo } from '../../hooks/useNotification';
 
 const STATUS_MAP = {
-  PAID:      { label: 'Đã thanh toán', color: '#097E52', bg: '#e8f5ee', icon: 'feather-check-circle', badge: 'bg-success' },
-  PENDING:   { label: 'Chờ thanh toán', color: '#d97706', bg: '#fef3c7', icon: 'feather-clock',       badge: 'bg-warning' },
-  CANCELLED: { label: 'Đã huỷ',         color: '#ef4444', bg: '#fff1f2', icon: 'feather-x-circle',    badge: 'bg-danger' },
+  CONFIRMED: { label: 'Đã thu',         color: '#097E52', bg: '#e8f5ee', icon: 'feather-check-circle', badge: 'bg-success' },
+  COMPLETED: { label: 'Đã thu',         color: '#097E52', bg: '#e8f5ee', icon: 'feather-check-circle', badge: 'bg-success' },
+  PENDING:   { label: 'Chờ xử lý',      color: '#d97706', bg: '#fef3c7', icon: 'feather-clock',        badge: 'bg-warning text-dark' },
+  CANCELLED: { label: 'Đã huỷ',         color: '#ef4444', bg: '#fff1f2', icon: 'feather-x-circle',     badge: 'bg-danger' },
 };
-
-const STATS = [
-  { icon: 'feather-trending-up', bg: '#e8f5ee', iconColor: '#097E52', label: 'Tổng doanh thu tháng', value: '12.400.000 ₫' },
-  { icon: 'feather-calendar',    bg: '#eff6ff', iconColor: '#2563eb', label: 'Số lượt đặt sân',      value: '42' },
-  { icon: 'feather-bar-chart-2', bg: '#fef3c7', iconColor: '#d97706', label: 'Trung bình / lượt',    value: '295.000 ₫' },
-  { icon: 'feather-alert-circle',bg: '#fff1f2', iconColor: '#ef4444', label: 'Chưa thu',             value: '400.000 ₫' },
-];
 
 // Pagination Component
 function Pagination({ page, totalPages, onChange }) {
@@ -90,28 +77,124 @@ function Pagination({ page, totalPages, onChange }) {
 /* ═══ MAIN ═══════════════════════════════════════════════════════════════ */
 export default function ManagerEarnings() {
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [timeFilter, setTimeFilter]     = useState('month');
-  const [search, setSearch]             = useState('');
-  const [page, setPage]                 = useState(1);
+  const [timeFilter, setTimeFilter] = useState('month');
+  const [search, setSearch] = useState('');
+  const [venueFilter, setVenueFilter] = useState('ALL');
+  const [page, setPage] = useState(1);
   const itemsPerPage = 8;
 
-  const filtered = useMemo(() => MOCK.filter(t => {
-    const ms = statusFilter === 'ALL' || t.status === statusFilter;
-    const mq = t.player.toLowerCase().includes(search.toLowerCase())
-            || t.court.toLowerCase().includes(search.toLowerCase())
-            || t.refId.toLowerCase().includes(search.toLowerCase())
-            || t.venue.toLowerCase().includes(search.toLowerCase());
-    return ms && mq;
-  }), [statusFilter, search]);
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState({ items: [], totalItems: 0, totalPages: 1, venues: [], totalRevInRange: 0, page: 1, pageSize: itemsPerPage });
+  const [chart, setChart] = useState([]);
 
-  const totalRevenue = MOCK.filter(t => t.status === 'PAID').reduce((a, b) => a + b.amount, 0);
+  const vnDateStr = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const buildRange = useCallback(() => {
+    const now = new Date();
+    if (timeFilter === 'week') {
+      const day = now.getDay(); // 0 Sun..6 Sat
+      const diffToMon = (day + 6) % 7;
+      const start = new Date(now);
+      start.setDate(now.getDate() - diffToMon);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      return { startDate: vnDateStr(start), endDate: vnDateStr(end) };
+    }
+    if (timeFilter === 'year') {
+      const start = new Date(now.getFullYear(), 0, 1);
+      const end = new Date(now.getFullYear(), 11, 31);
+      return { startDate: vnDateStr(start), endDate: vnDateStr(end) };
+    }
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return { startDate: vnDateStr(start), endDate: vnDateStr(end) };
+  }, [timeFilter]);
+
   const handleClearSearch = useCallback(() => setSearch(''), []);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
-  const currentPage = Math.min(page, totalPages);
-  const currentItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { startDate, endDate } = buildRange();
+      const params = new URLSearchParams({ page: String(page), pageSize: String(itemsPerPage) });
+      if (statusFilter && statusFilter !== 'ALL') params.append('status', statusFilter);
+      if (search.trim()) params.append('search', search.trim());
+      if (venueFilter && venueFilter !== 'ALL') params.append('venueId', venueFilter);
+      params.append('startDate', startDate);
+      params.append('endDate', endDate);
 
-  useEffect(() => { setPage(1); }, [statusFilter, search, timeFilter]);
+      const res = await axiosClient.get(`/manager/stats/earnings?${params.toString()}`);
+      setData(res);
+
+      const chartParams = new URLSearchParams({ days: '30' });
+      if (venueFilter && venueFilter !== 'ALL') chartParams.append('venueId', venueFilter);
+      const chartRes = await axiosClient.get(`/manager/stats/chart/daily?${chartParams.toString()}`);
+      setChart(Array.isArray(chartRes) ? chartRes : []);
+    } catch (e) {
+      setData({ items: [], totalItems: 0, totalPages: 1, venues: [], totalRevInRange: 0, page: 1, pageSize: itemsPerPage });
+      setChart([]);
+      notifyError(e?.response?.data?.message || 'Oops… Không tải được báo cáo doanh thu.');
+    } finally {
+      setLoading(false);
+    }
+  }, [page, itemsPerPage, statusFilter, search, venueFilter, buildRange]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { setPage(1); }, [statusFilter, search, timeFilter, venueFilter]);
+
+  const totalPages = data?.totalPages ?? 1;
+  const currentPage = Math.min(page, totalPages);
+  const currentItems = data?.items || [];
+  const totalRevenue = data?.totalRevInRange ?? 0;
+
+  const paidCount = useMemo(
+    () => currentItems.filter((x) => x.status === 'CONFIRMED' || x.status === 'COMPLETED').length,
+    [currentItems],
+  );
+  const avgRevenue = paidCount > 0 ? Math.round(totalRevenue / paidCount) : 0;
+  const unpaidAmount = useMemo(
+    () => currentItems.filter((x) => x.status === 'PENDING').reduce((s, x) => s + (x.amount ?? 0), 0),
+    [currentItems],
+  );
+
+  const STATS = useMemo(() => ([
+    { icon: 'feather-trending-up', bg: '#e8f5ee', iconColor: '#097E52', label: 'Doanh thu (lọc hiện tại)', value: `${totalRevenue.toLocaleString('vi-VN')} ₫` },
+    { icon: 'feather-calendar', bg: '#eff6ff', iconColor: '#2563eb', label: 'Số booking', value: (data?.totalItems ?? 0).toLocaleString('vi-VN') },
+    { icon: 'feather-bar-chart-2', bg: '#fef3c7', iconColor: '#d97706', label: 'Trung bình / booking đã thu', value: paidCount > 0 ? `${avgRevenue.toLocaleString('vi-VN')} ₫` : '—' },
+    { icon: 'feather-alert-circle', bg: '#fff1f2', iconColor: '#ef4444', label: 'Chờ xử lý (tạm tính)', value: unpaidAmount > 0 ? `${unpaidAmount.toLocaleString('vi-VN')} ₫` : '—' },
+  ]), [totalRevenue, data?.totalItems, paidCount, avgRevenue, unpaidAmount]);
+
+  const fmtTime = (dt) => {
+    if (!dt) return '';
+    return new Date(dt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+
+  const handleExport = () => {
+    try {
+      const rows = (data?.items || []).map((tx, i) => ({
+        'STT': i + 1,
+        'Mã booking': tx.refId,
+        'Người đặt': tx.player,
+        'Cụm sân': tx.venue,
+        'Sân con': tx.court,
+        'Ngày': tx.date,
+        'Giờ': tx.startTime ? `${fmtTime(tx.startTime)} – ${fmtTime(tx.endTime)}` : '—',
+        'Tiền (VNĐ)': tx.amount ?? 0,
+        'Trạng thái': STATUS_MAP[tx.status]?.label || tx.status,
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Doanh thu');
+      XLSX.writeFile(wb, `bao-cao-doanh-thu-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch {
+      notifyInfo('Oops… Chưa xuất được file lúc này.');
+    }
+  };
 
   return (
     <>
@@ -141,9 +224,50 @@ export default function ManagerEarnings() {
               <div className="col-md-5">
                 <div className="court-table-head">
                   <h4>Lịch sử doanh thu</h4>
-                  <p>{filtered.length} giao dịch · Thu được {totalRevenue.toLocaleString('vi-VN')} ₫</p>
+                  <p>{(data?.totalItems ?? 0).toLocaleString('vi-VN')} booking · Thu được {totalRevenue.toLocaleString('vi-VN')} ₫</p>
                 </div>
               </div>
+              <div className="col-md-7 d-flex justify-content-md-end mt-2 mt-md-0">
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{ background: '#e8f5ee', color: '#097E52', border: 'none', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                  onClick={handleExport}
+                  disabled={loading || !(data?.items?.length > 0)}
+                >
+                  <i className="feather-download" style={{ fontSize: 14 }} /> Xuất Excel
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Chart */}
+          <div style={{ marginTop: 14, marginBottom: 16, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div style={{ fontWeight: 800, color: '#0f172a' }}>Doanh thu 30 ngày gần nhất</div>
+              <div style={{ fontSize: 12, color: '#64748b' }}>Theo giờ VN</div>
+            </div>
+            <div style={{ width: '100%', height: 220 }}>
+              {loading ? (
+                <div className="placeholder-glow">
+                  <span className="placeholder col-12" style={{ height: 220 }} />
+                </div>
+              ) : !chart?.length ? (
+                <div className="text-muted" style={{ padding: '24px 0', textAlign: 'center' }}>Chưa có dữ liệu biểu đồ.</div>
+              ) : (
+                <ResponsiveContainer>
+                  <LineChart data={chart} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#64748b' }} />
+                    <YAxis tick={{ fontSize: 12, fill: '#64748b' }} width={60} />
+                    <Tooltip
+                      formatter={(v) => [`${Number(v || 0).toLocaleString('vi-VN')} ₫`, 'Doanh thu']}
+                      labelFormatter={(l) => `Ngày ${l}`}
+                    />
+                    <Line type="monotone" dataKey="revenue" stroke="#097E52" strokeWidth={2.5} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
 
@@ -163,13 +287,20 @@ export default function ManagerEarnings() {
               <option value="month">Tháng này</option>
               <option value="year">Năm này</option>
             </select>
+            <select className="form-select" value={venueFilter} onChange={e => setVenueFilter(e.target.value)}>
+              <option value="ALL">Tất cả cụm sân</option>
+              {(data?.venues || []).map((v) => (
+                <option key={v.id} value={v.id}>{v.name}</option>
+              ))}
+            </select>
             <select className="form-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
               <option value="ALL">Tất cả trạng thái</option>
-              <option value="PAID">Đã thanh toán</option>
-              <option value="PENDING">Chờ thanh toán</option>
+              <option value="CONFIRMED">Đã thu</option>
+              <option value="COMPLETED">Hoàn thành</option>
+              <option value="PENDING">Chờ xử lý</option>
               <option value="CANCELLED">Đã huỷ</option>
             </select>
-            <span className="bk-filter-count">{filtered.length}/{MOCK.length}</span>
+            <span className="bk-filter-count">{(data?.totalItems ?? 0).toLocaleString('vi-VN')}</span>
           </div>
 
           {/* Table */}
@@ -186,7 +317,17 @@ export default function ManagerEarnings() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {loading ? (
+                  [...Array(5)].map((_, i) => (
+                    <tr key={i}>
+                      <td colSpan={6}>
+                        <div className="placeholder-glow">
+                          <span className="placeholder col-12" style={{ height: 30 }} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : !currentItems.length ? (
                   <tr>
                     <td colSpan={6}>
                       <div className="bk-empty">
@@ -203,7 +344,7 @@ export default function ManagerEarnings() {
                       <td>
                         <h2 className="table-avatar">
                           <span className="avatar avatar-sm flex-shrink-0">
-                            <img className="avatar-img" src={tx.courtImg} alt="" onError={e => { e.target.src = '/assets/img/booking/booking-01.jpg'; }} />
+                            <img className="avatar-img" src={'/assets/img/booking/booking-01.jpg'} alt="" onError={e => { e.target.src = '/assets/img/booking/booking-01.jpg'; }} />
                           </span>
                           <span className="table-head-name flex-grow-1">
                             <a href="#!" onClick={e => e.preventDefault()}>{tx.court}</a>
@@ -215,7 +356,7 @@ export default function ManagerEarnings() {
                       <td>
                         <h2 className="table-avatar">
                           <span className="avatar avatar-sm flex-shrink-0" style={{ borderRadius: '50%' }}>
-                            <img className="avatar-img rounded-circle" src={tx.playerImg} alt="" onError={e => { e.target.src = '/assets/img/profiles/avatar-01.jpg'; }} />
+                            <img className="avatar-img rounded-circle" src={'/assets/img/profiles/avatar-01.jpg'} alt="" onError={e => { e.target.src = '/assets/img/profiles/avatar-01.jpg'; }} />
                           </span>
                           <span className="table-head-name flex-grow-1">
                             <a href="#!" onClick={e => e.preventDefault()}>{tx.player}</a>
@@ -223,22 +364,18 @@ export default function ManagerEarnings() {
                         </h2>
                       </td>
                       <td className="table-date-time">
-                        <h4>{tx.dateDisplay}<span>{tx.timeRange}</span></h4>
+                        <h4>{tx.date}<span>{tx.startTime ? `${fmtTime(tx.startTime)} – ${fmtTime(tx.endTime)}` : '—'}</span></h4>
                       </td>
                       <td>
                         <span className="pay-dark">{tx.amount.toLocaleString('vi-VN')} ₫</span>
-                        {tx.paidOn !== '—' && <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Thu: {tx.paidOn}</div>}
                       </td>
                       <td>
                         <span className={`badge ${st.badge}`}><i className={st.icon} />{st.label}</span>
                       </td>
                       <td className="text-end">
                         <div className="d-flex align-items-center justify-content-end gap-2">
-                          <button type="button" onClick={() => alert(`Tải hoá đơn ${tx.refId}`)} className="btn btn-sm btn-light d-inline-flex align-items-center justify-content-center border" style={{ width: 32, height: 32, borderRadius: 8, color: '#0ea5e9' }} title="Tải hoá đơn">
+                          <button type="button" onClick={() => notifyInfo('Tải hoá đơn sẽ được bổ sung sớm.')} className="btn btn-sm btn-light d-inline-flex align-items-center justify-content-center border" style={{ width: 32, height: 32, borderRadius: 8, color: '#0ea5e9' }} title="Tải hoá đơn">
                             <i className="feather-download" style={{ fontSize: 13 }} />
-                          </button>
-                          <button type="button" onClick={() => alert(`Xoá ${tx.refId}`)} className="btn btn-sm btn-light d-inline-flex align-items-center justify-content-center border" style={{ width: 32, height: 32, borderRadius: 8, color: '#ef4444' }} title="Xóa">
-                            <i className="feather-trash-2" style={{ fontSize: 13 }} />
                           </button>
                         </div>
                       </td>

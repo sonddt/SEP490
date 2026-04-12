@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import VenueReviewModal from '../components/courts/VenueReviewModal';
 import StarRatingDisplay from '../components/common/StarRatingDisplay';
 import RichText from '../components/common/RichText';
+import ReportModal from '../components/common/ReportModal';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
 import Lightbox from 'yet-another-react-lightbox';
@@ -59,6 +60,7 @@ export default function VenueDetails() {
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [pendingReviewBookingId, setPendingReviewBookingId] = useState(null);
+  const [reportOpen, setReportOpen] = useState(false);
 
   // Build slides for lightbox
   const slides = MOCK_GALLERY.map((src) => ({ src }));
@@ -255,6 +257,13 @@ export default function VenueDetails() {
 
   return (
     <div className="main-wrapper content-below-header venue-coach-details">
+      <ReportModal
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        targetType="VENUE"
+        targetId={venue?.id}
+        title="Báo cáo cụm sân"
+      />
       {/* Top gallery – Swiper slider để giống template */}
       <section className="bannergallery-section">
         <Swiper
@@ -785,6 +794,16 @@ export default function VenueDetails() {
                     <i className="feather-phone-call" />
                     <span className="ms-2">Liên hệ chủ sân</span>
                   </Link>
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary d-inline-flex justify-content-center align-items-center mt-2"
+                    onClick={() => setReportOpen(true)}
+                    disabled={!user}
+                    title={!user ? 'Vui lòng đăng nhập để báo cáo' : 'Báo cáo cụm sân'}
+                  >
+                    <i className="feather-flag" />
+                    <span className="ms-2">Báo cáo cụm sân</span>
+                  </button>
                 </div>
               </div>
 

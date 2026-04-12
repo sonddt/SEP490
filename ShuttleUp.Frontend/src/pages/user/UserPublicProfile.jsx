@@ -3,14 +3,18 @@ import { Link, useParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import UserDashboardMenu from '../../components/user/UserDashboardMenu';
 import RelationshipActions from '../../components/user/RelationshipActions';
+import ReportModal from '../../components/common/ReportModal';
+import { useAuth } from '../../context/AuthContext';
 import { profileApi } from '../../api/profileApi';
 import { buildProfileShareUrl } from '../../utils/profileQr';
 
 export default function UserPublicProfile() {
   const { userId } = useParams();
+  const { user: authUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [payload, setPayload] = useState(null);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -34,6 +38,10 @@ export default function UserPublicProfile() {
 
   const u = payload?.user;
   const shareUrl = u?.id ? buildProfileShareUrl(u.id) : '';
+  const isOwnProfile =
+    authUser?.id &&
+    u?.id &&
+    String(authUser.id).toLowerCase() === String(u.id).toLowerCase();
 
   return (
     <div className="main-wrapper content-below-header">
@@ -61,6 +69,13 @@ export default function UserPublicProfile() {
           )}
           {!loading && !error && u && (
             <div className="card border-0 shadow-sm">
+              <ReportModal
+                open={reportOpen}
+                onClose={() => setReportOpen(false)}
+                targetType="USER"
+                targetId={u.id}
+                title="Báo cáo người dùng"
+              />
               <div className="card-body p-4">
                 <div className="d-flex flex-column flex-md-row gap-4 align-items-start">
                   <div className="text-center">
@@ -115,6 +130,18 @@ export default function UserPublicProfile() {
                       chatPeerFullName={u.fullName}
                       chatPeerAvatarUrl={u.avatarUrl}
                     />
+                    {!isOwnProfile && (
+                      <div className="mt-3">
+                        <button
+                          type="button"
+                          className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center"
+                          onClick={() => setReportOpen(true)}
+                        >
+                          <i className="feather-flag" />
+                          <span className="ms-2">Báo cáo người dùng</span>
+                        </button>
+                      </div>
+                    )}
                     {shareUrl && (
                       <div className="mt-4 d-md-none">
                         <div className="small text-muted mb-1">Mã QR hồ sơ</div>

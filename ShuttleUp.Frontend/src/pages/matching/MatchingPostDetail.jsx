@@ -5,6 +5,7 @@ import MatchingMembers from '../../components/matching/MatchingMembers';
 import MatchingJoinRequests from '../../components/matching/MatchingJoinRequests';
 import MatchingComments from '../../components/matching/MatchingComments';
 import MatchingScheduleModal from '../../components/matching/MatchingScheduleModal';
+import ReportModal from '../../components/common/ReportModal';
 import { useAuth } from '../../context/AuthContext';
 import { parseSlotDate, buildScheduleSummary } from '../../utils/matchingScheduleSummary';
 
@@ -74,6 +75,7 @@ export default function MatchingPostDetail() {
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [joinMessage, setJoinMessage] = useState('');
   const [showJoinForm, setShowJoinForm] = useState(false);
   const [hostTab, setHostTab] = useState('requests'); // 'requests' | 'members'
@@ -318,6 +320,13 @@ export default function MatchingPostDetail() {
 
   return (
     <div className="main-wrapper content-below-header">
+      <ReportModal
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        targetType="MATCHING_POST"
+        targetId={post?.id}
+        title="Báo cáo bài đăng ghép sân"
+      />
       <div className="content py-5" style={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
         <div className="container">
 
@@ -338,6 +347,18 @@ export default function MatchingPostDetail() {
                     )}
                   </div>
                 </div>
+             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+               <button
+                 type="button"
+                 className="btn btn-outline-secondary"
+                 onClick={() => setReportOpen(true)}
+                 disabled={!user}
+                 title={!user ? 'Vui lòng đăng nhập để báo cáo' : 'Báo cáo bài đăng'}
+                 style={{ borderRadius: 12, fontWeight: 800 }}
+               >
+                 <i className="feather-flag me-2" /> Báo cáo
+               </button>
+             </div>
              </div>
              
              <div style={{ textAlign: 'right' }}>

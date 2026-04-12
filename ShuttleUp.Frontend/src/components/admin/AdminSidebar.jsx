@@ -21,6 +21,7 @@ const NAV_SECTIONS = [
     items: [
       { to: '/admin/bookings-stats', icon: 'feather-calendar',     label: 'Thống kê Đặt sân' },
       { to: '/admin/revenue-stats',  icon: 'feather-bar-chart-2',  label: 'Thống kê Doanh thu' },
+      { to: '/admin/reports',        icon: 'feather-flag',         label: 'Báo cáo & Khiếu nại' },
     ],
   },
 ];

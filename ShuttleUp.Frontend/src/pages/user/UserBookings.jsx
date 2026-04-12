@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import UserDashboardMenu from '../../components/user/UserDashboardMenu';
 import { getMyBookings, cancelBooking, getCancelPreview, updateRefundBankInfo } from '../../api/bookingApi';
+import ReportModal from '../../components/common/ReportModal';
 
 function pad2(n) {
   return String(n).padStart(2, '0');
@@ -153,6 +154,7 @@ export default function UserBookings() {
   const [bankForm, setBankForm] = useState({ refundBankName: '', refundAccountNumber: '', refundAccountHolder: '' });
   const [showBankForm, setShowBankForm] = useState(null);
   const [bankSubmitting, setBankSubmitting] = useState(false);
+  const [disputeTarget, setDisputeTarget] = useState(null);
 
   const loadBookings = useCallback(async () => {
     setLoading(true);
@@ -291,6 +293,14 @@ export default function UserBookings() {
 
   return (
     <div className="main-wrapper content-below-header">
+      <ReportModal
+        open={!!disputeTarget}
+        onClose={() => setDisputeTarget(null)}
+        targetType="BOOKING"
+        targetId={disputeTarget?.id}
+        title="Khiếu nại / tranh chấp giao dịch"
+        requireImage
+      />
       {toastMsg && (
         <div
           className={`alert ${toastMsg.isError ? 'alert-danger' : 'alert-success'} shadow-sm`}
@@ -560,6 +570,15 @@ export default function UserBookings() {
                                         </button>
                                       </li>
                                     )}
+                                    <li>
+                                      <button
+                                        type="button"
+                                        className="dropdown-item"
+                                        onClick={() => setDisputeTarget(b)}
+                                      >
+                                        <i className="feather-flag me-2" />Khiếu nại giao dịch
+                                      </button>
+                                    </li>
                                     {b.status === 'REFUND' && !b.refundAccountNumber && (
                                       <li>
                                         <button

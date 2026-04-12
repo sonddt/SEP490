@@ -1,19 +1,7 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-
-/* ── Mock data ─────────────────────────────────────────────────────────── */
-const stats = [
-  { label: 'Tổng cụm sân',       value: '3',             icon: 'feather-map-pin',     variant: 'green' },
-  { label: 'Đặt sân hôm nay',    value: '8',             icon: 'feather-calendar',    variant: 'blue' },
-  { label: 'Doanh thu tháng này', value: '12.400.000 ₫', icon: 'feather-trending-up', variant: 'amber' },
-  { label: 'Chờ phê duyệt',      value: '1',             icon: 'feather-clock',       variant: 'red' },
-];
-
-const recentBookings = [
-  { id: 1, player: 'Nguyễn Văn A', playerImg: '/assets/img/profiles/avatar-01.jpg', court: 'Sân 1 – ShuttleUp Quận 7', date: '12/03/2026', time: '08:00 – 10:00', amount: 120000, status: 'CONFIRMED' },
-  { id: 2, player: 'Trần Thị B',   playerImg: '/assets/img/profiles/avatar-02.jpg', court: 'Sân 2 – ShuttleUp Quận 7', date: '12/03/2026', time: '10:00 – 12:00', amount: 120000, status: 'PENDING' },
-  { id: 3, player: 'Lê Văn C',     playerImg: '/assets/img/profiles/avatar-03.jpg', court: 'Sân 1 – ShuttleUp Quận 7', date: '13/03/2026', time: '14:00 – 16:00', amount: 160000, status: 'CONFIRMED' },
-  { id: 4, player: 'Phạm Thị D',   playerImg: '/assets/img/profiles/avatar-04.jpg', court: 'Sân 3 – ShuttleUp Quận 7', date: '13/03/2026', time: '16:00 – 18:00', amount: 200000, status: 'CANCELLED' },
-];
+import axiosClient from '../../api/axiosClient';
+import { notifyError } from '../../hooks/useNotification';
 
 const STATUS_MAP = {
   CONFIRMED: { label: 'Xác nhận',  badge: 'bg-success', icon: 'feather-check-circle' },
@@ -22,6 +10,47 @@ const STATUS_MAP = {
 };
 
 export default function ManagerDashboard() {
+  const [loading, setLoading] = useState(true);
+  const [overview, setOverview] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        setLoading(true);
+        const res = await axiosClient.get('/manager/stats/overview');
+        if (!mounted) return;
+        setOverview(res);
+      } catch (e) {
+        if (!mounted) return;
+        setOverview(null);
+        notifyError(e?.response?.data?.message || 'Oops… Không tải được thống kê tổng quan.');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    load();
+    return () => { mounted = false; };
+  }, []);
+
+  const stats = useMemo(() => {
+    const o = overview || {};
+    const money = (v) => `${(v ?? 0).toLocaleString('vi-VN')} ₫`;
+    return [
+      { label: 'Tổng cụm sân',        value: (o.totalVenues ?? 0).toLocaleString('vi-VN'), icon: 'feather-map-pin',     variant: 'green' },
+      { label: 'Đặt sân hôm nay',     value: (o.todayBookings ?? 0).toLocaleString('vi-VN'), icon: 'feather-calendar',    variant: 'blue' },
+      { label: 'Doanh thu tháng này', value: money(o.monthRevenue ?? 0), icon: 'feather-trending-up', variant: 'amber' },
+      { label: 'Chờ xử lý',           value: (o.pendingCount ?? 0).toLocaleString('vi-VN'), icon: 'feather-clock',       variant: 'red' },
+    ];
+  }, [overview]);
+
+  const recentBookings = overview?.recentBookings || [];
+
+  const fmtTime = (dt) => {
+    if (!dt) return '';
+    return new Date(dt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+
   return (
     <>
       {/* Stats Cards */}
@@ -70,14 +99,28 @@ export default function ManagerDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {recentBookings.map(b => {
+                    {loading ? (
+                      [...Array(4)].map((_, i) => (
+                        <tr key={i}>
+                          <td colSpan={5}>
+                            <div className="placeholder-glow">
+                              <span className="placeholder col-12" style={{ height: 28 }} />
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : recentBookings.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="text-center text-muted py-4">Chưa có booking nào.</td>
+                      </tr>
+                    ) : recentBookings.map(b => {
                       const st = STATUS_MAP[b.status] || STATUS_MAP.PENDING;
                       return (
                         <tr key={b.id}>
                           <td>
                             <h2 className="table-avatar">
                               <span className="avatar avatar-sm flex-shrink-0" style={{ borderRadius: '50%' }}>
-                                <img className="avatar-img rounded-circle" src={b.playerImg} alt="" onError={e => { e.target.src = '/assets/img/profiles/avatar-01.jpg'; }} />
+                                <img className="avatar-img rounded-circle" src={'/assets/img/profiles/avatar-01.jpg'} alt="" onError={e => { e.target.src = '/assets/img/profiles/avatar-01.jpg'; }} />
                               </span>
                               <span className="table-head-name flex-grow-1">
                                 <a href="#!" onClick={e => e.preventDefault()}>{b.player}</a>
@@ -85,15 +128,15 @@ export default function ManagerDashboard() {
                             </h2>
                           </td>
                           <td>
-                            <span style={{ fontSize: 14, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: 200 }}>
-                              {b.court}
+                            <span style={{ fontSize: 14, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: 220 }}>
+                              {b.court} · {b.venue}
                             </span>
                           </td>
                           <td className="table-date-time">
-                            <h4>{b.date}<span><i className="feather-clock" style={{ fontSize: 11, marginRight: 3 }} />{b.time}</span></h4>
+                            <h4>{b.date}<span><i className="feather-clock" style={{ fontSize: 11, marginRight: 3 }} />{b.startTime ? `${fmtTime(b.startTime)} – ${fmtTime(b.endTime)}` : '—'}</span></h4>
                           </td>
                           <td>
-                            <span className="pay-dark">{b.amount.toLocaleString('vi-VN')} ₫</span>
+                            <span className="pay-dark">{(b.amount ?? 0).toLocaleString('vi-VN')} ₫</span>
                           </td>
                           <td>
                             <span className={`badge ${st.badge}`}><i className={st.icon} />{st.label}</span>

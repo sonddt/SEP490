@@ -81,6 +81,7 @@ import AdminManagerRequests from './pages/admin/AdminManagerRequests';
 import AdminBookingsStats from './pages/admin/AdminBookingsStats';
 import AdminRevenueStats from './pages/admin/AdminRevenueStats';
 import AdminFeaturedPosts from './pages/admin/AdminFeaturedPosts';
+import AdminReports from './pages/admin/AdminReports';
 
 const GOOGLE_CLIENT_ID = '993428936543-3tfatp8ak872p2j248tq3lbbqoi4r2ue.apps.googleusercontent.com';
 
@@ -106,6 +107,12 @@ function App() {
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+
+    // Cleanup Bootstrap artifacts on route change (fixes dark screen / stuck clicks)
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    const backdrops = document.querySelectorAll('.modal-backdrop');
+    backdrops.forEach((el) => el.remove());
   }, [location.pathname]);
 
   return (
@@ -256,6 +263,7 @@ function App() {
             <Route path="bookings-stats" element={<AdminBookingsStats />} />
             <Route path="revenue-stats" element={<AdminRevenueStats />} />
             <Route path="featured-posts" element={<AdminFeaturedPosts />} />
+            <Route path="reports" element={<AdminReports />} />
           </Route>
 
           {/* ═══ 404 ═══ */}

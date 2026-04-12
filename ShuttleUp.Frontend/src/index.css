@@ -2766,3 +2766,35 @@ p, .card-body p, .matching-detail-notes p, .matching-comment-content {
   }
 }
 
+
+/* â”€â”€ Fix Floating Dropdown in Tables (User Bookings, etc.) â”€â”€â”€â”€ */
+
+/* Force dropdown to float over other rows instead of pushing layout */
+.table-drop-action .dropdown-menu {
+  position: absolute !important;
+  z-index: 1100 !important; /* Above table and other elements */
+  margin-top: 4px !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid #e9ecef !important;
+}
+
+/* Ensure table-responsive doesn't crop the floating menu */
+.court-tab-content .table-responsive {
+  overflow: visible !important;
+  padding-bottom: 60px; /* Buffer space to ensure bottom-most items can show full menu */
+}
+
+/* Ensure the action container doesn't expand row height */
+.table-drop-action {
+  position: relative;
+  display: inline-block;
+}
+
+/* Mobile check: maintain horizontal scroll but allow vertical overflow for dropdowns */
+@media (max-width: 991.98px) {
+  .court-tab-content .table-responsive {
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch;
+  }
+}

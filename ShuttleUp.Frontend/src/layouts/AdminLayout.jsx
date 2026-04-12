@@ -10,6 +10,7 @@ const PAGE_TITLES = {
   '/admin/manager-requests': { title: 'Duyệt Chủ sân',      crumbs: [] },
   '/admin/bookings-stats':   { title: 'Thống kê Đặt sân',   crumbs: [] },
   '/admin/revenue-stats':    { title: 'Thống kê Doanh thu',  crumbs: [] },
+  '/admin/reports':          { title: 'Báo cáo & Khiếu nại', crumbs: [] },
 };
 
 function getPageMeta(pathname) {
