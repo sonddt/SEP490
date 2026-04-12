@@ -74,9 +74,9 @@ export default function UserSocialFriends() {
             <p className="text-slate-500 text-sm m-0">Quản lý danh bạn và các lời mời kết nối từ cộng đồng.</p>
           </div>
           <div className="flex gap-2">
-            <Link to="/user/social/search" className="btn btn-emerald-soft font-bold rounded-xl px-4 flex items-center gap-2">
-              <i className="fa-solid fa-user-plus text-sm"></i>
-              Tìm thêm bạn
+            <Link to="/user/social/search" className="btn btn-emerald-soft font-bold px-4 py-2.5">
+              <i className="fa-solid fa-user-plus" aria-hidden />
+              <span>Tìm thêm bạn</span>
             </Link>
           </div>
         </div>
@@ -119,7 +119,10 @@ export default function UserSocialFriends() {
                   </div>
                   <h4 className="text-slate-800 font-bold mb-1">Chưa có bạn bè</h4>
                   <p className="text-slate-400 text-sm max-w-xs">Hãy tìm kiếm bạn bè qua Email hoặc Tên để cùng nhau tập luyện nhé!</p>
-                  <Link to="/user/social/search" className="btn btn-emerald font-bold rounded-xl mt-4 px-6 border-0">Tìm ngay</Link>
+                  <Link to="/user/social/search" className="btn btn-emerald font-bold mt-4 px-6 py-2.5 border-0">
+                    <i className="fa-solid fa-user-plus" aria-hidden />
+                    <span>Tìm ngay</span>
+                  </Link>
                 </div>
               )}
               {friends.map((x) => {

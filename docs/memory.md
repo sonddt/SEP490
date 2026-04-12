@@ -328,3 +328,16 @@ Kết bạn & quan hệ xã hội (Player):
    - **Backend (BookingSlotHelper.cs & VenuesController.cs)**: Cập nhật hàm CheckSlotConflictsAsync và GetVenueAvailability để nhận parameter excludeHoldingUserId. Hệ thống tự động bỏ qua các khung giờ đang được giữ (HOLDING) tạm thời thuộc về chính user hiện tại để khắc phục triệt để lỗi "Hiển thị màu đỏ" khi người dùng từ bước Xác Nhận quay lại bước Chọn Lịch do slot bị HOLD bởi chính họ.
    - **Frontend (BookingTimeline.jsx)**: Khôi phục lại selection đã chọn trước đó từ location.state.selectedSlots thông qua useState(initialSelections). Loại bỏ useEffect vô tình clear selections khi component mount lần đầu.
    - **UI Bảng biểu (BookingConfirm & BookingPayment)**: Thêm tính năng Sort thông minh (hook useState và useMemo) dựa theo Sân, Giờ, hoặc giá tiền. Có mũi tên lên xuống thể hiện hướng Sort trực quan tại các bảng tóm tắt đơn đặt sân.
+
+8. **Tìm kiếm không dấu (toàn app FE + API Matching)**:
+   - **Tiện ích:** `ShuttleUp.Frontend/src/utils/searchNormalize.js` — `normalizeSearchText` (NFD, bỏ dấu kết hợp, gộp khoảng trắng, thường); `normalizedIncludes` / `normalizedIncludesAny`.
+   - **Frontend:** `SearchableSelect.jsx`; `vietnamDivisions.js` (`normalizeKey` dùng chung helper); lọc danh sách có ô search: Manager (Bookings, Earnings, Venue list/courts, Payment bank picker), Matching (`MatchingHub` tab Của tôi/Đã tham gia, `MatchingPostDetail` slot, `MatchingComments` @mention), Admin/Manager Featured Posts (`normalizedIncludesAny`), `VenuesListing` (tên + địa điểm); `nominatimGeocode.js`341. **Số hóa tìm kiếm thông minh (Search Normalization Upgrade)**:
+    - Cập nhật `normalizeSearchText` trong `utils/searchNormalize.js`:
+        - Tự động loại bỏ các tiền tố hành chính: `Thành phố`, `Quận`, `Huyện`, `TP`, `Q`, `P`...
+        - Xử lý Alias địa danh đa vùng: Tự động chuẩn hóa song phương (Query và DB) cho nhiều tỉnh thành lớn (**Hà Nội -> HN, HCM -> hcm, Đà Nẵng -> DN, Cần Thơ -> CT**, biểu đồ 12+ tỉnh thành).
+        - Loại bỏ dấu câu (`.`, `,`, `-`) để đảm bảo ranh giới từ sạch khi so khớp.
+ hành vi không dấu. *(Các API search khác chỉ gửi `search` lên server vẫn phụ thuộc logic từng endpoint.)*
+
+9. **Sửa build Backend: Guid vs string (excludeHoldingUserId)**:
+   - `Booking.UserId` là `Guid?`; tham số `excludeHoldingUserId` của `CheckSlotConflictsAsync` phải là `Guid?` (không phải `string?`) để khớp caller `BookingsController` và biểu thức LINQ.
+   - `VenuesController` (availability theo ngày): parse claim `NameIdentifier` bằng `Guid.TryParse`, dùng `Guid` trong `Where` so với `Booking.UserId` (trước đó so chuỗi với `Guid?` gây CS0019).

@@ -187,7 +187,7 @@ export default function UserProfileChangePassword() {
             <div className="flex justify-end gap-3 pt-6 border-t border-slate-50 mt-8">
               <button
                 type="button"
-                className="btn bg-slate-50 text-slate-500 hover:bg-slate-100 px-6 py-2.5 rounded-xl font-bold transition-all"
+                className="btn user-form-cancel px-6 py-2.5 rounded-[0.75rem] font-bold"
                 onClick={handleReset}
               >
                 Hủy bỏ
@@ -195,12 +195,18 @@ export default function UserProfileChangePassword() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex items-center justify-center bg-emerald-600 text-white hover:bg-emerald-700 px-8 py-2.5 rounded-xl font-bold shadow-lg shadow-emerald-500/10 transition-all gap-2"
+                className="btn btn-emerald px-8 py-2.5 font-bold shadow-lg shadow-emerald-500/10 disabled:opacity-50"
               >
                 {loading ? (
-                  <><i className="fa-solid fa-spinner fa-spin"></i> Đang xử lý</>
+                  <>
+                    <i className="fa-solid fa-spinner fa-spin" aria-hidden />
+                    <span>Đang xử lý</span>
+                  </>
                 ) : (
-                  <><i className="fa-solid fa-save"></i> Đổi mật khẩu</>
+                  <>
+                    <i className="fa-solid fa-save" aria-hidden />
+                    <span>Đổi mật khẩu</span>
+                  </>
                 )}
               </button>
             </div>

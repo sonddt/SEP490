@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import axiosClient from '../../api/axiosClient';
+import { normalizedIncludesAny } from '../../utils/searchNormalize';
 
 const EMPTY_FORM = {
   title: '',
@@ -602,21 +603,20 @@ export default function AdminFeaturedPosts() {
   const [viewMode, setViewMode] = useState('table');
 
   const filteredSorted = useMemo(() => {
-    const q = search.trim().toLowerCase();
     let arr = items.filter((row) => {
       const pub = !!row.isPublished;
       const matchStatus = filterStatus === 'all'
         || (filterStatus === 'published' && pub)
         || (filterStatus === 'draft' && !pub);
       if (!matchStatus) return false;
-      if (!q) return true;
-      const t = (row.title || '').toLowerCase();
-      const ex = (row.excerpt || '').toLowerCase();
-      const body = (row.body || '').toLowerCase();
-      const vn = (row.venueName || '').toLowerCase();
-      const an = (row.authorName || '').toLowerCase();
-      const ar = (row.authorRole || '').toLowerCase();
-      return t.includes(q) || ex.includes(q) || body.includes(q) || vn.includes(q) || an.includes(q) || ar.includes(q);
+      return normalizedIncludesAny(search, [
+        row.title,
+        row.excerpt,
+        row.body,
+        row.venueName,
+        row.authorName,
+        row.authorRole,
+      ]);
     });
     switch (sort) {
       case 'created_asc':

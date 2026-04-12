@@ -200,7 +200,7 @@ public static class BookingSlotHelper
         List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)> normalizedItems,
         CancellationToken cancellationToken = default,
         Guid? excludeBookingId = null,
-        string? excludeHoldingUserId = null)
+        Guid? excludeHoldingUserId = null)
     {
         if (normalizedItems.Count == 0)
             return null;

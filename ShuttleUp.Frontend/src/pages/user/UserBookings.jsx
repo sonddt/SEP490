@@ -107,6 +107,40 @@ const TABS = [
   { key: 'CANCELLED', label: 'Đã huỷ',     color: 'danger'  },
 ];
 
+/** Màu + trạng thái hover/active cho từng tab (ảnh 2) */
+const BOOKING_TAB_STYLES = {
+  PENDING: {
+    active: 'ub-tab--active-amber',
+    inactive: 'ub-tab--idle-amber',
+    countActive: 'ub-tab-count--on',
+    countIdle: 'ub-tab-count--amber',
+  },
+  UPCOMING: {
+    active: 'ub-tab--active-sky',
+    inactive: 'ub-tab--idle-sky',
+    countActive: 'ub-tab-count--on',
+    countIdle: 'ub-tab-count--sky',
+  },
+  COMPLETED: {
+    active: 'ub-tab--active-emerald',
+    inactive: 'ub-tab--idle-emerald',
+    countActive: 'ub-tab-count--on',
+    countIdle: 'ub-tab-count--emerald',
+  },
+  REFUND: {
+    active: 'ub-tab--active-cyan',
+    inactive: 'ub-tab--idle-cyan',
+    countActive: 'ub-tab-count--on',
+    countIdle: 'ub-tab-count--cyan',
+  },
+  CANCELLED: {
+    active: 'ub-tab--active-rose',
+    inactive: 'ub-tab--idle-rose',
+    countActive: 'ub-tab-count--on',
+    countIdle: 'ub-tab-count--rose',
+  },
+};
+
 const REFUND_STATUS_LABEL = {
   PENDING_RECONCILIATION: { text: 'Chờ đối soát', color: 'warning' },
   PENDING_REFUND:         { text: 'Chờ hoàn tiền', color: 'info'    },
@@ -290,7 +324,7 @@ export default function UserBookings() {
   const canUserCancel = (b) => b.status === 'PENDING' || b.status === 'UPCOMING';
 
   return (
-    <div className="space-y-6">
+    <div className="user-bookings-page">
       {toastMsg && (
         <div
           className={`alert ${toastMsg.isError ? 'alert-danger' : 'alert-success'} shadow-sm`}
@@ -301,73 +335,70 @@ export default function UserBookings() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6 mb-4">
+      <div className="user-bookings-panel bg-white shadow-sm border border-slate-200/60">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-1 flex items-center gap-2">
+            <h2 className="user-bookings-title font-bold text-slate-900 mb-1 flex items-center">
               <i className="fa-solid fa-calendar-check text-emerald-600"></i>
               Đặt sân của tôi
             </h2>
-            <p className="text-slate-500 text-sm m-0">Quản lý các lịch đặt sân và trạng thái thanh toán của bạn.</p>
+            <p className="user-bookings-sub text-slate-500 m-0">Quản lý các lịch đặt sân và trạng thái thanh toán của bạn.</p>
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5">
+      <div className="user-bookings-panel bg-white shadow-sm border border-slate-200/60">
         <div className="sortby-section border-0 p-0 m-0">
           <div className="sorting-info">
-            <div className="row align-items-center g-3">
-              <div className="col-xl-8 col-lg-12">
-                <div className="flex flex-wrap items-center gap-2">
-                  {TABS.map((t) => (
+            <div className="user-bookings-filter-bar">
+              <div className="user-bookings-tabs" role="tablist" aria-label="Lọc theo trạng thái đặt sân">
+                {TABS.map((t) => {
+                  const st = BOOKING_TAB_STYLES[t.key];
+                  const on = activeTab === t.key;
+                  return (
                     <button
                       key={t.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={on}
                       onClick={(e) => {
                         e.preventDefault();
                         setActiveTab(t.key);
                       }}
-                      className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-[13.5px] font-bold transition-all border-0 ${
-                        activeTab === t.key
-                          ? 'bg-emerald-600 text-white shadow-[0_4px_12px_rgba(5,150,105,0.25)]'
-                          : 'bg-slate-50 text-slate-500 hover:bg-emerald-50 hover:text-emerald-700 hover:shadow-sm'
-                      }`}
+                      className={`user-bookings-tab ${on ? st.active : st.inactive}`}
                     >
-                      {t.label}
-                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold ${
-                        activeTab === t.key ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
-                      }`}>
+                      <span className="ub-tab-label">{t.label}</span>
+                      <span className={`user-bookings-tab-count ${on ? st.countActive : st.countIdle}`}>
                         {bookings.filter(b => b.status === t.key).length}
                       </span>
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
-              <div className="col-xl-4 col-lg-12">
-                <div className="flex flex-wrap items-center gap-3 justify-start xl:justify-end">
-                  <div className="relative">
-                    <select
-                      className="appearance-none bg-slate-50 border border-slate-200 text-slate-600 font-bold text-[13.5px] rounded-xl pl-4 pr-10 py-2.5 outline-none hover:border-emerald-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 cursor-pointer transition-all"
-                      value={timeFilter}
-                      onChange={e => setTimeFilter(e.target.value)}
-                    >
-                      <option value="week">Tuần này</option>
-                      <option value="month">Tháng này</option>
-                      <option value="all">Tất cả thời gian</option>
-                    </select>
-                    <i className="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] pointer-events-none"></i>
-                  </div>
-                  <div className="relative">
-                    <select
-                      className="appearance-none bg-slate-50 border border-slate-200 text-slate-600 font-bold text-[13.5px] rounded-xl pl-4 pr-10 py-2.5 outline-none hover:border-emerald-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 cursor-pointer transition-all"
-                      value={sortBy}
-                      onChange={e => setSortBy(e.target.value)}
-                    >
-                      <option value="newest">Mới nhất</option>
-                      <option value="oldest">Cũ nhất</option>
-                      <option value="amount">Theo giá</option>
-                    </select>
-                    <i className="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] pointer-events-none"></i>
-                  </div>
+              <div className="user-bookings-filters">
+                <div className="relative">
+                  <select
+                    className="user-bookings-select user-bookings-select--pill appearance-none text-slate-700 font-bold outline-none cursor-pointer transition-all"
+                    value={timeFilter}
+                    onChange={e => setTimeFilter(e.target.value)}
+                  >
+                    <option value="week">Tuần này</option>
+                    <option value="month">Tháng này</option>
+                    <option value="all">Tất cả thời gian</option>
+                  </select>
+                  <i className="fa-solid fa-chevron-down user-bookings-select-chevron" aria-hidden />
+                </div>
+                <div className="relative">
+                  <select
+                    className="user-bookings-select user-bookings-select--pill appearance-none text-slate-700 font-bold outline-none cursor-pointer transition-all"
+                    value={sortBy}
+                    onChange={e => setSortBy(e.target.value)}
+                  >
+                    <option value="newest">Mới nhất</option>
+                    <option value="oldest">Cũ nhất</option>
+                    <option value="amount">Theo giá</option>
+                  </select>
+                  <i className="fa-solid fa-chevron-down user-bookings-select-chevron" aria-hidden />
                 </div>
               </div>
             </div>
@@ -389,25 +420,25 @@ export default function UserBookings() {
                             <p>Xem và quản lý các lịch đặt sân của bạn</p>
                           </div>
                         </div>
-                        <div className="col-md-6 text-end d-flex gap-2 justify-content-start flex-wrap mt-3 mt-md-0 justify-content-md-end">
+                        <div className="user-bookings-toolbar col-md-6 text-end d-flex gap-2 sm:gap-3 justify-content-start flex-wrap mt-3 mt-md-0 justify-content-md-end">
                           <button
                             type="button"
-                            className="flex items-center justify-center bg-slate-50 text-slate-600 hover:bg-slate-100 px-5 py-2.5 rounded-xl font-bold transition-all border-0 shadow-sm disabled:opacity-50"
+                            className="user-bookings-toolbar-btn user-bookings-toolbar-btn--ghost"
                             disabled={loading}
                             onClick={() => loadBookings()}
                           >
-                            <i className={`feather-refresh-cw me-2 ${loading ? 'fa-spin' : ''}`} />
+                            <i className={`feather-refresh-cw user-bookings-toolbar-ico ${loading ? 'fa-spin' : ''}`} />
                             {loading ? 'Đang tải…' : 'Làm mới'}
                           </button>
-                          <Link to="/venues" className="flex items-center justify-center bg-slate-800 text-white hover:bg-slate-900 shadow-[0_4px_12px_rgba(0,0,0,0.15)] px-6 py-2.5 rounded-xl font-bold transition-all border-0">
-                            <i className="feather-plus me-2" />Đặt sân mới
+                          <Link to="/venues" className="user-bookings-toolbar-btn user-bookings-toolbar-btn--primary">
+                            <i className="feather-plus user-bookings-toolbar-ico" />Đặt sân mới
                           </Link>
                         </div>
                       </div>
                     </div>
 
                     <div className="table-responsive">
-                      <table className="table table-borderless datatable">
+                      <table className="user-bookings-table table table-borderless datatable">
                         <thead className="thead-light">
                           <tr>
                             <th>Sân</th>
@@ -418,14 +449,13 @@ export default function UserBookings() {
                             <th>P.thức</th>
                             <th>Trạng thái</th>
                             <th>Đánh giá</th>
-                            <th>Chi tiết</th>
-                            <th />
+                            <th className="text-nowrap">Thao tác</th>
                           </tr>
                         </thead>
                         <tbody>
                           {loading && (
                             <tr>
-                              <td colSpan={10} className="text-center text-muted py-5">
+                              <td colSpan={9} className="text-center text-muted py-5">
                                 <div className="spinner-border spinner-border-sm text-secondary mb-2" role="status" />
                                 <div>Đang tải lịch đặt sân…</div>
                               </td>
@@ -433,7 +463,7 @@ export default function UserBookings() {
                           )}
                           {!loading && filtered.length === 0 && (
                             <tr>
-                              <td colSpan={10} className="text-center text-muted py-5">
+                              <td colSpan={9} className="text-center text-muted py-5">
                                 <i className="feather-calendar" style={{ fontSize: 32, display: 'block', marginBottom: 8, opacity: 0.4 }} />
                                 Không có lịch đặt sân nào
                               </td>
@@ -452,10 +482,10 @@ export default function UserBookings() {
                                     <span>
                                       {b.court}
                                       {b.isLongTerm && (
-                                        <span className="badge bg-info text-dark ms-1" style={{ fontSize: '0.65rem' }}>Lịch dài hạn</span>
+                                        <span className="badge bg-info text-dark ms-1">Lịch dài hạn</span>
                                       )}
                                     </span>
-                                    <small className="d-block text-muted" style={{ fontSize: '0.75rem' }}>
+                                    <small className="d-block text-muted">
                                       <i className="feather-map-pin me-1" />{b.venueAddress}
                                     </small>
                                   </span>
@@ -463,8 +493,10 @@ export default function UserBookings() {
                               </td>
                               {/* Code */}
                               <td>
-                                <span className="badge"
-                                  style={{ background: '#f0fdf4', color: 'var(--primary-color)', border: '1px solid #6ee7b7', fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                                <span
+                                  className="badge"
+                                  style={{ background: '#f0fdf4', color: 'var(--primary-color)', border: '1px solid #6ee7b7', fontFamily: 'monospace, ui-monospace, monospace' }}
+                                >
                                   #{b.code}
                                 </span>
                               </td>
@@ -481,11 +513,12 @@ export default function UserBookings() {
                               <td>
                                 {b.venueId && (b.canReview || b.canEditReview) ? (
                                   <Link
-                                    className="btn btn-sm btn-outline-secondary"
+                                    className="user-booking-action"
+                                    data-variant="review"
                                     to={`/venue-details/${b.venueId}?openReview=1&bookingId=${b.id}`}
                                     title={b.canEditReview ? 'Sửa đánh giá' : 'Viết đánh giá'}
                                   >
-                                    <i className="feather-star me-1" />
+                                    <i className="feather-star" aria-hidden />
                                     {b.canEditReview ? 'Sửa ĐG' : 'Đánh giá'}
                                   </Link>
                                 ) : b.venueId && b.venueReviewId ? (
@@ -499,74 +532,49 @@ export default function UserBookings() {
                                   <span className="text-muted small">—</span>
                                 )}
                               </td>
-                              {/* Detail btn */}
-                              <td>
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-outline-primary"
-                                  onClick={() => setDetailBooking(b)}
-                                >
-                                  <i className="feather-eye me-1" />Xem
-                                </button>
-                              </td>
-                              {/* Actions */}
-                              <td className="text-end">
-                                <div className="dropdown dropdown-action table-drop-action">
-                                  <button type="button" className="action-icon dropdown-toggle" data-bs-toggle="dropdown">
-                                    <i className="fas fa-ellipsis-h" />
+                              <td className="align-middle">
+                                <div className="user-booking-actions d-flex flex-wrap align-items-center">
+                                  <button
+                                    type="button"
+                                    className="user-booking-action"
+                                    data-variant="view"
+                                    onClick={() => setDetailBooking(b)}
+                                  >
+                                    <i className="feather-eye" aria-hidden />Xem
                                   </button>
-                                  <ul className="dropdown-menu dropdown-menu-end">
-                                    <li>
-                                      <button type="button" className="dropdown-item"
-                                        onClick={() => setDetailBooking(b)}>
-                                        <i className="feather-eye me-2" />Xem chi tiết
-                                      </button>
-                                    </li>
-                                    {b.needsPaymentRetry && b.status === 'PENDING' && (
-                                      <li>
-                                        <button
-                                          type="button"
-                                          className="dropdown-item text-primary"
-                                          onClick={() => navigate(`/booking/payment?bookingId=${b.id}`)}
-                                        >
-                                          <i className="feather-credit-card me-2" />Thanh toán lại
-                                        </button>
-                                      </li>
-                                    )}
-                                    {b.venueId && (b.canReview || b.canEditReview) && (
-                                      <li>
-                                        <Link
-                                          className="dropdown-item"
-                                          to={`/venue-details/${b.venueId}?openReview=1&bookingId=${b.id}`}
-                                        >
-                                          <i className="feather-star me-2" />
-                                          {b.canEditReview ? 'Sửa đánh giá' : 'Đánh giá sân'}
-                                        </Link>
-                                      </li>
-                                    )}
-                                    {canUserCancel(b) && (
-                                      <li>
-                                        <button
-                                          type="button"
-                                          className="dropdown-item text-danger"
-                                          onClick={() => openCancelPreview(b)}
-                                        >
-                                          <i className="feather-x-circle me-2" />Huỷ lịch
-                                        </button>
-                                      </li>
-                                    )}
-                                    {b.status === 'REFUND' && !b.refundAccountNumber && (
-                                      <li>
-                                        <button
-                                          type="button"
-                                          className="dropdown-item text-info"
-                                          onClick={() => { setBankForm({ refundBankName: '', refundAccountNumber: '', refundAccountHolder: '' }); setShowBankForm(b); }}
-                                        >
-                                          <i className="feather-credit-card me-2" />Nhập STK nhận hoàn
-                                        </button>
-                                      </li>
-                                    )}
-                                  </ul>
+                                  {canUserCancel(b) && (
+                                    <button
+                                      type="button"
+                                      className="user-booking-action"
+                                      data-variant="cancel"
+                                      onClick={() => openCancelPreview(b)}
+                                    >
+                                      <i className="feather-x-circle" aria-hidden />Huỷ sân
+                                    </button>
+                                  )}
+                                  {b.needsPaymentRetry && b.status === 'PENDING' && (
+                                    <button
+                                      type="button"
+                                      className="user-booking-action"
+                                      data-variant="pay"
+                                      onClick={() => navigate(`/booking/payment?bookingId=${b.id}`)}
+                                    >
+                                      <i className="feather-credit-card" aria-hidden />Thanh toán lại
+                                    </button>
+                                  )}
+                                  {b.status === 'REFUND' && !b.refundAccountNumber && (
+                                    <button
+                                      type="button"
+                                      className="user-booking-action"
+                                      data-variant="refund"
+                                      onClick={() => {
+                                        setBankForm({ refundBankName: '', refundAccountNumber: '', refundAccountHolder: '' });
+                                        setShowBankForm(b);
+                                      }}
+                                    >
+                                      <i className="feather-credit-card" aria-hidden />STK hoàn tiền
+                                    </button>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -657,7 +665,7 @@ export default function UserBookings() {
                     className="btn btn-outline-danger me-auto"
                     onClick={() => { setDetailBooking(null); openCancelPreview(detailBooking); }}
                   >
-                    <i className="feather-x-circle me-1" />Huỷ lịch
+                    <i className="feather-x-circle me-1" />Huỷ sân
                   </button>
                 )}
                 {detailBooking.status === 'REFUND' && (

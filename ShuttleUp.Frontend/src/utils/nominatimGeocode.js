@@ -3,13 +3,15 @@
  * https://operations.osmfoundation.org/policies/nominatim/
  */
 
+import { normalizeSearchText } from './searchNormalize';
+
 const CACHE_PREFIX = 'shuttleup_nom_';
 const MIN_INTERVAL_MS = 1100;
 
 let lastRequestAt = 0;
 
 function cacheKey(query) {
-  const h = query.trim().toLowerCase();
+  const h = normalizeSearchText(query);
   if (h.length > 200) return CACHE_PREFIX + h.slice(0, 200);
   return CACHE_PREFIX + h;
 }

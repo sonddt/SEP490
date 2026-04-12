@@ -2172,6 +2172,963 @@ p, .card-body p, .matching-detail-notes p, .matching-comment-content {
   .container { max-width: 2800px; }
 }
 
+/* ── 15b. User profile shell — fluid typography & spacing (mobile → 4K)
+   Bổ sung cho khu vực /user/*: chữ và khoảng cách tăng theo viewport (clamp),
+   đồng bộ với tinh chỉnh responsive trong docs/memory.md. */
+.user-profile-shell {
+  --up-container-px: clamp(0.75rem, 1.4vw + 0.35rem, 3.25rem);
+  --up-content-pt: clamp(1rem, 1vw + 0.65rem, 2.5rem);
+  --up-content-pb: clamp(2rem, 2.5vw + 1rem, 5rem);
+  --up-row-gutter-x: clamp(0.75rem, 1vw + 0.45rem, 2.25rem);
+  --up-row-gutter-y: clamp(0.75rem, 0.9vw + 0.4rem, 2rem);
+  --up-sidebar-pad: clamp(0.75rem, 0.85vw + 0.4rem, 1.65rem);
+  --up-nav-fs: clamp(0.8125rem, 0.32vw + 0.72rem, 1.0625rem);
+  --up-nav-px: clamp(0.45rem, 0.55vw + 0.28rem, 1rem);
+  --up-nav-py: clamp(0.42rem, 0.4vw + 0.28rem, 0.72rem);
+  --up-nav-gap: clamp(0.55rem, 0.45vw + 0.35rem, 0.85rem);
+  --up-section-label-fs: clamp(0.625rem, 0.18vw + 0.55rem, 0.8125rem);
+  --up-outlet-fs: clamp(0.875rem, 0.28vw + 0.76rem, 1.0625rem);
+  --up-card-radius: clamp(0.875rem, 0.6vw + 0.55rem, 1.5rem);
+  --up-card-pad: clamp(1rem, 1.1vw + 0.55rem, 2.35rem);
+  --up-space-y-stack: clamp(1rem, 1.1vw + 0.55rem, 2rem);
+  /* Bo góc điều khiển = rounded-xl (12px), đồng bộ nút "Khám phá sân ngay" / sidebar / tab đặt sân */
+  --up-control-radius: 0.75rem;
+  --up-chip-radius: 0.5rem;
+  /* Một bảng màu xanh cho sidebar + nút CTA trong profile (đồng bộ #059669) */
+  --up-brand: #059669;
+  --up-brand-hover: #047857;
+  --up-brand-soft-bg: #ecfdf5;
+  --up-brand-soft-border: #a7f3d0;
+  --up-brand-soft-text: #065f46;
+}
+
+.user-profile-shell .user-profile-container-fluid {
+  padding-left: var(--up-container-px);
+  padding-right: var(--up-container-px);
+}
+
+/* Ghi đè padding dọc mặc định `.content { padding: 60px 0 }` của template */
+.user-profile-shell .user-profile-content {
+  padding-top: var(--up-content-pt) !important;
+  padding-bottom: var(--up-content-pb) !important;
+}
+
+.user-profile-shell .user-profile-row {
+  --bs-gutter-x: var(--up-row-gutter-x);
+  --bs-gutter-y: var(--up-row-gutter-y);
+}
+
+.user-profile-shell .user-profile-outlet {
+  font-size: var(--up-outlet-fs);
+  line-height: 1.55;
+}
+
+/* Ghi đè Bootstrap/template (.btn, button) — bo 12px đồng bộ toàn trang user */
+.user-profile-shell .user-profile-outlet .btn:not(.btn-link):not(.btn-close),
+.user-profile-shell .user-profile-outlet button:not([class*="rounded-full"]):not(.btn-close):not([type="checkbox"]):not([type="radio"]):not(.bg-transparent.border-0),
+.user-profile-shell .user-profile-outlet a.btn:not(.btn-link) {
+  border-radius: var(--up-control-radius) !important;
+}
+
+/*
+ * Template style.css có `.btn:hover { color: #FFFFFF }` toàn cục — với nút nền sáng (soft) chữ trắng trùng nền.
+ * Các class btn-emerald* chỉ dùng trong FE mà chưa có style đầy đủ → định nghĩa scoped tại đây.
+ */
+.user-profile-shell .user-profile-outlet .btn-emerald-soft.btn,
+.user-profile-shell .user-profile-outlet a.btn.btn-emerald-soft {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  color: var(--up-brand-soft-text) !important;
+  background: var(--up-brand-soft-bg) !important;
+  border: 1px solid var(--up-brand-soft-border) !important;
+  border-radius: var(--up-control-radius) !important;
+}
+
+.user-profile-shell .user-profile-outlet .btn-emerald-soft.btn:hover,
+.user-profile-shell .user-profile-outlet .btn-emerald-soft.btn:focus-visible,
+.user-profile-shell .user-profile-outlet a.btn.btn-emerald-soft:hover,
+.user-profile-shell .user-profile-outlet a.btn.btn-emerald-soft:focus-visible {
+  color: #ffffff !important;
+  background: var(--up-brand) !important;
+  border-color: var(--up-brand) !important;
+}
+
+.user-profile-shell .user-profile-outlet .btn-emerald-soft.btn:hover i,
+.user-profile-shell .user-profile-outlet a.btn.btn-emerald-soft:hover i {
+  color: #ffffff !important;
+}
+
+.user-profile-shell .user-profile-outlet .btn-emerald-soft.btn i,
+.user-profile-shell .user-profile-outlet a.btn.btn-emerald-soft i {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.user-profile-shell .user-profile-outlet .btn-emerald.btn,
+.user-profile-shell .user-profile-outlet a.btn.btn-emerald {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  color: #ffffff !important;
+  background: var(--up-brand) !important;
+  border: 1px solid var(--up-brand) !important;
+  border-radius: var(--up-control-radius) !important;
+}
+
+.user-profile-shell .user-profile-outlet .btn-emerald.btn:hover,
+.user-profile-shell .user-profile-outlet .btn-emerald.btn:focus-visible,
+.user-profile-shell .user-profile-outlet a.btn.btn-emerald:hover,
+.user-profile-shell .user-profile-outlet a.btn.btn-emerald:focus-visible {
+  color: #ffffff !important;
+  background: var(--up-brand-hover) !important;
+  border-color: var(--up-brand-hover) !important;
+}
+
+.user-profile-shell .user-profile-outlet .btn-emerald.btn i,
+.user-profile-shell .user-profile-outlet a.btn.btn-emerald i {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* Nút slate (Hủy / Đặt lại): template `.btn:hover { color: #fff }` làm chữ trùng nền */
+.user-profile-shell .user-profile-outlet .btn.bg-slate-100:hover,
+.user-profile-shell .user-profile-outlet .btn.bg-slate-50:hover,
+.user-profile-shell .user-profile-outlet button.btn.bg-slate-100:hover,
+.user-profile-shell .user-profile-outlet button.btn.bg-slate-50:hover {
+  color: #334155 !important;
+}
+
+/* Ô tìm email/SĐT — Bootstrap .form-control ghi đè pl-* Tailwind, icon không đè chữ */
+.user-profile-shell .user-profile-outlet .user-social-exact-search-input.form-control {
+  padding-left: 3rem !important;
+  padding-right: 7.5rem !important;
+}
+
+.user-profile-shell .user-profile-outlet .user-social-name-search-input.form-control {
+  padding-left: 3rem !important;
+}
+
+/* Nút phụ (Hủy bỏ): hover rõ, ghi đè template `.btn:hover { color: #fff }` */
+.user-profile-shell .user-profile-outlet .btn.user-form-cancel,
+.user-profile-shell .user-profile-outlet button.btn.user-form-cancel {
+  color: #475569 !important;
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+  transition:
+    color 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.user-profile-shell .user-profile-outlet .btn.user-form-cancel:hover,
+.user-profile-shell .user-profile-outlet .btn.user-form-cancel:focus-visible,
+.user-profile-shell .user-profile-outlet button.btn.user-form-cancel:hover,
+.user-profile-shell .user-profile-outlet button.btn.user-form-cancel:focus-visible {
+  color: #0f172a !important;
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 2px 6px rgb(15 23 42 / 0.06);
+}
+
+.user-profile-shell .user-profile-outlet .form-control:not([type="checkbox"]):not([type="radio"]),
+.user-profile-shell .user-profile-outlet .form-select,
+.user-profile-shell .user-profile-outlet textarea.form-control {
+  border-radius: var(--up-control-radius) !important;
+}
+
+.user-profile-shell .user-sidebar-card a.user-sidebar-nav-item,
+.user-profile-shell .user-sidebar-card button.user-sidebar-logout {
+  border-radius: var(--up-control-radius) !important;
+}
+
+.user-profile-shell .user-profile-outlet h1 {
+  font-size: clamp(1.25rem, 1.1vw + 0.85rem, 1.875rem);
+}
+.user-profile-shell .user-profile-outlet h2 {
+  font-size: clamp(1.125rem, 0.95vw + 0.78rem, 1.75rem);
+}
+.user-profile-shell .user-profile-outlet h3 {
+  font-size: clamp(1.05rem, 0.7vw + 0.8rem, 1.45rem);
+}
+.user-profile-shell .user-profile-outlet h4 {
+  font-size: clamp(1rem, 0.55vw + 0.78rem, 1.3rem);
+}
+.user-profile-shell .user-profile-outlet .form-label,
+.user-profile-shell .user-profile-outlet label {
+  font-size: clamp(0.8125rem, 0.22vw + 0.74rem, 0.9375rem);
+}
+
+/* Form chỉnh sửa hồ sơ (/user/profile/edit) — nền, viền, label, placeholder, ngày sinh & combobox đồng bộ */
+.user-profile-shell .user-profile-outlet .user-profile-form {
+  --upf-label: #475569;
+  --upf-text: #0f172a;
+  --upf-muted: #94a3b8;
+  --upf-bg: #f8fafc;
+  --upf-border: #e2e8f0;
+}
+
+.user-profile-shell .user-profile-outlet .user-profile-form .user-profile-form-section-title {
+  font-size: clamp(1rem, 0.55vw + 0.78rem, 1.125rem);
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.user-profile-shell .user-profile-outlet .user-profile-form .user-profile-form-label,
+.user-profile-shell .user-profile-outlet .user-profile-form label.user-profile-form-label {
+  color: var(--upf-label) !important;
+  font-weight: 700 !important;
+  font-size: 0.8125rem !important;
+  letter-spacing: 0.01em;
+  margin-bottom: 0.35rem;
+}
+
+.user-profile-shell .user-profile-outlet .user-profile-form .form-control:not([type="checkbox"]):not([type="radio"]),
+.user-profile-shell .user-profile-outlet .user-profile-form textarea.form-control,
+.user-profile-shell .user-profile-outlet .user-profile-form select.form-control {
+  background-color: var(--upf-bg) !important;
+  border: 1px solid var(--upf-border) !important;
+  color: var(--upf-text) !important;
+  font-weight: 500;
+}
+
+.user-profile-shell .user-profile-outlet .user-profile-form .form-control::placeholder,
+.user-profile-shell .user-profile-outlet .user-profile-form textarea.form-control::placeholder {
+  color: var(--upf-muted) !important;
+  opacity: 1;
+  font-weight: 500;
+}
+
+.user-profile-shell .user-profile-outlet .user-profile-form .form-control.is-invalid {
+  background-color: #fff7f7 !important;
+  border-color: #fb7185 !important;
+}
+
+.user-profile-shell .user-profile-outlet .user-profile-form select.form-control option {
+  color: var(--upf-text);
+  background-color: #fff;
+}
+
+.user-profile-shell .user-profile-outlet .user-profile-form .shuttle-date-trigger__input {
+  background-color: var(--upf-bg) !important;
+  border: 1px solid var(--upf-border) !important;
+  color: var(--upf-text) !important;
+  font-weight: 500;
+}
+
+.user-profile-shell .user-profile-outlet .user-profile-form .shuttle-date-trigger__input::placeholder {
+  color: var(--upf-muted) !important;
+  opacity: 1;
+}
+
+.user-profile-shell .user-profile-outlet .user-profile-form .shuttle-date-trigger__icon {
+  color: var(--upf-muted) !important;
+  opacity: 1;
+}
+
+.user-profile-shell .user-profile-outlet .user-profile-form .shuttle-date-trigger__input:hover {
+  border-color: #cbd5e1 !important;
+}
+
+.user-profile-shell .user-profile-outlet .user-profile-form .shuttle-date-trigger__input:focus {
+  border-color: var(--up-brand) !important;
+  box-shadow: 0 0 0 3px rgb(5 150 105 / 0.15) !important;
+}
+
+.user-profile-shell .user-profile-outlet .user-profile-form [aria-haspopup="listbox"] {
+  background-color: var(--upf-bg) !important;
+  border: 1px solid var(--upf-border) !important;
+  color: var(--upf-text) !important;
+  font-weight: 500;
+}
+
+.user-profile-shell .user-profile-outlet .user-profile-form [aria-haspopup="listbox"] span.text-slate-800 {
+  color: var(--upf-text) !important;
+}
+
+.user-profile-shell .user-profile-outlet .user-profile-form [aria-haspopup="listbox"] span.text-slate-400 {
+  color: var(--upf-muted) !important;
+}
+
+.user-profile-shell .user-profile-outlet .user-profile-form [aria-haspopup="listbox"] i.text-slate-400 {
+  color: var(--upf-muted) !important;
+}
+
+.user-profile-shell .user-profile-outlet .user-profile-form [aria-haspopup="listbox"]:hover {
+  border-color: #cbd5e1 !important;
+}
+
+.user-profile-shell .user-profile-outlet .user-profile-form [aria-haspopup="listbox"]:focus-visible {
+  border-color: var(--up-brand) !important;
+  box-shadow: 0 0 0 3px rgb(5 150 105 / 0.15);
+  outline: none;
+}
+
+.user-profile-shell .user-profile-outlet .user-profile-form .user-profile-form-hint {
+  color: var(--upf-muted) !important;
+  font-size: 0.75rem;
+}
+
+/* Sidebar card */
+.user-profile-shell .user-sidebar-card {
+  padding: var(--up-sidebar-pad);
+  border-radius: var(--up-card-radius);
+  position: sticky;
+  top: max(5.5rem, calc(var(--header-height, 88px) + 0.75rem));
+}
+
+.user-profile-shell .user-sidebar-profile {
+  padding: clamp(0.65rem, 0.7vw + 0.45rem, 1.25rem);
+  margin-bottom: clamp(0.75rem, 0.8vw + 0.45rem, 1.35rem);
+  border-radius: clamp(0.65rem, 0.5vw + 0.5rem, 1rem);
+}
+
+.user-profile-shell .user-sidebar-avatar {
+  width: clamp(3rem, 4vw + 1.75rem, 4.5rem);
+  height: clamp(3rem, 4vw + 1.75rem, 4.5rem);
+  margin-bottom: clamp(0.35rem, 0.35vw + 0.2rem, 0.65rem);
+}
+
+.user-profile-shell .user-sidebar-name {
+  font-size: clamp(0.8125rem, 0.35vw + 0.72rem, 1.0625rem);
+}
+
+.user-profile-shell .user-sidebar-email {
+  font-size: clamp(0.6875rem, 0.2vw + 0.6rem, 0.875rem);
+}
+
+.user-profile-shell .user-sidebar-section-title {
+  font-size: var(--up-section-label-fs);
+  margin-bottom: clamp(0.35rem, 0.3vw + 0.22rem, 0.55rem);
+  padding-left: clamp(0.35rem, 0.35vw + 0.15rem, 0.5rem);
+  padding-right: clamp(0.35rem, 0.35vw + 0.15rem, 0.5rem);
+}
+
+.user-profile-shell .user-sidebar-nav-item {
+  font-size: var(--up-nav-fs);
+  padding: var(--up-nav-py) var(--up-nav-px);
+  gap: var(--up-nav-gap);
+  border-radius: var(--up-control-radius);
+  text-decoration: none !important;
+  color: #64748b;
+  background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
+  transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.user-profile-shell .user-sidebar-nav-item:hover:not(.is-active) {
+  color: #059669;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+  transform: translateY(-1px);
+}
+
+.user-profile-shell .user-sidebar-nav-item.is-active {
+  color: #fff !important;
+  background: var(--up-brand) !important;
+  border-color: transparent;
+  box-shadow: 0 2px 8px rgb(5 150 105 / 0.18);
+}
+
+.user-profile-shell .user-sidebar-nav-item.is-active i[class*="fa-"] {
+  color: #fff !important;
+}
+
+.user-profile-shell .user-sidebar-nav-item:not(.is-active) i[class*="fa-"] {
+  color: #94a3b8;
+}
+
+.user-profile-shell .user-sidebar-nav-item:not(.is-active):hover i[class*="fa-"] {
+  color: #059669;
+}
+
+.user-profile-shell .user-sidebar-nav-item i[class*="fa-"] {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  font-size: clamp(0.875rem, 0.45vw + 0.72rem, 1.05rem);
+  line-height: 1;
+}
+
+.user-profile-shell .user-sidebar-logout {
+  font-size: var(--up-nav-fs);
+  padding: var(--up-nav-py) var(--up-nav-px);
+  gap: var(--up-nav-gap);
+  margin-top: clamp(1rem, 1vw + 0.55rem, 1.75rem);
+  border-radius: var(--up-control-radius);
+  border: 1px solid transparent;
+  background: transparent;
+  box-shadow: none;
+  color: #f43f5e;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.user-profile-shell .user-sidebar-logout:hover {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #e11d48 !important;
+  box-shadow: 0 1px 2px rgb(225 29 72 / 0.06);
+  transform: translateY(-1px);
+}
+
+.user-profile-shell .user-sidebar-logout i[class*="fa-"] {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  font-size: clamp(0.875rem, 0.45vw + 0.72rem, 1.05rem);
+  line-height: 1;
+}
+
+.user-profile-shell .user-sidebar-nav-stack {
+  gap: clamp(0.85rem, 0.9vw + 0.45rem, 1.5rem);
+}
+
+.user-profile-shell .user-sidebar-link-list {
+  gap: clamp(0.45rem, 0.4vw + 0.25rem, 0.65rem);
+}
+
+/* Chip / nút lọc trong outlet (Thông báo, …) — bo + bóng đồng bộ sidebar */
+.user-profile-shell .user-filter-chip {
+  border-radius: var(--up-control-radius);
+  border: 1px solid transparent;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.user-profile-shell .user-filter-chip--idle {
+  color: #475569;
+  background: #f8fafc;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+}
+
+.user-profile-shell .user-filter-chip--idle:hover {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  transform: translateY(-1px);
+}
+
+.user-profile-shell .user-filter-chip--active {
+  color: #fff;
+  background: var(--up-brand);
+  box-shadow: 0 2px 8px rgb(5 150 105 / 0.18);
+}
+
+/* Đặt sân — cards & tabs */
+.user-profile-shell .user-bookings-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--up-space-y-stack);
+}
+
+.user-profile-shell .user-bookings-panel {
+  padding: var(--up-card-pad);
+  border-radius: var(--up-card-radius);
+}
+
+.user-profile-shell .user-bookings-title {
+  font-size: clamp(1.2rem, 1.1vw + 0.82rem, 2rem);
+  gap: clamp(0.35rem, 0.4vw + 0.2rem, 0.65rem);
+}
+
+.user-profile-shell .user-bookings-title i {
+  font-size: clamp(1rem, 0.75vw + 0.72rem, 1.45rem);
+}
+
+.user-profile-shell .user-bookings-sub {
+  font-size: clamp(0.8125rem, 0.28vw + 0.72rem, 1.0625rem);
+}
+
+/* Thanh lọc tab + dropdown — bố cục responsive, không khoảng trống giữa quá lớn */
+.user-profile-shell .user-bookings-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.875rem, 1.1vw + 0.5rem, 1.5rem);
+  align-items: stretch;
+}
+
+@media (min-width: 992px) {
+  .user-profile-shell .user-bookings-filter-bar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}
+
+.user-profile-shell .user-bookings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: clamp(0.35rem, 0.45vw + 0.2rem, 0.65rem);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.user-profile-shell .user-bookings-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+@media (min-width: 992px) {
+  .user-profile-shell .user-bookings-filters {
+    margin-left: auto;
+    justify-content: flex-end;
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .user-profile-shell .user-bookings-filters {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .user-profile-shell .user-bookings-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .user-profile-shell .user-bookings-filters .relative {
+    width: 100%;
+  }
+  .user-profile-shell .user-bookings-select--pill {
+    width: 100%;
+  }
+}
+
+/* Nút tab trạng thái — bo lớn, hover, màu theo từng loại */
+.user-profile-shell .user-bookings-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(0.3rem, 0.35vw + 0.15rem, 0.55rem);
+  font-size: clamp(0.78rem, 0.38vw + 0.68rem, 1.02rem);
+  font-weight: 700;
+  line-height: 1.25;
+  border: 0;
+  cursor: pointer;
+  border-radius: var(--up-control-radius);
+  padding: clamp(0.42rem, 0.42vw + 0.28rem, 0.62rem) clamp(0.72rem, 0.8vw + 0.4rem, 1.2rem);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.user-profile-shell .user-bookings-tab:hover {
+  transform: translateY(-1px);
+}
+
+.user-profile-shell .user-bookings-tab:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.user-profile-shell .user-bookings-tab:focus-visible {
+  outline: 2px solid rgb(100 116 139 / 0.65);
+  outline-offset: 2px;
+}
+
+.user-profile-shell .user-bookings-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.55em;
+  font-size: clamp(0.62rem, 0.22vw + 0.55rem, 0.82rem);
+  font-weight: 800;
+  line-height: 1.2;
+  padding: 0.12em 0.45em;
+  border-radius: var(--up-chip-radius);
+}
+
+.user-profile-shell .ub-tab-count--on {
+  background: rgb(255 255 255 / 0.3);
+  color: #fff;
+}
+
+.user-profile-shell .ub-tab-count--amber {
+  background: rgb(254 243 199 / 0.85);
+  color: #92400e;
+}
+.user-profile-shell .ub-tab-count--sky {
+  background: rgb(224 242 254 / 0.9);
+  color: #075985;
+}
+.user-profile-shell .ub-tab-count--emerald {
+  background: rgb(209 250 229 / 0.9);
+  color: #065f46;
+}
+.user-profile-shell .ub-tab-count--cyan {
+  background: rgb(204 251 241 / 0.9);
+  color: #0f766e;
+}
+.user-profile-shell .ub-tab-count--rose {
+  background: rgb(255 228 230 / 0.9);
+  color: #9f1239;
+}
+
+.user-profile-shell .ub-tab--idle-amber {
+  color: #92400e;
+  background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);
+  border: 1px solid rgb(253 230 138 / 0.75) !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+}
+.user-profile-shell .ub-tab--idle-amber:hover {
+  border-color: rgb(251 191 36 / 0.85) !important;
+  background: linear-gradient(180deg, #fffbeb 0%, #fde68a 100%);
+  box-shadow: 0 2px 5px rgb(15 23 42 / 0.06);
+}
+
+.user-profile-shell .ub-tab--active-amber {
+  color: #fff;
+  background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+  box-shadow: 0 1px 3px rgb(234 88 12 / 0.12);
+}
+
+.user-profile-shell .ub-tab--idle-sky {
+  color: #075985;
+  background: linear-gradient(180deg, #f8fafc 0%, #e0f2fe 100%);
+  border: 1px solid rgb(186 230 253 / 0.85) !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+}
+.user-profile-shell .ub-tab--idle-sky:hover {
+  border-color: rgb(125 211 252 / 0.95) !important;
+  background: linear-gradient(180deg, #f0f9ff 0%, #bae6fd 100%);
+  box-shadow: 0 2px 5px rgb(15 23 42 / 0.06);
+}
+
+.user-profile-shell .ub-tab--active-sky {
+  color: #fff;
+  background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+  box-shadow: 0 1px 3px rgb(37 99 235 / 0.14);
+}
+
+.user-profile-shell .ub-tab--idle-emerald {
+  color: #065f46;
+  background: linear-gradient(180deg, #f8fafc 0%, #d1fae5 100%);
+  border: 1px solid rgb(167 243 208 / 0.85) !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+}
+.user-profile-shell .ub-tab--idle-emerald:hover {
+  border-color: rgb(110 231 183 / 0.95) !important;
+  background: linear-gradient(180deg, #ecfdf5 0%, #a7f3d0 100%);
+  box-shadow: 0 2px 5px rgb(15 23 42 / 0.06);
+}
+
+.user-profile-shell .ub-tab--active-emerald {
+  color: #fff;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 1px 3px rgb(5 150 105 / 0.14);
+}
+
+.user-profile-shell .ub-tab--idle-cyan {
+  color: #0f766e;
+  background: linear-gradient(180deg, #f8fafc 0%, #ccfbf1 100%);
+  border: 1px solid rgb(153 246 228 / 0.85) !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+}
+.user-profile-shell .ub-tab--idle-cyan:hover {
+  border-color: rgb(94 234 212 / 0.95) !important;
+  background: linear-gradient(180deg, #ecfeff 0%, #99f6e4 100%);
+  box-shadow: 0 2px 5px rgb(15 23 42 / 0.06);
+}
+
+.user-profile-shell .ub-tab--active-cyan {
+  color: #fff;
+  background: linear-gradient(135deg, #2dd4bf 0%, #0d9488 100%);
+  box-shadow: 0 1px 3px rgb(13 148 136 / 0.14);
+}
+
+.user-profile-shell .ub-tab--idle-rose {
+  color: #9f1239;
+  background: linear-gradient(180deg, #fffafa 0%, #ffe4e6 100%);
+  border: 1px solid rgb(254 205 211 / 0.85) !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+}
+.user-profile-shell .ub-tab--idle-rose:hover {
+  border-color: rgb(251 113 133 / 0.9) !important;
+  background: linear-gradient(180deg, #fff1f2 0%, #fecdd3 100%);
+  box-shadow: 0 2px 5px rgb(15 23 42 / 0.06);
+}
+
+.user-profile-shell .ub-tab--active-rose {
+  color: #fff;
+  background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%);
+  box-shadow: 0 1px 3px rgb(225 29 72 / 0.14);
+}
+
+.user-profile-shell .user-bookings-select {
+  font-size: clamp(0.75rem, 0.32vw + 0.68rem, 0.9375rem);
+  padding-top: clamp(0.45rem, 0.4vw + 0.32rem, 0.65rem);
+  padding-bottom: clamp(0.45rem, 0.4vw + 0.32rem, 0.65rem);
+  padding-left: clamp(0.85rem, 0.9vw + 0.45rem, 1.15rem);
+  padding-right: clamp(2.25rem, 2.5vw + 1.75rem, 3rem);
+}
+
+.user-profile-shell .user-bookings-select--pill {
+  background: #fff;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: var(--up-control-radius);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+}
+
+.user-profile-shell .user-bookings-select--pill:hover {
+  border-color: rgb(148 163 184 / 0.65) !important;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 0.06);
+}
+
+.user-profile-shell .user-bookings-select--pill:focus {
+  border-color: rgb(16 185 129 / 0.45) !important;
+  box-shadow: 0 0 0 2px rgb(16 185 129 / 0.1);
+}
+
+.user-profile-shell .user-bookings-select-chevron {
+  position: absolute;
+  right: clamp(0.75rem, 1vw + 0.4rem, 1.1rem);
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 0.65rem;
+  color: #64748b;
+}
+
+.user-profile-shell .court-table-head h4 {
+  font-size: clamp(1rem, 0.65vw + 0.72rem, 1.45rem);
+}
+.user-profile-shell .court-table-head p {
+  font-size: clamp(0.8125rem, 0.25vw + 0.72rem, 1rem);
+}
+
+.user-profile-shell .user-bookings-toolbar {
+  gap: clamp(0.4rem, 0.5vw + 0.25rem, 0.85rem);
+}
+
+.user-profile-shell .user-bookings-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  font-weight: 700;
+  text-decoration: none !important;
+  border: 0;
+  cursor: pointer;
+  font-size: clamp(0.8125rem, 0.32vw + 0.7rem, 1rem);
+  padding: clamp(0.5rem, 0.5vw + 0.32rem, 0.72rem) clamp(1rem, 1.1vw + 0.55rem, 1.45rem);
+  min-height: clamp(2.35rem, 5vw, 2.95rem);
+  border-radius: var(--up-control-radius);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.user-profile-shell .user-bookings-toolbar-btn:focus-visible {
+  outline: 2px solid rgb(100 116 139 / 0.55);
+  outline-offset: 2px;
+}
+
+.user-profile-shell .user-bookings-toolbar-btn--ghost {
+  color: #475569;
+  background: #fff;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+}
+
+.user-profile-shell .user-bookings-toolbar-btn--ghost:hover:not(:disabled) {
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 2px 5px rgb(15 23 42 / 0.06);
+  transform: translateY(-1px);
+}
+
+.user-profile-shell .user-bookings-toolbar-btn--ghost:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.user-profile-shell .user-bookings-toolbar-btn--primary {
+  color: #fff;
+  background: linear-gradient(135deg, #059669 0%, #0d9488 50%, #047857 100%);
+  box-shadow: 0 1px 3px rgb(5 150 105 / 0.18);
+}
+
+.user-profile-shell .user-bookings-toolbar-btn--primary:hover {
+  filter: brightness(1.03);
+  box-shadow: 0 2px 6px rgb(5 150 105 / 0.2);
+  transform: translateY(-1px);
+}
+
+.user-profile-shell .user-bookings-toolbar-ico {
+  width: 1.1em;
+  flex-shrink: 0;
+}
+
+/* Table: fluid cell text + comfortable actions */
+.user-profile-shell .user-bookings-table.table {
+  font-size: clamp(0.8125rem, 0.3vw + 0.7rem, 1rem);
+}
+
+.user-profile-shell .user-bookings-table.table thead th {
+  font-size: clamp(0.75rem, 0.25vw + 0.65rem, 0.9375rem);
+  padding: clamp(0.55rem, 0.5vw + 0.35rem, 0.85rem) clamp(0.45rem, 0.45vw + 0.25rem, 0.75rem);
+  vertical-align: middle;
+}
+
+.user-profile-shell .user-bookings-table.table tbody td {
+  padding: clamp(0.55rem, 0.55vw + 0.35rem, 1rem) clamp(0.45rem, 0.45vw + 0.28rem, 0.85rem);
+  vertical-align: middle;
+}
+
+.user-profile-shell .user-bookings-table .table-head-name span:first-child {
+  font-size: clamp(0.8125rem, 0.32vw + 0.72rem, 1.0625rem);
+}
+
+.user-profile-shell .user-bookings-table .table-head-name small {
+  font-size: clamp(0.6875rem, 0.22vw + 0.62rem, 0.875rem) !important;
+}
+
+.user-profile-shell .user-bookings-table .badge {
+  font-size: clamp(0.6875rem, 0.2vw + 0.6rem, 0.8125rem);
+}
+
+.user-profile-shell .user-booking-actions {
+  gap: clamp(0.35rem, 0.45vw + 0.2rem, 0.65rem);
+}
+
+.user-profile-shell .user-booking-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
+  font-weight: 600;
+  font-size: clamp(0.78rem, 0.32vw + 0.65rem, 0.98rem);
+  line-height: 1.2;
+  padding: 0.45em 1.1em;
+  min-height: clamp(2.15rem, 4.5vw, 2.75rem);
+  border-radius: var(--up-control-radius);
+  border: none;
+  cursor: pointer;
+  text-decoration: none !important;
+  white-space: nowrap;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.user-profile-shell a.user-booking-action {
+  color: inherit !important;
+}
+
+.user-profile-shell .user-booking-action:hover {
+  transform: translateY(-1px);
+}
+
+.user-profile-shell .user-booking-action:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.user-profile-shell .user-booking-action:focus-visible {
+  outline: 2px solid rgb(100 116 139 / 0.55);
+  outline-offset: 2px;
+}
+
+.user-profile-shell .user-booking-action[data-variant="view"] {
+  color: #fff;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  box-shadow: 0 1px 2px rgb(14 165 233 / 0.12);
+}
+
+.user-profile-shell .user-booking-action[data-variant="view"]:hover {
+  filter: brightness(1.03);
+  box-shadow: 0 2px 5px rgb(14 165 233 / 0.16);
+}
+
+.user-profile-shell .user-booking-action[data-variant="cancel"] {
+  color: #fff;
+  background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%);
+  box-shadow: 0 1px 2px rgb(225 29 72 / 0.12);
+}
+
+.user-profile-shell .user-booking-action[data-variant="cancel"]:hover {
+  filter: brightness(1.03);
+  box-shadow: 0 2px 5px rgb(225 29 72 / 0.16);
+}
+
+.user-profile-shell .user-booking-action[data-variant="pay"] {
+  color: #fff;
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  box-shadow: 0 1px 2px rgb(124 58 237 / 0.12);
+}
+
+.user-profile-shell .user-booking-action[data-variant="pay"]:hover {
+  filter: brightness(1.03);
+  box-shadow: 0 2px 5px rgb(124 58 237 / 0.16);
+}
+
+.user-profile-shell .user-booking-action[data-variant="refund"] {
+  color: #fff;
+  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+  box-shadow: 0 1px 2px rgb(13 148 136 / 0.12);
+}
+
+.user-profile-shell .user-booking-action[data-variant="refund"]:hover {
+  filter: brightness(1.03);
+  box-shadow: 0 2px 5px rgb(13 148 136 / 0.16);
+}
+
+.user-profile-shell .user-booking-action[data-variant="review"] {
+  color: #fff;
+  background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+  box-shadow: 0 1px 2px rgb(217 119 6 / 0.12);
+}
+
+.user-profile-shell .user-booking-action[data-variant="review"]:hover {
+  filter: brightness(1.03);
+  box-shadow: 0 2px 5px rgb(217 119 6 / 0.16);
+}
+
+.user-profile-shell .user-bookings-table td .btn-sm:not(.user-booking-action) {
+  font-size: clamp(0.75rem, 0.28vw + 0.68rem, 0.9375rem);
+  min-height: clamp(2rem, 4vw, 2.5rem);
+  padding: clamp(0.32rem, 0.35vw + 0.22rem, 0.5rem) clamp(0.45rem, 0.5vw + 0.28rem, 0.85rem);
+  border-radius: 0.65rem;
+}
+
+.user-profile-shell .user-bookings-page .modal-content {
+  font-size: clamp(0.875rem, 0.28vw + 0.78rem, 1.0625rem);
+}
+
+.user-profile-shell .user-bookings-page .modal-title {
+  font-size: clamp(1rem, 0.45vw + 0.82rem, 1.35rem);
+}
+
+@media (max-width: 767.98px) {
+  .user-profile-shell .user-sidebar-card {
+    position: relative;
+    top: auto;
+  }
+  .user-profile-shell .user-booking-action {
+    min-height: 44px;
+  }
+}
+
+/* Breadcrumb trong shell — scale nhẹ theo màn hình */
+.user-profile-shell .breadcrumb.breadcrumb-list h1 {
+  font-size: clamp(1.125rem, 0.9vw + 0.75rem, 1.75rem) !important;
+}
+
 /* ── 16. Matching Comments Responsive ──────────────────────────────────── */
 @media (max-width: 575.98px) {
   .matching-comment-form { flex-direction: column; }
@@ -3044,3 +4001,47 @@ p, .card-body p, .matching-detail-notes p, .matching-comment-content {
   box-shadow: 0 0 0 3px rgba(9,126,82,0.12);
   outline: none;
 }
+
+
+/* ── Hero Search Box Desktop Overrides ── */
+@media (min-width: 768px) {
+  .hero-section .section-search .search-box .search-btn {
+    margin-left: 20px;
+  }
+}
+
+
+/* ── Hero Search Box Responsive Overrides ── */
+@media (max-width: 767.98px) {
+  .hero-section .section-search .search-box form {
+    display: flex !important;
+    flex-direction: column;
+    gap: 15px;
+    padding: 10px;
+  }
+  .hero-section .section-search .search-box .search-input {
+    width: 100% !important;
+    display: block !important;
+    float: none !important;
+    margin: 0 !important; /* Override the table-cell and line margin */
+  }
+  .hero-section .section-search .search-box .search-btn {
+    width: 100%;
+  }
+  .hero-section .section-search .search-box .search-btn .btn {
+    width: 100% !important;
+    border-radius: 8px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 5px !important;
+  }
+  .hero-section .section-search .search-box .search-btn .btn i {
+    display: inline-block !important; /* Bring back the icon on mobile */
+  }
+  .hero-section .section-search .search-box .search-btn .btn span.search-text {
+    display: inline-block !important; /* Keep the text for a clear CTA */
+  }
+}
+
