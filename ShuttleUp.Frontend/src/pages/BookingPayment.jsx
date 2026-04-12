@@ -63,6 +63,7 @@ export default function BookingPayment() {
     selectedSlots: [],
     totalPrice: 0,
     totalHours: '0h',
+    slotDuration: 60,
     customerName: '',
     customerPhone: '',
     note: '',
@@ -98,6 +99,7 @@ export default function BookingPayment() {
         selectedSlots: mapApiSlotsToRows(ctx.selectedSlots),
         totalPrice: Number(ctx.totalPrice ?? 0),
         totalHours: ctx.totalHours ?? '0h',
+        slotDuration: [30, 60, 120].includes(ctx.slotDuration) ? ctx.slotDuration : 60,
         customerName: ctx.customerName ?? '',
         customerPhone: ctx.customerPhone ?? '',
         note: ctx.note ?? '',
@@ -221,7 +223,6 @@ export default function BookingPayment() {
   }, [navigate, pay.venueId]);
 
   const [agreed, setAgreed] = useState(false);
-  const [agreedRules, setAgreedRules] = useState(false);
   const [rulesExpanded, setRulesExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -236,8 +237,6 @@ export default function BookingPayment() {
   const handleConfirm = async () => {
     if (!proofFile) { setError('Vui lòng upload ảnh minh chứng chuyển khoản.'); return; }
     if (!agreed) { setError('Vui lòng đồng ý với điều khoản dịch vụ.'); return; }
-    const hasVenueRules = !!(checkoutSettings?.venueRules?.trim() || checkoutSettings?.cancellation);
-    if (hasVenueRules && !agreedRules) { setError('Vui lòng đọc và đồng ý với Quy định của sân và Chính sách hoàn tiền.'); return; }
     if (expired) { setError('Thời gian giữ chỗ đã hết. Vui lòng đặt lại.'); return; }
     if (!bookingId) { setError('Thiếu mã đơn. Vui lòng đặt lại.'); return; }
 
@@ -263,6 +262,7 @@ export default function BookingPayment() {
         selectedSlots: pay.selectedSlots,
         totalPrice: pay.totalPrice,
         totalHours: pay.totalHours,
+        slotDuration: pay.slotDuration,
         customerName: pay.customerName,
         customerPhone: pay.customerPhone,
         note: pay.note,
@@ -466,7 +466,7 @@ export default function BookingPayment() {
                   </li>
                   <li className="mb-2">
                     <i className="feather-clock me-2 text-primary" />
-                    {totalHours} ({selectedSlots.length} ô × 30 phút)
+                    {totalHours} ({selectedSlots.length} ô × {pay.slotDuration < 60 ? `${pay.slotDuration} phút` : pay.slotDuration === 60 ? '1 giờ' : `${pay.slotDuration / 60} giờ`})
                   </li>
                   {customerName && (
                     <li className="mb-2">
@@ -756,20 +756,7 @@ export default function BookingPayment() {
                   </div>
                 )}
 
-                {(checkoutSettings?.venueRules?.trim() || checkoutSettings?.cancellation) && (
-                  <div className="form-check d-flex align-items-start gap-2 mb-3">
-                    <input
-                      className="form-check-input mt-1"
-                      type="checkbox"
-                      id="agreeRules"
-                      checked={agreedRules}
-                      onChange={e => { setAgreedRules(e.target.checked); setError(''); }}
-                    />
-                    <label className="form-check-label small" htmlFor="agreeRules" style={{ color: '#334155' }}>
-                      Tôi đã đọc và đồng ý với <strong>Quy định của sân</strong> và <strong>Chính sách hoàn tiền</strong>.
-                    </label>
-                  </div>
-                )}
+
 
                 <div className="form-check d-flex align-items-start gap-2 policy mb-3">
                   <input
@@ -792,7 +779,7 @@ export default function BookingPayment() {
                     type="button"
                     className="btn btn-primary"
                     onClick={handleConfirm}
-                    disabled={loading || expired || !agreed || ((checkoutSettings?.venueRules?.trim() || checkoutSettings?.cancellation) && !agreedRules)}
+                    disabled={loading || expired || !agreed}
                   >
                     {loading
                       ? <><span className="spinner-border spinner-border-sm me-2" />Đang xử lý...</>

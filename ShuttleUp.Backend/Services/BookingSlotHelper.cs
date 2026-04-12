@@ -61,7 +61,8 @@ public static class BookingSlotHelper
     public static (List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)> Items, string? Error)
         NormalizeFromCreateItems(
             IEnumerable<CreateBookingItemDto> items,
-            Dictionary<Guid, Court> courtById)
+            Dictionary<Guid, Court> courtById,
+            int slotDuration)
     {
         var normalizedItems = new List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)>();
         foreach (var item in items)
@@ -72,11 +73,11 @@ public static class BookingSlotHelper
             if (!courtById.TryGetValue(item.CourtId, out var court))
                 return (normalizedItems, "Sân không hợp lệ.");
 
-            for (var slotStart = item.StartTime; slotStart < item.EndTime; slotStart = slotStart.AddMinutes(30))
+            for (var slotStart = item.StartTime; slotStart < item.EndTime; slotStart = slotStart.AddMinutes(slotDuration))
             {
-                var slotEnd = slotStart.AddMinutes(30);
+                var slotEnd = slotStart.AddMinutes(slotDuration);
                 if (slotEnd > item.EndTime)
-                    return (normalizedItems, "Mỗi khung phải là bội số 30 phút.");
+                    return (normalizedItems, $"Mỗi khung phải là bội số {slotDuration} phút.");
 
                 var price = ResolveSlotPrice(court.CourtPrices.ToList(), slotStart);
                 if (price == null)
@@ -98,7 +99,8 @@ public static class BookingSlotHelper
             HashSet<DayOfWeek> dayFilter,
             TimeOnly sessionStart,
             TimeOnly sessionEnd,
-            int maxSlots)
+            int maxSlots,
+            int slotDuration)
     {
         if (rangeEnd < rangeStart)
             return (new List<(Guid, DateTime, DateTime, decimal)>(), "Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.");
@@ -120,11 +122,11 @@ public static class BookingSlotHelper
             var dtStart = d.ToDateTime(sessionStart, DateTimeKind.Unspecified);
             var dtEnd = d.ToDateTime(sessionEnd, DateTimeKind.Unspecified);
 
-            for (var slotStart = dtStart; slotStart < dtEnd; slotStart = slotStart.AddMinutes(30))
+            for (var slotStart = dtStart; slotStart < dtEnd; slotStart = slotStart.AddMinutes(slotDuration))
             {
-                var slotEnd = slotStart.AddMinutes(30);
+                var slotEnd = slotStart.AddMinutes(slotDuration);
                 if (slotEnd > dtEnd)
-                    return (normalizedItems, "Khung giờ trong ngày phải là bội số 30 phút.");
+                    return (normalizedItems, $"Khung giờ trong ngày phải là bội số {slotDuration} phút.");
 
                 var price = ResolveSlotPrice(court.CourtPrices.ToList(), slotStart);
                 if (price == null)
@@ -132,7 +134,7 @@ public static class BookingSlotHelper
 
                 normalizedItems.Add((courtId, slotStart, slotEnd, price.Value));
                 if (normalizedItems.Count > maxSlots)
-                    return (normalizedItems, $"Vượt quá số khung tối đa ({maxSlots} ô × 30 phút). Rút ngắn khoảng ngày hoặc giảm số buổi trong tuần.");
+                    return (normalizedItems, $"Vượt quá số khung tối đa ({maxSlots} ô × {slotDuration} phút). Rút ngắn khoảng ngày hoặc giảm số buổi trong tuần.");
             }
         }
 
@@ -150,7 +152,8 @@ public static class BookingSlotHelper
             DateOnly rangeStart,
             DateOnly rangeEnd,
             Dictionary<DayOfWeek, (TimeOnly Start, TimeOnly End)> dayTimeMap,
-            int maxSlots)
+            int maxSlots,
+            int slotDuration)
     {
         if (rangeEnd < rangeStart)
             return (new List<(Guid, DateTime, DateTime, decimal)>(), "Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.");
@@ -172,11 +175,11 @@ public static class BookingSlotHelper
             var dtStart = d.ToDateTime(times.Start, DateTimeKind.Unspecified);
             var dtEnd = d.ToDateTime(times.End, DateTimeKind.Unspecified);
 
-            for (var slotStart = dtStart; slotStart < dtEnd; slotStart = slotStart.AddMinutes(30))
+            for (var slotStart = dtStart; slotStart < dtEnd; slotStart = slotStart.AddMinutes(slotDuration))
             {
-                var slotEnd = slotStart.AddMinutes(30);
+                var slotEnd = slotStart.AddMinutes(slotDuration);
                 if (slotEnd > dtEnd)
-                    return (normalizedItems, "Khung giờ trong ngày phải là bội số 30 phút.");
+                    return (normalizedItems, $"Khung giờ trong ngày phải là bội số {slotDuration} phút.");
 
                 var price = ResolveSlotPrice(court.CourtPrices.ToList(), slotStart);
                 if (price == null)
@@ -184,7 +187,7 @@ public static class BookingSlotHelper
 
                 normalizedItems.Add((courtId, slotStart, slotEnd, price.Value));
                 if (normalizedItems.Count > maxSlots)
-                    return (normalizedItems, $"Vượt quá số khung tối đa ({maxSlots} ô × 30 phút). Rút ngắn khoảng ngày hoặc giảm số buổi trong tuần.");
+                    return (normalizedItems, $"Vượt quá số khung tối đa ({maxSlots} ô × {slotDuration} phút). Rút ngắn khoảng ngày hoặc giảm số buổi trong tuần.");
             }
         }
 
@@ -490,7 +493,8 @@ public static class BookingSlotHelper
         HashSet<DayOfWeek> dayFilter,
         TimeOnly sessionStart,
         TimeOnly sessionEnd,
-        int maxSlots)
+        int maxSlots,
+        int slotDuration)
     {
         if (rangeEnd < rangeStart)
             return (new(), "Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.");
@@ -506,13 +510,13 @@ public static class BookingSlotHelper
             if (!dayFilter.Contains(d.DayOfWeek)) continue;
             var dtStart = d.ToDateTime(sessionStart, DateTimeKind.Unspecified);
             var dtEnd = d.ToDateTime(sessionEnd, DateTimeKind.Unspecified);
-            for (var ss = dtStart; ss < dtEnd; ss = ss.AddMinutes(30))
+            for (var ss = dtStart; ss < dtEnd; ss = ss.AddMinutes(slotDuration))
             {
-                var se = ss.AddMinutes(30);
-                if (se > dtEnd) return (slots, "Khung giờ trong ngày phải là bội số 30 phút.");
+                var se = ss.AddMinutes(slotDuration);
+                if (se > dtEnd) return (slots, $"Khung giờ trong ngày phải là bội số {slotDuration} phút.");
                 slots.Add((ss, se));
                 if (slots.Count > maxSlots)
-                    return (slots, $"Vượt quá số khung tối đa ({maxSlots} ô × 30 phút).");
+                    return (slots, $"Vượt quá số khung tối đa ({maxSlots} ô × {slotDuration} phút).");
             }
         }
         if (slots.Count == 0)
@@ -525,7 +529,8 @@ public static class BookingSlotHelper
         DateOnly rangeStart,
         DateOnly rangeEnd,
         Dictionary<DayOfWeek, (TimeOnly Start, TimeOnly End)> dayTimeMap,
-        int maxSlots)
+        int maxSlots,
+        int slotDuration)
     {
         if (rangeEnd < rangeStart)
             return (new(), "Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.");
@@ -541,13 +546,13 @@ public static class BookingSlotHelper
                 return (slots, $"Giờ kết thúc phải sau giờ bắt đầu ({d.DayOfWeek}).");
             var dtStart = d.ToDateTime(times.Start, DateTimeKind.Unspecified);
             var dtEnd = d.ToDateTime(times.End, DateTimeKind.Unspecified);
-            for (var ss = dtStart; ss < dtEnd; ss = ss.AddMinutes(30))
+            for (var ss = dtStart; ss < dtEnd; ss = ss.AddMinutes(slotDuration))
             {
-                var se = ss.AddMinutes(30);
-                if (se > dtEnd) return (slots, "Khung giờ trong ngày phải là bội số 30 phút.");
+                var se = ss.AddMinutes(slotDuration);
+                if (se > dtEnd) return (slots, $"Khung giờ trong ngày phải là bội số {slotDuration} phút.");
                 slots.Add((ss, se));
                 if (slots.Count > maxSlots)
-                    return (slots, $"Vượt quá số khung tối đa ({maxSlots} ô × 30 phút).");
+                    return (slots, $"Vượt quá số khung tối đa ({maxSlots} ô × {slotDuration} phút).");
             }
         }
         if (slots.Count == 0)

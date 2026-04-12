@@ -31,6 +31,18 @@ export default function LongTermFlexibleConfirm() {
     totalPrice: stateTotalPrice,
   } = state;
 
+  /* Compute slotDuration from first slot's time range */
+  const slotDuration = useMemo(() => {
+    const first = selectedSlots?.[0];
+    if (!first?.startTime || !first?.endTime) return 30;
+    const s = new Date(first.startTime);
+    const e = new Date(first.endTime);
+    const diffMins = Math.round((e - s) / 60000);
+    return [30, 60, 120].includes(diffMins) ? diffMins : 30;
+  }, [selectedSlots]);
+
+  const slotLabelStr = slotDuration < 60 ? `${slotDuration} phút` : slotDuration === 60 ? '1 giờ' : `${slotDuration / 60} giờ`;
+
   // Detect bookingId from state (passed back from Payment page) or URL search params (browser back button)
   const [searchParams] = useSearchParams();
   const existingBookingId = state.bookingId || searchParams.get('bookingId') || null;
@@ -318,7 +330,7 @@ export default function LongTermFlexibleConfirm() {
                         <th>Ngày</th>
                         <th>Sân</th>
                         <th>Giờ</th>
-                        <th className="text-end">Đơn giá (30 phút)</th>
+                        <th className="text-end">Đơn giá ({slotLabelStr})</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -346,7 +358,7 @@ export default function LongTermFlexibleConfirm() {
                   </li>
                   {preview.sessionCount > 1 && (
                     <li className="mb-2 text-muted small">
-                      {preview.sessionCount} ngày có đặt · {preview.slotCount} ô × 30 phút
+                      {preview.sessionCount} ngày có đặt · {preview.slotCount} ô × {slotLabelStr}
                     </li>
                   )}
                   {Object.entries(slotsByCourt).map(([key, slotObjs]) => {
@@ -362,7 +374,7 @@ export default function LongTermFlexibleConfirm() {
                           <i className="feather-clock me-2 text-primary" />
                           <strong>{first.courtName}:</strong>{' '}
                           {first?.timeLabel} – {endLabel}
-                          <span className="text-muted ms-1">({slotObjs.length} ô × 30 phút)</span>
+                          <span className="text-muted ms-1">({slotObjs.length} ô × {slotLabelStr})</span>
                         </span>
                       </li>
                     );
@@ -389,36 +401,25 @@ export default function LongTermFlexibleConfirm() {
                   <span className="fw-bold">Thành tiền</span>
                   <strong className="primary-text fs-5">{Number(discountInfo?.finalAmount || totalPrice).toLocaleString('vi-VN')} VNĐ</strong>
                 </div>
-                <div className="d-grid">
+                <div className="d-grid gap-2">
                   <button
                     type="button"
                     onClick={handleSubmit}
                     disabled={loading}
-                    className="btn btn-secondary btn-icon"
+                    className="btn btn-success btn-icon"
                   >
               {loading ? (isUpdating ? 'Đang cập nhật…' : 'Đang tạo đơn…') : 'Tiếp theo'} <i className="feather-arrow-right-circle ms-1" />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary btn-icon"
+                    onClick={() => navigate('/booking/long-term/flexible', { state: { venueId, venueName, venueAddress } })}
+                  >
+                    <i className="feather-arrow-left-circle me-1" /> Quay lại chỉnh sửa
                   </button>
                 </div>
               </aside>
             </div>
-          </div>
-
-          <div className="text-center btn-row mt-3">
-            <button
-              type="button"
-              className="btn btn-primary me-3 btn-icon"
-              onClick={() => navigate('/booking/long-term/flexible', { state: { venueId, venueName, venueAddress } })}
-            >
-              <i className="feather-arrow-left-circle me-1" /> Quay lại
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-icon"
-              onClick={handleSubmit}
-              disabled={loading}
-            >
-              {loading ? 'Đang tạo đơn…' : 'Tiếp theo'} <i className="feather-arrow-right-circle ms-1" />
-            </button>
           </div>
 
         </div>

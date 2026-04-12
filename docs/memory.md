@@ -360,6 +360,26 @@ Kết bạn & quan hệ xã hội (Player):
 
 ---
 
+## 12–13 tháng 4, 2026 (Linh hoạt hóa Đơn vị Giờ Chẵn & Vá lỗi Timezone Khung lưới)
+
+1. **Tuỳ chỉnh Đơn vị Giờ Chẵn (Customizable Slot Duration)**:
+   - **Database & Backend Context**: Thay vì fix cứng 30 phút, `venues` nay có thêm cột `slot_duration` (Default 60). Các Endpoint `ManagerVenuesController` và `VenuesController` sẽ validate giới hạn cứng 3 choices an toàn: 30, 60, và 120 phút.
+   - **Safe Transition (Lá chắn An Toàn)**: Ngăn chặn chủ sân (Manager) sửa bậy quy tắc Giờ Chẵn khi cụm sân đó còn đang tồn tại các đơn "Sắp Diễn Ra / Future Bookings". API Controller sẽ trả thẳng `400 Bad Request` nếu phát hiện có người chơi đang cầm lịch tương lai chưa đánh xong.
+   - **Giao diện Chủ Sân (Manager)**: Cung cấp Checkbox Select "Đơn vị giờ chẵn" (`ManagerAddVenue`). Label nhập tiền sân của `ManagerAddCourt` tự động biến hình tương ứng: *đ / 30 phút*, *đ / giờ*, *đ / 2 giờ*. 
+
+2. **Cơ chế Lưới Thời Gian Động (Dynamic Grid Timeline Engine)**:
+   - Viết lại toàn bộ bộ não dựng lưới của 2 giao diện `BookingTimeline.jsx` (Lịch Trực Quan Khách lẻ) và `LongTermFlexible.jsx` (Lịch Linh Hoạt Khách sỉ).
+   - Bơm `slotDuration` từ API/Cache xuống mọi hàm: `computeSlotCount`, `slotLocalBounds`, `getPriceForSlot`, `intervalsToGridBlocks`.
+   - **Chống Rendering Dư Thừa (Ghost Slots)**: Thuật toán `Math.floor` sẽ gọt rũa chuẩn xác các Slot trườn ra ngoài ranh giới đóng cửa 24:00 (Ví dụ: Slot 120 phút sẽ tự end mượt mà ở 23:00 mà không sinh ra bóng ma slot 23:00-25:00).
+   - **Tối ưu Hóa API Fetches**: Áp dụng cơ chế Conditional Fetch qua Context Router Cache `location.state`. Chỉ chạy Fecth API cấu hình sân nếu End user f5 trắng lại trình duyệt (giảm lượng HTTP hit cho CSDL).
+
+3. **Vá Lỗi Nhảy Ngày Timezone (UTC Midnight Glitch)**:
+   - **Tình trạng Phân Lập Múi Giờ**: Ở các khung Giờ Việt Nam `00:00 -> 06:59 AM`, hàm `toISOString().split('T')[0]` sẽ ói ra ngày "Hôm Qua" (Vì máy chủ Node/Browser UTC vẫn đang ở ngày cũ). Sự cố này khiến cho UI Calendar của Người chơi mặc định hiển thị ngày hôm qua, và gây loạn phán đoán ô bị mờ.
+   - **Giải pháp**: Xây dựng util helper `localIsoDate(new Date())` (Sử dụng Date Get API thuần: `getFullYear`, `getMonth()`, `getDate()`) giúp khoá cứng String Time theo Local TimeZone.
+   - **Tối ưu Hàm `isPastSlot`**: Lột bỏ cơ chế chặn mờ rối rắm thông qua Ngày. Thay vào đó quy chiếu quy luật duy nhất: Nếu Epoch MS của điểm cuối slot (`end.getTime()`) bé hơn hoặc bằng `now.getTime()` thì Slot đó chính thức Bị Xám. Trị dứt điểm căn bệnh ấn được vào ô quá khứ khi Back về Ngày của Hôm qua.
+
+---
+
 ## 12–13 tháng 4, 2026 (Ổn định hồ sơ Quản lý & UI Admin)
 
 1. **Sửa lỗi mất Giấy phép kinh doanh (Manager Profile):**

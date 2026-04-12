@@ -10,6 +10,7 @@ public class ManagerVenueUpsertDto
     public string? ContactPhone { get; set; }
     public decimal? WeeklyDiscountPercent { get; set; }
     public decimal? MonthlyDiscountPercent { get; set; }
+    public int SlotDuration { get; set; } = 60;
 
     /// <summary>Mô tả tổng quan về cơ sở — hiển thị tab Tổng quan.</summary>
     public string? Description { get; set; }

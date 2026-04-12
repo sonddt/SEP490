@@ -110,6 +110,7 @@ public class BookingsController : ControllerBase
                 v.CancelBeforeMinutes,
                 v.RefundType,
                 v.RefundPercent,
+                v.SlotDuration,
             })
             .FirstOrDefaultAsync();
 
@@ -128,7 +129,7 @@ public class BookingsController : ControllerBase
 
         var courtById = courts.ToDictionary(c => c.Id);
 
-        var (normalizedItems, normErr) = BookingSlotHelper.NormalizeFromCreateItems(dto.Items, courtById);
+        var (normalizedItems, normErr) = BookingSlotHelper.NormalizeFromCreateItems(dto.Items, courtById, venuePolicy.SlotDuration);
         if (normErr != null)
             return BadRequest(new { message = normErr });
 
@@ -713,8 +714,13 @@ public class BookingsController : ControllerBase
         if (dto.Items == null || dto.Items.Count == 0)
             return new FlexibleLongTermBuildResult { Error = BadRequest(new { message = "Vui lòng chọn ít nhất một khung giờ." }) };
 
-        var venueOk = await _dbContext.Venues.AnyAsync(v => v.Id == dto.VenueId && v.IsActive == true, ct);
-        if (!venueOk)
+        var venueOk = await _dbContext.Venues
+            .AsNoTracking()
+            .Where(v => v.Id == dto.VenueId && v.IsActive == true)
+            .Select(v => new { v.Id, v.SlotDuration })
+            .FirstOrDefaultAsync(ct);
+
+        if (venueOk == null)
             return new FlexibleLongTermBuildResult { Error = BadRequest(new { message = "Cơ sở không tồn tại hoặc chưa mở đặt sân." }) };
 
         var courtIds = dto.Items.Select(i => i.CourtId).Distinct().ToList();
@@ -729,12 +735,12 @@ public class BookingsController : ControllerBase
 
         var courtById = courts.ToDictionary(c => c.Id);
 
-        var (normalizedItems, normErr) = BookingSlotHelper.NormalizeFromCreateItems(dto.Items, courtById);
+        var (normalizedItems, normErr) = BookingSlotHelper.NormalizeFromCreateItems(dto.Items, courtById, venueOk.SlotDuration);
         if (normErr != null)
             return new FlexibleLongTermBuildResult { Error = BadRequest(new { message = normErr }) };
 
         if (normalizedItems.Count > BookingSlotHelper.MaxLongTermSlots)
-            return new FlexibleLongTermBuildResult { Error = BadRequest(new { message = $"Vượt quá số khung tối đa ({BookingSlotHelper.MaxLongTermSlots} ô × 30 phút)." }) };
+            return new FlexibleLongTermBuildResult { Error = BadRequest(new { message = $"Vượt quá số khung tối đa ({BookingSlotHelper.MaxLongTermSlots} ô × {venueOk.SlotDuration} phút)." }) };
 
         TryGetCurrentUserId(out var currentUserId);
         var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, ct, excludeBookingId: null, excludeHoldingUserId: currentUserId);
@@ -778,8 +784,13 @@ public class BookingsController : ControllerBase
         if (dayErr != null)
             return new LongTermBuildResult { Error = BadRequest(new { message = dayErr }) };
 
-        var venueOk = await _dbContext.Venues.AnyAsync(v => v.Id == dto.VenueId && v.IsActive == true, ct);
-        if (!venueOk)
+        var venueInfo = await _dbContext.Venues
+            .AsNoTracking()
+            .Where(v => v.Id == dto.VenueId && v.IsActive == true)
+            .Select(v => new { v.Id, v.SlotDuration })
+            .FirstOrDefaultAsync(ct);
+
+        if (venueInfo == null)
             return new LongTermBuildResult { Error = BadRequest(new { message = "Cơ sở không tồn tại hoặc chưa mở đặt sân." }) };
 
         bool useSmartAllocation = !dto.CourtId.HasValue || dto.AutoSwitchCourt;
@@ -812,11 +823,11 @@ public class BookingsController : ControllerBase
                         return new LongTermBuildResult { Error = BadRequest(new { message = $"EndTime không hợp lệ cho ngày {ds.DayOfWeek}." }) };
                     dayTimeMap[(DayOfWeek)ds.DayOfWeek] = (dsStart, dsEnd);
                 }
-                (timeSlots, expandErr) = BookingSlotHelper.ExpandTimeSlotsWithDailySchedules(rs, re, dayTimeMap, BookingSlotHelper.MaxLongTermSlots);
+                (timeSlots, expandErr) = BookingSlotHelper.ExpandTimeSlotsWithDailySchedules(rs, re, dayTimeMap, BookingSlotHelper.MaxLongTermSlots, venueInfo.SlotDuration);
             }
             else
             {
-                (timeSlots, expandErr) = BookingSlotHelper.ExpandTimeSlots(rs, re, dayFilter, st, et, BookingSlotHelper.MaxLongTermSlots);
+                (timeSlots, expandErr) = BookingSlotHelper.ExpandTimeSlots(rs, re, dayFilter, st, et, BookingSlotHelper.MaxLongTermSlots, venueInfo.SlotDuration);
             }
 
             if (expandErr != null)
@@ -865,12 +876,12 @@ public class BookingsController : ControllerBase
                 dayTimeMap[(DayOfWeek)ds.DayOfWeek] = (dsStart, dsEnd);
             }
             (normalizedItems, legacyExpandErr) = BookingSlotHelper.ExpandWeeklyLongTermWithDailySchedules(
-                dto.CourtId!.Value, court, rs, re, dayTimeMap, BookingSlotHelper.MaxLongTermSlots);
+                dto.CourtId!.Value, court, rs, re, dayTimeMap, BookingSlotHelper.MaxLongTermSlots, venueInfo.SlotDuration);
         }
         else
         {
             (normalizedItems, legacyExpandErr) = BookingSlotHelper.ExpandWeeklyLongTerm(
-                dto.CourtId!.Value, court, rs, re, dayFilter, st, et, BookingSlotHelper.MaxLongTermSlots);
+                dto.CourtId!.Value, court, rs, re, dayFilter, st, et, BookingSlotHelper.MaxLongTermSlots, venueInfo.SlotDuration);
         }
 
         if (legacyExpandErr != null)
@@ -1483,7 +1494,8 @@ public class BookingsController : ControllerBase
             })
             .ToList();
 
-        var totalMins = booking.BookingItems.Count * 30;
+        var venueSlotDuration = booking.Venue?.SlotDuration ?? 60;
+        var totalMins = booking.BookingItems.Count * venueSlotDuration;
         var th = totalMins / 60;
         var tm = totalMins % 60;
         var totalHoursStr = tm > 0 ? $"{th}h{tm}" : $"{th}h";
@@ -1502,6 +1514,7 @@ public class BookingsController : ControllerBase
             date = booking.BookingItems.Min(bi => bi.StartTime)?.ToString("yyyy-MM-dd"),
             totalPrice = booking.FinalAmount ?? 0,
             totalHours = totalHoursStr,
+            slotDuration = venueSlotDuration,
             customerName = booking.ContactName,
             customerPhone = booking.ContactPhone,
             note = booking.GuestNote,

@@ -29,6 +29,18 @@ export default function BookingConfirm() {
     totalHours   = '0h',
   } = state;
 
+  /* Compute slotDuration from first slot's time range */
+  const slotDuration = useMemo(() => {
+    const first = selectedSlots?.[0];
+    if (!first?.startTime || !first?.endTime) return 30;
+    const s = new Date(first.startTime);
+    const e = new Date(first.endTime);
+    const diffMins = Math.round((e - s) / 60000);
+    return [30, 60, 120].includes(diffMins) ? diffMins : 30;
+  }, [selectedSlots]);
+
+  const slotLabelStr = slotDuration < 60 ? `${slotDuration} phút` : slotDuration === 60 ? '1 giờ' : `${slotDuration / 60} giờ`;
+
   // Detect bookingId from state (passed back from Payment page) or URL search params (browser back button)
   const [searchParams] = useSearchParams();
   const existingBookingId = state.bookingId || searchParams.get('bookingId') || null;
@@ -364,7 +376,7 @@ export default function BookingConfirm() {
                       <tr>
                         <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => toggleSort('courtName')}>Sân {renderSortIcon('courtName')}</th>
                         <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => toggleSort('time')}>Giờ {renderSortIcon('time')}</th>
-                        <th style={{ cursor: 'pointer', userSelect: 'none' }} className="text-end" onClick={() => toggleSort('price')}>Đơn giá (30 phút) {renderSortIcon('price')}</th>
+                        <th style={{ cursor: 'pointer', userSelect: 'none' }} className="text-end" onClick={() => toggleSort('price')}>Đơn giá ({slotLabelStr}) {renderSortIcon('price')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -504,7 +516,7 @@ export default function BookingConfirm() {
                         <i className="feather-clock me-2 text-primary" />
                         <strong>{court}:</strong>{' '}
                         {first?.timeLabel} – {endLabel}
-                        <span className="text-muted ms-1">({slotObjs.length} ô × 30 phút)</span>
+                        <span className="text-muted ms-1">({slotObjs.length} ô × {slotLabelStr})</span>
                       </li>
                     );
                   })}
@@ -541,37 +553,25 @@ export default function BookingConfirm() {
                   </div>
                 )}
                 {submitError && <div className="alert alert-danger small mb-2">{submitError}</div>}
-                <div className="d-grid">
+                <div className="d-grid gap-2">
                   <button
                     type="button"
                     onClick={handleNext}
                     disabled={loading}
-                    className="btn btn-secondary btn-icon"
+                    className="btn btn-success btn-icon"
                   >
                     {loading ? (isUpdating ? 'Đang cập nhật…' : 'Đang tạo đơn…') : 'Tiếp theo'} <i className="feather-arrow-right-circle ms-1" />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary btn-icon"
+                    onClick={() => navigate('/booking', { state: location.state })}
+                  >
+                    <i className="feather-arrow-left-circle me-1" /> Quay lại chỉnh sửa
                   </button>
                 </div>
               </aside>
             </div>
-          </div>
-
-          {/* Nav buttons */}
-          <div className="text-center btn-row mt-3">
-            <button
-              type="button"
-              className="btn btn-primary me-3 btn-icon"
-              onClick={() => navigate('/booking', { state: location.state })}
-            >
-              <i className="feather-arrow-left-circle me-1" /> Quay lại
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-icon"
-              onClick={handleNext}
-              disabled={loading}
-            >
-              {loading ? 'Đang tạo đơn…' : 'Tiếp theo'} <i className="feather-arrow-right-circle ms-1" />
-            </button>
           </div>
 
         </div>
