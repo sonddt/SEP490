@@ -103,3 +103,10 @@ export function cancelHold(bookingId) {
 export function remindOwner(bookingId) {
   return axiosClient.post(`/bookings/${bookingId}/remind-owner`);
 }
+
+/** Upload QR code image for refund — returns { url: string } */
+export function uploadRefundQr(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  return axiosClient.post('/bookings/upload-refund-qr', fd);
+}

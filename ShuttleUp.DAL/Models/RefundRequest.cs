@@ -25,6 +25,8 @@ public partial class RefundRequest
 
     public string? RefundAccountHolder { get; set; }
 
+    public string? RefundQrImageUrl { get; set; }
+
     public string? PlayerNote { get; set; }
 
     public string? RejectionReason { get; set; }

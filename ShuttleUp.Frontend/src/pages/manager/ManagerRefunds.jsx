@@ -281,6 +281,17 @@ export default function ManagerRefunds() {
                   </div>
                 )}
 
+                {detail.refundQrImageUrl && (
+                  <div className="mb-3">
+                    <small className="text-muted d-block mb-1">📱 Mã QR nhận hoàn tiền (từ người chơi)</small>
+                    <a href={detail.refundQrImageUrl} target="_blank" rel="noopener noreferrer" title="Nhấn để phóng to hoặc quét">
+                      <img src={detail.refundQrImageUrl} alt="Refund QR" style={{ maxHeight: 200, borderRadius: 8, border: '2px solid #10b981', cursor: 'pointer', background: '#fff', padding: 4 }}
+                        onError={e => { e.target.parentElement.style.display = 'none'; }} />
+                    </a>
+                    <div className="small text-muted mt-1"><i className="feather-info me-1" />Nhấn vào ảnh để mở/phóng to mã QR</div>
+                  </div>
+                )}
+
                 {(detail.refundBankName || detail.refundAccountNumber) && (
                   <div className="p-3 rounded mb-3" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
                     <small className="fw-semibold d-block mb-1" style={{ color: '#166534' }}>

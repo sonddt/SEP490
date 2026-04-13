@@ -468,6 +468,7 @@ CREATE TABLE refund_requests (
     refund_bank_name VARCHAR(100) NULL COMMENT 'NH nhận hoàn (Player nhập)',
     refund_account_number VARCHAR(50) NULL,
     refund_account_holder VARCHAR(255) NULL,
+    refund_qr_image_url VARCHAR(2048) NULL COMMENT 'Ảnh mã QR nhận hoàn tiền (Cloudinary URL)',
     player_note TEXT NULL,
     rejection_reason TEXT NULL,
     manager_note TEXT NULL,
@@ -1546,6 +1547,10 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'player_received_file_id');
 SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN player_received_file_id CHAR(36) NULL', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'refund_qr_image_url');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN refund_qr_image_url VARCHAR(2048) NULL COMMENT ''Ảnh mã QR nhận hoàn tiền (Cloudinary URL)'' AFTER refund_account_holder', 'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venue_coupons' AND column_name = 'one_use_per_user');

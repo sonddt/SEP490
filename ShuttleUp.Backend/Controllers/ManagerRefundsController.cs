@@ -90,6 +90,7 @@ public class ManagerRefundsController : ControllerBase
                 refundBankName = r.RefundBankName,
                 refundAccountNumber = r.RefundAccountNumber,
                 refundAccountHolder = r.RefundAccountHolder,
+                refundQrImageUrl = r.RefundQrImageUrl,
                 playerNote = r.PlayerNote,
                 rejectionReason = r.RejectionReason,
                 managerNote = r.ManagerNote,

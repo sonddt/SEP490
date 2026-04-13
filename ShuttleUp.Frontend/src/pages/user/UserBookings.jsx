@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { getMyBookings, cancelBooking, getCancelPreview, updateRefundBankInfo, remindOwner } from '../../api/bookingApi';
+import { getMyBookings, cancelBooking, getCancelPreview, updateRefundBankInfo, remindOwner, uploadRefundQr } from '../../api/bookingApi';
 import ReportModal from '../../components/common/ReportModal';
 
 function pad2(n) {
@@ -97,6 +97,7 @@ function mapApiRowToBooking(api) {
     refundBankName: api.refundBankName || '',
     refundAccountNumber: api.refundAccountNumber || '',
     refundAccountHolder: api.refundAccountHolder || '',
+    refundQrImageUrl: api.refundQrImageUrl || '',
   };
 }
 
@@ -191,6 +192,10 @@ export default function UserBookings() {
   const [disputeTarget, setDisputeTarget] = useState(null);
   const [remindLoading, setRemindLoading] = useState(null); // bookingId | null
   const [remindCooldowns, setRemindCooldowns] = useState({}); // { bookingId: remainingMinutes }
+  const [qrFile, setQrFile] = useState(null);
+  const [qrPreview, setQrPreview] = useState(null);
+  const [qrUploading, setQrUploading] = useState(false);
+  const [qrUploadedUrl, setQrUploadedUrl] = useState(null);
 
   const loadBookings = useCallback(async () => {
     setLoading(true);
@@ -259,6 +264,7 @@ export default function UserBookings() {
     setCancelTarget(b);
     setCancelPreviewLoading(true);
     setPolicyAgreed(false);
+    setQrFile(null); setQrPreview(null); setQrUploading(false); setQrUploadedUrl(null);
     try {
       const data = await getCancelPreview(b.id);
       setCancelPreview(data);
@@ -271,17 +277,47 @@ export default function UserBookings() {
     }
   };
 
+  const handleQrFile = (file) => {
+    if (!file) return;
+    setQrFile(file);
+    setQrUploadedUrl(null);
+    const reader = new FileReader();
+    reader.onload = (e) => setQrPreview(e.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleQrUpload = async () => {
+    if (!qrFile || qrUploadedUrl) return qrUploadedUrl;
+    setQrUploading(true);
+    try {
+      const result = await uploadRefundQr(qrFile);
+      const url = result?.url || result;
+      setQrUploadedUrl(url);
+      return url;
+    } catch (e) {
+      showToast(e?.response?.data?.message || 'Tải ảnh QR thất bại.', true);
+      return null;
+    } finally {
+      setQrUploading(false);
+    }
+  };
+
   const confirmCancel = async () => {
     if (!cancelTarget || !cancelPreview) return;
     setCancelSubmitting(true);
     try {
+      let qrUrl = qrUploadedUrl;
+      if (qrFile && !qrUrl && cancelPreview.cancelBranch === 'PAID') {
+        qrUrl = await handleQrUpload();
+      }
       const body = cancelPreview.cancelBranch === 'PAID'
-        ? { refundBankName: bankForm.refundBankName, refundAccountNumber: bankForm.refundAccountNumber, refundAccountHolder: bankForm.refundAccountHolder }
+        ? { refundBankName: bankForm.refundBankName, refundAccountNumber: bankForm.refundAccountNumber, refundAccountHolder: bankForm.refundAccountHolder, refundQrImageUrl: qrUrl || undefined }
         : {};
       const result = await cancelBooking(cancelTarget.id, body);
       setCancelTarget(null);
       setCancelPreview(null);
       setDetailBooking(null);
+      setQrFile(null); setQrPreview(null); setQrUploadedUrl(null);
 
       if (result.cancelBranch === 'PAID') {
         showToast(result.message || 'Đã hủy — yêu cầu hoàn tiền đã được gửi.');
@@ -488,10 +524,8 @@ export default function UserBookings() {
                           <tr>
                             <th>Sân</th>
                             <th>Mã đặt</th>
-                            <th>Ngày</th>
-                            <th>Giờ</th>
+                            <th>Lịch</th>
                             <th>Thanh toán</th>
-                            <th>P.thức</th>
                             <th>Trạng thái</th>
                             <th>Đánh giá</th>
                             <th className="text-nowrap">Thao tác</th>
@@ -500,7 +534,7 @@ export default function UserBookings() {
                         <tbody>
                           {loading && (
                             <tr>
-                              <td colSpan={9} className="text-center text-muted py-5">
+                              <td colSpan={7} className="text-center text-muted py-5">
                                 <div className="spinner-border spinner-border-sm text-secondary mb-2" role="status" />
                                 <div>Đang tải lịch đặt sân…</div>
                               </td>
@@ -508,7 +542,7 @@ export default function UserBookings() {
                           )}
                           {!loading && filtered.length === 0 && (
                             <tr>
-                              <td colSpan={9} className="text-center text-muted py-5">
+                              <td colSpan={7} className="text-center text-muted py-5">
                                 <i className="feather-calendar" style={{ fontSize: 32, display: 'block', marginBottom: 8, opacity: 0.4 }} />
                                 Không có lịch đặt sân nào
                               </td>
@@ -545,14 +579,18 @@ export default function UserBookings() {
                                   #{b.code}
                                 </span>
                               </td>
-                              <td>{b.date}</td>
-                              <td>{b.time}</td>
-                              <td><strong>{b.amount.toLocaleString('vi-VN')} ₫</strong></td>
+                              {/* Schedule (merged Date + Time) */}
                               <td>
-                                <span className="text-muted small">
+                                <div>{b.date}</div>
+                                <small className="text-muted">{b.time}</small>
+                              </td>
+                              {/* Payment (merged Amount + Method) */}
+                              <td>
+                                <strong>{b.amount.toLocaleString('vi-VN')} ₫</strong>
+                                <div className="text-muted small" style={{ marginTop: 2 }}>
                                   <i className={`${b.paymentMethod === 'Quét mã QR' ? 'feather-smartphone' : 'feather-credit-card'} me-1`} />
                                   {b.paymentMethod}
-                                </span>
+                                </div>
                               </td>
                               <td><StatusBadge b={b} /></td>
                               <td>
@@ -839,31 +877,64 @@ export default function UserBookings() {
                     )}
 
                     {cancelPreview.cancelBranch === 'PAID' && (
-                      <div className="card border-0 shadow-sm mb-3">
-                        <div className="card-body">
-                          <h6 className="mb-3"><i className="feather-credit-card me-2" />Thông tin nhận hoàn tiền</h6>
-                          <div className="mb-2">
-                            <label className="form-label small fw-semibold">Ngân hàng <span className="text-danger">*</span></label>
-                            <select className="form-select form-select-sm" value={bankForm.refundBankName}
-                              onChange={e => setBankForm(p => ({ ...p, refundBankName: e.target.value }))}>
-                              <option value="">-- Chọn --</option>
-                              {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
-                            </select>
-                          </div>
-                          <div className="mb-2">
-                            <label className="form-label small fw-semibold">Số tài khoản <span className="text-danger">*</span></label>
-                            <input type="text" className="form-control form-control-sm" placeholder="0123456789"
-                              value={bankForm.refundAccountNumber}
-                              onChange={e => setBankForm(p => ({ ...p, refundAccountNumber: e.target.value }))} />
-                          </div>
-                          <div>
-                            <label className="form-label small fw-semibold">Chủ tài khoản <span className="text-danger">*</span></label>
-                            <input type="text" className="form-control form-control-sm text-uppercase" placeholder="NGUYEN VAN A"
-                              value={bankForm.refundAccountHolder}
-                              onChange={e => setBankForm(p => ({ ...p, refundAccountHolder: e.target.value.toUpperCase() }))} />
+                      <>
+                        {/* ── QR Upload Zone ────────────────────────── */}
+                        <div className="card border-0 shadow-sm mb-3">
+                          <div className="card-body">
+                            <h6 className="mb-3"><i className="feather-smartphone me-2" />📱 Ảnh mã QR nhận tiền <span className="text-muted fw-normal" style={{ fontSize: 12 }}>(để chủ sân quét — tùy chọn)</span></h6>
+                            {!qrPreview ? (
+                              <div className="ub-qr-upload-zone"
+                                onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('ub-qr-upload-zone--active'); }}
+                                onDragLeave={e => e.currentTarget.classList.remove('ub-qr-upload-zone--active')}
+                                onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove('ub-qr-upload-zone--active'); handleQrFile(e.dataTransfer.files?.[0]); }}>
+                                <i className="feather-upload-cloud ub-qr-upload-zone__icon" />
+                                <div className="ub-qr-upload-zone__label">Kéo thả hoặc nhấn để chọn ảnh QR</div>
+                                <div className="ub-qr-upload-zone__hint">Hỗ trợ JPG, PNG, WEBP — tối đa 10MB</div>
+                                <input type="file" accept="image/*" onChange={e => handleQrFile(e.target.files?.[0])} />
+                              </div>
+                            ) : (
+                              <div className="text-center">
+                                <div className="ub-qr-preview">
+                                  <img src={qrPreview} alt="QR preview" className="ub-qr-preview__img" />
+                                  <button type="button" className="ub-qr-preview__remove" title="Xóa ảnh"
+                                    onClick={() => { setQrFile(null); setQrPreview(null); setQrUploadedUrl(null); }}>
+                                    <i className="feather-x" />
+                                  </button>
+                                </div>
+                                {qrUploading && <div className="small text-info mt-2"><span className="spinner-border spinner-border-sm me-1" />Đang tải lên…</div>}
+                                {qrUploadedUrl && <div className="small text-success mt-2"><i className="feather-check-circle me-1" />Đã tải lên thành công</div>}
+                              </div>
+                            )}
                           </div>
                         </div>
-                      </div>
+
+                        {/* ── Bank Info Form ────────────────────────── */}
+                        <div className="card border-0 shadow-sm mb-3">
+                          <div className="card-body">
+                            <h6 className="mb-3"><i className="feather-credit-card me-2" />Thông tin nhận hoàn tiền</h6>
+                            <div className="mb-2">
+                              <label className="form-label small fw-semibold">Ngân hàng <span className="text-danger">*</span></label>
+                              <select className="form-select form-select-sm" value={bankForm.refundBankName}
+                                onChange={e => setBankForm(p => ({ ...p, refundBankName: e.target.value }))}>
+                                <option value="">-- Chọn --</option>
+                                {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
+                              </select>
+                            </div>
+                            <div className="mb-2">
+                              <label className="form-label small fw-semibold">Số tài khoản <span className="text-danger">*</span></label>
+                              <input type="text" className="form-control form-control-sm" placeholder="0123456789"
+                                value={bankForm.refundAccountNumber}
+                                onChange={e => setBankForm(p => ({ ...p, refundAccountNumber: e.target.value }))} />
+                            </div>
+                            <div>
+                              <label className="form-label small fw-semibold">Chủ tài khoản <span className="text-danger">*</span></label>
+                              <input type="text" className="form-control form-control-sm text-uppercase" placeholder="NGUYEN VAN A"
+                                value={bankForm.refundAccountHolder}
+                                onChange={e => setBankForm(p => ({ ...p, refundAccountHolder: e.target.value.toUpperCase() }))} />
+                            </div>
+                          </div>
+                        </div>
+                      </>
                     )}
 
                     {!cancelPreview.canCancel && (

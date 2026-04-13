@@ -1012,6 +1012,7 @@ public class BookingsController : ControllerBase
                 refundBankName = refund?.RefundBankName,
                 refundAccountNumber = refund?.RefundAccountNumber,
                 refundAccountHolder = refund?.RefundAccountHolder,
+                refundQrImageUrl = refund?.RefundQrImageUrl,
                 venueReviewId,
                 reviewWindowEndsAt = windowEnd,
                 canReview,
@@ -1149,6 +1150,7 @@ public class BookingsController : ControllerBase
         public string? RefundBankName { get; set; }
         public string? RefundAccountNumber { get; set; }
         public string? RefundAccountHolder { get; set; }
+        public string? RefundQrImageUrl { get; set; }
         public string? PlayerNote { get; set; }
     }
 
@@ -1258,6 +1260,7 @@ public class BookingsController : ControllerBase
                 RefundBankName = body?.RefundBankName?.Trim(),
                 RefundAccountNumber = body?.RefundAccountNumber?.Trim(),
                 RefundAccountHolder = body?.RefundAccountHolder?.Trim().ToUpperInvariant(),
+                RefundQrImageUrl = body?.RefundQrImageUrl?.Trim(),
                 PlayerNote = body?.PlayerNote?.Trim(),
                 RequestedAt = DateTime.UtcNow,
             };
@@ -1450,9 +1453,39 @@ public class BookingsController : ControllerBase
             refund.RefundAccountNumber = body.RefundAccountNumber.Trim();
         if (!string.IsNullOrWhiteSpace(body.RefundAccountHolder))
             refund.RefundAccountHolder = body.RefundAccountHolder.Trim().ToUpperInvariant();
+        if (!string.IsNullOrWhiteSpace(body.RefundQrImageUrl))
+            refund.RefundQrImageUrl = body.RefundQrImageUrl.Trim();
 
         await _dbContext.SaveChangesAsync();
         return Ok(new { message = "Đã cập nhật thông tin nhận hoàn tiền." });
+    }
+
+    /// <summary>
+    /// Player upload ảnh mã QR nhận hoàn tiền lên Cloudinary, trả về URL.
+    /// </summary>
+    [HttpPost("upload-refund-qr")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(10_000_000)]
+    public async Task<IActionResult> UploadRefundQr(IFormFile file)
+    {
+        if (!TryGetCurrentUserId(out var userId))
+            return Unauthorized(new { message = "Không xác định được người dùng." });
+
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "Vui lòng tải ảnh QR." });
+
+        if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { message = "File phải là ảnh." });
+
+        try
+        {
+            var upload = await _fileService.UploadPaymentProofAsync(file, userId, HttpContext.RequestAborted);
+            return Ok(new { url = upload.SecureUrl });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Upload thất bại: " + ex.Message });
+        }
     }
 
     /// <summary>

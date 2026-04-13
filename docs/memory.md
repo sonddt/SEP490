@@ -433,3 +433,25 @@ Kết bạn & quan hệ xã hội (Player):
 3. **Cải tiến UI Đồng Bộ Cảnh Báo "Đổi Sân" (LongTermBooking.jsx)**:
    - Đồng bộ hoàn toàn tín hiệu thiết kế giữa Trạng thái "Đổi Sân" và "Sẵn Sàng".
    - Loại bỏ nhãn thẻ block thô cứng và emoji. Định dạng chữ mỏng `d-inline-flex gap-1 text-warning`, kết hợp biểu tượng `<i className="feather-refresh-cw" />` bo góc tương tự phong thái của `feather-check-circle text-success`. Tạo cảm giác chuyên nghiệp, liền lạc của một Web App thứ thiệt.
+
+---
+
+## 13 tháng 4, 2026 (Elite UI Refactor — Manager Modal, User Table & Refund QR)
+
+1. **Manager RejectModal — CSS Synchronization:**
+   - Thêm 7 CSS class bị thiếu trong `index.css`: `.bk-modal--sm`, `.bk-modal-header--danger`, `.bk-modal-icon--danger`, `.bk-reject-summary*`, `.bk-quick-reasons`, `.bk-quick-reason` (với active/hover states).
+   - Sử dụng brand alert red `#dc2626` đồng bộ toàn app.
+
+2. **User Bookings Table — Layout Optimization (`UserBookings.jsx`):**
+   - Gộp 9 cột xuống 7: Date + Time → "Lịch" (ngày trên, giờ dưới); Payment + Method → "Thanh toán" (số tiền trên, phương thức + icon dưới).
+   - Thêm `min-width: 860px` cho table, `min-width: 180px` cho cột Thao tác → khắc phục nút bấm bị cắt.
+   - Cập nhật tất cả `colSpan={9}` → `colSpan={7}`.
+
+3. **Persistent Refund QR System (Option B — Full-stack):**
+   - **Database (`Database.txt`)**: Thêm `refund_qr_image_url VARCHAR(2048)` vào bảng `refund_requests` (CREATE + ALTER có điều kiện). Không dùng file migration rời.
+   - **DAL Model**: `RefundRequest.RefundQrImageUrl` + EF config `HasMaxLength(2048).HasColumnName("refund_qr_image_url")`.
+   - **Backend Endpoints**: Cập nhật `CancelBookingBody` DTO; `CancelMyBooking`, `UpdateRefundBankInfo`, `GetMyBookings` truyền/lưu/trả `refundQrImageUrl`; thêm `POST /bookings/upload-refund-qr` (upload Cloudinary → trả URL); `ManagerRefundsController.GetRefundRequests` trả `refundQrImageUrl`.
+   - **Frontend — Player (`UserBookings.jsx`)**: Upload zone drag-and-drop (`.ub-qr-upload-zone`) trong Cancel Modal (branch PAID), preview ảnh + nút xóa, tự upload Cloudinary khi confirm cancel, gửi URL trong body.
+   - **Frontend — Manager (`ManagerRefunds.jsx`)**: Hiển thị ảnh QR clickable (viền xanh `#10b981`, mở tab mới để quét).
+   - **API (`bookingApi.js`)**: Thêm `uploadRefundQr(file)`.
+
