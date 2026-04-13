@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import axiosClient from '../../api/axiosClient';
 import { notifyError, notifySuccess } from '../../hooks/useNotification';
+import ReportHistoryModal from './ReportHistoryModal';
 
 const TYPE_OPTIONS = [
   { value: 'ALL', label: 'Tất cả loại' },
@@ -28,14 +29,33 @@ const STATUS_BADGE = {
   REJECTED: { label: 'Từ chối', cls: 'bg-secondary' },
 };
 
+const REASON_MAP = {
+  // USER
+  NO_SHOW: 'Bùng kèo / không đến',
+  BAD_ATTITUDE: 'Thái độ không phù hợp',
+  SPAM: 'Spam / quấy rối',
+  SCAM: 'Có dấu hiệu lừa đảo',
+  // VENUE
+  NOT_AS_ADVERTISED: 'Cơ sở vật chất không đúng mô tả',
+  EXTRA_FEE: 'Thu thêm phụ phí sai quy định',
+  BAD_SERVICE: 'Thái độ phục vụ kém',
+  DOUBLE_BOOKING: 'Trùng lịch / sắp xếp không hợp lý',
+  // MATCHING_POST
+  INAPPROPRIATE: 'Nội dung phản cảm',
+  // BOOKING
+  PAID_NOT_RECORDED: 'Đã thanh toán chưa ghi nhận',
+  WRONG_AMOUNT: 'Số tiền bị trừ sai',
+  REFUND_ISSUE: 'Vấn đề hoàn tiền',
+  // Global
+  OTHER: 'Khác',
+};
+
 const ACTION_OPTIONS = [
   { value: 'NO_ACTION', label: 'Không hành động' },
-  { value: 'WARN_USER', label: 'Cảnh cáo người dùng' },
-  { value: 'LOCK_USER', label: 'Khóa người dùng' },
-  { value: 'WARN_VENUE', label: 'Cảnh cáo chủ sân' },
-  { value: 'LOCK_VENUE', label: 'Khóa cụm sân' },
-  { value: 'REMOVE_POST', label: 'Gỡ bài ghép sân' },
-  { value: 'REFUND', label: 'Hoàn tiền (chủ sân thực hiện — không tự tạo refund)' },
+  { value: 'WARN_USER', label: 'Cảnh báo', targets: ['USER', 'VENUE', 'MATCHING_POST', 'BOOKING'] },
+  { value: 'LOCK_USER', label: 'Khóa tài khoản', targets: ['USER', 'VENUE', 'MATCHING_POST', 'BOOKING'] },
+  { value: 'REMOVE_POST', label: 'Gỡ bài ghép sân', targets: ['MATCHING_POST'] },
+  { value: 'REFUND', label: 'Hoàn tiền (thủ công)', targets: ['BOOKING'] },
 ];
 
 export default function AdminReports() {
@@ -47,6 +67,7 @@ export default function AdminReports() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({ items: [], totalItems: 0, totalPages: 1, page: 1, pageSize: 20 });
   const [selected, setSelected] = useState(null);
+  const [historyId, setHistoryId] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   const load = useCallback(async () => {
@@ -176,7 +197,7 @@ export default function AdminReports() {
                         <div className="text-muted small">{r.reporter?.email || ''}</div>
                       </td>
                       <td>
-                        <div style={{ fontWeight: 800 }}>{r.reason}</div>
+                        <div style={{ fontWeight: 800 }}>{REASON_MAP[r.reason] || r.reason}</div>
                         {r.description && <div className="text-muted small" style={{ maxWidth: 420, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.description}</div>}
                       </td>
                       <td>
@@ -194,9 +215,14 @@ export default function AdminReports() {
                         {r.createdAt ? new Date(r.createdAt).toLocaleString('vi-VN') : '—'}
                       </td>
                       <td className="text-end">
-                        <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setSelected(r)}>
-                          <i className="feather-eye me-1" />Xem
-                        </button>
+                        <div className="btn-group">
+                          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setSelected(r)}>
+                            <i className="feather-eye me-1" />Xem
+                          </button>
+                          <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => setHistoryId(r.id)}>
+                            <i className="feather-clock me-1" />Lịch sử
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -244,7 +270,7 @@ export default function AdminReports() {
                   </div>
                   <div className="col-md-6">
                     <div className="text-muted small">Lý do</div>
-                    <div style={{ fontWeight: 900 }}>{selected.reason}</div>
+                    <div style={{ fontWeight: 900 }}>{REASON_MAP[selected.reason] || selected.reason}</div>
                   </div>
                   {selected.description && (
                     <div className="col-12">
@@ -307,7 +333,7 @@ export default function AdminReports() {
                         onChange={(e) => setSelected((s) => ({ ...s, adminAction: e.target.value }))}
                         disabled={actionLoading}
                       >
-                        {ACTION_OPTIONS.map((o) => (
+                        {ACTION_OPTIONS.filter((o) => o.value === 'NO_ACTION' || o.targets?.includes(selected.targetType)).map((o) => (
                           <option key={o.value} value={o.value}>{o.label}</option>
                         ))}
                       </select>
@@ -337,6 +363,12 @@ export default function AdminReports() {
             </div>
           </div>
         </div>
+      )}
+      {historyId && (
+        <ReportHistoryModal
+          reportId={historyId}
+          onClose={() => setHistoryId(null)}
+        />
       )}
     </>
   );

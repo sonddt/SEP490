@@ -212,6 +212,20 @@ public class AdminReportsController : ControllerBase
         if (status == "RESOLVED")
             await NotifyTargetUserAsync(report, cancellationToken);
 
+        // --- GHI LOG LỊCH SỬ ---
+        var log = new ViolationReportLog
+        {
+            Id = Guid.NewGuid(),
+            ReportId = report.Id,
+            AdminUserId = adminId,
+            Status = status,
+            AdminAction = action,
+            AdminNote = report.AdminNote,
+            CreatedAt = DateTime.UtcNow
+        };
+        _db.ViolationReportLogs.Add(log);
+        // -----------------------
+
         await _db.SaveChangesAsync(cancellationToken);
 
         var now = DateTime.UtcNow;
@@ -351,26 +365,40 @@ public class AdminReportsController : ControllerBase
         switch (action)
         {
             case "LOCK_USER":
+                Guid? userIdToLock = null;
                 if (report.TargetType == "USER")
                 {
-                    var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == report.TargetId, cancellationToken);
+                    userIdToLock = report.TargetId;
+                }
+                else if (report.TargetType == "VENUE")
+                {
+                    var venue = await _db.Venues.AsNoTracking().FirstOrDefaultAsync(v => v.Id == report.TargetId, cancellationToken);
+                    userIdToLock = venue?.OwnerUserId;
+                }
+                else if (report.TargetType == "MATCHING_POST")
+                {
+                    var post = await _db.MatchingPosts.AsNoTracking().FirstOrDefaultAsync(p => p.Id == report.TargetId, cancellationToken);
+                    userIdToLock = post?.CreatorUserId;
+                }
+                else if (report.TargetType == "BOOKING")
+                {
+                    var booking = await _db.Bookings.AsNoTracking().Include(b => b.Venue).FirstOrDefaultAsync(b => b.Id == report.TargetId, cancellationToken);
+                    userIdToLock = booking?.Venue?.OwnerUserId;
+                }
+
+                if (userIdToLock != null && userIdToLock != Guid.Empty)
+                {
+                    var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userIdToLock, cancellationToken);
                     if (user != null)
                     {
                         user.IsActive = false;
                         user.BlockedAt = DateTime.UtcNow;
-                        user.BlockedReason = report.AdminNote ?? $"Khoá do report: {report.Reason}";
+                        user.BlockedReason = report.AdminNote ?? $"Khoá tài khoản do vi phạm liên quan đến {report.TargetType}: {report.Reason}";
                     }
                 }
 
                 break;
-            case "LOCK_VENUE":
-                if (report.TargetType == "VENUE")
-                {
-                    var venue = await _db.Venues.FirstOrDefaultAsync(v => v.Id == report.TargetId, cancellationToken);
-                    if (venue != null) venue.IsActive = false;
-                }
 
-                break;
             case "REMOVE_POST":
                 if (report.TargetType == "MATCHING_POST")
                 {
@@ -379,7 +407,7 @@ public class AdminReportsController : ControllerBase
                 }
 
                 break;
-            // WARN_* / REFUND / NO_ACTION: không tác động DB tự động
+            // WARN_USER / REFUND / NO_ACTION: không tác động DB tự động (chỉ gửi thông báo qua NotifyTargetUserAsync)
         }
     }
 
@@ -435,6 +463,28 @@ public class AdminReportsController : ControllerBase
             body,
             new { reportId = report.Id, targetType = report.TargetType, targetId = report.TargetId },
             cancellationToken: cancellationToken);
+    }
+
+    [HttpGet("{id}/history")]
+    public async Task<IActionResult> GetHistory(Guid id, CancellationToken cancellationToken)
+    {
+        var logs = await _db.ViolationReportLogs
+            .AsNoTracking()
+            .Include(l => l.AdminUser)
+            .Where(l => l.ReportId == id)
+            .OrderByDescending(l => l.CreatedAt)
+            .Select(l => new
+            {
+                l.Id,
+                l.CreatedAt,
+                l.Status,
+                l.AdminAction,
+                l.AdminNote,
+                AdminName = l.AdminUser.FullName
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(logs);
     }
 
     private bool TryGetAdminId(out Guid adminId)

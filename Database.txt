@@ -43,6 +43,7 @@ DROP TABLE IF EXISTS refund_request_files;
 DROP TABLE IF EXISTS files;
 
 -- ADMIN
+DROP TABLE IF EXISTS violation_report_logs;
 DROP TABLE IF EXISTS violation_reports;
 DROP TABLE IF EXISTS manager_profiles;
 DROP TABLE IF EXISTS manager_profile_requests;
@@ -674,6 +675,18 @@ CREATE TABLE violation_reports (
     INDEX idx_violation_reports_created (created_at),
     INDEX idx_violation_reports_refund_sla (status, refund_deadline_at),
     FOREIGN KEY (reporter_user_id) REFERENCES users(id),
+    FOREIGN KEY (admin_user_id) REFERENCES users(id)
+);
+
+CREATE TABLE violation_report_logs (
+    id CHAR(36) PRIMARY KEY,
+    report_id CHAR(36) NOT NULL,
+    admin_user_id CHAR(36) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    admin_action VARCHAR(50),
+    admin_note TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (report_id) REFERENCES violation_reports(id) ON DELETE CASCADE,
     FOREIGN KEY (admin_user_id) REFERENCES users(id)
 );
 

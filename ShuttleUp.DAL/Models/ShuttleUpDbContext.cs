@@ -74,6 +74,7 @@ public partial class ShuttleUpDbContext : DbContext
     public virtual DbSet<VenueReview> VenueReviews { get; set; }
 
     public virtual DbSet<ViolationReport> ViolationReports { get; set; }
+    public virtual DbSet<ViolationReportLog> ViolationReportLogs { get; set; }
 
     public virtual DbSet<ManagerProfile> ManagerProfiles { get; set; }
 
@@ -1656,6 +1657,36 @@ public partial class ShuttleUpDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(d => d.ToUserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ViolationReportLog>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("violation_report_logs");
+
+            entity.HasIndex(e => e.ReportId, "report_id");
+            entity.HasIndex(e => e.AdminUserId, "admin_user_id");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ReportId).HasColumnName("report_id");
+            entity.Property(e => e.AdminUserId).HasColumnName("admin_user_id");
+            entity.Property(e => e.Status).HasMaxLength(50).HasColumnName("status");
+            entity.Property(e => e.AdminAction).HasMaxLength(50).HasColumnName("admin_action");
+            entity.Property(e => e.AdminNote).HasColumnType("text").HasColumnName("admin_note");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+
+            entity.HasOne(d => d.Report).WithMany(p => p.Logs)
+                .HasForeignKey(d => d.ReportId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("violation_report_logs_ibfk_1");
+
+            entity.HasOne(d => d.AdminUser).WithMany()
+                .HasForeignKey(d => d.AdminUserId)
+                .HasConstraintName("violation_report_logs_ibfk_2");
         });
 
         OnModelCreatingPartial(modelBuilder);

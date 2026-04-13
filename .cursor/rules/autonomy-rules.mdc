@@ -1,0 +1,5 @@
+---
+description: Rule for Antigravity's autonomy in research and planning phases.
+globs: 
+---
+Antigravity được phép tự chủ hoàn toàn trong giai đoạn nghiên cứu (Research) và đề xuất thiết kế. Chỉ dừng lại để xin ý kiến ở giai đoạn cuối của Implementation Plan trước khi thực thi code.
