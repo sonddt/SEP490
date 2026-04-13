@@ -438,7 +438,12 @@ public class MatchingController : ControllerBase
             PlayEndTime = lastItem.EndTime.HasValue ? TimeOnly.FromDateTime(lastItem.EndTime.Value) : null,
             VenueId = booking.VenueId,
             CourtName = firstItem.Court?.Name,
-            PricePerSlot = items.Sum(i => i.FinalPrice ?? 0) / Math.Max(dto.RequiredPlayers + 1, 1),
+            PricePerSlot = dto.ExpenseSharing switch
+            {
+                "host_pays" => 0,
+                "negotiable" => null,
+                _ => items.Sum(i => i.FinalPrice ?? 0) / Math.Max(dto.RequiredPlayers + 1, 1)
+            },
             RequiredPlayers = dto.RequiredPlayers,
             SkillLevel = dto.SkillLevel,
             GenderPref = dto.GenderPref,
@@ -514,12 +519,43 @@ public class MatchingController : ControllerBase
             if (post.MatchingMembers.Count > maxMembers)
                 return BadRequest(new { message = "Số người cần tìm không thể nhỏ hơn số thành viên hiện có trong nhóm." });
             post.RequiredPlayers = dto.RequiredPlayers.Value;
+
+            // Recalculate PricePerSlot
+            if (post.ExpenseSharing != "host_pays" && post.ExpenseSharing != "negotiable")
+            {
+                var items = await _db.MatchingPostItems.AsNoTracking()
+                    .Include(i => i.BookingItem)
+                    .Where(i => i.PostId == id)
+                    .Select(i => i.BookingItem)
+                    .ToListAsync();
+                var totalMoney = items.Sum(i => i?.FinalPrice ?? 0);
+                post.PricePerSlot = totalMoney / Math.Max(post.RequiredPlayers + 1, 1);
+            }
         }
 
         if (dto.Title != null) post.Title = dto.Title;
         if (dto.SkillLevel != null) post.SkillLevel = dto.SkillLevel;
         if (dto.GenderPref != null) post.GenderPref = dto.GenderPref;
-        if (dto.ExpenseSharing != null) post.ExpenseSharing = dto.ExpenseSharing;
+        if (dto.ExpenseSharing != null)
+        {
+            post.ExpenseSharing = dto.ExpenseSharing;
+            // Update PricePerSlot based on new sharing method
+            var items = await _db.MatchingPostItems.AsNoTracking()
+                .Include(i => i.BookingItem)
+                .Where(i => i.PostId == id)
+                .Select(i => i.BookingItem)
+                .ToListAsync();
+            
+            var totalMoney = items.Sum(i => i?.FinalPrice ?? 0);
+            var people = post.RequiredPlayers + 1;
+
+            post.PricePerSlot = dto.ExpenseSharing switch
+            {
+                "host_pays" => 0,
+                "negotiable" => null,
+                _ => totalMoney / Math.Max(people, 1)
+            };
+        }
         if (dto.PlayPurpose != null) post.PlayPurpose = dto.PlayPurpose;
         if (dto.Notes != null) post.Notes = dto.Notes;
         post.UpdatedAt = DateTime.UtcNow;

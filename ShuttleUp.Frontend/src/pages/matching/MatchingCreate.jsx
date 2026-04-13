@@ -143,7 +143,20 @@ export default function MatchingCreate() {
 
   const selectedItems = selectedBooking?.items?.filter((i) => selectedItemIds.includes(i.id)) || [];
   const totalPrice = selectedItems.reduce((sum, i) => sum + (i.price || 0), 0);
-  const pricePerPerson = form.requiredPlayers > 0 ? Math.round(totalPrice / (form.requiredPlayers + 1)) : totalPrice;
+
+  const renderPricePerPerson = () => {
+    if (form.expenseSharing === 'negotiable') return 'Thỏa thuận';
+    if (form.expenseSharing === 'host_pays') return 'Miễn phí';
+    
+    if (form.expenseSharing === 'female_free') {
+      const splitPrice = form.requiredPlayers > 0 ? Math.round(totalPrice / (form.requiredPlayers + 1)) : totalPrice;
+      return `Nam: ~${formatPrice(splitPrice)} / Nữ: 0đ`;
+    }
+
+    // split_equal (default)
+    const splitPrice = form.requiredPlayers > 0 ? Math.round(totalPrice / (form.requiredPlayers + 1)) : totalPrice;
+    return formatPrice(splitPrice);
+  };
 
   return (
     <>
@@ -563,7 +576,7 @@ export default function MatchingCreate() {
                           <h6>{form.title || `Tìm ${form.requiredPlayers} người đánh cầu lông`}</h6>
                           <p><i className="feather-map-pin"></i> {selectedBooking?.venueName}</p>
                           <p><i className="feather-clock"></i> {selectedItems.length} ca chơi</p>
-                          <p><i className="feather-dollar-sign"></i> {formatPrice(pricePerPerson)}/người (chia {form.requiredPlayers + 1} người)</p>
+                          <p><i className="feather-dollar-sign"></i> {renderPricePerPerson()} {form.expenseSharing === 'split_equal' && `(chia ${form.requiredPlayers + 1} người)`}</p>
                           {form.skillLevel && <span className="badge bg-info me-1">{skillOptions.find(o => o.value === form.skillLevel)?.label}</span>}
                           {form.genderPref && <span className="badge bg-secondary me-1">{form.genderPref}</span>}
                           <span className="badge bg-success">{expenseOptions.find(o => o.value === form.expenseSharing)?.label}</span>
@@ -648,7 +661,7 @@ export default function MatchingCreate() {
                                 </div>
                                 <div style={{ flex: 1, padding: '20px 16px', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
                                     <div style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Chi phí / ng</div>
-                                    <div style={{ fontSize: '20px', fontWeight: '800', color: '#1e293b' }}>{formatPrice(pricePerPerson)}</div>
+                                    <div style={{ fontSize: '18px', fontWeight: '800', color: '#1e293b' }}>{renderPricePerPerson()}</div>
                                 </div>
                             </div>
                             
