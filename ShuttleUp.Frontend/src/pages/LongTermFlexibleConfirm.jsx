@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import LongTermBookingSteps from '../components/booking/LongTermBookingSteps';
 import { useAuth } from '../context/AuthContext';
@@ -64,6 +64,11 @@ export default function LongTermFlexibleConfirm() {
     return map;
   }, [selectedSlots, date]);
 
+  /* ── Unique booked dates from selected slots ── */
+  const bookedDatesIso = useMemo(() => {
+    return [...new Set(selectedSlots.map(s => s.dateIso || date))].sort();
+  }, [selectedSlots, date]);
+
   const [form, setForm] = useState({
     name: state.customerName || (user?.fullName ?? ''),
     phone: (state.customerPhone || (user?.phoneNumber ?? '')).trim(),
@@ -78,10 +83,18 @@ export default function LongTermFlexibleConfirm() {
   const [submitError, setSubmitError] = useState('');
   
   const [discountInfo, setDiscountInfo] = useState(null);
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState('');
+  const [couponError, setCouponError] = useState('');
+  const [previewingDiscount, setPreviewingDiscount] = useState(false);
 
+  /** Giữ số giảm "đợt dài hạn" lúc chưa có mã — để tách dòng nếu API chỉ trả discountAmount tổng. */
+  const longTermDiscountBaselineRef = useRef(0);
+
+  /* ── Initial discount preview (no coupon) ── */
   useEffect(() => {
     if (!venueId || !totalPrice || !selectedSlots.length) return;
-    const sortedDates = selectedSlots.map(s => s.dateIso || date).sort();
+    const sortedDates = bookedDatesIso;
     const dStart = new Date(sortedDates[0]);
     const dEnd = new Date(sortedDates[sortedDates.length - 1]);
     const dDuration = Math.round(Math.abs(dEnd - dStart) / (1000 * 60 * 60 * 24)) + 1;
@@ -90,10 +103,22 @@ export default function LongTermFlexibleConfirm() {
       venueId,
       baseAmount: totalPrice,
       daysDuration: dDuration,
-      bookedDates: [...new Set(sortedDates)],
+      bookedDates: sortedDates,
       couponCode: ''
     }).then(res => setDiscountInfo(res)).catch(() => {});
-  }, [venueId, totalPrice, selectedSlots, date]);
+  }, [venueId, totalPrice, selectedSlots, date, bookedDatesIso]);
+
+  /* ── Track long-term discount baseline (for split display) ── */
+  useEffect(() => {
+    if (!discountInfo) return;
+    if (!appliedCoupon) {
+      const lt = Number(discountInfo.longTermDiscountAmount ?? 0);
+      const cp = Number(discountInfo.couponDiscountAmount ?? 0);
+      const total = Number(discountInfo.discountAmount ?? 0);
+      if (lt > 0) longTermDiscountBaselineRef.current = lt;
+      else if (cp === 0 && total > 0) longTermDiscountBaselineRef.current = total;
+    }
+  }, [discountInfo, appliedCoupon]);
 
   useEffect(() => {
     if (!localStorage.getItem('token')) return;
@@ -116,6 +141,62 @@ export default function LongTermFlexibleConfirm() {
       })
       .catch(() => {});
   }, []);
+
+  /* ── Coupon functions ── */
+  const buildDiscountPayload = (code) => {
+    const sortedDates = bookedDatesIso;
+    const dStart = new Date(sortedDates[0]);
+    const dEnd = new Date(sortedDates[sortedDates.length - 1]);
+    const dDuration = Math.round(Math.abs(dEnd - dStart) / (1000 * 60 * 60 * 24)) + 1;
+    return {
+      venueId,
+      baseAmount: totalPrice,
+      daysDuration: dDuration,
+      bookedDates: sortedDates,
+      couponCode: code,
+    };
+  };
+
+  const fetchCouponPreview = async (code) => {
+    setPreviewingDiscount(true);
+    setCouponError('');
+    try {
+      const resp = await previewDiscount(buildDiscountPayload(code));
+      if (resp.errorMsg || resp.isValidCoupon === false) {
+        setCouponError(resp.errorMsg || 'Mã giảm giá không hợp lệ.');
+        setAppliedCoupon('');
+      } else {
+        setDiscountInfo(resp);
+        setAppliedCoupon(code);
+      }
+    } catch (e) {
+      setCouponError(e.response?.data?.message || 'Mã giảm giá không hợp lệ.');
+      setAppliedCoupon('');
+    } finally {
+      setPreviewingDiscount(false);
+    }
+  };
+
+  const handleApplyCoupon = () => {
+    if (!couponCode.trim()) { setCouponError('Vui lòng nhập mã giảm giá'); return; }
+    fetchCouponPreview(couponCode.trim());
+  };
+
+  const handleRemoveCoupon = async () => {
+    setCouponCode('');
+    setAppliedCoupon('');
+    setCouponError('');
+    if (!venueId || !totalPrice || !selectedSlots.length) return;
+    setPreviewingDiscount(true);
+    try {
+      const resp = await previewDiscount(buildDiscountPayload(''));
+      setDiscountInfo(resp);
+    } catch {
+      // Giữ giá trị cũ nếu API lỗi
+    } finally {
+      setPreviewingDiscount(false);
+    }
+  };
 
   const validate = () => {
     const e = {};
@@ -150,6 +231,7 @@ export default function LongTermFlexibleConfirm() {
         contactName: form.name.trim(),
         contactPhone: form.phone.trim(),
         note: form.note.trim() || undefined,
+        couponCode: appliedCoupon || undefined,
         bookingId: existingBookingId || undefined,
       });
       const bookingId = result.bookingId ?? result.BookingId;
@@ -181,14 +263,35 @@ export default function LongTermFlexibleConfirm() {
     );
   }
 
-  const flexLongTermDiscount = Number(discountInfo?.longTermDiscountAmount ?? 0);
-  const flexCouponDiscount = Number(discountInfo?.couponDiscountAmount ?? 0);
-  const flexLegacyDiscount = Number(discountInfo?.discountAmount ?? 0);
-  const flexLongTermLineAmount =
-    flexLongTermDiscount > 0
-      ? flexLongTermDiscount
-      : (flexCouponDiscount === 0 && flexLegacyDiscount > 0 ? flexLegacyDiscount : 0);
-  const flexHasLongTermDiscount = flexLongTermLineAmount > 0;
+  /* ── Discount display calculations (split long-term vs coupon) ── */
+  const displayPrice = discountInfo?.finalAmount ?? totalPrice;
+
+  const legacyDiscountTotal = Number(discountInfo?.discountAmount ?? 0);
+  let longTermDiscountAmount = Number(discountInfo?.longTermDiscountAmount ?? 0);
+  let couponDiscountAmount = Number(discountInfo?.couponDiscountAmount ?? 0);
+
+  if (
+    appliedCoupon &&
+    legacyDiscountTotal > 0 &&
+    longTermDiscountAmount === 0 &&
+    couponDiscountAmount === 0
+  ) {
+    const base = longTermDiscountBaselineRef.current;
+    if (base > 0 && legacyDiscountTotal >= base) {
+      longTermDiscountAmount = base;
+      couponDiscountAmount = legacyDiscountTotal - base;
+    } else if (legacyDiscountTotal > 0) {
+      couponDiscountAmount = legacyDiscountTotal;
+    }
+  }
+
+  const hasSplitDiscount =
+    discountInfo &&
+    (longTermDiscountAmount > 0 || couponDiscountAmount > 0);
+  const showLegacyDiscountRow =
+    discountInfo && !hasSplitDiscount && legacyDiscountTotal > 0;
+  const anyDiscount =
+    hasSplitDiscount || showLegacyDiscountRow;
 
   return (
     <div className="main-wrapper" style={{ paddingTop: '96px' }}>
@@ -235,7 +338,7 @@ export default function LongTermFlexibleConfirm() {
                       <small className="text-muted">Tổng giờ</small>
                     </div>
                     <div className="text-center">
-                      <h4 className="primary-text mb-0">{Number(discountInfo?.finalAmount || totalPrice).toLocaleString('vi-VN')} VNĐ</h4>
+                      <h4 className="primary-text mb-0">{Math.round(displayPrice).toLocaleString('vi-VN')} VNĐ</h4>
                       <small className="text-muted">Tổng thanh toán</small>
                     </div>
                   </div>
@@ -247,7 +350,7 @@ export default function LongTermFlexibleConfirm() {
             </p>
           </section>
 
-          <div className="row">
+          <div className="row g-lg-5">
             <div className="col-12 col-lg-8">
               <section className="card booking-form mb-4">
                 <h3 className="border-bottom">Thông tin liên hệ</h3>
@@ -351,7 +454,54 @@ export default function LongTermFlexibleConfirm() {
 
             <div className="col-12 col-lg-4">
               <aside className="card booking-details sticky-top" style={{ top: '110px' }}>
-                <h3 className="border-bottom">Tóm tắt đơn</h3>
+                {/* ── Mã giảm giá ── */}
+                <h3 className="border-bottom">Mã giảm giá</h3>
+                <p className="text-muted mb-3" style={{ fontSize: 12, lineHeight: 1.5 }}>
+                  <i className="feather-info me-1" style={{ fontSize: 11 }} />
+                  Bạn có thể theo dõi các chương trình khuyến mãi và giảm giá ở trang <Link to="/featured" className="fw-semibold" style={{ color: 'var(--primary-color)' }}>Nổi bật</Link>.
+                </p>
+                <div className="mb-4">
+                  {appliedCoupon && discountInfo ? (
+                    <div className="alert alert-success d-flex align-items-center justify-content-between p-2 mb-0">
+                      <div>
+                        <i className="feather-check-circle me-1" /> Đã áp dụng mã <strong>{appliedCoupon}</strong>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger p-1"
+                        onClick={() => { void handleRemoveCoupon(); }}
+                        disabled={previewingDiscount}
+                        title="Xóa mã"
+                      >
+                        <i className="feather-x" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="input-group">
+                        <input
+                          type="text"
+                          className={`form-control ${couponError ? 'is-invalid' : ''}`}
+                          placeholder="Nhập mã voucher (nếu có)"
+                          value={couponCode}
+                          onChange={e => { setCouponCode(e.target.value); setCouponError(''); }}
+                        />
+                        <button
+                          className="btn btn-primary"
+                          type="button"
+                          onClick={handleApplyCoupon}
+                          disabled={previewingDiscount || !couponCode.trim()}
+                        >
+                          {previewingDiscount ? <i className="fas fa-spinner fa-spin" /> : 'Áp dụng'}
+                        </button>
+                      </div>
+                      {couponError && <div className="text-danger small mt-1">{couponError}</div>}
+                    </>
+                  )}
+                </div>
+
+                {/* ── Tóm tắt đơn ── */}
+                <h3 className="border-bottom mt-2">Tóm tắt đơn</h3>
                 <ul className="list-unstyled">
                   <li className="mb-2">
                     <i className="fa-regular fa-building me-2 text-primary" />
@@ -386,22 +536,49 @@ export default function LongTermFlexibleConfirm() {
                   <span>Tổng giờ</span>
                   <strong>{totalHours}</strong>
                 </div>
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <span>Tổng tiền gốc</span>
-                  <strong className={flexHasLongTermDiscount ? "text-decoration-line-through text-muted" : "primary-text"}>
-                    {Number(totalPrice).toLocaleString('vi-VN')} VNĐ
+                <div className="d-flex justify-content-between align-items-center">
+                  <span>Giá gốc</span>
+                  <strong className={anyDiscount ? 'text-decoration-line-through text-muted' : 'primary-text fs-5'}>
+                    {Math.round(totalPrice).toLocaleString('vi-VN')} VNĐ
                   </strong>
                 </div>
-                {flexHasLongTermDiscount && (
-                  <div className="d-flex justify-content-between align-items-center mb-2 text-success">
-                    <span><i className="feather-tag me-1" /> Giảm giá đợt dài hạn</span>
-                    <strong>- {flexLongTermLineAmount.toLocaleString('vi-VN')} VNĐ</strong>
+                {preview.sessionCount > 0 && (
+                  <div className="d-flex justify-content-end text-muted mb-2 mt-1" style={{ fontSize: '12px' }}>
+                    {Math.round(totalPrice / preview.sessionCount).toLocaleString('vi-VN')}đ × {preview.sessionCount} buổi
                   </div>
                 )}
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <span className="fw-bold">Thành tiền</span>
-                  <strong className="primary-text fs-5">{Number(discountInfo?.finalAmount || totalPrice).toLocaleString('vi-VN')} VNĐ</strong>
-                </div>
+                {longTermDiscountAmount > 0 && (
+                  <div className="d-flex justify-content-between align-items-center mb-2 text-success">
+                    <span><i className="feather-tag me-1" />Giảm giá đợt dài hạn</span>
+                    <strong>-{Math.round(longTermDiscountAmount).toLocaleString('vi-VN')} VNĐ</strong>
+                  </div>
+                )}
+                {couponDiscountAmount > 0 && (
+                  <div className="d-flex justify-content-between align-items-center mb-2 text-success">
+                    <span>
+                      <i className="feather-gift me-1" />
+                      Giảm giá do mã ưu đãi{appliedCoupon ? ` (${appliedCoupon})` : ''}
+                    </span>
+                    <strong>-{couponDiscountAmount.toLocaleString('vi-VN')} VNĐ</strong>
+                  </div>
+                )}
+                {showLegacyDiscountRow && (
+                  <div className="d-flex justify-content-between align-items-center mb-2 text-success">
+                    <span><i className="feather-tag me-1" />Giảm giá</span>
+                    <strong>-{legacyDiscountTotal.toLocaleString('vi-VN')} VNĐ</strong>
+                  </div>
+                )}
+                {anyDiscount ? (
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <span className="fw-bold">Thành tiền</span>
+                    <strong className="primary-text fs-4">{Number(discountInfo.finalAmount).toLocaleString('vi-VN')} VNĐ</strong>
+                  </div>
+                ) : (
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <span className="fw-bold">Thành tiền</span>
+                    <strong className="primary-text fs-4">{Math.round(totalPrice).toLocaleString('vi-VN')} VNĐ</strong>
+                  </div>
+                )}
                 <div className="d-grid gap-2">
                   <button
                     type="button"

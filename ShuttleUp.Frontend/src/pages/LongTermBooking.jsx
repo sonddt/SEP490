@@ -481,6 +481,18 @@ export default function LongTermBooking() {
   const handleNext = () => {
     if (!preview?.slotCount) return;
     const availItems = (preview.items || []).filter(i => !i.isUnavailable);
+
+    // Extract actual available dates (ISO yyyy-MM-dd) — excludes fully-booked days
+    const availableBookedDates = [...new Set(
+      availItems.map(i => {
+        const st = i.startTime || i.start || '';
+        return typeof st === 'string' ? st.split('T')[0] : '';
+      }).filter(Boolean)
+    )].sort();
+
+    // Session count = unique available dates (not simply range-based)
+    const actualSessionCount = availableBookedDates.length;
+
     navigate('/booking/long-term/confirm', {
       state: {
         venueId,
@@ -497,9 +509,10 @@ export default function LongTermBooking() {
         autoSwitchCourt: courtId ? autoSwitchCourt : false,
         pricePreference: (!courtId || autoSwitchCourt) ? pricePreference : null,
         slotDuration,
+        availableBookedDates,
         preview: {
           slotCount: availItems.length,
-          sessionCount: preview.sessionCount,
+          sessionCount: actualSessionCount,
           totalAmount: availItems.reduce((s, i) => s + (i.price || 0), 0),
           discountInfo: preview.discountInfo,
           isFlexible: preview.isFlexible,

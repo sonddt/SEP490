@@ -455,3 +455,23 @@ Kết bạn & quan hệ xã hội (Player):
    - **Frontend — Manager (`ManagerRefunds.jsx`)**: Hiển thị ảnh QR clickable (viền xanh `#10b981`, mở tab mới để quét).
    - **API (`bookingApi.js`)**: Thêm `uploadRefundQr(file)`.
 
+---
+
+## 13 tháng 4, 2026 (Phần 2: Fix bug Giảm giá & Mã voucher Linh hoạt)
+
+1. **Sửa lỗi tính streak giảm giá khi vướng ngày hết sân (Long-term Booking):**
+   - **Vấn đề**: Ở màn hình Xác nhận (`LongTermConfirm.jsx`), hệ thống tự sinh lại danh sách ngày từ khoảng `rangeStart/End` và `daysOfWeek`, dẫn đến việc bao gồm cả những ngày đã hết sân (ví dụ: ngày 14/4 hết sân vẫn hiện trong "Lịch tham gia" và tính vào streak 7 ngày liên tục).
+   - **Giải pháp**: 
+     - Tại Bước 1 (`LongTermBooking.jsx`), tính toán danh sách `availableBookedDates` (ISO yyyy-MM-dd) bằng cách lọc bỏ các slot `isUnavailable`.
+     - Truyền `availableBookedDates` sang Bước 2 qua `location.state`.
+     - Bước 2 (`LongTermConfirm.jsx`) sử dụng danh sách ngày thực tế này để: (1) Hiển thị chip "Lịch tham gia" (không còn hiện ngày hết sân), (2) Gửi lên API `previewDiscount` (streak bị ngắt đúng thực tế, không bị giảm giá sai).
+   - **Backend**: Đã kiểm tra `CreateLongTermBooking` trong `BookingsController.cs` đã dùng đúng danh sách `availableItems` để tính giảm giá trước khi lưu, nên không cần sửa code C#.
+
+2. **Thêm mã giảm giá cho Đặt lịch dài hạn Linh hoạt (`LongTermFlexibleConfirm.jsx`):**
+   - **Bổ sung UI**: Thêm khối nhập mã Voucher (Input + Áp dụng/Xóa) đồng bộ với giao diện của luồng đặt lịch cố định.
+   - **Logic Tách dòng Giảm giá**: Sử dụng `longTermDiscountBaselineRef` để tách minh bạch số tiền giảm do "Đợt dài hạn" (5%/50%) và giảm do "Mã ưu đãi" (voucher).
+   - **API Integration**: `handleSubmit` cập nhật để gửi kèm `couponCode` xuống backend thay vì bỏ trống.
+   - **Backend Verification**: Xác nhận `LongTermFlexibleScheduleDto` và endpoint `long-term/flexible` đã hỗ trợ `CouponCode` và gọi `CalculateDiscountAsync` với tham số này.
+   - **Layout**: Chuyển sang `row g-lg-5` để UI rộng rãi và hiện đại hơn.
+
+

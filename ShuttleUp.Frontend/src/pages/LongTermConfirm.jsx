@@ -79,6 +79,7 @@ export default function LongTermConfirm() {
     autoSwitchCourt = false,
     pricePreference = null,
     slotDuration: stateSlotDuration = 60,
+    availableBookedDates = null,
   } = state;
 
   // Detect bookingId from state (passed back from Payment page) or URL search params (browser back button)
@@ -144,15 +145,21 @@ export default function LongTermConfirm() {
   useEffect(() => {
     if (!venueId || !totalPrice || !rangeStart || !rangeEnd) return;
     const daysDuration = computeDaysDuration(rangeStart, rangeEnd);
-    // Compute actual booked dates for consecutive-day discount
-    const usedDayNums = daysOfWeek?.length > 0
-      ? daysOfWeek.map(Number)
-      : (dailySchedules?.map(ds => Number(ds.dayOfWeek)) || []);
-    const bookedDates = computeBookedDatesIso(rangeStart, rangeEnd, usedDayNums);
+    // Use actual available dates from preview (excludes fully-booked days)
+    let bookedDates;
+    if (availableBookedDates && availableBookedDates.length > 0) {
+      bookedDates = availableBookedDates;
+    } else {
+      // Fallback: compute from range + daysOfWeek (legacy behavior)
+      const usedDayNums = daysOfWeek?.length > 0
+        ? daysOfWeek.map(Number)
+        : (dailySchedules?.map(ds => Number(ds.dayOfWeek)) || []);
+      bookedDates = computeBookedDatesIso(rangeStart, rangeEnd, usedDayNums);
+    }
     previewDiscount({ venueId, baseAmount: totalPrice, daysDuration, bookedDates, couponCode: '' })
       .then(res => setDiscountInfo(res))
       .catch(() => {});
-  }, [venueId, totalPrice, rangeStart, rangeEnd]);
+  }, [venueId, totalPrice, rangeStart, rangeEnd, availableBookedDates]);
 
   useEffect(() => {
     if (!discountInfo) return;
@@ -170,10 +177,16 @@ export default function LongTermConfirm() {
     setCouponError('');
     try {
       const daysDuration = computeDaysDuration(rangeStart, rangeEnd);
-      const usedDayNums = daysOfWeek?.length > 0
-        ? daysOfWeek.map(Number)
-        : (dailySchedules?.map(ds => Number(ds.dayOfWeek)) || []);
-      const bookedDates = computeBookedDatesIso(rangeStart, rangeEnd, usedDayNums);
+      // Use actual available dates from preview (excludes fully-booked days)
+      let bookedDates;
+      if (availableBookedDates && availableBookedDates.length > 0) {
+        bookedDates = availableBookedDates;
+      } else {
+        const usedDayNums = daysOfWeek?.length > 0
+          ? daysOfWeek.map(Number)
+          : (dailySchedules?.map(ds => Number(ds.dayOfWeek)) || []);
+        bookedDates = computeBookedDatesIso(rangeStart, rangeEnd, usedDayNums);
+      }
       const resp = await previewDiscount({ venueId, baseAmount: totalPrice, daysDuration, bookedDates, couponCode: code });
       if (resp.errorMsg || resp.isValidCoupon === false) {
         setCouponError(resp.errorMsg || 'Mã giảm giá không hợp lệ.');
@@ -203,10 +216,16 @@ export default function LongTermConfirm() {
     setPreviewingDiscount(true);
     try {
       const daysDuration = computeDaysDuration(rangeStart, rangeEnd);
-      const usedDayNums = daysOfWeek?.length > 0
-        ? daysOfWeek.map(Number)
-        : (dailySchedules?.map(ds => Number(ds.dayOfWeek)) || []);
-      const bookedDates = computeBookedDatesIso(rangeStart, rangeEnd, usedDayNums);
+      // Use actual available dates from preview (excludes fully-booked days)
+      let bookedDates;
+      if (availableBookedDates && availableBookedDates.length > 0) {
+        bookedDates = availableBookedDates;
+      } else {
+        const usedDayNums = daysOfWeek?.length > 0
+          ? daysOfWeek.map(Number)
+          : (dailySchedules?.map(ds => Number(ds.dayOfWeek)) || []);
+        bookedDates = computeBookedDatesIso(rangeStart, rangeEnd, usedDayNums);
+      }
       const resp = await previewDiscount({ venueId, baseAmount: totalPrice, daysDuration, bookedDates, couponCode: '' });
       setDiscountInfo(resp);
     } catch {
@@ -297,8 +316,17 @@ export default function LongTermConfirm() {
   }, [rangeStart, rangeEnd, usedDays]);
 
   const sessionChips = useMemo(() => {
+    // Use actual available dates (excludes fully-booked days) when available
+    if (availableBookedDates && availableBookedDates.length > 0) {
+      return availableBookedDates.map(iso => {
+        // Convert ISO "yyyy-MM-dd" to "dd/MM/yyyy"
+        const [y, m, d] = iso.split('-');
+        return `${d}/${m}/${y}`;
+      });
+    }
+    // Fallback: generate from range + usedDays (legacy behavior)
     return generateDates(rangeStart, rangeEnd, usedDays);
-  }, [rangeStart, rangeEnd, usedDays]);
+  }, [rangeStart, rangeEnd, usedDays, availableBookedDates]);
 
   if (!venueId || !preview) {
     return (
