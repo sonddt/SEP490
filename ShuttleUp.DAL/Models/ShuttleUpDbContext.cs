@@ -905,6 +905,9 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.RefundAccountHolder)
                 .HasMaxLength(255)
                 .HasColumnName("refund_account_holder");
+            entity.Property(e => e.RefundQrImageUrl)
+                .HasMaxLength(2048)
+                .HasColumnName("refund_qr_image_url");
             entity.Property(e => e.PlayerNote).HasColumnName("player_note");
             entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason");
             entity.Property(e => e.ManagerNote).HasColumnName("manager_note");
