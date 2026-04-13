@@ -474,4 +474,24 @@ Kết bạn & quan hệ xã hội (Player):
    - **Backend Verification**: Xác nhận `LongTermFlexibleScheduleDto` và endpoint `long-term/flexible` đã hỗ trợ `CouponCode` và gọi `CalculateDiscountAsync` với tham số này.
    - **Layout**: Chuyển sang `row g-lg-5` để UI rộng rãi và hiện đại hơn.
 
+---
+
+## 13 tháng 4, 2026 (Matching Create — Chuẩn hoá giá thực tế theo đơn đã giảm)
+
+1. **Backend (`MatchingController.cs`) — `GET /api/matching/bookings`:**
+   - Thêm logic phân bổ giá thực tế theo từng `booking_item` bằng tỷ lệ đơn hàng: dựa trên `TotalAmount` và `FinalAmount` của booking.
+   - Trả `items[].price` theo chi phí thực chi (sau ưu đãi/coupon), thay vì dùng trực tiếp `booking_items.final_price`.
+   - Bổ sung cờ `hasDiscount` để frontend hiển thị ghi chú minh bạch khi đơn có áp ưu đãi.
+   - Cách phân bổ có xử lý làm tròn và dồn phần chênh vào ca cuối để tổng các ca khớp tổng thanh toán thực tế của đơn.
+
+2. **Backend (`MatchingController.cs`) — Tạo/Sửa bài đăng matching:**
+   - `CreatePost` và phần recalculation trong `UpdatePost` chuyển sang dùng tổng chi phí thực tế của các ca đã chọn (không còn dùng tổng giá gốc từ `final_price` của item).
+   - `pricePerSlot` cho mô hình chia đều (`split_equal` và các nhánh có tính chia tiền) phản ánh đúng số tiền thực trả của chủ sân.
+
+3. **Frontend (`MatchingCreate.jsx`) — Luồng 4 bước tạo bài:**
+   - Giữ nguyên công thức tính `totalPrice` và `renderPricePerPerson` theo `items[].price` từ API (nay đã là giá thực tế).
+   - Thêm ghi chú tại Step 2 và Step 4 khi `hasDiscount = true`:
+     - "Giá đã bao gồm các ưu đãi/mã giảm giá áp dụng cho đơn hàng này".
+   - Mục tiêu: người dùng không còn thấy lệch giữa tổng ở Step 1 và giá các ca ở Step 2/3/4.
+
 

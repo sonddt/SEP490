@@ -143,6 +143,7 @@ export default function MatchingCreate() {
 
   const selectedItems = selectedBooking?.items?.filter((i) => selectedItemIds.includes(i.id)) || [];
   const totalPrice = selectedItems.reduce((sum, i) => sum + (i.price || 0), 0);
+  const bookingHasDiscount = Boolean(selectedBooking?.hasDiscount);
 
   const renderPricePerPerson = () => {
     if (form.expenseSharing === 'negotiable') return 'Thỏa thuận';
@@ -267,6 +268,11 @@ export default function MatchingCreate() {
                 <div className="matching-create-step">
                   <h4 className="fw-bold" style={{ color: '#1e293b' }}>Chọn ca chơi muốn tìm đồng đội</h4>
                   <p style={{ color: '#64748b', marginBottom: '32px' }}><i className="feather-map-pin me-2"></i>{selectedBooking.venueName} — {selectedBooking.venueAddress}</p>
+                  {bookingHasDiscount && (
+                    <div className="alert alert-info" style={{ marginTop: '-12px', marginBottom: '24px' }}>
+                      Giá đã bao gồm các ưu đãi/mã giảm giá áp dụng cho đơn hàng này.
+                    </div>
+                  )}
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h5 style={{ margin: 0, fontWeight: '700', color: '#1e293b' }}>Danh sách ca chơi</h5>
@@ -604,6 +610,11 @@ export default function MatchingCreate() {
                   </div>
 
                   <div style={{ maxWidth: '800px', margin: '0 auto', background: '#fff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 20px 40px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                    {bookingHasDiscount && (
+                      <div className="alert alert-info mb-0 rounded-0" style={{ borderLeft: '0', borderRight: '0', borderTop: '0' }}>
+                        Giá đã bao gồm các ưu đãi/mã giảm giá áp dụng cho đơn hàng này.
+                      </div>
+                    )}
                     
                     <div style={{ padding: '32px 40px', background: '#f8fafc', borderBottom: '1px dashed #cbd5e1' }}>
                         <h4 style={{ fontSize: '24px', fontWeight: '800', color: '#1e293b', margin: 0, lineHeight: '1.4' }}>

@@ -75,6 +75,55 @@ public class MatchingController : ControllerBase
             ? DateTime.SpecifyKind(dt, DateTimeKind.Utc)
             : dt.ToUniversalTime();
 
+    private static Dictionary<Guid, decimal> BuildActualItemPriceMap(Booking booking)
+    {
+        var itemPrices = (booking.BookingItems ?? new List<BookingItem>())
+            .Where(i => i.Id != Guid.Empty)
+            .ToDictionary(i => i.Id, i => i.FinalPrice ?? 0m);
+
+        if (itemPrices.Count == 0)
+            return itemPrices;
+
+        var totalAmount = booking.TotalAmount ?? 0m;
+        var finalAmount = booking.FinalAmount ?? totalAmount;
+        if (totalAmount <= 0m || finalAmount <= 0m)
+            return itemPrices;
+
+        var ratio = finalAmount / totalAmount;
+        if (ratio >= 0.999999m && ratio <= 1.000001m)
+            return itemPrices;
+
+        var orderedItems = booking.BookingItems!
+            .OrderBy(i => i.StartTime)
+            .ThenBy(i => i.Id)
+            .ToList();
+
+        var targetTotal = finalAmount;
+        decimal distributed = 0m;
+        var actualMap = new Dictionary<Guid, decimal>(orderedItems.Count);
+
+        for (var idx = 0; idx < orderedItems.Count; idx++)
+        {
+            var item = orderedItems[idx];
+            var original = item.FinalPrice ?? 0m;
+            decimal actual;
+
+            if (idx == orderedItems.Count - 1)
+            {
+                actual = targetTotal - distributed;
+            }
+            else
+            {
+                actual = Math.Round(original * ratio, 0, MidpointRounding.AwayFromZero);
+                distributed += actual;
+            }
+
+            actualMap[item.Id] = Math.Max(actual, 0m);
+        }
+
+        return actualMap;
+    }
+
     // ═══════════════════════════════════════════════════
     //  GET /api/matching/posts — Danh sách bài đăng OPEN
     // ═══════════════════════════════════════════════════
@@ -409,6 +458,7 @@ public class MatchingController : ControllerBase
         // Verify booking belongs to user
         var booking = await _db.Bookings.AsNoTracking()
             .Include(b => b.Venue)
+            .Include(b => b.BookingItems)
             .FirstOrDefaultAsync(b => b.Id == dto.BookingId && b.UserId == me);
         if (booking == null)
             return BadRequest(new { message = "Không tìm thấy đơn đặt sân này." });
@@ -423,6 +473,9 @@ public class MatchingController : ControllerBase
 
         if (items.Count == 0)
             return BadRequest(new { message = "Vui lòng chọn ít nhất 1 ca chơi." });
+
+        var actualItemPriceMap = BuildActualItemPriceMap(booking);
+        var actualSelectedTotal = items.Sum(i => actualItemPriceMap.GetValueOrDefault(i.Id, i.FinalPrice ?? 0m));
 
         var firstItem = items.First();
         var lastItem = items.Last();
@@ -442,7 +495,7 @@ public class MatchingController : ControllerBase
             {
                 "host_pays" => 0,
                 "negotiable" => null,
-                _ => items.Sum(i => i.FinalPrice ?? 0) / Math.Max(dto.RequiredPlayers + 1, 1)
+                _ => actualSelectedTotal / Math.Max(dto.RequiredPlayers + 1, 1)
             },
             RequiredPlayers = dto.RequiredPlayers,
             SkillLevel = dto.SkillLevel,
@@ -528,8 +581,17 @@ public class MatchingController : ControllerBase
                     .Where(i => i.PostId == id)
                     .Select(i => i.BookingItem)
                     .ToListAsync();
-                var totalMoney = items.Sum(i => i?.FinalPrice ?? 0);
-                post.PricePerSlot = totalMoney / Math.Max(post.RequiredPlayers + 1, 1);
+                var bookingForPrice = await _db.Bookings.AsNoTracking()
+                    .Include(b => b.BookingItems)
+                    .FirstOrDefaultAsync(b => b.Id == post.BookingId);
+                var actualMap = bookingForPrice != null
+                    ? BuildActualItemPriceMap(bookingForPrice)
+                    : null;
+                var totalMoney = items.Sum(i =>
+                    i == null
+                        ? 0m
+                        : actualMap?.GetValueOrDefault(i.Id, i.FinalPrice ?? 0m) ?? (i.FinalPrice ?? 0m));
+                post.PricePerSlot = totalMoney / Math.Max((post.RequiredPlayers ?? 0) + 1, 1);
             }
         }
 
@@ -546,8 +608,17 @@ public class MatchingController : ControllerBase
                 .Select(i => i.BookingItem)
                 .ToListAsync();
             
-            var totalMoney = items.Sum(i => i?.FinalPrice ?? 0);
-            var people = post.RequiredPlayers + 1;
+            var bookingForPrice = await _db.Bookings.AsNoTracking()
+                .Include(b => b.BookingItems)
+                .FirstOrDefaultAsync(b => b.Id == post.BookingId);
+            var actualMap = bookingForPrice != null
+                ? BuildActualItemPriceMap(bookingForPrice)
+                : null;
+            var totalMoney = items.Sum(i =>
+                i == null
+                    ? 0m
+                    : actualMap?.GetValueOrDefault(i.Id, i.FinalPrice ?? 0m) ?? (i.FinalPrice ?? 0m));
+            var people = (post.RequiredPlayers ?? 0) + 1;
 
             post.PricePerSlot = dto.ExpenseSharing switch
             {
@@ -1452,14 +1523,19 @@ public class MatchingController : ControllerBase
             .Take(20)
             .ToListAsync();
 
-        return Ok(bookings.Select(b => new
+        return Ok(bookings.Select(b =>
         {
+            var actualItemPriceMap = BuildActualItemPriceMap(b);
+            var hasDiscount = (b.TotalAmount ?? 0m) > (b.FinalAmount ?? 0m);
+            return new
+            {
             id = b.Id,
             venueName = b.Venue?.Name,
             venueAddress = b.Venue?.Address,
             venueId = b.VenueId,
             totalAmount = b.TotalAmount,
             finalAmount = b.FinalAmount,
+            hasDiscount,
             createdAt = b.CreatedAt,
             items = b.BookingItems
                 .Where(i => i.StartTime > now)
@@ -1470,9 +1546,10 @@ public class MatchingController : ControllerBase
                     courtName = i.Court?.Name,
                     startTime = i.StartTime,
                     endTime = i.EndTime,
-                    price = i.FinalPrice,
+                    price = actualItemPriceMap.GetValueOrDefault(i.Id, i.FinalPrice ?? 0m),
                     status = i.Status
                 })
+            };
         }));
     }
 
