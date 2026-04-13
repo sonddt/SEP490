@@ -39,5 +39,7 @@ public partial class ViolationReport
 
     public virtual User? ReporterUser { get; set; }
 
+    public virtual ICollection<ViolationReportLog> Logs { get; set; } = new List<ViolationReportLog>();
+
     public virtual ICollection<File> Files { get; set; } = new List<File>();
 }
