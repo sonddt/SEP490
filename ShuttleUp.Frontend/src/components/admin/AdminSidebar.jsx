@@ -32,7 +32,7 @@ export default function AdminSidebar({ open, onClose }) {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/login', { replace: true, state: { skipReturn: true } });
   };
 
   const handleSwitchToPlayer = () => {

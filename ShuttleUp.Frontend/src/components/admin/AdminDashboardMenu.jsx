@@ -16,7 +16,7 @@ export default function AdminDashboardMenu() {
   const handleLogout = (e) => {
     e.preventDefault();
     logout();
-    navigate('/login');
+    navigate('/login', { replace: true, state: { skipReturn: true } });
   };
 
   return (

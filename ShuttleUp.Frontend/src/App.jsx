@@ -156,7 +156,7 @@ function App() {
           <Route path="/booking/long-term/flexible/confirm" element={<ProtectedRoute><LongTermFlexibleConfirm /></ProtectedRoute>} />
 
           {/* ═══ Player Profile & Features ═══ */}
-          <Route path="/personalization" element={<ProtectedRoute requiredRole="PLAYER"><Personalization /></ProtectedRoute>} />
+          <Route path="/personalization" element={<ProtectedRoute><Personalization /></ProtectedRoute>} />
           
           {/* Public Profile View (no sidebar) */}
           <Route path="/user/profile/:userId" element={<ProtectedRoute><UserPublicProfile /></ProtectedRoute>} />

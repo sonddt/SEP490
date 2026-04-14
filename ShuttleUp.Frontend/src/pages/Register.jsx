@@ -28,6 +28,14 @@ export default function Register() {
   const { login, updateUser } = useAuth();
   const navigate = useNavigate();
 
+  const goAfterRegisterPlayer = (isPersonalized) => {
+    if (isPersonalized === false) {
+      navigate('/personalization');
+      return;
+    }
+    navigate('/venues');
+  };
+
   const isValidGmail = (email) => {
     if (!email) return false;
     return /^[A-Za-z0-9._%+-]+@gmail\.com$/i.test(email.trim());
@@ -130,12 +138,20 @@ export default function Register() {
       notifySuccess(TOAST.GUEST.REGISTER_SUCCESS);
       try {
         const me = await profileApi.getMe();
-        updateUser?.({ avatarUrl: me?.user?.avatarUrl ?? null });
+        const profileUser = me?.user ?? {};
+        updateUser?.({
+          avatarUrl: profileUser.avatarUrl ?? null,
+          isPersonalized: profileUser.isPersonalized ?? null,
+        });
+        if (activeTab !== 'manager') {
+          goAfterRegisterPlayer(profileUser.isPersonalized ?? null);
+          return;
+        }
       } catch {}
       if (activeTab === 'manager') {
         navigate('/manager/profile-request');
       } else {
-        navigate('/venues');
+        goAfterRegisterPlayer(data?.user?.isPersonalized ?? null);
       }
     } catch (err) {
       const res = err.response;
@@ -166,7 +182,15 @@ export default function Register() {
       login(data);
       try {
         const me = await profileApi.getMe();
-        updateUser?.({ avatarUrl: me?.user?.avatarUrl ?? null });
+        const profileUser = me?.user ?? {};
+        updateUser?.({
+          avatarUrl: profileUser.avatarUrl ?? null,
+          isPersonalized: profileUser.isPersonalized ?? null,
+        });
+        if (activeTab !== 'manager') {
+          goAfterRegisterPlayer(profileUser.isPersonalized ?? null);
+          return;
+        }
       } catch {}
       // Nếu đang ở tab Manager thì coi như user đang yêu cầu đăng ký làm Manager → chuyển sang trang hồ sơ
       if (activeTab === 'manager') {
@@ -174,7 +198,7 @@ export default function Register() {
         try { await managerProfileApi.getMe(); } catch { /* ignore */ }
         navigate('/manager/profile-request');
       } else {
-        navigate('/venues');
+        goAfterRegisterPlayer(data?.user?.isPersonalized ?? null);
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Oops... Đăng ký bằng Google có chút trục trặc.');

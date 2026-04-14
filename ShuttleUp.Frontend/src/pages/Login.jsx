@@ -8,8 +8,24 @@ import { profileApi } from '../api/profileApi';
 import { notifySuccess } from '../hooks/useNotification';
 import { TOAST } from '../constants/toastMessages';
 
+function readRememberedCredentials() {
+  try {
+    const raw = localStorage.getItem('shuttleup_remember');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    return {
+      emailOrPhone: typeof parsed.emailOrPhone === 'string' ? parsed.emailOrPhone : '',
+      password: typeof parsed.password === 'string' ? parsed.password : '',
+    };
+  } catch {
+    localStorage.removeItem('shuttleup_remember');
+    return null;
+  }
+}
+
 export default function Login() {
-  const saved = JSON.parse(localStorage.getItem('shuttleup_remember') || 'null');
+  const saved = readRememberedCredentials();
   const [activeTab, setActiveTab] = useState('user');
   const activeTabRef = useRef('user');
   const [showPassword, setShowPassword] = useState(false);
@@ -25,6 +41,7 @@ export default function Login() {
   const location = useLocation();
   const returnUrl =
     location.state?.from || new URLSearchParams(location.search).get('returnTo') || null;
+  const shouldIgnoreReturnUrl = location.state?.skipReturn === true;
 
   /** Tăng mỗi lần bắt đầu đăng nhập (email hoặc Google) — bỏ qua callback cũ nếu user đổi cách đăng nhập. */
   const loginAttemptSeq = useRef(0);
@@ -37,6 +54,17 @@ export default function Login() {
     const hint = location.state?.authHint;
     if (hint) setError(hint);
   }, [location.state?.authHint]);
+
+  useEffect(() => {
+    if (!rememberMe) {
+      localStorage.removeItem('shuttleup_remember');
+      return;
+    }
+    localStorage.setItem('shuttleup_remember', JSON.stringify({
+      emailOrPhone: emailOrPhone.trim(),
+      password,
+    }));
+  }, [rememberMe, emailOrPhone, password]);
 
   const syncAvatarFromProfile = async () => {
     try {
@@ -75,6 +103,7 @@ export default function Login() {
     const isAdmin = roles?.includes('ADMIN');
     const safeReturnUrl = (() => {
       if (isAdmin) return null; // Admin không follow returnUrl từ trang user
+      if (shouldIgnoreReturnUrl) return null; // Logout thủ công => về trang mặc định theo role
       if (!returnUrl || typeof returnUrl !== 'string') return null;
       if (!returnUrl.startsWith('/') || returnUrl.startsWith('//')) return null;
       return returnUrl;
@@ -134,12 +163,6 @@ export default function Login() {
         : { email: emailOrPhone.trim(), password };
       const data = await loginEmail(payload);
       if (seq !== loginAttemptSeq.current) return;
-
-      if (rememberMe) {
-        localStorage.setItem('shuttleup_remember', JSON.stringify({ emailOrPhone: emailOrPhone.trim(), password }));
-      } else {
-        localStorage.removeItem('shuttleup_remember');
-      }
 
       const roles = data.user?.roles ?? [];
       const gate = await resolveManagerLoginGate(roles);
@@ -334,7 +357,6 @@ export default function Login() {
                                   checked={rememberMe}
                                   onChange={(e) => {
                                     setRememberMe(e.target.checked);
-                                    if (!e.target.checked) localStorage.removeItem('shuttleup_remember');
                                   }}
                                 />
                                 <label className="form-check-label" htmlFor="user-pass">Nhớ mật khẩu</label>

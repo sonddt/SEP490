@@ -51,7 +51,7 @@ const Header = ({ transparent = false }) => {
     logout();
     setOpenDropdown(null);
     closeMobileMenu();
-    navigate('/login');
+    navigate('/login', { replace: true, state: { skipReturn: true } });
   };
 
   // ── Role flags ────────────────────────────────────────────────────────────

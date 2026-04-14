@@ -46,11 +46,9 @@ export default function ProtectedRoute({ children, requiredRole }) {
         /^\/user\/profile\/[0-9a-fA-F-]{36}\/?$/i.test(location.pathname);
 
       if (isPlayer && !isManagerRoute && !isAdminRoute && !isPlayerSocialRoute) {
-        // isPersonalized === false hoặc null/undefined → chưa hoàn thành onboarding
-        const notPersonalized =
-          userData?.isPersonalized === false ||
-          userData?.isPersonalized === null ||
-          userData?.isPersonalized === undefined;
+        // Chỉ chặn khi backend/client đã xác nhận rõ ràng là false.
+        // Trạng thái null/undefined có thể là dữ liệu user chưa đồng bộ kịp ở localStorage.
+        const notPersonalized = userData?.isPersonalized === false;
         if (notPersonalized) {
           const skipped = sessionStorage.getItem('skippedPersonalization') === 'true';
 

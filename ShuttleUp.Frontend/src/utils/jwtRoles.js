@@ -23,6 +23,7 @@ export function getJwtRoles(token) {
     const payload = JSON.parse(atob(b64));
     const merged = [
       ...normalizeRoleList(payload.role),
+      ...normalizeRoleList(payload.roles),
       ...normalizeRoleList(payload[ROLE_CLAIM_URI]),
     ];
     return [...new Set(merged)];

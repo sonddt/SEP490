@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { profileApi } from '../../api/profileApi';
 import SearchableSelect from '../../components/ui/SearchableSelect';
@@ -21,6 +22,15 @@ const PROVINCES = [
 
 const Personalization = () => {
   const { user, updateUser } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const redirectTo = (() => {
+    const raw = location.state?.from;
+    if (!raw || typeof raw !== 'string') return '/venues';
+    if (!raw.startsWith('/') || raw.startsWith('//')) return '/venues';
+    return raw;
+  })();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -119,8 +129,8 @@ const Personalization = () => {
         // Cập nhật local context để guard không chặn nữa
         updateUser({ ...payload });
 
-        // Hard reload để xóa guard state triệt để
-        window.location.href = '/venues';
+        // Chuyển về trang đã mở personalization (vd: /matching), fallback /venues
+        navigate(redirectTo, { replace: true });
       } catch (err) {
         console.error('Personalization save error:', err);
         setError('Oops... Lưu thất bại, bạn thử lại nhé!');
@@ -169,7 +179,7 @@ const Personalization = () => {
           style={{ width: '60px', textAlign: 'right', fontWeight: 500, opacity: 0.85 }}
           onClick={() => {
             sessionStorage.setItem('skippedPersonalization', 'true');
-            window.location.href = '/venues';
+            navigate(redirectTo, { replace: true });
           }}
         >
           Bỏ qua

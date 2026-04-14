@@ -30,7 +30,7 @@ export default function AdminLayout() {
   const handleLogout = () => {
     logout();
     setOpenDropdown(null);
-    navigate('/login');
+    navigate('/login', { replace: true, state: { skipReturn: true } });
   };
 
   return (

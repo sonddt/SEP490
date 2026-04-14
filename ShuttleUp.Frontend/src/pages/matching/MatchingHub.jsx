@@ -73,6 +73,7 @@ const skillOptions = [
 
 export default function MatchingHub() {
   const { user } = useAuth();
+  const isAdmin = Array.isArray(user?.roles) && user.roles.some((r) => String(r).toUpperCase() === 'ADMIN');
   const [tab, setTab] = useState('all'); // 'all' | 'my' | 'joined'
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [posts, setPosts] = useState([]);
@@ -177,7 +178,7 @@ export default function MatchingHub() {
       <div className="content py-5 matching-hub-content" style={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
         <div className="container">
 
-          {user && (user.isPersonalized === false || user.isPersonalized == null) && (
+          {user && !isAdmin && user.isPersonalized === false && (
             <div className="alert alert-info d-flex align-items-center mb-4" role="alert" style={{ borderRadius: '16px', border: '1px solid #bae6fd', backgroundColor: '#f0f9ff', padding: '16px 20px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
               <i className="feather-info me-3 d-none d-sm-block" style={{ fontSize: '24px', color: '#0284c7' }}></i>
               <div>
@@ -186,7 +187,7 @@ export default function MatchingHub() {
                   Cập nhật hồ sơ để hệ thống có thể đề xuất các trận cầu phù hợp nhất với trình độ và khu vực của bạn.
                 </p>
               </div>
-              <Link to="/user/profile/edit" className="btn btn-primary ms-auto" style={{ whiteSpace: 'nowrap', borderRadius: '10px', padding: '8px 16px', fontWeight: 'bold' }}>
+              <Link to="/personalization" state={{ from: '/matching' }} className="btn btn-primary ms-auto" style={{ whiteSpace: 'nowrap', borderRadius: '10px', padding: '8px 16px', fontWeight: 'bold' }}>
                 Cập nhật
               </Link>
             </div>
