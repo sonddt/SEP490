@@ -495,3 +495,33 @@ Kết bạn & quan hệ xã hội (Player):
    - Mục tiêu: người dùng không còn thấy lệch giữa tổng ở Step 1 và giá các ca ở Step 2/3/4.
 
 
+---
+
+## 14 tháng 4, 2026 (Nhóm sân: ổn định hiển thị booking + UX quản lý nhóm)
+
+1. **Booking timeline (`BookingTimeline.jsx`)**:
+   - Chỉ hiển thị cột **Nhóm** khi venue có ít nhất một sân có `groupName`/`group_name`; nếu không thì UI quay về dạng thường (không cột nhóm).
+   - Bổ sung đọc linh hoạt nhiều key từ API: `groupName`, `GroupName`, `group_name`.
+   - Chuẩn hóa gộp nhóm theo tên không dấu/không phân biệt hoa thường để các biến thể cùng nghĩa được gom chung.
+   - Tối ưu responsive + zoom: mặc định vào trang luôn ở mức zoom min (không tự scroll ngang); chỉ có scroll khi người dùng kéo zoom.
+   - Điều chỉnh hiển thị ô nhóm để tránh phát sinh “khoảng trắng chết”/vỡ hit-area; text nhóm giới hạn hiển thị an toàn để không đẩy cao row.
+   - Tăng nhẹ độ rộng cột Nhóm để dễ đọc hơn trong layout hiện tại.
+
+2. **Manager tạo/cập nhật sân (`ManagerAddCourt.jsx`)**:
+   - Nâng cấp UX nhóm sân: có dropdown nhóm đã có + ô nhập nhóm mới + nút xóa giá trị nhóm hiện tại.
+   - Đồng nhất layout giữa các sân (tránh trang có dropdown, trang không dropdown gây lệch giao diện).
+   - Bổ sung thao tác **xóa mục khỏi dropdown** ở UI (xóa khỏi danh sách gợi ý cục bộ theo venue, không xóa dữ liệu DB hàng loạt).
+   - Chuẩn hóa và giới hạn chiều dài tên nhóm ngay phía frontend (`maxLength = 100`) để tránh gửi dữ liệu quá dài.
+   - Cải thiện kiểu dáng nút thao tác nhóm (icon nhỏ gọn, ít gắt màu đỏ).
+
+3. **Backend API venue courts (`VenuesController.cs`)**:
+   - Endpoint public `GET /venues/{id}/courts` trả thêm `GroupName` để booking timeline có dữ liệu nhóm.
+
+4. **Backend manager courts (`ManagerVenuesController.cs`)**:
+   - Thêm validation cho `GroupName` ở `AddCourt` và `EditCourt`: trim và giới hạn tối đa 100 ký tự, trả `400` message rõ ràng nếu vượt ngưỡng.
+   - Mục tiêu: chặn lỗi `MySqlException: Data too long for column 'group_name'` và tránh 500 từ DB.
+
+5. **Lưu ý debug đã xác nhận trong phiên**:
+   - Nếu backend đang chạy process cũ/không restart, query có thể chưa phản ánh code mới (đã gặp trong phiên khi kiểm tra `group_name`).
+   - Một số warning console như SignalR reconnect / Tracking Prevention không phải nguyên nhân chính của lỗi nhóm sân.
+

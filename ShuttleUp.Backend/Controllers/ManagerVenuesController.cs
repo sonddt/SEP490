@@ -476,12 +476,20 @@ public class ManagerVenuesController : ControllerBase
         if (venue.OwnerUserId != managerId)
             return Forbid("Bạn không có quyền thêm court cho venue này.");
 
+        var normalizedGroupName = string.IsNullOrWhiteSpace(request.GroupName)
+            ? null
+            : request.GroupName.Trim();
+        if (!string.IsNullOrEmpty(normalizedGroupName) && normalizedGroupName.Length > 100)
+        {
+            return BadRequest(new { message = "Tên nhóm tối đa 100 ký tự." });
+        }
+
         // Tạo court mới
         var court = new Court
         {
             VenueId = venueId,
             Name = request.Name,
-            GroupName = request.GroupName,
+            GroupName = normalizedGroupName,
             Status = request.Status,
             Surface = request.Surface,
             MaxGuest = request.MaxGuests,
@@ -613,8 +621,16 @@ public class ManagerVenuesController : ControllerBase
         if (court == null || court.VenueId != venueId)
             return NotFound(new { message = "Court không tồn tại trong venue này." });
 
+        var normalizedGroupName = string.IsNullOrWhiteSpace(request.GroupName)
+            ? null
+            : request.GroupName.Trim();
+        if (!string.IsNullOrEmpty(normalizedGroupName) && normalizedGroupName.Length > 100)
+        {
+            return BadRequest(new { message = "Tên nhóm tối đa 100 ký tự." });
+        }
+
         court.Name = request.Name;
-        court.GroupName = request.GroupName;
+        court.GroupName = normalizedGroupName;
         court.Status = request.Status;
         court.Surface = request.Surface;
         court.MaxGuest = request.MaxGuests;

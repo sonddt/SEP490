@@ -1,8 +1,9 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
 import { getCourtBlocks, createCourtBlock, deleteCourtBlock } from '../../api/managerVenueApi';
 import ShuttleDateField from '../../components/ui/ShuttleDateField';
+import { normalizeSearchText } from '../../utils/searchNormalize';
 
 const BLOCK_REASONS = [
   { value: 'MAINTENANCE', label: 'Bảo trì' },
@@ -143,6 +144,17 @@ export default function ManagerAddCourt() {
   };
 
   const [venueData, setVenueData] = useState(null);
+  const [groupSuggestions, setGroupSuggestions] = useState([]);
+  const GROUP_NAME_MAX_LEN = 100;
+  const venueGroupStorageKey = useMemo(() => `mgr_court_groups_${venueId || 'unknown'}`, [venueId]);
+  const venueGroupHiddenStorageKey = useMemo(() => `mgr_court_groups_hidden_${venueId || 'unknown'}`, [venueId]);
+  const normalizeGroupName = (value) => String(value ?? '').replace(/\s+/g, ' ').trim();
+  const activeGroupValue = useMemo(() => {
+    const current = normalizeGroupName(form.groupName);
+    if (!current) return '';
+    const matched = groupSuggestions.find((name) => normalizeSearchText(name) === normalizeSearchText(current));
+    return matched || '';
+  }, [form.groupName, groupSuggestions]);
 
   useEffect(() => {
     if (!venueId) return;
@@ -157,6 +169,70 @@ export default function ManagerAddCourt() {
     })();
     return () => { mounted = false; };
   }, [venueId]);
+
+  useEffect(() => {
+    if (!venueId) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await axiosClient.get(`/manager/venues/${venueId}/courts?page=1&pageSize=500`);
+        if (!mounted) return;
+        const rows = res?.data?.items || res?.items || [];
+        const map = new Map();
+        const hiddenKeys = (() => {
+          try {
+            const raw = localStorage.getItem(venueGroupHiddenStorageKey);
+            const arr = Array.isArray(JSON.parse(raw || '[]')) ? JSON.parse(raw || '[]') : [];
+            return new Set(arr.map((x) => normalizeSearchText(x)));
+          } catch {
+            return new Set();
+          }
+        })();
+        rows.forEach((r) => {
+          const id = r.id || r.Id;
+          if (courtId && id === courtId) return;
+          const raw = String(r.groupName ?? r.GroupName ?? r.group_name ?? '').trim();
+          if (!raw) return;
+          const key = normalizeSearchText(raw);
+          if (!key) return;
+          if (hiddenKeys.has(key)) return;
+          if (!map.has(key)) map.set(key, raw);
+        });
+        try {
+          const rawLocal = localStorage.getItem(venueGroupStorageKey);
+          const localGroups = Array.isArray(JSON.parse(rawLocal || '[]')) ? JSON.parse(rawLocal || '[]') : [];
+          localGroups.forEach((name) => {
+            const cleaned = normalizeGroupName(name).slice(0, GROUP_NAME_MAX_LEN);
+            if (!cleaned) return;
+            const key = normalizeSearchText(cleaned);
+            if (hiddenKeys.has(key)) return;
+            if (!map.has(key)) map.set(key, cleaned);
+          });
+        } catch {}
+        setGroupSuggestions(Array.from(map.values()));
+      } catch {
+        if (mounted) setGroupSuggestions([]);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [venueId, courtId, venueGroupStorageKey, venueGroupHiddenStorageKey]);
+
+  const removeCurrentGroupSuggestion = () => {
+    if (!activeGroupValue) return;
+    const normalized = normalizeSearchText(activeGroupValue);
+    const next = groupSuggestions.filter((name) => normalizeSearchText(name) !== normalized);
+    setGroupSuggestions(next);
+    if (normalizeSearchText(form.groupName) === normalized) {
+      setField('groupName', '');
+    }
+    try {
+      const raw = localStorage.getItem(venueGroupHiddenStorageKey);
+      const arr = Array.isArray(JSON.parse(raw || '[]')) ? JSON.parse(raw || '[]') : [];
+      const merged = Array.from(new Set([...arr, activeGroupValue]));
+      localStorage.setItem(venueGroupHiddenStorageKey, JSON.stringify(merged));
+      localStorage.setItem(venueGroupStorageKey, JSON.stringify(next));
+    } catch {}
+  };
 
   const getFieldError = (field) => fieldErrors[field] || '';
 
@@ -254,6 +330,15 @@ export default function ManagerAddCourt() {
       }));
 
       const request = {
+        // Reuse existing canonical group label if user typed the same group with different casing/spaces.
+        groupName: (() => {
+          const typed = normalizeGroupName(form.groupName);
+          if (!typed) return '';
+          const safeTyped = typed.slice(0, GROUP_NAME_MAX_LEN);
+          const typedKey = normalizeSearchText(safeTyped);
+          const matched = groupSuggestions.find((name) => normalizeSearchText(name) === typedKey);
+          return normalizeGroupName(matched || safeTyped).slice(0, GROUP_NAME_MAX_LEN);
+        })(),
         name: form.name,
         surface: form.surface,
         maxGuests: Number(form.maxGuests),
@@ -261,8 +346,7 @@ export default function ManagerAddCourt() {
         status: "ACTIVE", // based on new BE plan
         isActive: true,
         priceSlots,
-        openHours,
-        groupName: form.groupName
+        openHours
       };
 
       let savedCourtId = courtId;
@@ -271,6 +355,21 @@ export default function ManagerAddCourt() {
       } else {
         const created = await axiosClient.post(`/manager/venues/${venueId}/courts`, request);
         savedCourtId = created?.id || created?.Id;
+      }
+
+      if (request.groupName) {
+        const merged = new Map();
+        [...groupSuggestions, request.groupName].forEach((name) => {
+          const cleaned = normalizeGroupName(name).slice(0, GROUP_NAME_MAX_LEN);
+          if (!cleaned) return;
+          const key = normalizeSearchText(cleaned);
+          if (!merged.has(key)) merged.set(key, cleaned);
+        });
+        const nextGroups = Array.from(merged.values());
+        setGroupSuggestions(nextGroups);
+        try {
+          localStorage.setItem(venueGroupStorageKey, JSON.stringify(nextGroups));
+        } catch {}
       }
 
       if (newImageFiles.length > 0 && savedCourtId) {
@@ -354,7 +453,76 @@ export default function ManagerAddCourt() {
                   </div>
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-semibold text-dark mb-2">Tên nhóm (Tùy chọn)</label>
-                    <input type="text" className="form-control form-control-lg bg-light border-0" placeholder="VD: Cụm Vip / Trong nhà" value={form.groupName} onChange={(e) => setField('groupName', e.target.value)} />
+                    <div className="d-flex align-items-center gap-2 mb-2">
+                      <select
+                        className="form-select bg-light border-0"
+                        style={{ height: 44, borderRadius: 12 }}
+                        value={activeGroupValue}
+                        onChange={(e) => {
+                          const picked = e.target.value;
+                          if (picked) {
+                            setField('groupName', picked.slice(0, GROUP_NAME_MAX_LEN));
+                            return;
+                          }
+                          setField('groupName', '');
+                        }}
+                      >
+                        <option value="">Tạo nhóm mới (nhập bên dưới)…</option>
+                        {groupSuggestions.map((name) => (
+                          <option key={name} value={name}>{name}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="btn d-flex align-items-center justify-content-center"
+                        disabled={!activeGroupValue}
+                        onClick={removeCurrentGroupSuggestion}
+                        title="Xóa lựa chọn khỏi dropdown"
+                        aria-label="Xóa lựa chọn khỏi dropdown"
+                        style={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: 10,
+                          border: '1px solid #fecaca',
+                          background: activeGroupValue ? '#fff5f5' : '#f8fafc',
+                          color: activeGroupValue ? '#ef4444' : '#94a3b8',
+                          padding: 0,
+                        }}
+                      >
+                        <i className="feather-trash-2" style={{ fontSize: 14 }} />
+                      </button>
+                    </div>
+                    <div className="input-group">
+                      <input
+                        type="text"
+                        className="form-control form-control-lg bg-light border-0"
+                        placeholder="Nhập nhóm mới nếu chưa có trong dropdown"
+                        maxLength={GROUP_NAME_MAX_LEN}
+                        value={form.groupName}
+                        onChange={(e) => setField('groupName', e.target.value.slice(0, GROUP_NAME_MAX_LEN))}
+                        style={{ borderRadius: '12px 0 0 12px' }}
+                      />
+                      <button
+                        type="button"
+                        className="btn d-flex align-items-center justify-content-center"
+                        style={{
+                          width: '44px',
+                          padding: 0,
+                          borderRadius: '0 12px 12px 0',
+                          border: '1px solid #e5e7eb',
+                          background: '#ffffff',
+                          color: '#6b7280',
+                        }}
+                        onClick={() => setField('groupName', '')}
+                        title="Xóa nhóm"
+                        aria-label="Xóa nhóm"
+                      >
+                        <i className="feather-x" style={{ fontSize: 14 }} />
+                      </button>
+                    </div>
+                    <div className="text-muted mt-1" style={{ fontSize: 12 }}>
+                      Tối đa {GROUP_NAME_MAX_LEN} ký tự. Có thể chọn nhanh hoặc nhập nhóm mới.
+                    </div>
                   </div>
                 </div>
               </div>

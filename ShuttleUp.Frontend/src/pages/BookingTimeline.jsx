@@ -164,6 +164,15 @@ function getPriceForSlot(court, slotIndex, dateStr, fallbackPerSlot, slotDuratio
   return fallbackPerSlot ?? 0;
 }
 
+function normalizeGroupName(value) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function ivOverlapsSlot(ivStartMs, ivEndMs, slotStartMs, slotEndMs) {
   return ivStartMs < slotEndMs && ivEndMs > slotStartMs;
 }
@@ -272,44 +281,24 @@ export default function BookingTimeline() {
 
   const [selectedDate, setSelectedDate] = useState(() => {
     const fromState = venueState.date;
-    // If user clicked standard "Back" button which explicitly pushed state
+    // Only restore date when coming back with explicit router state (confirm -> timeline)
     if (fromState && venueState.selectedSlots) return fromState;
-    if (venueId) {
-      try {
-        const savedDate = sessionStorage.getItem(`booking_last_date_${venueId}`);
-        if (savedDate) return savedDate;
-      } catch {}
-    }
-    return fromState ?? localIsoDate(new Date());
+    return localIsoDate(new Date());
   });
   const [showCalendar, setShowCalendar]  = useState(false);
 
-  // Initial Selected Slots from venueState or sessionStorage (if navigating back via browser)
+  // Initial selected slots only from explicit router state (confirm -> timeline).
   const initialSelections = useMemo(() => {
     const init = {};
-    let hasRouterState = false;
 
     if (venueState.selectedSlots && (venueState.date === undefined || venueState.date === selectedDate)) {
       venueState.selectedSlots.forEach(s => {
         if (!init[s.courtId]) init[s.courtId] = new Set();
         init[s.courtId].add(s.slotIndex);
       });
-      hasRouterState = Object.keys(init).length > 0;
-    }
-
-    if (!hasRouterState && venueId && selectedDate) {
-      try {
-        const saved = sessionStorage.getItem(`booking_selections_${venueId}_${selectedDate}`);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          Object.keys(parsed).forEach(k => {
-            init[k] = new Set(parsed[k]);
-          });
-        }
-      } catch (e) {}
     }
     return init;
-  }, [venueState.selectedSlots, venueState.date, selectedDate, venueId]);
+  }, [venueState.selectedSlots, venueState.date, selectedDate]);
 
   // Ref to measure the grid container for computing the exact "fit" minimum
   const gridContainerRef = useRef(null);
@@ -318,6 +307,7 @@ export default function BookingTimeline() {
   // cellWidth is the zoom level controlled by the slider
   // It's always clamped to >= minCellWidth so slider-at-min = no scroll
   const [cellWidth, setCellWidth] = useState(0); // 0 = uninitialized, will be set to minCellWidth on first measure
+  const [hasManualZoom, setHasManualZoom] = useState(false);
 
   // selections: { [courtId]: Set<slotIndex> }
   const [selections, setSelections] = useState(initialSelections);
@@ -327,14 +317,27 @@ export default function BookingTimeline() {
   const [loadCourts, setLoadCourts] = useState({ loading: false, error: '' });
   const [loadAvail, setLoadAvail] = useState({ loading: false, error: '' });
 
+  const hasGroupedCourts = useMemo(
+    () => courts.some((c) => String(c.groupName ?? c.GroupName ?? c.group_name ?? '').trim().length > 0),
+    [courts],
+  );
+
   const groupedCourts = useMemo(() => {
-    return courts.reduce((acc, court) => {
-      const groupName = court.groupName || 'Khu Vực Chung';
-      if (!acc[groupName]) acc[groupName] = [];
-      acc[groupName].push(court);
+    if (!hasGroupedCourts) return { __ALL__: courts };
+    const grouped = {};
+    const displayByKey = {};
+    courts.forEach((court) => {
+      const rawGroupName = String(court.groupName ?? court.GroupName ?? court.group_name ?? '').trim();
+      const groupKey = rawGroupName ? normalizeGroupName(rawGroupName) : '__UNGROUPED__';
+      if (!grouped[groupKey]) grouped[groupKey] = [];
+      if (!displayByKey[groupKey]) displayByKey[groupKey] = rawGroupName || 'Chưa phân nhóm';
+      grouped[groupKey].push(court);
+    });
+    return Object.entries(grouped).reduce((acc, [key, rows]) => {
+      acc[displayByKey[key] || 'Chưa phân nhóm'] = rows;
       return acc;
     }, {});
-  }, [courts]);
+  }, [courts, hasGroupedCourts]);
 
   // Drag refs — distinguish click vs drag
   const isDraggingRef  = useRef(false);
@@ -346,8 +349,12 @@ export default function BookingTimeline() {
   const dragBaseRef    = useRef(new Set());
 
   // ── Responsive min cell width ────────────────────────────────────────────
+  const GROUP_LABEL_W = hasGroupedCourts ? 96 : 0; // px reserved for group name column
   const COURT_LABEL_W = 72; // px reserved for court name column
-  const MAX_CELL_W    = 56; // px maximum zoom
+  const LEFT_LABEL_W = GROUP_LABEL_W + COURT_LABEL_W;
+  const BASE_MAX_CELL_W = 56; // default maximum zoom target
+  const COURT_ROW_H = 44;
+  const ROW_BORDER_W = 1;
 
   // Measure container and derive minCellWidth dynamically
   useEffect(() => {
@@ -355,12 +362,12 @@ export default function BookingTimeline() {
     if (!el) return;
     const measure = (width) => {
       const slots = SLOT_COUNT;
-      const minW = Math.max(10, Math.floor((width - COURT_LABEL_W) / slots));
+      const minW = Math.max(10, Math.floor((width - LEFT_LABEL_W) / slots));
       setContainerWidth(width);
       setCellWidth(prev => {
         // On first measure (prev===0) default to minW; otherwise preserve user zoom but re-clamp
         if (prev === 0) return minW;
-        return Math.max(prev, minW);
+        return Math.max(minW, prev);
       });
     };
     measure(el.getBoundingClientRect().width);
@@ -369,15 +376,30 @@ export default function BookingTimeline() {
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, [SLOT_COUNT]);
+  }, [SLOT_COUNT, LEFT_LABEL_W]);
 
   // Minimum cell width derived from current container width
   const minCellWidth = containerWidth > 0
-    ? Math.max(10, Math.floor((containerWidth - COURT_LABEL_W) / SLOT_COUNT))
+    ? Math.max(10, Math.floor((containerWidth - LEFT_LABEL_W) / SLOT_COUNT))
     : 10;
 
+  // Ensure slider is always valid even when minCellWidth > default max.
+  const sliderMaxCellW = Math.max(BASE_MAX_CELL_W, minCellWidth + 24);
+
   // Effective cell width — never less than what fits the container
-  const effectiveCellW = Math.max(cellWidth || minCellWidth, minCellWidth);
+  const effectiveCellW = Math.min(
+    Math.max(cellWidth || minCellWidth, minCellWidth),
+    sliderMaxCellW,
+  );
+
+  // Keep default zoom at minimum until user intentionally drags the slider.
+  useEffect(() => {
+    setCellWidth((prev) => {
+      if (!hasManualZoom) return minCellWidth;
+      const base = prev || minCellWidth;
+      return Math.min(Math.max(base, minCellWidth), sliderMaxCellW);
+    });
+  }, [minCellWidth, sliderMaxCellW, hasManualZoom]);
 
   useEffect(() => {
     if (!venueId) {
@@ -406,26 +428,6 @@ export default function BookingTimeline() {
     })();
     return () => { cancelled = true; };
   }, [venueId]);
-
-  // selections tracking is handled manually in calendar onChange
-  useEffect(() => {
-    if (!venueId || !selectedDate) return;
-    try {
-      const toSave = {};
-      let hasData = false;
-      Object.keys(selections).forEach(k => {
-        if (selections[k] && selections[k].size > 0) {
-          toSave[k] = Array.from(selections[k]);
-          hasData = true;
-        }
-      });
-      const key = `booking_selections_${venueId}_${selectedDate}`;
-      if (hasData) sessionStorage.setItem(key, JSON.stringify(toSave));
-      else sessionStorage.removeItem(key);
-
-      sessionStorage.setItem(`booking_last_date_${venueId}`, selectedDate);
-    } catch (e) {}
-  }, [selections, venueId, selectedDate]);
 
   useEffect(() => {
     if (!venueId) {
@@ -739,17 +741,25 @@ export default function BookingTimeline() {
         ref={gridContainerRef}
         style={{ overflowX: effectiveCellW <= minCellWidth ? 'hidden' : 'auto', backgroundColor: '#fff', margin: '12px', borderRadius: '8px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}
       >
-        <div style={{ minWidth: effectiveCellW <= minCellWidth ? '100%' : `${COURT_LABEL_W + (timeSlots.length - 1) * effectiveCellW}px` }}>
+        <div style={{ minWidth: effectiveCellW <= minCellWidth ? '100%' : `${LEFT_LABEL_W + (timeSlots.length - 1) * effectiveCellW}px` }}>
 
           {/* Time header row — sticky */}
           <div
             className="d-flex"
             style={{ backgroundColor: '#f0fdf4', borderBottom: '1px solid #d1fae5', position: 'sticky', top: 0, zIndex: 20 }}
           >
+            {hasGroupedCourts && (
+              <div style={{
+                width: `${GROUP_LABEL_W}px`, minWidth: `${GROUP_LABEL_W}px`, position: 'sticky', left: 0,
+                backgroundColor: '#f0fdf4', zIndex: 22, borderRight: '1px solid #d1fae5',
+                fontSize: '11px', color: '#0f766e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700,
+              }}>Nhóm</div>
+            )}
             <div style={{
-              width: '72px', minWidth: '72px', position: 'sticky', left: 0,
+              width: `${COURT_LABEL_W}px`, minWidth: `${COURT_LABEL_W}px`, position: 'sticky', left: `${GROUP_LABEL_W}px`,
               backgroundColor: '#f0fdf4', zIndex: 21, borderRight: '1px solid #d1fae5',
-            }} />
+              fontSize: '11px', color: '#0f766e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700,
+            }}>Sân</div>
             {timeSlots.slice(0, -1).map((slot, i) => (
               <div
                 key={i}
@@ -769,33 +779,34 @@ export default function BookingTimeline() {
           {/* Court rows */}
           {Object.entries(groupedCourts).map(([groupName, groupCourts]) => (
             <React.Fragment key={groupName}>
-              {/* Group Header Row */}
-              {Object.keys(groupedCourts).length > 1 && (
-                <div
-                  className="d-flex align-items-center"
-                  style={{
-                    backgroundColor: '#e0f2fe',
-                    borderBottom: '1px solid #bae6fd',
-                    padding: '6px 12px',
-                    position: 'sticky',
-                    left: 0,
-                    zIndex: 15,
-                    fontSize: '13px',
-                    fontWeight: 'bold',
-                    color: '#0369a1',
-                    width: '100%'
-                  }}
-                >
-                  <i className="feather-layers me-2"></i> {groupName}
+              {groupCourts.map((court, groupIndex) => (
+                <div key={court.id} className="d-flex">
+
+              {/* Group name — sticky column 1 */}
+              {hasGroupedCourts && (
+                <div style={{
+                  width: `${GROUP_LABEL_W}px`, minWidth: `${GROUP_LABEL_W}px`, position: 'sticky', left: 0,
+                  backgroundColor: '#ecfeff', zIndex: 12, borderRight: '1px solid #bae6fd', borderBottom: '1px solid #bae6fd',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '12px', fontWeight: '700', color: '#0e7490', textAlign: 'center',
+                  padding: '0 4px', lineHeight: 1.2,
+                  height: `${COURT_ROW_H}px`,
+                  overflow: 'hidden',
+                  whiteSpace: 'normal',
+                  wordBreak: 'break-word',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                }}>
+                  {groupIndex === Math.floor((groupCourts.length - 1) / 2) ? groupName : ''}
                 </div>
               )}
-              {groupCourts.map(court => (
-                <div key={court.id} className="d-flex" style={{ borderBottom: '1px solid #e5e7eb' }}>
 
-              {/* Court name — sticky */}
+              {/* Court name — sticky column 2 */}
               <div style={{
-                width: '72px', minWidth: '72px', position: 'sticky', left: 0,
+                width: `${COURT_LABEL_W}px`, minWidth: `${COURT_LABEL_W}px`, position: 'sticky', left: `${GROUP_LABEL_W}px`,
                 backgroundColor: '#f8fafc', zIndex: 10, borderRight: '1px solid #e5e7eb',
+                borderBottom: '1px solid #e5e7eb',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '13px', fontWeight: '600', color: '#374151',
               }}>
@@ -822,6 +833,7 @@ export default function BookingTimeline() {
                       height: '44px',
                       backgroundColor: bg,
                       borderRight: '1px solid #e5e7eb',
+                      borderBottom: '1px solid #e5e7eb',
                       cursor: isClickable ? 'pointer' : 'not-allowed',
                       userSelect: 'none',
                       display: 'flex', alignItems: 'center',
@@ -859,9 +871,12 @@ export default function BookingTimeline() {
         <input
           type="range"
           min={minCellWidth}
-          max={MAX_CELL_W}
+          max={sliderMaxCellW}
           value={effectiveCellW}
-          onChange={e => setCellWidth(Number(e.target.value))}
+          onChange={e => {
+            setHasManualZoom(true);
+            setCellWidth(Number(e.target.value));
+          }}
           style={{
             flex: 1, accentColor: '#16a34a', cursor: 'pointer', height: '4px',
           }}

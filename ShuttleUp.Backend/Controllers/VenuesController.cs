@@ -204,6 +204,7 @@ public class VenuesController : ControllerBase
             {
                 c.Id,
                 c.Name,
+                c.GroupName,
                 Prices = c.CourtPrices
                     .OrderBy(p => p.StartTime)
                     .Select(p => new
