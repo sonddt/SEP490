@@ -14,6 +14,52 @@ import {
 } from './managerCheckoutSettingsShared';
 import { normalizeSearchText } from '../../utils/searchNormalize';
 
+const BANK_SEARCH_ALIASES = {
+  TPBANK: ['tp bank', 'tien phong bank', 'tiên phong bank', 'ngan hang tien phong', 'ngân hàng tiên phong'],
+  VIETCOMBANK: ['vcb', 'vietcom', 'ngoai thuong', 'ngân hàng ngoại thương'],
+  VIETINBANK: ['ctg', 'cong thuong', 'công thương', 'vietin'],
+  BIDV: ['dau tu va phat trien', 'đầu tư và phát triển'],
+  TECHCOMBANK: ['tcb', 'ky thuong', 'kỹ thương'],
+  MBBANK: ['mb', 'quan doi', 'quân đội'],
+  ACB: ['a chau', 'á châu'],
+  SACOMBANK: ['stb', 'sacom', 'sai gon thuong tin', 'sài gòn thương tín'],
+  VPBANK: ['vp bank', 'vpb', 'viet nam thinh vuong', 'việt nam thịnh vượng'],
+  HDBANK: ['hd bank', 'hdb', 'phat trien thanh pho', 'phát triển thành phố'],
+  SHB: ['sai gon ha noi', 'sài gòn hà nội'],
+  OCB: ['phuong dong', 'phương đông', 'orient commercial'],
+  SEABANK: ['sea bank', 'seab', 'dong nam a', 'đông nam á'],
+  LPBANK: ['lp bank', 'lien viet', 'liên việt', 'lienvietpostbank', 'buu dien lien viet', 'bưu điện liên việt'],
+  EXIMBANK: ['exim', 'xuat nhap khau', 'xuất nhập khẩu'],
+  AGRIBANK: ['agr', 'nong nghiep', 'nông nghiệp', 'nông nghiệp và phát triển nông thôn'],
+  MSB: ['maritime bank', 'hang hai', 'hàng hải'],
+  NAMABANK: ['nam a', 'nam á'],
+  BACABANK: ['bac a', 'bắc á', 'baca', 'bacabank'],
+  VIB: ['international bank', 'quoc te', 'quốc tế'],
+};
+
+function toCompactKey(text) {
+  return normalizeSearchText(text || '').replace(/\s+/g, '');
+}
+
+function buildBankSearchBlob(bank) {
+  const aliasByShortName = BANK_SEARCH_ALIASES[toCompactKey(bank?.shortName).toUpperCase()] || [];
+  const aliasByCode = BANK_SEARCH_ALIASES[String(bank?.code || '').toUpperCase()] || [];
+  const rawParts = [
+    bank?.shortName,
+    bank?.name,
+    bank?.code,
+    bank?.bin,
+    ...aliasByShortName,
+    ...aliasByCode,
+  ]
+    .filter(Boolean)
+    .map((v) => String(v));
+
+  const normalizedParts = rawParts.map((v) => normalizeSearchText(v));
+  const compactParts = normalizedParts.map((v) => v.replace(/\s+/g, ''));
+  return `${normalizedParts.join(' ')} ${compactParts.join(' ')}`.trim();
+}
+
 /* ──────────────────────────────────────────────
    BankPicker — searchable dropdown with logos
    ────────────────────────────────────────────── */
@@ -42,13 +88,13 @@ function BankPicker({ banks, value, onSelect, error, loading }) {
   const filtered = useMemo(() => {
     if (!search) return banks;
     const nq = normalizeSearchText(search);
+    const compactQuery = nq.replace(/\s+/g, '');
     if (!nq) return banks;
     return banks.filter(
-      (b) =>
-        normalizeSearchText(b.shortName).includes(nq) ||
-        normalizeSearchText(b.name).includes(nq) ||
-        normalizeSearchText(b.code).includes(nq) ||
-        normalizeSearchText(b.bin).includes(nq),
+      (b) => {
+        const blob = buildBankSearchBlob(b);
+        return blob.includes(nq) || blob.includes(compactQuery);
+      },
     );
   }, [banks, search]);
 
