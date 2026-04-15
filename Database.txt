@@ -1190,7 +1190,7 @@ SET @sql := IF(@tbl_exists = 0,
     INDEX booking_series_user_id (user_id),
     INDEX booking_series_venue_id (venue_id)
   )',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col_exists := (
@@ -1199,7 +1199,7 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE bookings ADD COLUMN series_id CHAR(36) NULL, ADD INDEX series_id (series_id), ADD CONSTRAINT bookings_series_fk FOREIGN KEY (series_id) REFERENCES booking_series(id) ON DELETE SET NULL',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- Thêm cột manager_status_note nếu chưa có (an toàn để chạy 1 lần hoặc chạy lại)
@@ -1214,7 +1214,7 @@ SET @col_exists := (
 SET @sql := IF(
   @col_exists = 0,
   'ALTER TABLE bookings ADD COLUMN manager_status_note VARCHAR(1000) NULL',
-  'SELECT 1'
+  'DO 0'
 );
 
 PREPARE stmt FROM @sql;
@@ -1233,7 +1233,7 @@ SET @col_exists := (
 SET @sql := IF(
   @col_exists = 0,
   'ALTER TABLE bookings ADD COLUMN cancellation_policy_snapshot_json TEXT NULL',
-  'SELECT 1'
+  'DO 0'
 );
 
 PREPARE stmt FROM @sql;
@@ -1247,7 +1247,7 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE user_notifications ADD COLUMN is_deleted TINYINT(1) NOT NULL DEFAULT 0',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
@@ -1259,7 +1259,7 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE venues ADD COLUMN payment_bank_name VARCHAR(100) NULL COMMENT ''Display name e.g. Vietcombank''',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col_exists := (
@@ -1268,7 +1268,7 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE venues ADD COLUMN payment_bank_bin VARCHAR(20) NULL COMMENT ''6-digit VietQR bank ID''',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col_exists := (
@@ -1277,7 +1277,7 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE venues ADD COLUMN payment_account_number VARCHAR(50) NULL',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col_exists := (
@@ -1286,7 +1286,7 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE venues ADD COLUMN payment_account_holder VARCHAR(255) NULL',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col_exists := (
@@ -1295,7 +1295,7 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE venues ADD COLUMN payment_transfer_note_template VARCHAR(500) NULL DEFAULT ''[SĐT] - [Tên sân] - [Ngày]''',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col_exists := (
@@ -1304,7 +1304,7 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE venues ADD COLUMN cancel_allowed TINYINT(1) NOT NULL DEFAULT 1',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col_exists := (
@@ -1313,7 +1313,7 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE venues ADD COLUMN cancel_before_minutes INT NOT NULL DEFAULT 120',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col_exists := (
@@ -1322,7 +1322,7 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE venues ADD COLUMN refund_type VARCHAR(20) NOT NULL DEFAULT ''NONE'' COMMENT ''NONE|PERCENT|FULL''',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col_exists := (
@@ -1331,7 +1331,7 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE venues ADD COLUMN refund_percent DECIMAL(5,2) NULL',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- Nội dung chi tiết sân (JSON) — EF map includes / rules / amenities; DB cũ có thể thiếu → 500 khi query venues
@@ -1341,7 +1341,7 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE venues ADD COLUMN includes JSON NULL COMMENT ''Mảng chuỗi — những gì khách được sử dụng khi thuê sân''',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col_exists := (
@@ -1350,7 +1350,7 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE venues ADD COLUMN rules JSON NULL COMMENT ''Mảng chuỗi — các quy định tại cơ sở''',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col_exists := (
@@ -1359,7 +1359,7 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE venues ADD COLUMN amenities JSON NULL COMMENT ''Mảng key chuỗi — tiện ích có tại cơ sở (parking, wifi, ...)''',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- matching_post_comments: xóa mềm + sửa nội dung (DB đang chạy)
@@ -1369,7 +1369,7 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE matching_post_comments ADD COLUMN is_deleted TINYINT(1) NOT NULL DEFAULT 0',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col_exists := (
@@ -1378,7 +1378,7 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE matching_post_comments ADD COLUMN deleted_at DATETIME NULL',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col_exists := (
@@ -1387,7 +1387,7 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE matching_post_comments ADD COLUMN deleted_by_user_id CHAR(36) NULL',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col_exists := (
@@ -1396,7 +1396,7 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE matching_post_comments ADD COLUMN updated_at DATETIME NULL',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- FK deleted_by_user_id (bỏ qua nếu đã tồn tại)
@@ -1407,7 +1407,7 @@ SET @fk_exists := (
 );
 SET @sql := IF(@fk_exists = 0,
   'ALTER TABLE matching_post_comments ADD CONSTRAINT matching_post_comments_deleted_by_fk FOREIGN KEY (deleted_by_user_id) REFERENCES users(id) ON DELETE SET NULL',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @idx_exists := (
@@ -1416,7 +1416,7 @@ SET @idx_exists := (
 );
 SET @sql := IF(@idx_exists = 0,
   'CREATE INDEX idx_matching_comments_post_active ON matching_post_comments (post_id, is_deleted, created_at)',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- matching_post_comments: trả lời bình luận (parent_comment_id, 1 cấp)
@@ -1426,7 +1426,7 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE matching_post_comments ADD COLUMN parent_comment_id CHAR(36) NULL',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @fk_exists := (
@@ -1436,7 +1436,7 @@ SET @fk_exists := (
 );
 SET @sql := IF(@fk_exists = 0,
   'ALTER TABLE matching_post_comments ADD CONSTRAINT matching_post_comments_parent_fk FOREIGN KEY (parent_comment_id) REFERENCES matching_post_comments(id) ON DELETE SET NULL',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- matching_post_comments: ảnh đính kèm
@@ -1446,7 +1446,7 @@ SET @col_exists := (
 );
 SET @sql := IF(@col_exists = 0,
   'ALTER TABLE matching_post_comments ADD COLUMN attachment_file_id CHAR(36) NULL',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @fk_exists := (
@@ -1456,7 +1456,7 @@ SET @fk_exists := (
 );
 SET @sql := IF(@fk_exists = 0,
   'ALTER TABLE matching_post_comments ADD CONSTRAINT matching_post_comments_attachment_fk FOREIGN KEY (attachment_file_id) REFERENCES files(id) ON DELETE SET NULL',
-  'SELECT 1');
+  'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- Sửa id payments mẫu cũ: prefix "g" không phải hex → EF đọc Guid lỗi 500 trên /api/manager/bookings
@@ -1506,100 +1506,100 @@ UPDATE matching_post_comments SET parent_comment_id = 'df000002-0000-0000-0000-0
 -- ======================================================================
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'reason_code');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN reason_code VARCHAR(50) NOT NULL DEFAULT ''PLAYER_CANCEL''', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN reason_code VARCHAR(50) NOT NULL DEFAULT ''PLAYER_CANCEL''', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'requested_amount');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN requested_amount DECIMAL(15,2) NULL', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN requested_amount DECIMAL(15,2) NULL', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'paid_amount');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN paid_amount DECIMAL(15,2) NULL', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN paid_amount DECIMAL(15,2) NULL', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'refund_bank_name');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN refund_bank_name VARCHAR(100) NULL', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN refund_bank_name VARCHAR(100) NULL', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'refund_account_number');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN refund_account_number VARCHAR(50) NULL', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN refund_account_number VARCHAR(50) NULL', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'refund_account_holder');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN refund_account_holder VARCHAR(255) NULL', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN refund_account_holder VARCHAR(255) NULL', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'player_note');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN player_note TEXT NULL', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN player_note TEXT NULL', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'rejection_reason');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN rejection_reason TEXT NULL', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN rejection_reason TEXT NULL', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'manager_note');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN manager_note TEXT NULL', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN manager_note TEXT NULL', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'manager_evidence_file_id');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN manager_evidence_file_id CHAR(36) NULL', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN manager_evidence_file_id CHAR(36) NULL', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'player_received_file_id');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN player_received_file_id CHAR(36) NULL', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN player_received_file_id CHAR(36) NULL', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'refund_qr_image_url');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN refund_qr_image_url VARCHAR(2048) NULL COMMENT ''Ảnh mã QR nhận hoàn tiền (Cloudinary URL)'' AFTER refund_account_holder', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN refund_qr_image_url VARCHAR(2048) NULL COMMENT ''Ảnh mã QR nhận hoàn tiền (Cloudinary URL)'' AFTER refund_account_holder', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venue_coupons' AND column_name = 'one_use_per_user');
-SET @sql := IF(@col = 0, 'ALTER TABLE venue_coupons ADD COLUMN one_use_per_user TINYINT(1) NOT NULL DEFAULT 1 COMMENT ''TRUE: mỗi user chỉ dùng mã 1 lần (đơn không huỷ)''', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE venue_coupons ADD COLUMN one_use_per_user TINYINT(1) NOT NULL DEFAULT 1 COMMENT ''TRUE: mỗi user chỉ dùng mã 1 lần (đơn không huỷ)''', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- featured_posts: bỏ sort_order (thứ tự chỉ theo created_at trong API)
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'featured_posts' AND column_name = 'sort_order');
-SET @sql := IF(@col > 0, 'ALTER TABLE featured_posts DROP COLUMN sort_order', 'SELECT 1');
+SET @sql := IF(@col > 0, 'ALTER TABLE featured_posts DROP COLUMN sort_order', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- venues: venue_rules — quy định chi tiết dạng text tự do (chủ sân nhập trên trang chính sách)
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'venue_rules');
-SET @sql := IF(@col = 0, 'ALTER TABLE venues ADD COLUMN venue_rules TEXT NULL COMMENT ''Quy định chung tại sân (free-text, manager nhập)''', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE venues ADD COLUMN venue_rules TEXT NULL COMMENT ''Quy định chung tại sân (free-text, manager nhập)''', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- court_blocks: lý do khóa sân + audit
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'court_blocks' AND column_name = 'reason_code');
-SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN reason_code VARCHAR(30) NULL COMMENT ''MAINTENANCE|WEATHER|OTHER''', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN reason_code VARCHAR(30) NULL COMMENT ''MAINTENANCE|WEATHER|OTHER''', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'court_blocks' AND column_name = 'reason_detail');
-SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN reason_detail VARCHAR(500) NULL', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN reason_detail VARCHAR(500) NULL', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'court_blocks' AND column_name = 'internal_note');
-SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN internal_note VARCHAR(500) NULL', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN internal_note VARCHAR(500) NULL', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'court_blocks' AND column_name = 'created_at');
-SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'court_blocks' AND column_name = 'updated_at');
-SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- venue_reviews: phản hồi chủ sân
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venue_reviews' AND column_name = 'owner_reply');
-SET @sql := IF(@col = 0, 'ALTER TABLE venue_reviews ADD COLUMN owner_reply TEXT NULL COMMENT ''Phản hồi của chủ sân (manager)''', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE venue_reviews ADD COLUMN owner_reply TEXT NULL COMMENT ''Phản hồi của chủ sân (manager)''', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venue_reviews' AND column_name = 'owner_reply_at');
-SET @sql := IF(@col = 0, 'ALTER TABLE venue_reviews ADD COLUMN owner_reply_at DATETIME NULL', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE venue_reviews ADD COLUMN owner_reply_at DATETIME NULL', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- bookings: hold_expires_at — server-side soft-lock (HOLDING status, 5 min TTL)
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'bookings' AND column_name = 'hold_expires_at');
-SET @sql := IF(@col = 0, 'ALTER TABLE bookings ADD COLUMN hold_expires_at DATETIME NULL COMMENT ''UTC deadline for HOLDING status'' AFTER status', 'SELECT 1');
+SET @sql := IF(@col = 0, 'ALTER TABLE bookings ADD COLUMN hold_expires_at DATETIME NULL COMMENT ''UTC deadline for HOLDING status'' AFTER status', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- ======================================================================
@@ -1615,7 +1615,7 @@ SELECT 'FeaturedPosts',       COUNT(*)          FROM featured_posts UNION ALL
 SELECT 'Reviews',             COUNT(*)          FROM venue_reviews;
 
 SET @col_sd := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'slot_duration');
-SET @sql_sd := IF(@col_sd = 0, 'ALTER TABLE venues ADD COLUMN slot_duration INT NOT NULL DEFAULT 60', 'SELECT 1');
+SET @sql_sd := IF(@col_sd = 0, 'ALTER TABLE venues ADD COLUMN slot_duration INT NOT NULL DEFAULT 60', 'DO 0');
 PREPARE stmt_sd FROM @sql_sd; EXECUTE stmt_sd; DEALLOCATE PREPARE stmt_sd;
 
 SET FOREIGN_KEY_CHECKS = 1;
