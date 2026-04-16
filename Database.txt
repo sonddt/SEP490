@@ -117,6 +117,8 @@ CREATE TABLE users (
     is_active BOOLEAN DEFAULT TRUE,
     blocked_at DATETIME,
     blocked_reason TEXT,
+    ban_type VARCHAR(10) NULL DEFAULT NULL,
+    soft_ban_expires_at DATETIME NULL DEFAULT NULL,
     blocked_by CHAR(36),
     avatar_file_id CHAR(36),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -1617,5 +1619,14 @@ SELECT 'Reviews',             COUNT(*)          FROM venue_reviews;
 SET @col_sd := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'slot_duration');
 SET @sql_sd := IF(@col_sd = 0, 'ALTER TABLE venues ADD COLUMN slot_duration INT NOT NULL DEFAULT 60', 'DO 0');
 PREPARE stmt_sd FROM @sql_sd; EXECUTE stmt_sd; DEALLOCATE PREPARE stmt_sd;
+
+-- users: ban logic
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'ban_type');
+SET @sql := IF(@col = 0, 'ALTER TABLE users ADD COLUMN ban_type VARCHAR(10) NULL DEFAULT NULL AFTER blocked_reason', 'DO 0');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'soft_ban_expires_at');
+SET @sql := IF(@col = 0, 'ALTER TABLE users ADD COLUMN soft_ban_expires_at DATETIME NULL DEFAULT NULL AFTER ban_type', 'DO 0');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET FOREIGN_KEY_CHECKS = 1;

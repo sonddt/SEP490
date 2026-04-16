@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ShuttleUp.Backend.Services.Interfaces;
 using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.DAL.Models;
 using DalFile = ShuttleUp.DAL.Models.File;
@@ -21,17 +22,20 @@ public class AdminController : ControllerBase
     private readonly IUserService    _userService;
     private readonly IVenueService   _venueService;
     private readonly IBookingService _bookingService;
+    private readonly IBanService     _banService;
     private readonly ShuttleUpDbContext _db;
 
     public AdminController(
         IUserService    userService,
         IVenueService   venueService,
         IBookingService bookingService,
+        IBanService     banService,
         ShuttleUpDbContext db)
     {
         _userService    = userService;
         _venueService   = venueService;
         _bookingService = bookingService;
+        _banService     = banService;
         _db             = db;
     }
 
@@ -164,6 +168,8 @@ public class AdminController : ControllerBase
                 u.IsActive,
                 u.BlockedAt,
                 u.BlockedReason,
+                u.BanType,
+                u.SoftBanExpiresAt,
                 u.CreatedAt,
                 Roles = u.Roles.Select(r => r.Name).ToList()
             })
@@ -196,6 +202,8 @@ public class AdminController : ControllerBase
             user.IsActive,
             user.BlockedAt,
             user.BlockedReason,
+            user.BanType,
+            user.SoftBanExpiresAt,
             user.CreatedAt,
             user.UpdatedAt,
             Roles = user.Roles.Select(r => r.Name).ToList()
@@ -203,47 +211,85 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
-    /// Khoá tài khoản người dùng. Body: { "reason": "..." }
+    /// Kiểm tra kịch bản cấm tài khoản trước khi thực hiện.
     /// </summary>
-    [HttpPost("accounts/{userId:guid}/block")]
-    public async Task<IActionResult> BlockAccount(
+    [HttpGet("accounts/{userId:guid}/ban-check")]
+    public async Task<IActionResult> CheckBanScenario([FromRoute] Guid userId)
+    {
+        var result = await _banService.CheckBanScenarioAsync(userId);
+        return Ok(new {
+            scenario = result.Scenario.ToString(),
+            ongoingBookingCount = result.OngoingBookingCount,
+            isInGracePeriod = result.IsInGracePeriod,
+            softBanExpiresAt = result.SoftBanExpiresAt
+        });
+    }
+
+    /// <summary>
+    /// Khoá tài khoản người dùng.
+    /// </summary>
+    [HttpPost("accounts/{userId:guid}/ban")]
+    public async Task<IActionResult> BanAccount(
         [FromRoute] Guid userId,
-        [FromBody] BlockAccountRequest request)
+        [FromBody] BanAccountRequest request)
     {
         var adminId = GetCurrentUserId();
         if (adminId == Guid.Empty)
             return Unauthorized(new { message = "Không xác định được Admin." });
 
-        var user = await _userService.GetByIdAsync(userId);
-        if (user == null)
-            return NotFound(new { message = "Người dùng không tồn tại." });
-
-        if (user.IsActive == false)
-            return BadRequest(new { message = "Tài khoản đã bị khoá trước đó." });
-
-        // Không cho phép khoá chính Admin đang đăng nhập
-        if (user.Id == adminId)
+        if (userId == adminId)
             return BadRequest(new { message = "Không thể khoá tài khoản của chính mình." });
 
-        await _userService.BlockUserAsync(userId, adminId, request.Reason ?? "Vi phạm điều khoản.");
+        var checkResult = await _banService.CheckBanScenarioAsync(userId);
 
-        return Ok(new { message = "Đã khoá tài khoản thành công.", userId });
+        if (checkResult.Scenario == BanScenario.GracePeriod && !request.ForceHardBan)
+        {
+            await _banService.ExecuteSoftBanAsync(userId, adminId, request.Reason ?? "Vi phạm điều khoản.");
+            return Ok(new { message = "Tài khoản đã được chuyển vào Giai đoạn ân hạn (Soft Ban)." });
+        }
+
+        if (checkResult.Scenario == BanScenario.OverrideGrace && !request.ForceHardBan)
+        {
+            return BadRequest(new { message = "Tài khoản đang trong giai đoạn ân hạn. Vui lòng xác nhận để khóa vĩnh viễn ngay lập tức." });
+        }
+
+        await _banService.ExecuteHardBanAsync(userId, adminId, request.Reason ?? "Vi phạm điều khoản.");
+        return Ok(new { message = "Đã khoá tài khoản vĩnh viễn thành công." });
     }
 
     /// <summary>
     /// Mở khoá tài khoản người dùng.
     /// </summary>
     [HttpPost("accounts/{userId:guid}/unblock")]
-    public async Task<IActionResult> UnblockAccount([FromRoute] Guid userId)
+    public async Task<IActionResult> UnblockAccount(
+        [FromRoute] Guid userId,
+        [FromBody] UnblockAccountRequest request)
     {
         var user = await _userService.GetByIdAsync(userId);
         if (user == null)
             return NotFound(new { message = "Người dùng không tồn tại." });
 
-        if (user.IsActive == true)
+        if (user.IsActive == true && user.BanType != "SOFT")
             return BadRequest(new { message = "Tài khoản đang hoạt động bình thường." });
 
-        await _userService.UnblockUserAsync(userId);
+        user.IsActive = true;
+        user.BanType = null;
+        user.SoftBanExpiresAt = null;
+        user.BlockedAt = null;
+        user.BlockedBy = null;
+        user.BlockedReason = null;
+
+        await _userService.UpdateAsync(user);
+
+        var bannedUserCache = HttpContext.RequestServices.GetRequiredService<IBannedUserCache>();
+        bannedUserCache.Remove(userId);
+
+        if (request.RestoreVenues)
+        {
+            var venues = await _db.Venues.Where(v => v.OwnerUserId == userId).ToListAsync();
+            foreach (var v in venues) { v.IsActive = true; }
+            await _db.SaveChangesAsync();
+        }
 
         return Ok(new { message = "Đã mở khoá tài khoản thành công.", userId });
     }
@@ -731,5 +777,6 @@ public class AdminController : ControllerBase
 
 // ── Request DTOs (inline — đơn giản, không cần file riêng) ────────────────────
 
-public record BlockAccountRequest(string? Reason);
 public record ApprovalDecisionRequest(string? Note);
+public record BanAccountRequest(string? Reason, bool ForceHardBan);
+public record UnblockAccountRequest(bool RestoreVenues);

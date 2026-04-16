@@ -11,6 +11,7 @@ namespace ShuttleUp.Backend
     using ShuttleUp.Backend.Configurations;
     using ShuttleUp.Backend.Services;
     using ShuttleUp.Backend.Services.Interfaces;
+    using ShuttleUp.Backend.Middleware;
     using ShuttleUp.BLL.Interfaces;
     using ShuttleUp.BLL.Services;
     using ShuttleUp.DAL.Models;
@@ -95,10 +96,13 @@ namespace ShuttleUp.Backend
             });
             builder.Services.AddHostedService<ShuttleUp.Backend.Services.ExpiredHoldCleanupService>();
             builder.Services.AddHostedService<ShuttleUp.Backend.Services.UpcomingBookingReminderService>();
+            builder.Services.AddHostedService<ShuttleUp.Backend.Services.SoftBanFinalizationService>();
             builder.Services.AddMemoryCache();
             builder.Services.AddScoped<INotificationDispatchService, NotificationDispatchService>();
             builder.Services.AddScoped<IMatchingPostLifecycleService, MatchingPostLifecycleService>();
             builder.Services.AddScoped<IMatchingPostActivityService, MatchingPostActivityService>();
+            builder.Services.AddScoped<IBanService, BanService>();
+            builder.Services.AddSingleton<IBannedUserCache, BannedUserCache>();
 
             // ── JWT Authentication ────────────────────────────────────────────────
             var jwtKey = builder.Configuration["Jwt:Key"]!;
@@ -215,6 +219,11 @@ namespace ShuttleUp.Backend
                             }
                         }
                         dbContext.SaveChanges();
+
+                        // Populate BannedUserCache
+                        var bannedUserCache = scope.ServiceProvider.GetRequiredService<IBannedUserCache>();
+                        var bannedUserIds = dbContext.Users.Where(u => u.IsActive == false || u.BanType == "HARD").Select(u => u.Id).ToList();
+                        bannedUserCache.Populate(bannedUserIds);
                     }
                     else
                     {
@@ -250,7 +259,8 @@ namespace ShuttleUp.Backend
                 app.UseHttpsRedirection();
             }
 
-            app.UseAuthentication();  
+            app.UseAuthentication();
+            app.UseMiddleware<BannedUserMiddleware>();
             app.UseAuthorization();
 
             app.MapControllers();

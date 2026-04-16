@@ -1095,6 +1095,12 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime")
                 .HasColumnName("created_at");
+            entity.Property(e => e.BanType)
+                .HasMaxLength(10)
+                .HasColumnName("ban_type");
+            entity.Property(e => e.SoftBanExpiresAt)
+                .HasColumnType("datetime")
+                .HasColumnName("soft_ban_expires_at");
             entity.Property(e => e.DateOfBirth).HasColumnName("date_of_birth");
             entity.Property(e => e.Email).HasColumnName("email");
             entity.Property(e => e.FullName)

@@ -40,6 +40,12 @@ public partial class User
     public DateTime? BlockedAt { get; set; }
 
     public string? BlockedReason { get; set; }
+    
+    /// <summary>NULL = active, SOFT = grace period, HARD = vĩnh viễn</summary>
+    public string? BanType { get; set; }
+
+    /// <summary>Thời điểm hết grace period (chỉ có giá trị khi BanType = SOFT)</summary>
+    public DateTime? SoftBanExpiresAt { get; set; }
 
     public Guid? BlockedBy { get; set; }
 
