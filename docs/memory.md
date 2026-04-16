@@ -525,3 +525,26 @@ Kết bạn & quan hệ xã hội (Player):
    - Nếu backend đang chạy process cũ/không restart, query có thể chưa phản ánh code mới (đã gặp trong phiên khi kiểm tra `group_name`).
    - Một số warning console như SignalR reconnect / Tracking Prevention không phải nguyên nhân chính của lỗi nhóm sân.
 
+
+---
+
+## 16 tháng 4, 2026 (Cấu hình giờ nhận khách & Sửa lỗi logic đóng/mở sân)
+
+1. **Chuẩn hóa Logic Giờ đóng cửa (CloseTime)**:
+   - Quy định lại ngữ nghĩa của `CloseTime`: Là "Giờ nhận khách cuối cùng" (Last Game Start). Ví dụ: cài đóng 23:00 nghĩa là suất chơi từ 23:00-24:00 vẫn được chấp nhận.
+   - **Backend (`VenuesController.cs`)**: Cập nhật logic tạo interval `closed` trong API availability. Khoảng đóng cửa nay bắt đầu sau khi suất chơi cuối kết thúc (`closeTime + slotDuration`).
+   - **Validation (`BookingSlotHelper.cs`)**: Đổi luật kiểm tra từ `slotEndTime > CloseTime` sang `slotStartTime > CloseTime`. Cho phép đặt sân nếu giờ bắt đầu vẫn nằm trong khung làm việc.
+
+2. **Đồng bộ trạng thái linh hoạt (Smart Allocation)**:
+   - Cập nhật thuật toán tìm sân trống thông minh (`AllocateFlexibleLongTerm`) để đọc cấu hình `CourtOpenHours`.
+   - Tính năng "Tự động xếp sân" / "Chọn sân bất kỳ" nay đã biết bỏ qua các sân/giờ đóng cửa theo lịch hoạt động của chủ sân.
+
+3. **Cải tiến UI/UX Cấu hình & Lịch đặt**:
+   - **ManagerAddCourt.jsx**:
+     - Sửa lỗi DayOfWeek mapping giữa C# (0=Sunday) và UI (0=Monday), chấm dứt tình trạng cấu hình Thứ 2 bị nhảy sang Thứ 3.
+     - Xử lý dữ liệu cũ (Legacy): Sân chưa có cấu hình sẽ mặc định hiển thị ON (xanh) với khung giờ chuẩn 05:00-23:00 thay vì hiện OFF gây hiểu lầm.
+   - **LongTermFlexible.jsx**: Bổ sung hiển thị khối thời gian đóng cửa (màu xám #9ca3af) đồng nhất với lịch đặt sân thông thường.
+
+4. **Lưu ý triển khai**:
+   - Đã xác nhận hoạt động chuẩn xác trên cả 3 loại đặt sân: Đặt lẻ, Đặt cố định, Đặt linh hoạt.
+   - Đã xử lý lỗi biên (Edge cases) khi slotDuration không chia hết hoặc bằng 0.

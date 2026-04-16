@@ -139,6 +139,12 @@ public class BookingsController : ControllerBase
         if (conflict == "CONFLICT_BLOCK")
             return Conflict(new { message = "Một số khung giờ đang bị khóa bởi chủ sân." });
 
+        var openHoursErr = await BookingSlotHelper.CheckOpenHoursAsync(_dbContext, normalizedItems, HttpContext.RequestAborted);
+        if (openHoursErr == "COURT_CLOSED_DAY")
+            return BadRequest(new { message = "Sân không mở cửa vào ngày này. Vui lòng chọn ngày khác." });
+        if (openHoursErr == "OUTSIDE_OPEN_HOURS")
+            return BadRequest(new { message = "Khung giờ nằm ngoài giờ nhận khách của sân. Vui lòng chọn khung giờ khác." });
+
         var total = normalizedItems.Sum(x => x.Price);
 
         // Collect actual booked dates for consecutive-day discount calculation
@@ -754,6 +760,12 @@ public class BookingsController : ControllerBase
         if (conflict == "CONFLICT_BLOCK")
             return new FlexibleLongTermBuildResult { Error = Conflict(new { message = "Một số khung giờ đang bị khóa bởi chủ sân." }) };
 
+        var openHoursErr = await BookingSlotHelper.CheckOpenHoursAsync(_dbContext, normalizedItems, ct);
+        if (openHoursErr == "COURT_CLOSED_DAY")
+            return new FlexibleLongTermBuildResult { Error = BadRequest(new { message = "Sân không mở cửa vào ngày này. Vui lòng chọn ngày khác." }) };
+        if (openHoursErr == "OUTSIDE_OPEN_HOURS")
+            return new FlexibleLongTermBuildResult { Error = BadRequest(new { message = "Khung giờ nằm ngoài giờ nhận khách của sân. Vui lòng chọn khung giờ khác." }) };
+
         var dates = normalizedItems.Select(x => DateOnly.FromDateTime(x.Start));
         var rangeStart = dates.Min();
         var rangeEnd = dates.Max();
@@ -899,6 +911,12 @@ public class BookingsController : ControllerBase
             return new LongTermBuildResult { Error = Conflict(new { message = "Một hoặc nhiều khung giờ đã có người đặt. Vui lòng đổi lịch." }) };
         if (conflict == "CONFLICT_BLOCK")
             return new LongTermBuildResult { Error = Conflict(new { message = "Một số khung giờ đang bị khóa bởi chủ sân." }) };
+
+        var openHoursErr = await BookingSlotHelper.CheckOpenHoursAsync(_dbContext, normalizedItems, ct);
+        if (openHoursErr == "COURT_CLOSED_DAY")
+            return new LongTermBuildResult { Error = BadRequest(new { message = "Sân không mở cửa vào ngày này. Vui lòng chọn ngày khác." }) };
+        if (openHoursErr == "OUTSIDE_OPEN_HOURS")
+            return new LongTermBuildResult { Error = BadRequest(new { message = "Khung giờ nằm ngoài giờ nhận khách của sân. Vui lòng chọn khung giờ khác." }) };
 
         return new LongTermBuildResult
         {

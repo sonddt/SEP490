@@ -222,7 +222,7 @@ function intervalsToGridBlocks(courtId, intervals, dateStr, slotDurationMins = 3
       }
     }
     if (startIndex >= 0) {
-      const kind = iv.kind === 'blocked' ? 'locked' : 'booked';
+      const kind = iv.kind === 'blocked' ? 'locked' : iv.kind === 'closed' ? 'closed' : 'booked';
       const label = iv.kind === 'blocked' ? labelForBlockedInterval(iv) : undefined;
       blocks.push({ courtId, startIndex, endIndex, type: kind, label });
     }
@@ -613,6 +613,7 @@ export default function BookingTimeline() {
     switch (status) {
       case 'booked':   return '#ef4444';
       case 'locked':   return '#c084fc';
+      case 'closed':   return '#9ca3af';
       case 'past':     return '#d1d5db';
       case 'selected': return '#16a34a';
       default:         return '#ffffff';
@@ -787,7 +788,6 @@ export default function BookingTimeline() {
                 <div style={{
                   width: `${GROUP_LABEL_W}px`, minWidth: `${GROUP_LABEL_W}px`, position: 'sticky', left: 0,
                   backgroundColor: '#ecfeff', zIndex: 12, borderRight: '1px solid #bae6fd', borderBottom: '1px solid #bae6fd',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: '12px', fontWeight: '700', color: '#0e7490', textAlign: 'center',
                   padding: '0 4px', lineHeight: 1.2,
                   height: `${COURT_ROW_H}px`,

@@ -276,6 +276,62 @@ public static class BookingSlotHelper
         return null;
     }
 
+    /// <summary>
+    /// Kiểm tra các slot có nằm trong giờ mở cửa (court_open_hours) không.
+    /// Trả null nếu OK, hoặc message lỗi nếu slot ngoài giờ.
+    /// Courts chưa cấu hình open hours → coi như mở 24/7 (backward compatible).
+    /// </summary>
+    public static async Task<string?> CheckOpenHoursAsync(
+        ShuttleUpDbContext db,
+        List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)> normalizedItems,
+        CancellationToken ct = default)
+    {
+        if (normalizedItems.Count == 0)
+            return null;
+
+        var courtIds = normalizedItems.Select(x => x.CourtId).Distinct().ToList();
+
+        var allOpenHours = await db.CourtOpenHours
+            .AsNoTracking()
+            .Where(o => o.CourtId != null && courtIds.Contains(o.CourtId.Value))
+            .ToListAsync(ct);
+
+        // Courts without any open hours records → skip (open 24/7)
+        var configuredCourtIds = allOpenHours
+            .Select(o => o.CourtId!.Value)
+            .Distinct()
+            .ToHashSet();
+
+        foreach (var item in normalizedItems)
+        {
+            if (!configuredCourtIds.Contains(item.CourtId))
+                continue; // No config → allowed
+
+            var dayOfWeek = (int)item.Start.DayOfWeek; // C# DayOfWeek: 0=Sunday
+            var record = allOpenHours.FirstOrDefault(o =>
+                o.CourtId == item.CourtId && o.DayOfWeek == dayOfWeek);
+
+            if (record == null)
+                continue; // No record for this specific day → allowed
+
+            if (!record.OpenTime.HasValue || !record.CloseTime.HasValue)
+            {
+                // Day disabled (enabled=false, times are null)
+                return $"COURT_CLOSED_DAY";
+            }
+
+            var slotTime = TimeOnly.FromDateTime(item.Start);
+
+            // CloseTime = last accepted START time ("nhận khách đến 23h" = slot 23h vẫn OK)
+            if (slotTime < record.OpenTime.Value || slotTime > record.CloseTime.Value)
+            {
+                return $"OUTSIDE_OPEN_HOURS";
+            }
+        }
+
+        return null;
+    }
+
     /* ══════════════════════════════════════════════════════════════
      *  SMART ALLOCATION — "Sân bất kỳ" / Auto-switch
      * ══════════════════════════════════════════════════════════════ */
@@ -334,6 +390,16 @@ public static class BookingSlotHelper
                         && b.StartTime < maxEnd && b.EndTime > minStart)
             .ToListAsync(ct);
 
+        var allOpenHours = await db.CourtOpenHours
+            .AsNoTracking()
+            .Where(o => o.CourtId != null && allCourtIds.Contains(o.CourtId.Value))
+            .ToListAsync(ct);
+
+        var configuredCourtIds = allOpenHours
+            .Select(o => o.CourtId!.Value)
+            .Distinct()
+            .ToHashSet();
+
         // ── Build busy-set per court ──
         var busyMap = new Dictionary<Guid, HashSet<(DateTime, DateTime)>>();
         foreach (var cid in allCourtIds) busyMap[cid] = new HashSet<(DateTime, DateTime)>();
@@ -351,6 +417,20 @@ public static class BookingSlotHelper
 
         bool IsSlotFree(Guid courtId, DateTime start, DateTime end)
         {
+            if (configuredCourtIds.Contains(courtId))
+            {
+                var dayOfWeek = (int)start.DayOfWeek; // C# DayOfWeek: 0=Sunday
+                var record = allOpenHours.FirstOrDefault(o => o.CourtId == courtId && o.DayOfWeek == dayOfWeek);
+                if (record != null)
+                {
+                    if (!record.OpenTime.HasValue || !record.CloseTime.HasValue)
+                        return false; // Day disabled
+                    var slotTime = TimeOnly.FromDateTime(start);
+                    if (slotTime < record.OpenTime.Value || slotTime > record.CloseTime.Value)
+                        return false; // Outside open hours
+                }
+            }
+
             if (!busyMap.TryGetValue(courtId, out var set)) return true;
             foreach (var (bs, be) in set)
             {

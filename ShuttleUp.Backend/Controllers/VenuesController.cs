@@ -213,6 +213,15 @@ public class VenuesController : ControllerBase
                         p.EndTime,
                         p.Price,
                         p.IsWeekend
+                    }),
+                OpenHours = c.CourtOpenHours
+                    .OrderBy(o => o.DayOfWeek)
+                    .Select(o => new
+                    {
+                        o.DayOfWeek,
+                        Enabled = o.OpenTime.HasValue && o.CloseTime.HasValue,
+                        OpenTime = o.OpenTime,
+                        CloseTime = o.CloseTime
                     })
             })
             .ToListAsync();
@@ -226,10 +235,13 @@ public class VenuesController : ControllerBase
     [HttpGet("{id:guid}/availability")]
     public async Task<IActionResult> GetVenueAvailability([FromRoute] Guid id, [FromQuery] string date)
     {
-        var exists = await _dbContext.Venues.AnyAsync(v =>
-            v.Id == id && v.IsActive == true);
+        var venue = await _dbContext.Venues
+            .AsNoTracking()
+            .Where(v => v.Id == id && v.IsActive == true)
+            .Select(v => new { v.Id, v.SlotDuration })
+            .FirstOrDefaultAsync();
 
-        if (!exists)
+        if (venue == null)
             return NotFound();
 
         if (!DateOnly.TryParse(date, out var day))
@@ -319,6 +331,48 @@ public class VenuesController : ControllerBase
                     reasonCode = row.ReasonCode,
                     reasonDetail = row.ReasonDetail,
                 });
+        }
+
+        // ── Generate "closed" intervals from court_open_hours ──────────
+        var dayOfWeek = (int)day.DayOfWeek; // C# DayOfWeek: 0=Sunday
+        var openHoursForDay = await _dbContext.CourtOpenHours
+            .AsNoTracking()
+            .Where(o => o.CourtId != null && courtIds.Contains(o.CourtId.Value)
+                                          && o.DayOfWeek == dayOfWeek)
+            .ToListAsync();
+
+        // Courts that have at least one open hour record (configured)
+        var configuredCourtIds = openHoursForDay.Select(o => o.CourtId!.Value).Distinct().ToHashSet();
+
+        foreach (var cid in courtIds)
+        {
+            if (!configuredCourtIds.Contains(cid))
+                continue; // No open hours config → open all day (backward compatible)
+
+            if (!intervalsByCourt.TryGetValue(cid, out var list))
+                continue;
+
+            var record = openHoursForDay.FirstOrDefault(o => o.CourtId == cid);
+            if (record == null || !record.OpenTime.HasValue || !record.CloseTime.HasValue)
+            {
+                // Day disabled (enabled=false) → entire day is closed
+                list.Add(new { start = dayStart, end = dayEnd, kind = "closed" });
+                continue;
+            }
+
+            // Generate closed intervals for before open and after close
+            var openDt = day.ToDateTime(record.OpenTime.Value);
+            var closeDt = day.ToDateTime(record.CloseTime.Value);
+
+            if (openDt > dayStart)
+                list.Add(new { start = dayStart, end = openDt, kind = "closed" });
+
+            // CloseTime = last accepted START time ("nhận khách đến 23h" = slot 23h vẫn OK)
+            // The closed interval starts AFTER the slot that begins at closeTime
+            var slotMins = venue.SlotDuration > 0 ? venue.SlotDuration : 30;
+            var afterCloseSlotStart = closeDt.AddMinutes(slotMins);
+            if (afterCloseSlotStart < dayEnd)
+                list.Add(new { start = afterCloseSlotStart, end = dayEnd, kind = "closed" });
         }
 
         var payload = intervalsByCourt.Select(kv => new

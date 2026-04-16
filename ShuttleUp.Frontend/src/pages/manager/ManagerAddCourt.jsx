@@ -42,6 +42,10 @@ export default function ManagerAddCourt() {
   });
 
   const DAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
+  // DAYS[i] → C# DayOfWeek value: T2=1, T3=2, T4=3, T5=4, T6=5, T7=6, CN=0
+  const DAY_MAP = [1, 2, 3, 4, 5, 6, 0];
+  // C# DayOfWeek → DAYS index: 0(CN)→6, 1(T2)→0, 2(T3)→1, ..., 6(T7)→5
+  const DAY_MAP_REVERSE = { 0:6, 1:0, 2:1, 3:2, 4:3, 5:4, 6:5 };
   const TIME_SLOTS = [];
   for (let h = 5; h <= 23; h++) {
     TIME_SLOTS.push(`${String(h).padStart(2, '0')}:00`);
@@ -263,8 +267,13 @@ export default function ManagerAddCourt() {
         }
         
         const hours = res?.openHours || res?.OpenHours || [];
+        const isLegacy = hours.length === 0;
         const mappedHours = DAYS.map((_, i) => {
-          const matched = hours.find(h => (h.dayOfWeek ?? h.DayOfWeek) === i);
+          if (isLegacy) {
+            return { enabled: true, open: '05:00', close: '23:00' };
+          }
+          const dbDow = DAY_MAP[i]; // convert DAYS index to C# DayOfWeek
+          const matched = hours.find(h => (h.dayOfWeek ?? h.DayOfWeek) === dbDow);
           if (matched && (matched.enabled ?? matched.Enabled)) {
             return { enabled: true, open: matched.openTime || matched.OpenTime || '06:00', close: matched.closeTime || matched.CloseTime || '22:00' };
           }
@@ -323,7 +332,7 @@ export default function ManagerAddCourt() {
       priceSlots.push({ startTime: '05:00', endTime: '23:59', price: pe, isWeekend: true });
       
       const openHours = dayHours.map((d, i) => ({
-        dayOfWeek: i,
+        dayOfWeek: DAY_MAP[i], // convert DAYS index to C# DayOfWeek
         enabled: d.enabled,
         openTime: d.enabled ? d.open : null,
         closeTime: d.enabled ? d.close : null

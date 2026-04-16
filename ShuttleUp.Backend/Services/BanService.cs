@@ -13,6 +13,7 @@ public class BanService : IBanService
     private readonly ShuttleUpDbContext _db;
     private readonly INotificationDispatchService _notification;
     private readonly IEmailTemplateService _templateService;
+    private readonly IBannedUserCache _bannedUserCache;
     private readonly ILogger<BanService> _logger;
 
     public BanService(
