@@ -1,0 +1,35 @@
+<!-- 
+  MỤC ĐÍCH: Gửi thông báo cho Chủ sân (Manager) khi bị áp dụng Giai đoạn ân hạn 3 ngày do vẫn còn lịch đặt sân.
+  CÁC BIẾN SỬ DỤNG:
+    - {{FullName}}: Tên chủ sân.
+    - {{Reason}}: Lý do vi phạm.
+    - {{ExpiresAt}}: Thời điểm chính xác tài khoản sẽ bị đóng hoàn toàn.
+-->
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+    <div style="background-color: #f59e0b; color: white; padding: 20px; text-align: center;">
+        <h2 style="margin: 0;">⚠️ Cảnh báo: Tài khoản sắp bị khóa</h2>
+    </div>
+    <div style="padding: 24px; line-height: 1.6; color: #334155;">
+        <p>Xin chào <strong>{{FullName}}</strong>,</p>
+        <p>Tài khoản của bạn trên ShuttleUp đã vi phạm chính sách và đang trong <strong>Giai đoạn ân hạn 3 ngày</strong> trước khi bị khóa chính thức.</p>
+        
+        <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0;">
+            <p style="margin: 0; font-weight: bold; color: #d97706;">Thời hạn truy cập cuối cùng:</p>
+            <p style="margin: 5px 0 0 0; font-size: 18px; color: #e11d48;"><strong>{{ExpiresAt}}</strong></p>
+            <p style="margin: 10px 0 0 0; font-weight: bold; color: #d97706;">Lý do vi phạm:</p>
+            <p style="margin: 2px 0 0 0;">{{Reason}}</p>
+        </div>
+
+        <p><strong>Lưu ý quan trọng:</strong></p>
+        <ul style="padding-left: 20px;">
+            <li>Tất cả các sân của bạn đã bị <strong>ẨN</strong> khỏi hệ thống.</li>
+            <li>Bạn có 3 ngày để truy cập hệ thống để giải quyết các lịch đặt sân hiện có.</li>
+            <li>Sau thời hạn trên, tài khoản sẽ bị khóa vĩnh viễn và bạn sẽ không thể đăng nhập.</li>
+        </ul>
+
+        <p style="color: #e11d48; font-weight: bold;">⚠️ Vui lòng lưu lại thông tin liên hệ của khách hàng theo cách thủ công để xử lý các lịch đặt, vì ShuttleUp sẽ không bồi hoàn dữ liệu sau khi khóa.</p>
+        
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;">
+        <p style="font-size: 12px; color: #94a3b8; text-align: center;">Hệ thống thông báo tự động ShuttleUp</p>
+    </div>
+</div>

@@ -12,18 +12,20 @@ public class BanService : IBanService
 {
     private readonly ShuttleUpDbContext _db;
     private readonly INotificationDispatchService _notification;
-    private readonly IBannedUserCache _bannedUserCache;
+    private readonly IEmailTemplateService _templateService;
     private readonly ILogger<BanService> _logger;
 
     public BanService(
         ShuttleUpDbContext db,
         INotificationDispatchService notification,
         IBannedUserCache bannedUserCache,
+        IEmailTemplateService templateService,
         ILogger<BanService> logger)
     {
         _db = db;
         _notification = notification;
         _bannedUserCache = bannedUserCache;
+        _templateService = templateService;
         _logger = logger;
     }
 
@@ -82,13 +84,13 @@ public class BanService : IBanService
         _bannedUserCache.AddBannedUser(targetUserId);
         await _db.SaveChangesAsync();
 
-        string emailBody = $@"
-        <div style=""font-family:Arial,sans-serif;max-width:600px;margin:auto"">
-            <h2 style=""color:#e11d48"">Tài khoản bị khóa vĩnh viễn</h2>
-            <p>Xin chào <strong>{user.FullName}</strong>,</p>
-            <p>Tài khoản của bạn trên ShuttleUp đã bị khóa do: <strong>{reason}</strong>.</p>
-            <p>Nếu bạn cho rằng đây là nhầm lẫn, vui lòng liên hệ Ban quản trị.</p>
-        </div>";
+        var placeholders = new Dictionary<string, string>
+        {
+            { "FullName", user.FullName },
+            { "Reason", reason }
+        };
+
+        string emailBody = await _templateService.GetTemplateAsync("HardBanNotification", placeholders);
 
         await _notification.NotifyUserAsync(
             userId: targetUserId,
@@ -116,15 +118,14 @@ public class BanService : IBanService
 
         await _db.SaveChangesAsync();
 
-        string emailBody = $@"
-        <div style=""font-family:Arial,sans-serif;max-width:600px;margin:auto"">
-            <h2 style=""color:#f59e0b"">⚠️ Cảnh báo: Tài khoản sẽ bị khóa sau 3 ngày</h2>
-            <p>Xin chào <strong>{user.FullName}</strong>,</p>
-            <p>Tài khoản Chủ sân của bạn đang trong <strong>Giai đoạn ân hạn 3 ngày</strong> (hết hạn: {expiresAt:dd/MM/yyyy HH:mm} UTC).</p>
-            <p>Lý do vi phạm: <strong>{reason}</strong></p>
-            <p>Các sân của bạn đã bị ẩn khỏi nền tảng. Vui lòng đăng nhập để xử lý các booking còn lại.</p>
-            <p style=""color:#e11d48""><strong>⚠️ Lưu ý quan trọng:</strong> Vui lòng lưu lại thông tin liên hệ của khách hàng theo cách thủ công, vì bạn sẽ mất toàn bộ quyền truy cập hệ thống sau 3 ngày. ShuttleUp không chịu trách nhiệm với các booking chưa được xử lý.</p>
-        </div>";
+        var placeholders = new Dictionary<string, string>
+        {
+            { "FullName", user.FullName },
+            { "Reason", reason },
+            { "ExpiresAt", expiresAt.ToString("dd/MM/yyyy HH:mm") + " UTC" }
+        };
+
+        string emailBody = await _templateService.GetTemplateAsync("SoftBanWarning", placeholders);
 
         await _notification.NotifyUserAsync(
             userId: targetUserId,

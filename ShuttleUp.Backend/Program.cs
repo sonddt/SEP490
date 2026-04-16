@@ -101,6 +101,7 @@ namespace ShuttleUp.Backend
             builder.Services.AddScoped<INotificationDispatchService, NotificationDispatchService>();
             builder.Services.AddScoped<IMatchingPostLifecycleService, MatchingPostLifecycleService>();
             builder.Services.AddScoped<IMatchingPostActivityService, MatchingPostActivityService>();
+            builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
             builder.Services.AddScoped<IBanService, BanService>();
             builder.Services.AddSingleton<IBannedUserCache, BannedUserCache>();
 

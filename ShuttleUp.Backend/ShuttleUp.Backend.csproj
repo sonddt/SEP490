@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -26,6 +26,12 @@
   <ItemGroup>
     <ProjectReference Include="..\ShuttleUp.DAL\ShuttleUp.DAL.csproj" />
     <ProjectReference Include="..\ShuttleUp.BLL\ShuttleUp.BLL.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Templates\Emails\*.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
