@@ -191,7 +191,14 @@ export default function AdminReports() {
                   const overdue = Boolean(r.refundOverdue);
                   return (
                     <tr key={r.id}>
-                      <td><span className="badge bg-light text-dark">{r.targetType}</span></td>
+                      <td>
+                        <div><span className="badge bg-light text-dark">{r.targetType}</span></div>
+                        {r.targetName && (
+                          <div className="small mt-1 text-muted" style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.targetName}>
+                            {r.targetName}
+                          </div>
+                        )}
+                      </td>
                       <td>
                         <div style={{ fontWeight: 800, color: '#0f172a' }}>{r.reporter?.fullName || '—'}</div>
                         <div className="text-muted small">{r.reporter?.email || ''}</div>
@@ -254,9 +261,11 @@ export default function AdminReports() {
               <div className="modal-header">
                 <div>
                   <h5 className="modal-title">Chi tiết report</h5>
-                  <div className="text-muted small">
-                    {selected.targetType} · {selected.createdAt ? new Date(selected.createdAt).toLocaleString('vi-VN') : '—'}
-                    {selectedBadge && <span className={`badge ms-2 ${selectedBadge.cls}`}>{selectedBadge.label}</span>}
+                  <div className="text-muted small d-flex flex-wrap align-items-center gap-1">
+                    <span className="badge bg-light text-dark">{selected.targetType}</span>
+                    {selected.targetName && <span> – <strong>{selected.targetName}</strong></span>}
+                    <span> · {selected.createdAt ? new Date(selected.createdAt).toLocaleString('vi-VN') : '—'}</span>
+                    {selectedBadge && <span className={`badge ${selectedBadge.cls} ms-1`}>{selectedBadge.label}</span>}
                   </div>
                 </div>
                 <button type="button" className="btn-close" onClick={() => setSelected(null)} />

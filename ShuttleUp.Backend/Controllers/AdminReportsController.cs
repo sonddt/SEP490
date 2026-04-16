@@ -19,11 +19,13 @@ public class AdminReportsController : ControllerBase
 
     private readonly ShuttleUpDbContext _db;
     private readonly INotificationDispatchService _notify;
+    private readonly IBanService _banService;
 
-    public AdminReportsController(ShuttleUpDbContext db, INotificationDispatchService notify)
+    public AdminReportsController(ShuttleUpDbContext db, INotificationDispatchService notify, IBanService banService)
     {
         _db = db;
         _notify = notify;
+        _banService = banService;
     }
 
     public record UpdateReportRequest(
@@ -82,7 +84,7 @@ public class AdminReportsController : ControllerBase
         var totalItems = await query.CountAsync();
         var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
 
-        var items = await query
+        var rawItems = await query
             .OrderBy(r => r.Status == "PENDING" ? 0 : r.Status == "REVIEWING" ? 1 : r.Status == "REFUND_PENDING" ? 2 : r.Status == "RESOLVED" ? 3 : 4)
             .ThenBy(r => r.Status == "REFUND_PENDING" && r.RefundDeadlineAt != null && r.RefundDeadlineAt < now ? 0 : 1)
             .ThenByDescending(r => r.CreatedAt)
@@ -108,6 +110,19 @@ public class AdminReportsController : ControllerBase
             })
             .ToListAsync();
 
+        // Resolve target display names
+        var targetNames = await ResolveTargetNamesAsync(
+            rawItems.Select(i => new { i.targetType, i.targetId }).ToList());
+
+        var items = rawItems.Select(r => new
+        {
+            r.id, r.targetType, r.targetId,
+            targetName = targetNames.TryGetValue((r.targetType ?? "", r.targetId ?? Guid.Empty), out var tn) ? tn : null,
+            r.reason, r.description, r.status, r.createdAt,
+            r.reporter, r.admin, r.adminAction, r.adminNote,
+            r.decisionAt, r.refundDeadlineAt, r.refundOverdue, r.fileUrls
+        }).ToList();
+
         return Ok(new { totalItems, totalPages, page, pageSize, items });
     }
 
@@ -124,11 +139,15 @@ public class AdminReportsController : ControllerBase
 
         var refundOverdue = r.Status == "REFUND_PENDING" && r.RefundDeadlineAt != null && r.RefundDeadlineAt < now;
 
+        // Resolve target name
+        var targetName = await ResolveTargetNameAsync(r.TargetType, r.TargetId);
+
         return Ok(new
         {
             id = r.Id,
             targetType = r.TargetType,
             targetId = r.TargetId,
+            targetName,
             reason = r.Reason,
             description = r.Description,
             status = r.Status,
@@ -365,6 +384,7 @@ public class AdminReportsController : ControllerBase
         switch (action)
         {
             case "LOCK_USER":
+                // Xác định userId cần khóa dựa trên loại đối tượng bị báo cáo
                 Guid? userIdToLock = null;
                 if (report.TargetType == "USER")
                 {
@@ -386,14 +406,23 @@ public class AdminReportsController : ControllerBase
                     userIdToLock = booking?.Venue?.OwnerUserId;
                 }
 
+                // Sử dụng BanService để đồng bộ logic Soft Ban / Hard Ban + gửi mail
                 if (userIdToLock != null && userIdToLock != Guid.Empty)
                 {
-                    var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userIdToLock, cancellationToken);
-                    if (user != null)
+                    var adminId = report.AdminUserId ?? Guid.Empty;
+                    var reason = report.AdminNote ?? $"Vi phạm liên quan đến {report.TargetType}: {report.Reason}";
+
+                    var scenario = await _banService.CheckBanScenarioAsync(userIdToLock.Value);
+
+                    if (scenario.Scenario == BanScenario.GracePeriod)
                     {
-                        user.IsActive = false;
-                        user.BlockedAt = DateTime.UtcNow;
-                        user.BlockedReason = report.AdminNote ?? $"Khoá tài khoản do vi phạm liên quan đến {report.TargetType}: {report.Reason}";
+                        // Chủ sân còn booking chưa xử lý → Soft Ban (Ân hạn 3 ngày)
+                        await _banService.ExecuteSoftBanAsync(userIdToLock.Value, adminId, reason);
+                    }
+                    else
+                    {
+                        // Không có booking hoặc đang Soft Ban → Hard Ban ngay
+                        await _banService.ExecuteHardBanAsync(userIdToLock.Value, adminId, reason);
                     }
                 }
 
@@ -492,5 +521,80 @@ public class AdminReportsController : ControllerBase
         var claim = User.FindFirst(JwtRegisteredClaimNames.Sub) ?? User.FindFirst(ClaimTypes.NameIdentifier);
         adminId = Guid.TryParse(claim?.Value, out var id) ? id : Guid.Empty;
         return adminId != Guid.Empty;
+    }
+
+    // ── Helpers: Resolve target display names ─────────────────────────────────
+
+    /// <summary>
+    /// Lấy tên hiển thị của một đối tượng bị báo cáo.
+    /// </summary>
+    private async Task<string?> ResolveTargetNameAsync(string? targetType, Guid? targetId)
+    {
+        if (targetId == null || targetId == Guid.Empty || string.IsNullOrWhiteSpace(targetType))
+            return null;
+
+        return targetType.Trim().ToUpperInvariant() switch
+        {
+            "USER" => await _db.Users.AsNoTracking()
+                .Where(u => u.Id == targetId).Select(u => u.FullName).FirstOrDefaultAsync(),
+            "VENUE" => await _db.Venues.AsNoTracking()
+                .Where(v => v.Id == targetId).Select(v => v.Name).FirstOrDefaultAsync(),
+            "MATCHING_POST" => await _db.MatchingPosts.AsNoTracking()
+                .Where(p => p.Id == targetId).Select(p => p.Title).FirstOrDefaultAsync(),
+            "BOOKING" => await _db.Bookings.AsNoTracking()
+                .Where(b => b.Id == targetId)
+                .Select(b => "Đơn #" + b.Id.ToString().Substring(0, 8).ToUpper()
+                    + (b.Venue != null ? " – " + b.Venue.Name : ""))
+                .FirstOrDefaultAsync(),
+            _ => null
+        };
+    }
+
+    /// <summary>
+    /// Lấy tên hiển thị cho nhiều đối tượng cùng lúc (batch, tối ưu hiệu năng cho danh sách).
+    /// </summary>
+    private async Task<Dictionary<(string, Guid), string?>> ResolveTargetNamesAsync(
+        IEnumerable<dynamic> targets)
+    {
+        var result = new Dictionary<(string, Guid), string?>();
+        var grouped = targets
+            .Where(t => t.targetType != null && t.targetId != null && t.targetId != Guid.Empty)
+            .GroupBy(t => (string)t.targetType);
+
+        foreach (var group in grouped)
+        {
+            var type = group.Key.Trim().ToUpperInvariant();
+            var ids = group.Select(g => (Guid)g.targetId).Distinct().ToList();
+
+            Dictionary<Guid, string?> names = type switch
+            {
+                "USER" => (await _db.Users.AsNoTracking()
+                    .Where(u => ids.Contains(u.Id))
+                    .Select(u => new { u.Id, Name = u.FullName })
+                    .ToListAsync()).ToDictionary(x => x.Id, x => (string?)x.Name),
+                "VENUE" => (await _db.Venues.AsNoTracking()
+                    .Where(v => ids.Contains(v.Id))
+                    .Select(v => new { v.Id, v.Name })
+                    .ToListAsync()).ToDictionary(x => x.Id, x => (string?)x.Name),
+                "MATCHING_POST" => (await _db.MatchingPosts.AsNoTracking()
+                    .Where(p => ids.Contains(p.Id))
+                    .Select(p => new { p.Id, Name = p.Title })
+                    .ToListAsync()).ToDictionary(x => x.Id, x => (string?)x.Name),
+                "BOOKING" => (await _db.Bookings.AsNoTracking()
+                    .Include(b => b.Venue)
+                    .Where(b => ids.Contains(b.Id))
+                    .Select(b => new { b.Id, Name = "Đơn #" + b.Id.ToString().Substring(0, 8).ToUpper()
+                        + (b.Venue != null ? " – " + b.Venue.Name : "") })
+                    .ToListAsync()).ToDictionary(x => x.Id, x => (string?)x.Name),
+                _ => new Dictionary<Guid, string?>()
+            };
+
+            foreach (var id in ids)
+            {
+                result[(type, id)] = names.TryGetValue(id, out var n) ? n : null;
+            }
+        }
+
+        return result;
     }
 }
