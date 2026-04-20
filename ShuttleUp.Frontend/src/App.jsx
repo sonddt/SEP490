@@ -12,6 +12,7 @@ import PageLoader from './components/common/PageLoader';
 import HomePage from './pages/HomePage';
 import VenuesListing from './pages/VenuesListing';
 import VenueDetails from './pages/VenueDetails';
+import VenueMapSearch from './pages/VenueMapSearch';
 import ChatPage from './pages/ChatPage';
 import Contact from './pages/Contact';
 import About from './pages/About';
@@ -134,7 +135,8 @@ function App() {
           {/* ═══ Public — Venues (Player) ═══ */}
           <Route path="/venues" element={<VenuesListing />} />
           <Route path="/venues/list" element={<VenuesListing />} />
-          <Route path="/venues/map" element={<PlaceholderPage title="Bản đồ sân" />} />
+          <Route path="/venues/map" element={<VenueMapSearch />} />
+          <Route path="/map" element={<Navigate to="/venues/map" replace />} />
           <Route path="/venue-details/:venueId" element={<VenueDetails />} />
           <Route path="/venues/:id" element={<VenueDetails />} />
 

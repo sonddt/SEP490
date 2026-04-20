@@ -40,13 +40,25 @@ export function normalizeSearchText(s) {
 export function normalizedIncludes(haystack, query) {
   const nq = normalizeSearchText(query);
   if (!nq) return true;
-  return normalizeSearchText(haystack).includes(nq);
+  
+  const tokens = nq.split(' ').filter(Boolean);
+  const target = normalizeSearchText(haystack);
+  
+  // Kiểm tra xem tất cả các từ trong từ khóa có xuất hiện trong chuỗi mục tiêu không
+  return tokens.every(t => target.includes(t));
 }
 
 /** true nếu ít nhất một field khớp (OR). */
 export function normalizedIncludesAny(query, fields) {
   const nq = normalizeSearchText(query);
   if (!nq) return true;
+  
+  const tokens = nq.split(' ').filter(Boolean);
   const arr = Array.isArray(fields) ? fields : [];
-  return arr.some((f) => normalizeSearchText(f).includes(nq));
+  
+  // Tìm ít nhất một field thỏa mãn điều kiện "chứa đủ tất cả các token"
+  return arr.some((f) => {
+    const target = normalizeSearchText(f);
+    return tokens.every(t => target.includes(t));
+  });
 }

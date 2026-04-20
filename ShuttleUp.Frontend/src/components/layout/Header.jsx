@@ -115,15 +115,15 @@ const Header = ({ transparent = false }) => {
                 <Link to="/" onClick={closeMobileMenu}>Trang chủ</Link>
               </li>
 
-              <li className={`has-submenu ${isActive('/venues') || isActive('/venue-details') ? 'active' : ''} ${openSubmenu === 'search' ? 'active' : ''}`}>
+              <li className={`has-submenu ${isActive('/venues') || isActive('/venue-details') || isActive('/map') ? 'active' : ''} ${openSubmenu === 'search' ? 'active' : ''}`}>
                 <a href="#" onClick={(e) => { e.preventDefault(); toggleSubmenu('search'); }}>
                   Tìm Sân <i className="fas fa-chevron-down" />
                 </a>
                 <ul className={`submenu ${openSubmenu === 'search' ? 'd-block' : ''}`}>
-                  <li className={isActive('/venues') && !isActive('/venues/map') ? 'active' : ''}>
+                  <li className={isActive('/venues') && !isActive('/venues/map') && !isActive('/map') ? 'active' : ''}>
                     <Link to="/venues" onClick={closeMobileMenu}>Danh sách Sân</Link>
                   </li>
-                  <li className={isActive('/venues/map') ? 'active' : ''}>
+                  <li className={isActive('/map') || isActive('/venues/map') ? 'active' : ''}>
                     <Link to="/venues/map" onClick={closeMobileMenu}>Bản đồ Sân</Link>
                   </li>
                 </ul>

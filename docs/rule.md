@@ -19,3 +19,7 @@
 - Không được tách riêng migration file chỉ cho một tính năng mà bỏ qua chỉnh sửa `Database.txt` — cả hai phải đồng bộ.
 - Ghi chú cho Assistant: Sau khi sửa schema C# Entity hay `DbContext`, hãy kiểm tra ngay `Database.txt` và cập nhật nếu chưa đồng bộ.
 
+## Quy tắc 4: Luôn lập kế hoạch (Plan) và đợi phê duyệt
+- Mọi Assistant **BẮT BUỘC** phải trình bày kế hoạch triển khai (Implementation Plan) chi tiết trước khi thực hiện bất kỳ thay đổi nào về mã nguồn.
+- Chỉ được phép bắt đầu viết code sau khi nhận được sự xác nhận/chấp thuận từ phía người dùng.
+- Kế hoạch cần nêu rõ: Mục tiêu, các file sẽ thay đổi, logic xử lý và cách kiểm tra (Verification).

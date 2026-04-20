@@ -28,6 +28,9 @@ public class VenuesController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetVenueById([FromRoute] Guid id)
     {
+        var vnTz = TimeZoneInfo.FindSystemTimeZoneById(OperatingSystem.IsWindows() ? "SE Asia Standard Time" : "Asia/Ho_Chi_Minh");
+        var currentDayOfWeek = (int)TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vnTz).DayOfWeek;
+
         var raw = await _dbContext.Venues
             .Where(v => v.Id == id && v.IsActive == true)
             .Select(v => new
@@ -44,6 +47,8 @@ public class VenuesController : ControllerBase
                 v.Rules,
                 v.Amenities,
                 v.SlotDuration,
+                v.CancelAllowed,
+                ThumbnailUrl = v.Files.OrderByDescending(f => f.CreatedAt).Select(f => f.FileUrl).FirstOrDefault(),
                 OwnerName = v.OwnerUser != null ? v.OwnerUser.FullName : null,
                 OwnerEmail = v.OwnerUser != null ? v.OwnerUser.Email : null,
                 OwnerPhone = v.OwnerUser != null ? v.OwnerUser.PhoneNumber : null,
@@ -56,7 +61,11 @@ public class VenuesController : ControllerBase
                 Rating = v.VenueReviews.Any()
                     ? v.VenueReviews.Average(r => (double?)r.Stars) ?? 0.0
                     : 0.0,
-                ReviewCount = v.VenueReviews.Count()
+                ReviewCount = v.VenueReviews.Count(),
+                TodayOpenHours = v.VenueOpenHours
+                    .Where(o => o.DayOfWeek == currentDayOfWeek)
+                    .Select(o => new { o.OpenTime, o.CloseTime })
+                    .FirstOrDefault()
             })
             .FirstOrDefaultAsync();
 
@@ -85,6 +94,9 @@ public class VenuesController : ControllerBase
             Rules = ParseJsonArray(raw.Rules),
             Amenities = ParseJsonArray(raw.Amenities),
             raw.SlotDuration,
+            raw.CancelAllowed,
+            raw.ThumbnailUrl,
+            raw.TodayOpenHours,
             raw.OwnerName,
             raw.OwnerEmail,
             raw.OwnerPhone,
@@ -93,6 +105,96 @@ public class VenuesController : ControllerBase
             raw.Rating,
             raw.ReviewCount,
         });
+    }
+
+    /// <summary>
+    /// Danh sách venues nhẹ dành cho render Map.
+    /// Có hỗ trợ lọc nhanh bằng search, minPrice, maxPrice, amenities, cancelAllowed.
+    /// </summary>
+    [HttpGet("map")]
+    public async Task<IActionResult> GetMapVenues(
+        [FromQuery] string? search = null,
+        [FromQuery] decimal? minPrice = null,
+        [FromQuery] decimal? maxPrice = null,
+        [FromQuery] string? amenities = null,
+        [FromQuery] bool? cancelAllowed = null)
+    {
+        var baseQuery = _dbContext.Venues
+            .Where(v => v.IsActive == true && v.Lat.HasValue && v.Lng.HasValue);
+
+        if (cancelAllowed.HasValue)
+        {
+            baseQuery = baseQuery.Where(v => v.CancelAllowed == cancelAllowed.Value);
+        }
+
+        // Tạm select raw để lọc trong bộ nhớ đối với Json và chuỗi Search (Trường hợp dữ liệu không quá to)
+        var rawVenues = await baseQuery
+            .Select(v => new
+            {
+                v.Id,
+                v.Name,
+                v.Address,
+                v.Lat,
+                v.Lng,
+                v.CancelAllowed,
+                v.Amenities, // JSON string
+                MinPrice = v.Courts.SelectMany(c => c.CourtPrices).Min(cp => (decimal?)cp.Price)
+            })
+            .ToListAsync();
+
+        var filteredList = rawVenues.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            try {
+                // Thử dùng SearchNormalize để tìm kiếm thông minh (bỏ dấu, đa từ)
+                filteredList = filteredList.Where(v => 
+                    ShuttleUp.Backend.Utils.SearchNormalize.FoldedContains(v.Name, search) || 
+                    ShuttleUp.Backend.Utils.SearchNormalize.FoldedContains(v.Address, search)
+                );
+            } catch {
+                var q = search.Trim().ToLowerInvariant();
+                filteredList = filteredList.Where(v => 
+                    (v.Name != null && v.Name.ToLowerInvariant().Contains(q)) || 
+                    (v.Address != null && v.Address.ToLowerInvariant().Contains(q))
+                );
+            }
+        }
+
+        if (minPrice.HasValue)
+            filteredList = filteredList.Where(v => v.MinPrice.HasValue && v.MinPrice.Value >= minPrice.Value);
+
+        if (maxPrice.HasValue)
+            filteredList = filteredList.Where(v => v.MinPrice.HasValue && v.MinPrice.Value <= maxPrice.Value);
+
+        if (!string.IsNullOrWhiteSpace(amenities))
+        {
+            var requiredAmenities = amenities.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(a => a.Trim().ToLowerInvariant())
+                .ToList();
+
+            if (requiredAmenities.Any())
+            {
+                filteredList = filteredList.Where(v => 
+                {
+                    if (string.IsNullOrWhiteSpace(v.Amenities)) return false;
+                    var venueAmenities = JsonSerializer.Deserialize<List<string>>(v.Amenities)
+                        ?.Select(a => a.Trim().ToLowerInvariant())
+                        .ToList() ?? new List<string>();
+                    
+                    return requiredAmenities.All(req => venueAmenities.Contains(req));
+                });
+            }
+        }
+
+        return Ok(filteredList.Select(v => new
+        {
+            v.Id,
+            v.Lat,
+            v.Lng,
+            v.Name,
+            v.MinPrice
+        }));
     }
 
     /// <summary>

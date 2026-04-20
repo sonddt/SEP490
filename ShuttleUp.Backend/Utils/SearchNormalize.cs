@@ -57,9 +57,15 @@ public static class SearchNormalize
         return Whitespace.Replace(str, " ").Trim();
     }
 
-    public static bool FoldedContains(string? haystack, string foldedQuery)
+    public static bool FoldedContains(string? haystack, string rawQuery)
     {
+        var foldedQuery = Fold(rawQuery);
         if (string.IsNullOrEmpty(foldedQuery)) return true;
-        return Fold(haystack).Contains(foldedQuery, StringComparison.Ordinal);
+        
+        var target = Fold(haystack);
+        var tokens = foldedQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        
+        // Kiểm tra xem tất cả các từ trong từ khóa có xuất hiện trong chuỗi mục tiêu không
+        return tokens.All(t => target.Contains(t, StringComparison.Ordinal));
     }
 }
