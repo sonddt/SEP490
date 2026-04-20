@@ -19,9 +19,12 @@ import 'swiper/css/navigation';
 import './index.css';
 
 import App from './App.jsx';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 createRoot(document.getElementById('root')).render(
-  <BrowserRouter>
-    <App />
-  </BrowserRouter>,
+  <ErrorBoundary>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </ErrorBoundary>,
 );
