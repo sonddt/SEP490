@@ -280,7 +280,7 @@ export default function VenueDetails() {
           className="main-gallery-slider owl-carousel owl-theme"
         >
           {MOCK_GALLERY.map((src, idx) => (
-            <SwiperSlide key={`${src}-${idx}`}>
+            <SwiperSlide key={`top-gallery-${idx}-${src}`}>
               <div
                 className="gallery-widget-item"
                 onClick={() => openLightbox(idx)}
@@ -589,8 +589,8 @@ export default function VenueDetails() {
               <section id="gallery" className="white-bg mb-4 corner-radius-10 p-4">
                 <h4 className="mb-3">Hình ảnh</h4>
                 <div className="row g-2">
-                  {MOCK_GALLERY.map((src) => (
-                    <div key={src} className="col-6 col-md-4">
+                  {MOCK_GALLERY.map((src, idx) => (
+                    <div key={`gallery-grid-${idx}-${src}`} className="col-6 col-md-4">
                       <img className="img-fluid corner-radius-10" alt="Gallery" src={src} />
                     </div>
                   ))}

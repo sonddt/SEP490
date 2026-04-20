@@ -167,8 +167,8 @@ export default function FeaturedVenues() {
                     <div className="featured-venues-item aos" data-aos="fade-up">
                       <div className="listing-item mb-0">
                         <div className="listing-img">
-                          <Link to={`/venue/${(String(venue.id)).replace('loop', '')}`}>
-                            <img src={venue.img} className="img-fluid" alt="Venue" />
+                          <Link to={`/venue-details/${(String(venue.id)).replace('loop', '')}`}>
+                            <img src={venue.img} alt="Venue" style={{ width: '100%', height: '220px', objectFit: 'cover', display: 'block' }} />
                           </Link>
                           <div className="fav-item-venues">
                             <span className="tag tag-blue">Đánh giá cao</span>
@@ -189,7 +189,7 @@ export default function FeaturedVenues() {
                             </a>
                           </div>
                           <h3 className="listing-title">
-                            <Link to={`/venue/${(String(venue.id)).replace('loop', '')}`}>{venue.name}</Link>
+                            <Link to={`/venue-details/${(String(venue.id)).replace('loop', '')}`}>{venue.name}</Link>
                           </h3>
                           <div className="listing-details-group">
                             <p className="text-truncate">{venue.location}</p>
@@ -204,7 +204,7 @@ export default function FeaturedVenues() {
                                 <img src={venue.avatar} alt="Owner" />{venue.owner}
                               </Link>
                             </div>
-                            <Link to={`/venue/${(String(venue.id)).replace('loop', '')}`} className="user-book-now">
+                            <Link to={`/venue-details/${(String(venue.id)).replace('loop', '')}`} className="user-book-now">
                               <span><i className="feather-calendar me-2"></i></span>Đặt Sân
                             </Link>
                           </div>
@@ -262,8 +262,8 @@ export default function FeaturedVenues() {
                     <div className="featured-venues-item court-near-item">
                       <div className="listing-item mb-0">
                         <div className="listing-img">
-                          <Link to={`/venue/${c.id}`}>
-                            <img src={c.img} alt="Venue" />
+                          <Link to={`/venue-details/${c.id}`}>
+                            <img src={c.img} alt="Venue" style={{ width: '100%', height: '220px', objectFit: 'cover', display: 'block' }} />
                           </Link>
                           <div className="fav-item-venues">
                             <div className="list-reviews coche-star">
@@ -275,7 +275,7 @@ export default function FeaturedVenues() {
                         </div>
                         <div className="listing-content">
                           <h3 className="listing-title">
-                            <Link to={`/venue/${c.id}`}>{c.name}</Link>
+                            <Link to={`/venue-details/${c.id}`}>{c.name}</Link>
                           </h3>
                           <div className="listing-details-group">
                             <ul>
