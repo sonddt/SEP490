@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { profileApi } from '../../api/profileApi';
+import { managerProfileApi } from '../../api/managerProfileApi';
 import axiosClient from '../../api/axiosClient';
 import ShuttleDateField from '../../components/ui/ShuttleDateField';
 
@@ -115,6 +116,35 @@ export default function ManagerProfile() {
   const [cccdFront, setCccdFront] = useState([]);
   const [cccdBack, setCccdBack] = useState([]);
   const [licenseFiles, setLicenseFiles] = useState([]);
+  const [existingLicenseFiles, setExistingLicenseFiles] = useState([]);
+  const [licensePreviews, setLicensePreviews] = useState([]);
+  const [licensesDirty, setLicensesDirty] = useState(false);
+
+  /* License File Previews */
+  useEffect(() => {
+    if (!licenseFiles || licenseFiles.length === 0) {
+      setLicensePreviews([]);
+      return;
+    }
+    const previews = licenseFiles.map((f) => ({
+      url: URL.createObjectURL(f),
+      name: f.name,
+      mimeType: f.type,
+      id: null,
+    }));
+    setLicensePreviews(previews);
+    return () => previews.forEach(p => URL.revokeObjectURL(p.url));
+  }, [licenseFiles]);
+
+  const handleRemoveExistingLicense = (id) => {
+    setExistingLicenseFiles(prev => prev.filter(f => f.id !== id));
+    setLicensesDirty(true);
+  };
+  
+  const handleRemoveNewLicense = (idx) => {
+    setLicenseFiles(prev => prev.filter((_, i) => i !== idx));
+    setLicensesDirty(true);
+  };
 
   /* ── Load profile ──────────────────────────────────────────────── */
   useEffect(() => {
@@ -141,6 +171,7 @@ export default function ManagerProfile() {
           taxCode: mp.taxCode ?? '',
           bizAddress: mp.address ?? '',
         });
+        setExistingLicenseFiles(mp.businessLicenseFiles || []);
       } catch (e) {
         if (!mounted) return;
         setError(e?.response?.data?.message || 'Không tải được hồ sơ.');
@@ -256,14 +287,19 @@ export default function ManagerProfile() {
       setFieldErrors({});
       setSubmittingBiz(true);
 
-      if (bizForm.taxCode || bizForm.bizAddress || cccdFront.length || cccdBack.length || licenseFiles.length) {
-        const fd = new FormData();
-        if (bizForm.taxCode) fd.append('taxCode', bizForm.taxCode);
-        if (bizForm.bizAddress) fd.append('address', bizForm.bizAddress);
-        if (cccdFront[0]) fd.append('cccdFront', cccdFront[0]);
-        if (cccdBack[0]) fd.append('cccdBack', cccdBack[0]);
-        licenseFiles.forEach((f) => fd.append('businessLicenseFiles', f));
-        await axiosClient.put('/manager/profile', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      if (bizForm.taxCode || bizForm.bizAddress || cccdFront.length || cccdBack.length || licenseFiles.length || licensesDirty) {
+        await managerProfileApi.updateMe({
+          taxCode: bizForm.taxCode || null,
+          address: bizForm.bizAddress || null,
+          cccdFrontFile: cccdFront[0] || null,
+          cccdBackFile: cccdBack[0] || null,
+          businessLicenseFiles: licenseFiles,
+          retainedLicenseIds: existingLicenseFiles
+            .map(f => f.id ?? f.Id ?? null)
+            .filter(Boolean)
+            .join(','),
+          licensesDirty: licensesDirty || (licenseFiles && licenseFiles.length > 0)
+        });
       } else {
         setErrorMsg('Bạn chưa cập nhật thông tin nào ở phần Chủ sân.');
         return;
@@ -271,6 +307,8 @@ export default function ManagerProfile() {
 
       const updated = await profileApi.getMe();
       setProfile(updated);
+      setExistingLicenseFiles(updated?.managerProfile?.businessLicenseFiles || []);
+      setLicensesDirty(false);
       setSuccessMsg('Đã gửi/cập nhật thông tin Chủ sân. Vui lòng chờ Admin duyệt.');
       setCccdFront([]);
       setCccdBack([]);
@@ -306,6 +344,8 @@ export default function ManagerProfile() {
     setCccdFront([]);
     setCccdBack([]);
     setLicenseFiles([]);
+    setExistingLicenseFiles(pmp.businessLicenseFiles || []);
+    setLicensesDirty(false);
     setAvatarFile(null);
     setErrorMsg('');
     setFieldErrors({});
@@ -580,8 +620,98 @@ export default function ManagerProfile() {
             {/* License Upload */}
             <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
               <div className="card-body p-4 p-md-5">
-                <SectionHeader icon="feather-file-text" iconBg="#fef3c7" iconColor="#d97706" title="Giấy phép kinh doanh" subtitle="JPG, PNG hoặc PDF – tối đa 5MB mỗi file" />
-                <FileUploadZone hint="Nhấn để chọn 1 hoặc nhiều file" accept="image/*,.pdf" multiple files={licenseFiles} onFiles={setLicenseFiles} />
+                <SectionHeader icon="feather-file-text" iconBg="#fef3c7" iconColor="#d97706" title="Giấy phép kinh doanh" subtitle="JPG, PNG hoặc PDF – tối đa 5MB mỗi file (Tối đa 3 file)" />
+                
+                <div
+                  className="position-relative bg-light rounded-4 d-flex flex-column align-items-center justify-content-center border"
+                  style={{ minHeight: 130, cursor: 'pointer', borderStyle: 'dashed' }}
+                  onClick={() => document.getElementById('bizLicenseUploadInput').click()}
+                >
+                  <input
+                    id="bizLicenseUploadInput"
+                    type="file"
+                    accept="image/*,.pdf"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const newFiles = Array.from(e.target.files ?? []);
+                      setLicenseFiles(prev => {
+                        const merged = [...prev, ...newFiles];
+                        const currentExistingCount = existingLicenseFiles?.length || 0;
+                        if (merged.length + currentExistingCount > 3) {
+                          setErrorMsg('Chỉ được tải lên tổng cộng tối đa 3 file giấy phép kinh doanh.');
+                          return merged.slice(0, 3 - currentExistingCount);
+                        }
+                        setErrorMsg('');
+                        return merged;
+                      });
+                      setLicensesDirty(true);
+                      e.target.value = '';
+                    }}
+                  />
+                  <div className="text-center text-muted py-3">
+                    <i className="feather-upload-cloud" style={{ fontSize: 28, color: '#d97706' }} />
+                    <p style={{ margin: '6px 0 0', fontSize: 13 }}>Nhấn để chọn 1 hoặc nhiều file</p>
+                  </div>
+                </div>
+
+                {((licensePreviews && licensePreviews.length > 0) || (existingLicenseFiles && existingLicenseFiles.length > 0)) && (
+                  <div className="row g-3 mt-3">
+                    {existingLicenseFiles?.map((f) => {
+                      const mime = f.mimeType || f.MimeType || '';
+                      const isImg = (mime || '').toString().startsWith('image/');
+                      return (
+                        <div key={f.id ?? String(f.url)} className="col-4">
+                          <div className="position-relative bg-light rounded-3 p-2 border">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveExistingLicense(f.id)}
+                              className="position-absolute btn btn-sm btn-danger rounded-circle p-0 d-flex align-items-center justify-content-center border border-2 border-white shadow-sm"
+                              style={{ top: -6, right: -6, width: 22, height: 22, zIndex: 10 }}
+                            >
+                              <i className="feather-x" style={{ fontSize: 12 }}></i>
+                            </button>
+                            <div className="w-100 bg-white rounded overflow-hidden d-flex align-items-center justify-content-center shadow-sm" style={{ height: 80 }}>
+                              {isImg ? (
+                                <img src={f.url} className="w-100 h-100 object-fit-cover" alt="license" />
+                              ) : (
+                                <i className="feather-file-text text-danger fs-1"></i>
+                              )}
+                            </div>
+                            <div className="mt-2 text-truncate" style={{ fontSize: 11, fontWeight: 600 }}>{f.name || 'Tài liệu cũ'}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    
+                    {licensePreviews?.map((f, idx) => {
+                      const mime = f.mimeType || f.MimeType || '';
+                      const isImg = (mime || '').toString().startsWith('image/');
+                      return (
+                        <div key={`new_${idx}`} className="col-4">
+                          <div className="position-relative bg-light rounded-3 p-2 border">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveNewLicense(idx)}
+                              className="position-absolute btn btn-sm btn-danger rounded-circle p-0 d-flex align-items-center justify-content-center border border-2 border-white shadow-sm"
+                              style={{ top: -6, right: -6, width: 22, height: 22, zIndex: 10 }}
+                            >
+                              <i className="feather-x" style={{ fontSize: 12 }}></i>
+                            </button>
+                            <div className="w-100 bg-white rounded overflow-hidden d-flex align-items-center justify-content-center shadow-sm" style={{ height: 80 }}>
+                              {isImg ? (
+                                <img src={f.url} className="w-100 h-100 object-fit-cover" alt="license" />
+                              ) : (
+                                <i className="feather-file-text text-danger fs-1"></i>
+                              )}
+                            </div>
+                            <div className="mt-2 text-truncate" style={{ fontSize: 11, fontWeight: 600 }}>{f.name || `Tài liệu mới ${idx+1}`}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </div>
