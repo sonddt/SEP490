@@ -1,75 +1,112 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import {
+  ResponsiveContainer, LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, Tooltip, CartesianGrid, Legend,
+} from 'recharts';
 import axiosClient from '../../api/axiosClient';
 import { notifyError, notifyInfo } from '../../hooks/useNotification';
 
 const STATUS_MAP = {
-  CONFIRMED: { label: 'Đã thu',         color: '#097E52', bg: '#e8f5ee', icon: 'feather-check-circle', badge: 'bg-success' },
-  COMPLETED: { label: 'Đã thu',         color: '#097E52', bg: '#e8f5ee', icon: 'feather-check-circle', badge: 'bg-success' },
-  PENDING:   { label: 'Chờ xử lý',      color: '#d97706', bg: '#fef3c7', icon: 'feather-clock',        badge: 'bg-warning text-dark' },
-  CANCELLED: { label: 'Đã huỷ',         color: '#ef4444', bg: '#fff1f2', icon: 'feather-x-circle',     badge: 'bg-danger' },
+  CONFIRMED: { label: 'Đã thu',    color: '#097E52', bg: '#e8f5ee', icon: 'feather-check-circle', badge: 'bg-success' },
+  COMPLETED: { label: 'Đã thu',    color: '#097E52', bg: '#e8f5ee', icon: 'feather-check-circle', badge: 'bg-success' },
+  PENDING:   { label: 'Chờ xử lý', color: '#d97706', bg: '#fef3c7', icon: 'feather-clock',        badge: 'bg-warning text-dark' },
+  CANCELLED: { label: 'Đã huỷ',    color: '#ef4444', bg: '#fff1f2', icon: 'feather-x-circle',     badge: 'bg-danger' },
 };
 
-// Pagination Component
+const PIE_COLORS = ['#097E52', '#2563eb', '#d97706', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f59e0b'];
+
+const fmtVnd = (v) => `${Number(v || 0).toLocaleString('vi-VN')} ₫`;
+const fmtVndShort = (v) => {
+  const n = Number(v || 0);
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}tr`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}k`;
+  return `${n}`;
+};
+
+/* ── Pagination ──────────────────────────────────────────────────────────── */
 function Pagination({ page, totalPages, onChange }) {
   if (totalPages <= 1) return null;
-
   const pages = [];
-  for (let i = 1; i <= totalPages; i++) {
-    pages.push(i);
-  }
-
+  for (let i = 1; i <= totalPages; i++) pages.push(i);
   return (
     <div className="d-flex align-items-center justify-content-center gap-2 mt-4">
-      <button
-        type="button"
-        disabled={page <= 1}
-        onClick={() => onChange(page - 1)}
-        className="mgr-btn-lift"
-        style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px',
-          border: '1.5px solid #e2e8f0', borderRadius: 8, background: '#fff', fontSize: 13,
-          fontWeight: 600, color: page <= 1 ? '#cbd5e1' : '#334155',
-          cursor: page <= 1 ? 'default' : 'pointer', transition: 'all .15s',
-        }}
-      >
+      <button type="button" disabled={page <= 1} onClick={() => onChange(page - 1)} className="mgr-btn-lift"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px', border: '1.5px solid #e2e8f0', borderRadius: 8, background: '#fff', fontSize: 13, fontWeight: 600, color: page <= 1 ? '#cbd5e1' : '#334155', cursor: page <= 1 ? 'default' : 'pointer', transition: 'all .15s' }}>
         <i className="feather-chevron-left" style={{ fontSize: 15 }} /> Trước
       </button>
-
       {pages.map((p) => (
-        <button
-          key={p}
-          type="button"
-          onClick={() => onChange(p)}
-          className="mgr-btn-lift"
-          style={{
-            width: 38, height: 38, borderRadius: 8, border: 'none',
-            background: page === p ? 'var(--mgr-accent)' : '#f1f5f9',
-            color: page === p ? '#fff' : '#334155',
-            fontWeight: page === p ? 800 : 500, fontSize: 14,
-            cursor: 'pointer', transition: 'all .15s',
-            boxShadow: page === p ? '0 2px 8px rgba(9,126,82,.35)' : 'none',
-          }}
-        >
+        <button key={p} type="button" onClick={() => onChange(p)} className="mgr-btn-lift"
+          style={{ width: 38, height: 38, borderRadius: 8, border: 'none', background: page === p ? 'var(--mgr-accent)' : '#f1f5f9', color: page === p ? '#fff' : '#334155', fontWeight: page === p ? 800 : 500, fontSize: 14, cursor: 'pointer', transition: 'all .15s', boxShadow: page === p ? '0 2px 8px rgba(9,126,82,.35)' : 'none' }}>
           {p}
         </button>
       ))}
-
-      <button
-        type="button"
-        disabled={page >= totalPages}
-        onClick={() => onChange(page + 1)}
-        className="mgr-btn-lift"
-        style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px',
-          border: '1.5px solid #e2e8f0', borderRadius: 8, background: '#fff', fontSize: 13,
-          fontWeight: 600, color: page >= totalPages ? '#cbd5e1' : '#334155',
-          cursor: page >= totalPages ? 'default' : 'pointer', transition: 'all .15s',
-        }}
-      >
+      <button type="button" disabled={page >= totalPages} onClick={() => onChange(page + 1)} className="mgr-btn-lift"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px', border: '1.5px solid #e2e8f0', borderRadius: 8, background: '#fff', fontSize: 13, fontWeight: 600, color: page >= totalPages ? '#cbd5e1' : '#334155', cursor: page >= totalPages ? 'default' : 'pointer', transition: 'all .15s' }}>
         Sau <i className="feather-chevron-right" style={{ fontSize: 15 }} />
       </button>
+    </div>
+  );
+}
+
+/* ── Custom Tooltip ──────────────────────────────────────────────────────── */
+function MonthlyTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background: 'rgba(255,255,255,.97)', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 14px', boxShadow: '0 4px 20px rgba(0,0,0,.1)', fontSize: 13 }}>
+      <div style={{ fontWeight: 700, marginBottom: 4, color: '#0f172a' }}>Tháng {label}</div>
+      <div style={{ color: '#097E52' }}>Doanh thu: <strong>{fmtVnd(payload[0]?.value)}</strong></div>
+      {payload[1] && <div style={{ color: '#2563eb' }}>Booking: <strong>{payload[1]?.value}</strong></div>}
+    </div>
+  );
+}
+
+/* ── Ranking Card ────────────────────────────────────────────────────────── */
+function RankingCard({ title, icon, iconBg, data, valueKey, valueLabel, valueSuffix, secondaryKey, secondaryLabel, emptyText }) {
+  return (
+    <div className="card border-0 h-100" style={{ borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,.06)' }}>
+      <div className="card-body p-4">
+        <div className="d-flex align-items-center gap-2 mb-3">
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <i className={icon} style={{ fontSize: 16, color: iconBg === '#e8f5ee' ? '#097E52' : '#ef4444' }} />
+          </div>
+          <h6 className="mb-0" style={{ fontWeight: 700, color: '#0f172a', fontSize: 15 }}>{title}</h6>
+        </div>
+        {!data?.length ? (
+          <div className="text-center py-4" style={{ color: '#94a3b8', fontSize: 13 }}>
+            <i className="feather-inbox d-block mb-2" style={{ fontSize: 28 }} />
+            {emptyText || 'Chưa có dữ liệu'}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {data.map((item, idx) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: idx === 0 ? (iconBg === '#e8f5ee' ? '#f0fdf4' : '#fff5f5') : '#fafafa', borderRadius: 10, border: `1px solid ${idx === 0 ? (iconBg === '#e8f5ee' ? '#bbf7d0' : '#fecaca') : '#f1f5f9'}`, transition: 'all .15s' }}>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff', background: idx === 0 ? '#097E52' : idx === 1 ? '#2563eb' : '#94a3b8', flexShrink: 0 }}>
+                  {idx + 1}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.courtName}</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8' }}>{item.venueName}</div>
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: iconBg === '#e8f5ee' ? '#097E52' : '#ef4444' }}>
+                    {item[valueKey]}{valueSuffix || ''}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#94a3b8' }}>{valueLabel}</div>
+                </div>
+                {secondaryKey && (
+                  <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 8 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: '#64748b' }}>
+                      {typeof item[secondaryKey] === 'number' && secondaryKey.includes('revenue') ? fmtVndShort(item[secondaryKey]) : item[secondaryKey]}{secondaryKey === 'cancelRate' ? '%' : ''}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#94a3b8' }}>{secondaryLabel}</div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -86,6 +123,8 @@ export default function ManagerEarnings() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({ items: [], totalItems: 0, totalPages: 1, venues: [], totalRevInRange: 0, page: 1, pageSize: itemsPerPage });
   const [chart, setChart] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
 
   const vnDateStr = (d) => {
     const y = d.getFullYear();
@@ -97,7 +136,7 @@ export default function ManagerEarnings() {
   const buildRange = useCallback(() => {
     const now = new Date();
     if (timeFilter === 'week') {
-      const day = now.getDay(); // 0 Sun..6 Sat
+      const day = now.getDay();
       const diffToMon = (day + 6) % 7;
       const start = new Date(now);
       start.setDate(now.getDate() - diffToMon);
@@ -144,7 +183,20 @@ export default function ManagerEarnings() {
     }
   }, [page, itemsPerPage, statusFilter, search, venueFilter, buildRange]);
 
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      setAnalyticsLoading(true);
+      const res = await axiosClient.get('/manager/stats/earnings-analytics');
+      setAnalytics(res);
+    } catch {
+      setAnalytics(null);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, []);
+
   useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
   useEffect(() => { setPage(1); }, [statusFilter, search, timeFilter, venueFilter]);
 
   const totalPages = data?.totalPages ?? 1;
@@ -163,10 +215,10 @@ export default function ManagerEarnings() {
   );
 
   const STATS = useMemo(() => ([
-    { icon: 'feather-trending-up', bg: '#e8f5ee', iconColor: '#097E52', label: 'Doanh thu (lọc hiện tại)', value: `${totalRevenue.toLocaleString('vi-VN')} ₫` },
-    { icon: 'feather-calendar', bg: '#eff6ff', iconColor: '#2563eb', label: 'Số booking', value: (data?.totalItems ?? 0).toLocaleString('vi-VN') },
-    { icon: 'feather-bar-chart-2', bg: '#fef3c7', iconColor: '#d97706', label: 'Trung bình / booking đã thu', value: paidCount > 0 ? `${avgRevenue.toLocaleString('vi-VN')} ₫` : '—' },
-    { icon: 'feather-alert-circle', bg: '#fff1f2', iconColor: '#ef4444', label: 'Chờ xử lý (tạm tính)', value: unpaidAmount > 0 ? `${unpaidAmount.toLocaleString('vi-VN')} ₫` : '—' },
+    { icon: 'feather-trending-up', bg: '#e8f5ee', iconColor: '#097E52', label: 'Doanh thu (lọc hiện tại)', value: fmtVnd(totalRevenue) },
+    { icon: 'feather-calendar',    bg: '#eff6ff', iconColor: '#2563eb', label: 'Số booking',              value: (data?.totalItems ?? 0).toLocaleString('vi-VN') },
+    { icon: 'feather-bar-chart-2', bg: '#fef3c7', iconColor: '#d97706', label: 'TB / booking đã thu',     value: paidCount > 0 ? fmtVnd(avgRevenue) : '—' },
+    { icon: 'feather-alert-circle', bg: '#fff1f2', iconColor: '#ef4444', label: 'Chờ xử lý (tạm tính)',   value: unpaidAmount > 0 ? fmtVnd(unpaidAmount) : '—' },
   ]), [totalRevenue, data?.totalItems, paidCount, avgRevenue, unpaidAmount]);
 
   const fmtTime = (dt) => {
@@ -196,13 +248,23 @@ export default function ManagerEarnings() {
     }
   };
 
+  // Pie chart data
+  const pieData = useMemo(() => {
+    if (!analytics?.revenueByVenue?.length) return [];
+    return analytics.revenueByVenue
+      .filter(v => v.revenue > 0)
+      .map(v => ({ name: v.venueName, value: Number(v.revenue) }));
+  }, [analytics]);
+
   return (
     <>
-      {/* Stats */}
+      {/* ── Stats Cards ─────────────────────────────────── */}
       <div className="row g-3 mb-4">
         {STATS.map(s => (
           <div key={s.label} className="col-xl-3 col-sm-6">
-            <div className="mgr-stat-card">
+            <div className="mgr-stat-card" style={{ transition: 'transform .2s, box-shadow .2s' }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.08)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}>
               <div className="mgr-stat-card__icon" style={{ background: s.bg }}>
                 <i className={s.icon} style={{ color: s.iconColor }} />
               </div>
@@ -215,59 +277,179 @@ export default function ManagerEarnings() {
         ))}
       </div>
 
-      {/* Table card */}
-      <div className="card card-tableset border-0">
+      {/* ── Monthly Revenue Chart ───────────────────────── */}
+      <div className="card border-0 mb-4" style={{ borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,.06)' }}>
+        <div className="card-body p-4">
+          <div className="d-flex align-items-center justify-content-between mb-3">
+            <div>
+              <h5 className="mb-1" style={{ fontWeight: 800, color: '#0f172a' }}>
+                <i className="feather-bar-chart-2 me-2" style={{ color: '#097E52' }} />
+                Doanh thu theo tháng
+              </h5>
+              <p className="mb-0" style={{ fontSize: 13, color: '#94a3b8' }}>12 tháng gần nhất</p>
+            </div>
+          </div>
+          <div style={{ width: '100%', height: 300 }}>
+            {analyticsLoading ? (
+              <div className="placeholder-glow"><span className="placeholder col-12" style={{ height: 300 }} /></div>
+            ) : !analytics?.monthlyRevenue?.length ? (
+              <div className="text-muted text-center" style={{ paddingTop: 80 }}>Chưa có dữ liệu biểu đồ.</div>
+            ) : (
+              <ResponsiveContainer>
+                <BarChart data={analytics.monthlyRevenue} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#097E52" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#097E52" stopOpacity={0.4} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: '#64748b' }} width={65} axisLine={false} tickLine={false} tickFormatter={(v) => fmtVndShort(v)} />
+                  <Tooltip content={<MonthlyTooltip />} />
+                  <Bar dataKey="revenue" fill="url(#barGrad)" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Daily Revenue (30 days line chart) ──────────── */}
+      <div className="card border-0 mb-4" style={{ borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,.06)' }}>
+        <div className="card-body p-4">
+          <div className="d-flex align-items-center justify-content-between mb-3">
+            <div>
+              <h5 className="mb-1" style={{ fontWeight: 800, color: '#0f172a' }}>
+                <i className="feather-activity me-2" style={{ color: '#2563eb' }} />
+                Doanh thu 30 ngày gần nhất
+              </h5>
+              <p className="mb-0" style={{ fontSize: 13, color: '#94a3b8' }}>Theo giờ VN</p>
+            </div>
+          </div>
+          <div style={{ width: '100%', height: 240 }}>
+            {loading ? (
+              <div className="placeholder-glow"><span className="placeholder col-12" style={{ height: 240 }} /></div>
+            ) : !chart?.length ? (
+              <div className="text-muted text-center" style={{ paddingTop: 60 }}>Chưa có dữ liệu biểu đồ.</div>
+            ) : (
+              <ResponsiveContainer>
+                <LineChart data={chart} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#2563eb" stopOpacity={0.15} />
+                      <stop offset="100%" stopColor="#2563eb" stopOpacity={0.01} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} width={60} axisLine={false} tickLine={false} tickFormatter={(v) => fmtVndShort(v)} />
+                  <Tooltip formatter={(v) => [fmtVnd(v), 'Doanh thu']} labelFormatter={(l) => `Ngày ${l}`} />
+                  <Line type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={2.5} dot={false} fill="url(#lineGrad)" />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Rankings + Pie ──────────────────────────────── */}
+      <div className="row g-4 mb-4">
+        <div className="col-lg-4">
+          <RankingCard
+            title="Sân đặt nhiều nhất"
+            icon="feather-trending-up"
+            iconBg="#e8f5ee"
+            data={analytics?.topBookedCourts}
+            valueKey="bookingCount"
+            valueLabel="booking"
+            secondaryKey="revenue"
+            secondaryLabel="doanh thu"
+            emptyText="Chưa có dữ liệu tháng này"
+          />
+        </div>
+        <div className="col-lg-4">
+          <RankingCard
+            title="Sân bị huỷ nhiều nhất"
+            icon="feather-x-circle"
+            iconBg="#fff1f2"
+            data={analytics?.topCancelledCourts}
+            valueKey="cancelCount"
+            valueLabel="lần huỷ"
+            secondaryKey="cancelRate"
+            secondaryLabel="tỉ lệ huỷ"
+            emptyText="Không có sân bị huỷ"
+          />
+        </div>
+        <div className="col-lg-4">
+          <div className="card border-0 h-100" style={{ borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,.06)' }}>
+            <div className="card-body p-4">
+              <div className="d-flex align-items-center gap-2 mb-3">
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <i className="feather-pie-chart" style={{ fontSize: 16, color: '#2563eb' }} />
+                </div>
+                <h6 className="mb-0" style={{ fontWeight: 700, color: '#0f172a', fontSize: 15 }}>Phân bổ doanh thu</h6>
+              </div>
+              {!pieData?.length ? (
+                <div className="text-center py-4" style={{ color: '#94a3b8', fontSize: 13 }}>
+                  <i className="feather-inbox d-block mb-2" style={{ fontSize: 28 }} />
+                  Chưa có dữ liệu
+                </div>
+              ) : (
+                <>
+                  <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer>
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%" cy="50%"
+                          innerRadius={50} outerRadius={80}
+                          paddingAngle={3}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {pieData.map((_, idx) => (
+                            <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(v) => fmtVnd(v)} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {pieData.map((entry, idx) => (
+                      <div key={idx} className="d-flex align-items-center gap-2" style={{ fontSize: 12 }}>
+                        <span style={{ width: 10, height: 10, borderRadius: 3, background: PIE_COLORS[idx % PIE_COLORS.length], flexShrink: 0 }} />
+                        <span style={{ flex: 1, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.name}</span>
+                        <span style={{ fontWeight: 700, color: '#0f172a' }}>{fmtVndShort(entry.value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Transaction Table ──────────────────────────── */}
+      <div className="card card-tableset border-0" style={{ borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,.06)' }}>
         <div className="card-body">
-          {/* Header */}
           <div className="coache-head-blk" style={{ borderBottom: 'none', paddingBottom: 0 }}>
             <div className="row align-items-center">
               <div className="col-md-5">
                 <div className="court-table-head">
                   <h4>Lịch sử doanh thu</h4>
-                  <p>{(data?.totalItems ?? 0).toLocaleString('vi-VN')} booking · Thu được {totalRevenue.toLocaleString('vi-VN')} ₫</p>
+                  <p>{(data?.totalItems ?? 0).toLocaleString('vi-VN')} booking · Thu được {fmtVnd(totalRevenue)}</p>
                 </div>
               </div>
               <div className="col-md-7 d-flex justify-content-md-end mt-2 mt-md-0">
-                <button
-                  type="button"
-                  className="btn btn-sm"
+                <button type="button" className="btn btn-sm"
                   style={{ background: '#e8f5ee', color: '#097E52', border: 'none', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                  onClick={handleExport}
-                  disabled={loading || !(data?.items?.length > 0)}
-                >
+                  onClick={handleExport} disabled={loading || !(data?.items?.length > 0)}>
                   <i className="feather-download" style={{ fontSize: 14 }} /> Xuất Excel
                 </button>
               </div>
-            </div>
-          </div>
-
-          {/* Chart */}
-          <div style={{ marginTop: 14, marginBottom: 16, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <div style={{ fontWeight: 800, color: '#0f172a' }}>Doanh thu 30 ngày gần nhất</div>
-              <div style={{ fontSize: 12, color: '#64748b' }}>Theo giờ VN</div>
-            </div>
-            <div style={{ width: '100%', height: 220 }}>
-              {loading ? (
-                <div className="placeholder-glow">
-                  <span className="placeholder col-12" style={{ height: 220 }} />
-                </div>
-              ) : !chart?.length ? (
-                <div className="text-muted" style={{ padding: '24px 0', textAlign: 'center' }}>Chưa có dữ liệu biểu đồ.</div>
-              ) : (
-                <ResponsiveContainer>
-                  <LineChart data={chart} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#64748b' }} />
-                    <YAxis tick={{ fontSize: 12, fill: '#64748b' }} width={60} />
-                    <Tooltip
-                      formatter={(v) => [`${Number(v || 0).toLocaleString('vi-VN')} ₫`, 'Doanh thu']}
-                      labelFormatter={(l) => `Ngày ${l}`}
-                    />
-                    <Line type="monotone" dataKey="revenue" stroke="#097E52" strokeWidth={2.5} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
             </div>
           </div>
 
@@ -275,11 +457,7 @@ export default function ManagerEarnings() {
           <div className="bk-filters-row">
             <div className="bk-search-wrap">
               <i className="feather-search bk-search-icon" />
-              <input
-                type="text" className="form-control bk-search-input"
-                placeholder="Tìm theo tên, sân, mã HĐ..."
-                value={search} onChange={e => setSearch(e.target.value)}
-              />
+              <input type="text" className="form-control bk-search-input" placeholder="Tìm theo tên, sân, mã HĐ..." value={search} onChange={e => setSearch(e.target.value)} />
               {search && <button type="button" className="bk-search-clear" onClick={handleClearSearch}><i className="feather-x" /></button>}
             </div>
             <select className="form-select" value={timeFilter} onChange={e => setTimeFilter(e.target.value)}>
@@ -386,7 +564,7 @@ export default function ManagerEarnings() {
             </table>
           </div>
         </div>
-        
+
         {totalPages > 1 && (
           <div className="card-footer bg-white border-0 pb-4 pt-2">
             <Pagination page={currentPage} totalPages={totalPages} onChange={setPage} />

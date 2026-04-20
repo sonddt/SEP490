@@ -300,6 +300,156 @@ public class ManagerStatsController : ControllerBase
         return Ok(result);
     }
 
+    // =========================================================================
+    // GET /api/manager/stats/earnings-analytics
+    // Doanh thu theo tháng, top sân được đặt, top sân bị huỷ, phân bổ revenue
+    // =========================================================================
+
+    [HttpGet("earnings-analytics")]
+    public async Task<IActionResult> GetEarningsAnalytics()
+    {
+        var managerId = GetCurrentUserId();
+        if (managerId == Guid.Empty) return Unauthorized();
+
+        var vnTz = GetVietnamTimeZone();
+        var nowUtc = DateTime.UtcNow;
+        var nowVn = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, vnTz);
+
+        var venueIds = await _db.Venues
+            .Where(v => v.OwnerUserId == managerId)
+            .Select(v => v.Id)
+            .ToListAsync();
+
+        if (!venueIds.Any())
+            return Ok(new { monthlyRevenue = new object[0], topBookedCourts = new object[0], topCancelledCourts = new object[0], revenueByVenue = new object[0] });
+
+        var paidStatuses = new[] { "CONFIRMED", "COMPLETED" };
+
+        // ── 1) Monthly revenue (12 tháng gần nhất) ──────────────────────────
+        var vnStartOf12MonthsAgo = DateTime.SpecifyKind(
+            new DateTime(nowVn.Year, nowVn.Month, 1).AddMonths(-11),
+            DateTimeKind.Unspecified);
+        var startOf12MonthsUtc = TimeZoneInfo.ConvertTimeToUtc(vnStartOf12MonthsAgo, vnTz);
+
+        var bookings12m = await _db.Bookings
+            .Where(b => b.VenueId.HasValue && venueIds.Contains(b.VenueId.Value)
+                     && b.CreatedAt >= startOf12MonthsUtc)
+            .Select(b => new { b.CreatedAt, b.TotalAmount, b.Status })
+            .ToListAsync();
+
+        var monthlyRevenue = Enumerable.Range(0, 12).Select(i =>
+        {
+            var monthDate = new DateTime(nowVn.Year, nowVn.Month, 1).AddMonths(-11 + i);
+            var monthLabel = monthDate.ToString("MM/yyyy");
+
+            var monthBookings = bookings12m.Where(b =>
+            {
+                if (!b.CreatedAt.HasValue) return false;
+                var vnDate = TimeZoneInfo.ConvertTimeFromUtc(
+                    DateTime.SpecifyKind(b.CreatedAt.Value, DateTimeKind.Utc), vnTz);
+                return vnDate.Year == monthDate.Year && vnDate.Month == monthDate.Month;
+            }).ToList();
+
+            var revenue = monthBookings
+                .Where(b => paidStatuses.Contains(b.Status))
+                .Sum(b => b.TotalAmount ?? 0);
+            var bookingCount = monthBookings.Count(b => b.Status != "CANCELLED");
+
+            return new { month = monthLabel, revenue, bookingCount };
+        }).ToList();
+
+        // ── 2) Top 5 sân được đặt nhiều nhất (tháng này) ────────────────────
+        var vnStartOfMonth = DateTime.SpecifyKind(
+            new DateTime(nowVn.Year, nowVn.Month, 1), DateTimeKind.Unspecified);
+        var startOfMonthUtc = TimeZoneInfo.ConvertTimeToUtc(vnStartOfMonth, vnTz);
+
+        var topBookedCourts = await _db.BookingItems
+            .Include(bi => bi.Court)
+            .Include(bi => bi.Booking)
+            .Where(bi => bi.Court != null && bi.Court.VenueId.HasValue
+                      && venueIds.Contains(bi.Court.VenueId.Value)
+                      && bi.Booking != null
+                      && bi.Booking.CreatedAt >= startOfMonthUtc
+                      && bi.Booking.Status != "CANCELLED")
+            .GroupBy(bi => new { bi.CourtId, CourtName = bi.Court!.Name, VenueName = bi.Court.Venue!.Name })
+            .Select(g => new
+            {
+                courtId = g.Key.CourtId,
+                courtName = g.Key.CourtName ?? "N/A",
+                venueName = g.Key.VenueName ?? "N/A",
+                bookingCount = g.Select(bi => bi.BookingId).Distinct().Count(),
+                revenue = g.Where(bi => paidStatuses.Contains(bi.Booking!.Status))
+                           .Sum(bi => bi.FinalPrice ?? 0)
+            })
+            .OrderByDescending(x => x.bookingCount)
+            .Take(5)
+            .ToListAsync();
+
+        // ── 3) Top 5 sân bị huỷ nhiều nhất (tháng này) ──────────────────────
+        var allCourtBookings = await _db.BookingItems
+            .Include(bi => bi.Court)
+            .Include(bi => bi.Booking)
+            .Where(bi => bi.Court != null && bi.Court.VenueId.HasValue
+                      && venueIds.Contains(bi.Court.VenueId.Value)
+                      && bi.Booking != null
+                      && bi.Booking.CreatedAt >= startOfMonthUtc)
+            .Select(bi => new
+            {
+                bi.CourtId,
+                CourtName = bi.Court!.Name ?? "N/A",
+                VenueName = bi.Court.Venue!.Name ?? "N/A",
+                bi.BookingId,
+                Status = bi.Booking!.Status
+            })
+            .ToListAsync();
+
+        var topCancelledCourts = allCourtBookings
+            .GroupBy(x => new { x.CourtId, x.CourtName, x.VenueName })
+            .Select(g =>
+            {
+                var total = g.Select(x => x.BookingId).Distinct().Count();
+                var cancelled = g.Where(x => x.Status == "CANCELLED")
+                                 .Select(x => x.BookingId).Distinct().Count();
+                return new
+                {
+                    courtId = g.Key.CourtId,
+                    courtName = g.Key.CourtName,
+                    venueName = g.Key.VenueName,
+                    cancelCount = cancelled,
+                    totalBookings = total,
+                    cancelRate = total > 0 ? Math.Round(cancelled * 100.0 / total, 1) : 0
+                };
+            })
+            .Where(x => x.cancelCount > 0)
+            .OrderByDescending(x => x.cancelCount)
+            .Take(5)
+            .ToList();
+
+        // ── 4) Revenue by venue (tháng này) ─────────────────────────────────
+        var revenueByVenue = await _db.Venues
+            .Where(v => venueIds.Contains(v.Id))
+            .Select(v => new
+            {
+                venueId = v.Id,
+                venueName = v.Name ?? "N/A",
+                revenue = v.Bookings
+                    .Where(b => paidStatuses.Contains(b.Status) && b.CreatedAt >= startOfMonthUtc)
+                    .Sum(b => b.TotalAmount ?? 0),
+                bookingCount = v.Bookings
+                    .Count(b => b.Status != "CANCELLED" && b.CreatedAt >= startOfMonthUtc)
+            })
+            .OrderByDescending(x => x.revenue)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            monthlyRevenue,
+            topBookedCourts,
+            topCancelledCourts,
+            revenueByVenue
+        });
+    }
+
     // ── Helper ───────────────────────────────────────────────────────────────
 
     private Guid GetCurrentUserId()

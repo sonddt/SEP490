@@ -184,7 +184,7 @@ export default function ManagerVenueList() {
             id: v?.id,
             name: v?.name ?? '',
             address: v?.address ?? '',
-            image: '/assets/img/venue/venue-01.jpg',
+            image: v?.imageUrl || '/assets/img/venue/venue-01.jpg',
             courtCount: v?.courtCount ?? 0,
             activeCourts: v?.activeCourts ?? 0,
             totalBookingsThisMonth: v?.totalBookingsThisMonth ?? 0,

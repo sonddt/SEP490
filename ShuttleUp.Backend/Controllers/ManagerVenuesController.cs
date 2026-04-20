@@ -374,7 +374,7 @@ public class ManagerVenuesController : ControllerBase
         if (pageSize > 100) pageSize = 100;
 
         var query = _dbContext.Venues.AsNoTracking()
-            .Include(v => v.Courts)
+            .Include(v => v.Courts).ThenInclude(c => c.Files)
             .Include(v => v.Bookings)
             .Where(v => v.OwnerUserId == managerId);
 
@@ -417,6 +417,13 @@ public class ManagerVenuesController : ControllerBase
             var courtCount = courts.Count;
             var activeCourts = courts.Count(c => c.IsActive == true && c.Status == "ACTIVE");
 
+            // Get first available image from any court's gallery
+            var imageUrl = courts
+                .SelectMany(c => c.Files ?? new List<ShuttleUp.DAL.Models.File>())
+                .Where(f => !string.IsNullOrWhiteSpace(f.FileUrl))
+                .Select(f => f.FileUrl)
+                .FirstOrDefault();
+
             var monthBookings = (v.Bookings ?? new List<Booking>())
                 .Where(b => b.CreatedAt.HasValue && b.CreatedAt.Value >= startOfMonth
                          && b.Status != null && b.Status != "CANCELLED")
@@ -433,6 +440,7 @@ public class ManagerVenuesController : ControllerBase
                 v.Address,
                 v.IsActive,
                 v.CreatedAt,
+                imageUrl,
                 courtCount,
                 activeCourts,
                 totalBookingsThisMonth,
