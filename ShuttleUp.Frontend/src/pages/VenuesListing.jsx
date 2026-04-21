@@ -516,149 +516,259 @@ export default function VenuesListing() {
 
       <div className={`content ${isListView ? 'listing-list-page' : ''}`}>
         <div className="container">
-          <div className="row mb-3">
+          {/* ═══ Filter & Location Toolbar ═══ */}
+          <div className="row mb-4">
             <div className="col-12">
-              <div
-                className="card border-0 shadow-sm rounded-3 overflow-hidden"
-                style={{ borderLeft: '4px solid #0d6efd' }}
-              >
-                <div className="card-body py-3 px-3 px-md-4 d-flex flex-column flex-lg-row align-items-start align-items-lg-center justify-content-between gap-3">
-                  <div className="d-flex align-items-center gap-3 flex-grow-1">
-                    <div
-                      className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 text-white fw-bold"
-                      style={{
-                        width: 48,
-                        height: 48,
-                        background: useGps ? '#0d6efd' : '#64748b',
-                        fontSize: 22,
-                      }}
-                      aria-hidden
-                    >
-                      {useGps ? '📍' : '🏠'}
-                    </div>
-                    <div>
-                      <div className="fw-bold text-dark mb-1" style={{ fontSize: '1.05rem' }}>
-                        Định vị để ưu tiên sân gần bạn
-                      </div>
-                      <div className="small text-muted mb-0">
-                        {useGps
-                          ? 'Bật: trình duyệt sẽ hỏi quyền vị trí. Nếu bạn từ chối, hệ thống dùng địa chỉ trong hồ sơ (nếu có).'
-                          : 'Tắt: không dùng GPS; thứ tự theo địa chỉ hồ sơ nếu bạn đã nhập, nếu không thì chỉ sắp theo giá.'}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="form-check form-switch ms-lg-3 flex-shrink-0">
-                    <input
-                      className="form-check-input"
-                      type="checkbox"
-                      role="switch"
-                      id="venues-use-gps"
-                      checked={useGps}
-                      onChange={(e) => toggleGps(e.target.checked)}
-                      style={{ width: '3.25rem', height: '1.65rem', cursor: 'pointer' }}
-                    />
-                    <label
-                      className="form-check-label fw-semibold ms-2"
-                      htmlFor="venues-use-gps"
-                      style={{ cursor: 'pointer' }}
-                    >
-                      Dùng vị trí của tôi (GPS)
+              <div style={{ backgroundColor: '#fff', borderRadius: 20, border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', padding: 24 }}>
+                {/* ── Row 1: Search + Quick filters ── */}
+                <div className="row g-3 align-items-end">
+                  {/* Search */}
+                  <div className="col-lg-5 col-md-6">
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 8, letterSpacing: '0.5px', display: 'block' }}>
+                      <i className="feather-search me-1" />Tìm sân
                     </label>
+                    <div className="input-group">
+                      <input
+                        className="form-control"
+                        value={keyword}
+                        placeholder="Tên sân, quận, thành phố..."
+                        onChange={(e) => setKeyword(e.target.value)}
+                        style={{ borderRadius: '12px 0 0 12px', padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: 600, color: '#1e293b' }}
+                      />
+                      {keyword.trim() && (
+                        <button type="button" className="btn" onClick={() => setKeyword('')} style={{ border: '1px solid #e2e8f0', borderLeft: 0, borderRadius: '0 12px 12px 0', backgroundColor: '#f8fafc', color: '#94a3b8' }}>
+                          <i className="feather-x" />
+                        </button>
+                      )}
+                      {!keyword.trim() && (
+                        <span style={{ border: '1px solid #e2e8f0', borderLeft: 0, borderRadius: '0 12px 12px 0', backgroundColor: '#f8fafc', color: '#94a3b8', display: 'flex', alignItems: 'center', padding: '0 14px' }}>
+                          <i className="feather-search" />
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="px-3 px-md-4 pb-3 pt-0 border-top border-light">
-                  <div className="d-flex flex-wrap align-items-center gap-2 small">
-                    <span
-                      className={`badge ${hasAnchor ? 'text-bg-success' : 'text-bg-secondary'}`}
+
+                  {/* Rating */}
+                  <div className="col-lg-2 col-md-3 col-6">
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 8, letterSpacing: '0.5px', display: 'block' }}>
+                      <i className="feather-star me-1" />Đánh giá
+                    </label>
+                    <select
+                      className="form-select"
+                      value={ratingMin}
+                      onChange={(e) => setRatingMin(Number(e.target.value) || 0)}
+                      style={{ borderRadius: 12, padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: 700, color: '#1e293b' }}
                     >
-                      {anchorStatus === 'loading' ? 'Đang xác định vị trí…' : statusLabel}
-                    </span>
-                    {useGps && hasAnchor && source === 'gps' && (
+                      <option value={0}>Tất cả sao</option>
+                      <option value={3}>3.0+ ⭐</option>
+                      <option value={3.5}>3.5+ ⭐</option>
+                      <option value={4}>4.0+ ⭐</option>
+                      <option value={4.5}>4.5+ ⭐</option>
+                    </select>
+                  </div>
+
+                  {/* GPS Toggle */}
+                  <div className="col-lg-2 col-md-3 col-6">
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 8, letterSpacing: '0.5px', display: 'block' }}>
+                      <i className="feather-map-pin me-1" />Vị trí
+                    </label>
+                    <div
+                      onClick={() => toggleGps(!useGps)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10, borderRadius: 12, padding: '10px 16px', cursor: 'pointer', transition: 'all 0.2s',
+                        border: useGps ? '1.5px solid #097E52' : '1px solid #e2e8f0',
+                        backgroundColor: useGps ? '#e8f5ee' : '#f8fafc',
+                      }}
+                    >
+                      <div className="form-check form-switch mb-0" style={{ minHeight: 'auto', paddingLeft: 0 }}>
+                        <input
+                          className="form-check-input ms-0"
+                          type="checkbox"
+                          role="switch"
+                          id="venues-use-gps"
+                          checked={useGps}
+                          onChange={(e) => { e.stopPropagation(); toggleGps(e.target.checked); }}
+                          style={{ width: '2.5rem', height: '1.3rem', cursor: 'pointer', marginTop: 0 }}
+                        />
+                      </div>
+                      <span style={{ fontWeight: 700, fontSize: 14, color: useGps ? '#065f3f' : '#64748b', whiteSpace: 'nowrap' }}>
+                        {useGps ? '📍 Bật' : '🏠 Tắt'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Radius */}
+                  <div className="col-lg-3 col-md-4 col-12">
+                    <div className="d-flex gap-2 align-items-end">
+                      <div style={{ flex: 1 }}>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 8, letterSpacing: '0.5px', display: 'block' }}>
+                          <i className="feather-target me-1" />Bán kính
+                        </label>
+                        <div className="input-group">
+                          <input
+                            type="number" min="1" max="50"
+                            className="form-control"
+                            disabled={!hasAnchor}
+                            value={radiusKm}
+                            placeholder={hasAnchor ? '10' : '—'}
+                            onChange={(e) => setRadiusKm(e.target.value === '' ? '' : Number(e.target.value))}
+                            style={{ borderRadius: '12px 0 0 12px', padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: hasAnchor ? '#f8fafc' : '#f1f5f9', fontWeight: 700, color: '#1e293b' }}
+                          />
+                          <span style={{ display: 'flex', alignItems: 'center', padding: '0 14px', border: '1px solid #e2e8f0', borderLeft: 0, borderRadius: '0 12px 12px 0', backgroundColor: '#f8fafc', fontWeight: 600, color: '#94a3b8', fontSize: 13 }}>km</span>
+                        </div>
+                      </div>
                       <button
                         type="button"
-                        className="btn btn-sm btn-outline-primary"
-                        onClick={refreshGps}
+                        onClick={() => setShowAdvanced((v) => !v)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap',
+                          padding: '12px 20px', borderRadius: 12, fontWeight: 700, fontSize: 14, transition: 'all 0.2s', cursor: 'pointer',
+                          border: showAdvanced ? '1.5px solid #097E52' : advancedActive ? '1.5px solid #097E52' : '1px solid #e2e8f0',
+                          backgroundColor: showAdvanced ? '#097E52' : advancedActive ? '#e8f5ee' : '#f8fafc',
+                          color: showAdvanced ? '#fff' : advancedActive ? '#097E52' : '#64748b',
+                          boxShadow: showAdvanced ? '0 4px 12px rgba(9,126,82,0.2)' : 'none',
+                        }}
                       >
-                        Cập nhật vị trí
+                        <i className={`feather-${showAdvanced ? 'chevron-up' : 'sliders'}`} />
+                        Lọc nâng cao
+                        {advancedActive && !showAdvanced && (
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#097E52', display: 'inline-block' }} />
+                        )}
                       </button>
-                    )}
-                    {!hasProfileText && !isAuthenticated && (
-                      <span className="text-muted">
-                        <Link to="/login">Đăng nhập</Link>
-                        {' '}để lưu địa chỉ trong hồ sơ (fallback khi tắt GPS).
-                      </span>
-                    )}
-                    {!hasProfileText && isAuthenticated && (
-                      <span className="text-muted">
-                        Chưa có địa chỉ hồ sơ —{' '}
-                        <Link to="/user/profile/edit">Cập nhật hồ sơ</Link>
-                      </span>
-                    )}
+                    </div>
                   </div>
-                  {hasAnchor &&
-                    anchorStatus === 'ready' &&
-                    refLat != null &&
-                    refLng != null && (
-                      <div className="small mt-2 pt-2 border-top border-light">
-                        {source === 'gps' && (
-                          <>
-                            <div className="mb-1">
-                              <span className="text-muted">Tọa độ (WGS84): </span>
-                              <code
-                                className="user-select-all text-dark"
-                                style={{ fontSize: '0.9em' }}
-                              >
-                                {formatAnchorCoords(refLat, refLng)}
-                              </code>
-                              <a
-                                className="ms-2"
-                                href={`https://www.google.com/maps?q=${encodeURIComponent(`${refLat},${refLng}`)}&z=16`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                Mở Google Maps
-                              </a>
-                            </div>
-                            {gpsPlaceLoading && (
-                              <p className="text-muted mb-0 fst-italic">
-                                Đang tra cứu địa danh…
-                              </p>
-                            )}
-                            {!gpsPlaceLoading && gpsPlaceName && (
-                              <p className="text-body-secondary mb-0">
-                                <span className="text-muted">Gần đúng: </span>
-                                {gpsPlaceName}
-                              </p>
-                            )}
-                          </>
-                        )}
-                        {source === 'profile' && profileQuery && (
-                          <p className="text-body-secondary mb-0">
-                            <span className="text-muted">Neo theo địa chỉ: </span>
-                            {profileQuery}
-                          </p>
-                        )}
-                        {source === 'profile' && (
-                          <p className="text-muted mb-0 mt-1">
-                            Tọa độ đã geocode:{' '}
-                            <code
-                              className="user-select-all text-dark"
-                              style={{ fontSize: '0.9em' }}
-                            >
-                              {formatAnchorCoords(refLat, refLng)}
-                            </code>
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  {anchorMessage && (
-                    <p className="small text-warning mb-0 mt-2">{anchorMessage}</p>
-                  )}
                 </div>
+
+                {/* ── Location status ── */}
+                <div className="d-flex flex-wrap align-items-center gap-2 mt-3 pt-3 border-top" style={{ borderColor: '#f1f5f9 !important', fontSize: 13 }}>
+                  <span style={{
+                    padding: '4px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                    backgroundColor: hasAnchor ? '#e8f5ee' : '#f1f5f9',
+                    color: hasAnchor ? '#065f3f' : '#64748b',
+                  }}>
+                    {anchorStatus === 'loading' ? '⏳ Đang xác định…' : hasAnchor ? '✅ ' + statusLabel : statusLabel}
+                  </span>
+                  {useGps && hasAnchor && source === 'gps' && (
+                    <button type="button" onClick={refreshGps} style={{ padding: '4px 12px', borderRadius: 8, border: '1px solid #bbf7d0', backgroundColor: '#e8f5ee', color: '#097E52', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                      <i className="feather-refresh-cw me-1" style={{ fontSize: 11 }} />Cập nhật
+                    </button>
+                  )}
+                  {hasAnchor && source === 'gps' && !gpsPlaceLoading && gpsPlaceName && (
+                    <span style={{ color: '#64748b', fontWeight: 600 }}>📍 {gpsPlaceName}</span>
+                  )}
+                  {hasAnchor && source === 'gps' && gpsPlaceLoading && (
+                    <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Đang tra cứu địa danh…</span>
+                  )}
+                  {hasAnchor && source === 'profile' && profileQuery && (
+                    <span style={{ color: '#64748b', fontWeight: 600 }}>🏠 {profileQuery}</span>
+                  )}
+                  {!hasProfileText && !isAuthenticated && (
+                    <span style={{ color: '#94a3b8' }}><Link to="/login" style={{ color: '#097E52', fontWeight: 700 }}>Đăng nhập</Link> để lưu địa chỉ fallback.</span>
+                  )}
+                  {!hasProfileText && isAuthenticated && (
+                    <span style={{ color: '#94a3b8' }}>Chưa có địa chỉ — <Link to="/user/profile/edit" style={{ color: '#097E52', fontWeight: 700 }}>Cập nhật hồ sơ</Link></span>
+                  )}
+                  {anchorMessage && <span style={{ color: '#f59e0b', fontWeight: 600 }}>{anchorMessage}</span>}
+                </div>
+
+                {/* ── Expanded Advanced Filters ── */}
+                {showAdvanced && (
+                  <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid #f1f5f9' }}>
+                    <div className="row g-3">
+                      {/* Price range */}
+                      <div className="col-md-5">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', letterSpacing: '0.5px' }}>
+                            <i className="feather-dollar-sign me-1" />Khoảng giá
+                          </label>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: '#1e293b' }}>
+                            {priceMin === '' && priceMax === ''
+                              ? `${formatVndShort(priceBounds.min)} – ${formatVndShort(priceBounds.max)}`
+                              : `${priceMin === '' ? formatVndShort(priceBounds.min) : formatVndShort(priceMin)} – ${priceMax === '' ? formatVndShort(priceBounds.max) : formatVndShort(priceMax)}`}
+                          </span>
+                        </div>
+                        <div className="px-1">
+                          <input type="range" min={priceBounds.min} max={priceBounds.max} step={10000} value={priceMin === '' ? priceBounds.min : priceMin}
+                            onChange={(e) => { const v = clampPrice(e.target.value); setPriceMin(v); if (priceMax !== '' && Number(v) > Number(priceMax)) setPriceMax(v); }}
+                            className="form-range" style={{ accentColor: '#097E52' }}
+                          />
+                          <input type="range" min={priceBounds.min} max={priceBounds.max} step={10000} value={priceMax === '' ? priceBounds.max : priceMax}
+                            onChange={(e) => { const v = clampPrice(e.target.value); setPriceMax(v); if (priceMin !== '' && Number(v) < Number(priceMin)) setPriceMin(v); }}
+                            className="form-range" style={{ accentColor: '#097E52' }}
+                          />
+                        </div>
+                        <div className="d-flex gap-2 mt-2">
+                          <input type="number" min="0" className="form-control" value={priceMin} placeholder="Giá từ"
+                            style={{ borderRadius: 10, padding: '10px 14px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: 600 }}
+                            onChange={(e) => { if (e.target.value === '') return setPriceMin(''); setPriceMin(clampPrice(e.target.value)); }}
+                          />
+                          <input type="number" min="0" className="form-control" value={priceMax} placeholder="Giá đến"
+                            style={{ borderRadius: 10, padding: '10px 14px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: 600 }}
+                            onChange={(e) => { if (e.target.value === '') return setPriceMax(''); setPriceMax(clampPrice(e.target.value)); }}
+                          />
+                          {(priceMin !== '' || priceMax !== '') && (
+                            <button type="button" onClick={() => { setPriceMin(''); setPriceMax(''); }}
+                              style={{ borderRadius: 10, border: '1px solid #fee2e2', backgroundColor: '#fef2f2', color: '#ef4444', fontWeight: 700, padding: '0 14px', whiteSpace: 'nowrap', cursor: 'pointer' }}>
+                              <i className="feather-x" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Amenities */}
+                      <div className="col-md-7">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', letterSpacing: '0.5px' }}>
+                            <i className="feather-check-circle me-1" />Tiện ích
+                          </label>
+                          {selectedAmenities.length > 0 && (
+                            <button type="button" onClick={() => setSelectedAmenities([])}
+                              style={{ fontSize: 12, fontWeight: 700, color: '#ef4444', backgroundColor: '#fef2f2', border: '1px solid #fee2e2', borderRadius: 8, padding: '2px 10px', cursor: 'pointer' }}>
+                              Xóa ({selectedAmenities.length})
+                            </button>
+                          )}
+                        </div>
+                        <div className="d-flex flex-wrap gap-2">
+                          {AMENITIES_CATALOG.map((a) => {
+                            const active = selectedAmenities.includes(a.key);
+                            return (
+                              <button
+                                key={a.key} type="button"
+                                onClick={() => { setSelectedAmenities((prev) => { const set = new Set(prev); if (set.has(a.key)) set.delete(a.key); else set.add(a.key); return Array.from(set); }); }}
+                                style={{
+                                  borderRadius: 999, padding: '6px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
+                                  border: active ? '1.5px solid #097E52' : '1px solid #e2e8f0',
+                                  backgroundColor: active ? '#e8f5ee' : '#fff',
+                                  color: active ? '#065f3f' : '#475569',
+                                }}
+                              >
+                                <i className={a.icon} style={{ marginRight: 6, fontSize: 13 }} />
+                                {a.label}
+                                {active && <i className="feather-check ms-1" style={{ fontSize: 12 }} />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Clear all */}
+                      {(advancedActive || keyword.trim()) && (
+                        <div className="col-12 pt-2">
+                          <button type="button"
+                            onClick={() => { setKeyword(''); setPriceMin(''); setPriceMax(''); setRatingMin(0); setSelectedAmenities([]); setRadiusKm(''); setSortBy('hybrid'); }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 10, border: '1px solid #fee2e2', backgroundColor: '#fef2f2', color: '#ef4444', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                            <i className="feather-trash-2" style={{ fontSize: 13 }} /> Xóa toàn bộ bộ lọc
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
+          {/* ═══ Sort & View Toggle Bar ═══ */}
           <div className="row">
             <div className="col-lg-12">
               <div className="sortby-section">
@@ -675,20 +785,12 @@ export default function VenuesListing() {
                           <ul className="nav">
                             <li><span>Hiển thị dưới dạng</span></li>
                             <li>
-                              <Link
-                                to="/venues"
-                                className={!isListView ? 'active' : ''}
-                                aria-label="Dạng lưới"
-                              >
+                              <Link to="/venues" className={!isListView ? 'active' : ''} aria-label="Dạng lưới">
                                 <img src="/assets/img/icons/sort-01.svg" alt="Grid" />
                               </Link>
                             </li>
                             <li>
-                              <Link
-                                to="/venues/list"
-                                className={isListView ? 'active' : ''}
-                                aria-label="Dạng danh sách"
-                              >
+                              <Link to="/venues/list" className={isListView ? 'active' : ''} aria-label="Dạng danh sách">
                                 <img src="/assets/img/icons/sort-02.svg" alt="List" />
                               </Link>
                             </li>
@@ -702,25 +804,14 @@ export default function VenuesListing() {
                         <div className="sortbyset">
                           <span className="sortbytitle">Sắp xếp theo</span>
                           <div className="sorting-select">
-                            <select
-                              className="form-control select"
-                              value={sortBy}
-                              onChange={(e) => setSortBy(e.target.value)}
-                            >
-                              <option value="hybrid">
-                                {hasAnchor ? 'Tối ưu (Gần nhất + Giá/Đánh giá)' : 'Tối ưu (Đánh giá cao)'}
-                              </option>
+                            <select className="form-control select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                              <option value="hybrid">{hasAnchor ? 'Tối ưu (Gần + Giá/Sao)' : 'Tối ưu (Đánh giá cao)'}</option>
                               {hasAnchor && <option value="distance">Gần nhất</option>}
                               <option value="price_asc">Giá tăng dần</option>
                               <option value="price_desc">Giá giảm dần</option>
                               <option value="rating_desc">Đánh giá cao nhất</option>
                               <option value="newest_desc">Sân mới nhất</option>
                             </select>
-                            {hasAnchor && (sortBy === 'price_asc' || sortBy === 'price_desc') && (
-                              <p className="small text-muted mb-0 mt-2">
-                                Bạn đang sắp xếp theo giá — hệ thống vẫn hiển thị khoảng cách để bạn tham khảo.
-                              </p>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -731,249 +822,6 @@ export default function VenuesListing() {
             </div>
           </div>
 
-          {/* Filters */}
-          <div className="row mb-3">
-            <div className="col-12">
-              <div className="card border-0 shadow-sm rounded-3">
-                <div className="card-body p-3 p-md-4">
-                  <div className="row g-3 align-items-end">
-                    <div className="col-lg-6">
-                      <label className="form-label fw-semibold">Tìm theo tên / địa chỉ</label>
-                      <div className="input-group">
-                        <span className="input-group-text bg-white">
-                          <i className="feather-search" />
-                        </span>
-                        <input
-                          className="form-control"
-                          value={keyword}
-                          placeholder="VD: Long Biên, Ninh Kiều, Hải Châu..."
-                          onChange={(e) => setKeyword(e.target.value)}
-                        />
-                        {keyword.trim() && (
-                          <button
-                            type="button"
-                            className="btn btn-outline-secondary"
-                            onClick={() => setKeyword('')}
-                            title="Xóa"
-                          >
-                            <i className="feather-x" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="col-lg-3 col-6">
-                      <label className="form-label fw-semibold">Sao tối thiểu</label>
-                      <select
-                        className="form-control"
-                        value={ratingMin}
-                        onChange={(e) => setRatingMin(Number(e.target.value) || 0)}
-                      >
-                        <option value={0}>Tất cả</option>
-                        <option value={3}>Từ 3.0+</option>
-                        <option value={3.5}>Từ 3.5+</option>
-                        <option value={4}>Từ 4.0+</option>
-                        <option value={4.5}>Từ 4.5+</option>
-                      </select>
-                    </div>
-
-                    <div className="col-lg-3 col-6 d-flex justify-content-lg-end">
-                      <button
-                        type="button"
-                        className={`btn ${showAdvanced ? 'btn-outline-primary' : 'btn-outline-secondary'}`}
-                        onClick={() => setShowAdvanced((v) => !v)}
-                        style={{ borderRadius: 12, width: '100%' }}
-                      >
-                        <i className={`feather-${showAdvanced ? 'chevron-up' : 'sliders'}`} style={{ marginRight: 8 }} />
-                        Bộ lọc nâng cao
-                        {advancedActive && !showAdvanced && (
-                          <span className="badge text-bg-primary ms-2">Đang bật</span>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {showAdvanced && (
-                    <div className="mt-3 pt-3 border-top">
-                      <div className="row g-3">
-                        {/* Price slider */}
-                        <div className="col-lg-6">
-                          <div className="d-flex justify-content-between align-items-center mb-2">
-                            <label className="form-label fw-semibold mb-0">Khoảng giá</label>
-                            <span className="small text-muted">
-                              {priceMin === '' && priceMax === ''
-                                ? `Tất cả (${formatVndShort(priceBounds.min)}–${formatVndShort(priceBounds.max)})`
-                                : `${priceMin === '' ? formatVndShort(priceBounds.min) : formatVndShort(priceMin)} – ${
-                                    priceMax === '' ? formatVndShort(priceBounds.max) : formatVndShort(priceMax)
-                                  }`}
-                            </span>
-                          </div>
-                          <div className="px-1">
-                            <input
-                              type="range"
-                              min={priceBounds.min}
-                              max={priceBounds.max}
-                              step={10000}
-                              value={priceMin === '' ? priceBounds.min : priceMin}
-                              onChange={(e) => {
-                                const v = clampPrice(e.target.value);
-                                setPriceMin(v);
-                                if (priceMax !== '' && Number(v) > Number(priceMax)) setPriceMax(v);
-                              }}
-                              className="form-range"
-                            />
-                            <input
-                              type="range"
-                              min={priceBounds.min}
-                              max={priceBounds.max}
-                              step={10000}
-                              value={priceMax === '' ? priceBounds.max : priceMax}
-                              onChange={(e) => {
-                                const v = clampPrice(e.target.value);
-                                setPriceMax(v);
-                                if (priceMin !== '' && Number(v) < Number(priceMin)) setPriceMin(v);
-                              }}
-                              className="form-range mt-1"
-                            />
-                          </div>
-                          <div className="d-flex gap-2 mt-2">
-                            <input
-                              type="number"
-                              min="0"
-                              className="form-control"
-                              value={priceMin}
-                              placeholder="Giá từ"
-                              onChange={(e) => {
-                                const raw = e.target.value;
-                                if (raw === '') return setPriceMin('');
-                                const v = clampPrice(raw);
-                                setPriceMin(v);
-                              }}
-                            />
-                            <input
-                              type="number"
-                              min="0"
-                              className="form-control"
-                              value={priceMax}
-                              placeholder="Giá đến"
-                              onChange={(e) => {
-                                const raw = e.target.value;
-                                if (raw === '') return setPriceMax('');
-                                const v = clampPrice(raw);
-                                setPriceMax(v);
-                              }}
-                            />
-                            {(priceMin !== '' || priceMax !== '') && (
-                              <button
-                                type="button"
-                                className="btn btn-light"
-                                onClick={() => {
-                                  setPriceMin('');
-                                  setPriceMax('');
-                                }}
-                              >
-                                Reset
-                              </button>
-                            )}
-                          </div>
-                          <p className="small text-muted mb-0 mt-2">
-                            Mẹo: kéo thanh để lọc nhanh theo ngân sách.
-                          </p>
-                        </div>
-
-                        {/* Radius */}
-                        <div className="col-lg-3 col-6">
-                          <label className="form-label fw-semibold">Bán kính (km)</label>
-                          <input
-                            type="number"
-                            min="1"
-                            className="form-control"
-                            disabled={!hasAnchor}
-                            value={radiusKm}
-                            placeholder={hasAnchor ? 'VD: 10' : 'Bật định vị để dùng'}
-                            onChange={(e) =>
-                              setRadiusKm(e.target.value === '' ? '' : Number(e.target.value))
-                            }
-                          />
-                          {!hasAnchor && (
-                            <p className="small text-muted mb-0 mt-2">
-                              Bật định vị để lọc theo bán kính.
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Amenities chips */}
-                        <div className="col-lg-3 col-6">
-                          <label className="form-label fw-semibold">Tiện ích</label>
-                          <div className="d-flex flex-wrap gap-2">
-                            {AMENITIES_CATALOG.map((a) => {
-                              const active = selectedAmenities.includes(a.key);
-                              return (
-                                <button
-                                  key={a.key}
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedAmenities((prev) => {
-                                      const set = new Set(prev);
-                                      if (set.has(a.key)) set.delete(a.key);
-                                      else set.add(a.key);
-                                      return Array.from(set);
-                                    });
-                                  }}
-                                  className="btn btn-sm"
-                                  style={{
-                                    borderRadius: 999,
-                                    border: active ? '1px solid #097E52' : '1px solid #e2e8f0',
-                                    background: active ? '#e8f5ee' : '#fff',
-                                    color: active ? '#065f3f' : '#475569',
-                                    fontWeight: 700,
-                                  }}
-                                >
-                                  <i className={a.icon} style={{ marginRight: 6 }} />
-                                  {a.label}
-                                  {active && <i className="feather-check ms-1" />}
-                                </button>
-                              );
-                            })}
-                            {selectedAmenities.length > 0 && (
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-link text-decoration-none"
-                                onClick={() => setSelectedAmenities([])}
-                              >
-                                Xóa
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Quick clear */}
-                        {(advancedActive || keyword.trim()) && (
-                          <div className="col-12">
-                            <button
-                              type="button"
-                              className="btn btn-outline-danger btn-sm"
-                              onClick={() => {
-                                setKeyword('');
-                                setPriceMin('');
-                                setPriceMax('');
-                                setRatingMin(0);
-                                setSelectedAmenities([]);
-                                setRadiusKm('');
-                                setSortBy('hybrid');
-                              }}
-                            >
-                              Xóa toàn bộ bộ lọc
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
 
           {loading && (
             <div className="row">
