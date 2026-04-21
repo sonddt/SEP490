@@ -1,11 +1,9 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useChat } from '../../hooks/useChat';
 import { toast } from 'react-toastify';
 
 export default function UserDashboardMenu() {
   const { user, logout } = useAuth();
-  const { openChatPanel } = useChat();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -89,15 +87,14 @@ export default function UserDashboardMenu() {
               </NavLink>
             </li>
             <li>
-              <button
-                type="button"
-                className={`user-sidebar-nav-item flex items-center font-semibold leading-snug duration-200 group`}
-                onClick={openChatPanel}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', padding: 0 }}
-              >
-                <i className={`fa-fw fa-regular fa-comments ${iconClass()}`}></i>
-                <span>Trò chuyện</span>
-              </button>
+              <NavLink to="/user/chat" className={({ isActive }) => navItemClass(isActive) + ' group'}>
+                {({ isActive }) => (
+                  <>
+                    <i className={`fa-fw fa-${isActive ? 'solid' : 'regular'} fa-comments ${iconClass()}`}></i>
+                    <span>Trò chuyện</span>
+                  </>
+                )}
+              </NavLink>
             </li>
           </ul>
         </div>

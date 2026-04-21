@@ -176,6 +176,7 @@ function App() {
             <Route path="bookings" element={<UserBookings />} />
             <Route path="favorites" element={<UserFavorites />} />
             <Route path="notifications" element={<UserNotifications />} />
+            <Route path="chat" element={<ChatPage />} />
           </Route>
 
           {/* Legacy /profile redirects → /user/profile */}
@@ -190,8 +191,7 @@ function App() {
           <Route path="/user/my-profile" element={<Navigate to="/user/profile" replace />} />
 
           {/* Player misc */}
-          <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
-          <Route path="/user/chat" element={<Navigate to="/chat" replace />} />
+          <Route path="/chat" element={<Navigate to="/user/chat" replace />} />
 
           {/* ═══ Matching ═══ */}
           <Route path="/matching" element={<MatchingHub />} />
