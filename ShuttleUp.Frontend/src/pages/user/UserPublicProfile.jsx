@@ -44,11 +44,11 @@ export default function UserPublicProfile() {
 
   return (
     <div className="main-wrapper content-below-header">
-      <section className="breadcrumb breadcrumb-list mb-0">
+      <section className="breadcrumb breadcrumb-list mb-0" style={{ padding: '40px 0', overflow: 'hidden', position: 'relative' }}>
         <span className="primary-right-round"></span>
         <div className="container">
-          <h1 className="text-white">Hồ sơ thành viên</h1>
-          <ul>
+          <h1 className="text-white h2 mb-1">Hồ sơ người dùng</h1>
+          <ul className="mb-0">
             <li><Link to="/">Trang chủ</Link></li>
             <li><Link to="/user/social/search">Tìm bạn</Link></li>
             <li>Hồ sơ</li>

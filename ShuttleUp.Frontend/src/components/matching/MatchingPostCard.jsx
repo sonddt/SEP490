@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import matchingApi from '../../api/matchingApi';
 import MatchingScheduleModal from './MatchingScheduleModal';
 import { buildScheduleSummary } from '../../utils/matchingScheduleSummary';
@@ -83,6 +83,8 @@ const scheduleLinkBtnStyle = {
 
 export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [joinBusy, setJoinBusy] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinMessage, setJoinMessage] = useState('');
@@ -144,6 +146,14 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
     } finally {
       setJoinBusy(false);
     }
+  };
+
+  const handleJoinClick = () => {
+    if (!user) {
+      navigate('/login', { state: { from: location.pathname } });
+      return;
+    }
+    setShowJoinModal(true);
   };
 
   if (viewMode === 'list') {
@@ -248,7 +258,7 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
                       Chi tiết
                     </Link>
                     {canQuickJoin ? (
-                      <button onClick={() => setShowJoinModal(true)} disabled={joinBusy} className="btn btn-primary" style={{ borderRadius: '10px', fontWeight: '700', padding: '8px 20px', display: 'flex', alignItems: 'center' }}>
+                      <button onClick={handleJoinClick} disabled={joinBusy} className="btn btn-primary" style={{ borderRadius: '10px', fontWeight: '700', padding: '8px 20px', display: 'flex', alignItems: 'center' }}>
                          {joinBusy ? '...' : <><i className="feather-user-plus me-2"></i> Xin tham gia</>}
                       </button>
                     ) : (
@@ -388,7 +398,7 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
                 Chi tiết
               </Link>
               {canQuickJoin ? (
-                <button onClick={() => setShowJoinModal(true)} disabled={joinBusy} className="btn btn-primary flex-fill" style={{ borderRadius: '10px', fontWeight: '800', padding: '10px' }}>
+                <button onClick={handleJoinClick} disabled={joinBusy} className="btn btn-primary flex-fill" style={{ borderRadius: '10px', fontWeight: '800', padding: '10px' }}>
                    {joinBusy ? '...' : 'Xin tham gia'}
                 </button>
               ) : (

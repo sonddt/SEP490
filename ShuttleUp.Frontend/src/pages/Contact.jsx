@@ -2,11 +2,11 @@ const Contact = () => {
   return (
     <div className="main-wrapper content-below-header">
       {/* Breadcrumb */}
-      <section className="breadcrumb breadcrumb-list mb-0">
+      <section className="breadcrumb breadcrumb-list mb-0" style={{ padding: '40px 0', overflow: 'hidden', position: 'relative' }}>
         <span className="primary-right-round"></span>
         <div className="container">
-          <h1 className="text-white">Liên hệ</h1>
-          <ul>
+          <h1 className="text-white h2 mb-1">Liên hệ</h1>
+          <ul className="mb-0">
             <li><a href="/">Trang chủ</a></li>
             <li>Liên hệ</li>
           </ul>

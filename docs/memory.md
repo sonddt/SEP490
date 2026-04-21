@@ -561,7 +561,7 @@ Kết bạn & quan hệ xã hội (Player):
    - **Logo Fix**: Đảm bảo Logo giữ màu trắng khi cuộn trang (scrolled) trên nền Header trong suốt tại trang chủ.
    - **Homepage Search**: Thêm viền (border) và bo góc cho từng ô nhập liệu riêng biệt; loại bỏ đường kẻ dọc (legacy line) giữa các ô để đồng bộ giao diện mới.
    - **Venue Card Sync**: Đồng bộ chiều cao thẻ sân tại trang chủ (Line-clamp 2 dòng cho tiêu đề sân) để tránh hiện trạng thẻ cao thẻ thấp.
-   - **Landing Page Polish**: Loại bỏ nút "Yêu thích" (Heart icon) không hoạt động tại các Slider ở trang chủ.
+   - **Featured Page Polish**: Thêm banner gradient sinh động mảng Tin tức/Khuyến mãi và áp dụng flexbox để cố định hàng nút bấm ở dưới cùng thẻ bài viết trên mọi màn hình.
 3. **Tuân thủ & Thông tin nhóm (Legal & Contact):**
    - **Auth Back Button**: Thêm nút "Quay lại trang chủ" vào Login/Register.
    - **Contact Updates**: Cập nhật SĐT **0394127869**, Email **shuttleup.badminton@gmail.com** và địa chỉ **Hà Nội** (Bao gồm Google Maps).

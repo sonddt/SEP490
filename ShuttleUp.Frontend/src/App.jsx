@@ -193,10 +193,10 @@ function App() {
           <Route path="/user/chat" element={<Navigate to="/chat" replace />} />
 
           {/* ═══ Matching ═══ */}
-          <Route path="/matching" element={<ProtectedRoute><MatchingHub /></ProtectedRoute>} />
+          <Route path="/matching" element={<MatchingHub />} />
           <Route path="/matching/create" element={<ProtectedRoute><MatchingCreate /></ProtectedRoute>} />
           <Route path="/matching/edit/:postId" element={<ProtectedRoute><MatchingEditPost /></ProtectedRoute>} />
-          <Route path="/matching/:postId" element={<ProtectedRoute><MatchingPostDetail /></ProtectedRoute>} />
+          <Route path="/matching/:postId" element={<MatchingPostDetail />} />
 
           {/* ═══════════════════════════════════════════════════════════
                MANAGER — Nested routes with ManagerLayout (sidebar)

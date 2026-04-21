@@ -93,13 +93,13 @@ export default function TermsOfService() {
 
   return (
     <div className="main-wrapper content-below-header">
-      <section className="breadcrumb breadcrumb-list mb-0">
+      <section className="breadcrumb breadcrumb-list mb-0" style={{ padding: '40px 0', overflow: 'hidden', position: 'relative' }}>
         <span className="primary-right-round"></span>
         <div className="container">
-          <h1 className="text-white">Điều khoản sử dụng</h1>
-          <ul>
+          <h1 className="text-white h2 mb-1">Điều khoản dịch vụ</h1>
+          <ul className="mb-0">
             <li><Link to="/">Trang chủ</Link></li>
-            <li>Điều khoản sử dụng</li>
+            <li>Điều khoản dịch vụ</li>
           </ul>
         </div>
       </section>
