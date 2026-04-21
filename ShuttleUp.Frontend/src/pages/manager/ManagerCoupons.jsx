@@ -41,7 +41,7 @@ export default function ManagerCoupons() {
       setLoading(true);
       const [cpRes, vnRes] = await Promise.all([
         getVenueCoupons(venueId).catch(() => []),
-        axiosClient.get(`/venues/${venueId}`).catch(() => null)
+        axiosClient.get(`/manager/venues/${venueId}`).catch(() => null)
       ]);
       setCoupons(cpRes);
       if (vnRes) {
@@ -74,6 +74,11 @@ export default function ManagerCoupons() {
         lng: venue.lng || venue.Lng,
         contactName: venue.contactName || venue.ContactName,
         contactPhone: venue.contactPhone || venue.ContactPhone,
+        description: venue.description || venue.Description,
+        includes: venue.includes || venue.Includes,
+        rules: venue.rules || venue.Rules,
+        amenities: venue.amenities || venue.Amenities,
+        slotDuration: venue.slotDuration || venue.SlotDuration || 60,
         weeklyDiscountPercent: defaultDiscountForm.weeklyDiscountPercent ? Number(defaultDiscountForm.weeklyDiscountPercent) : null,
         monthlyDiscountPercent: defaultDiscountForm.monthlyDiscountPercent ? Number(defaultDiscountForm.monthlyDiscountPercent) : null
       };

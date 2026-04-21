@@ -122,6 +122,51 @@ public class ManagerVenuesController : ControllerBase
     // =====================================================================
 
     /// <summary>
+    /// Lấy chi tiết venue do manager quản lý (bao gồm cả trạng thái bản nháp).
+    /// </summary>
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetManagedVenueById([FromRoute] Guid id)
+    {
+        var managerId = GetCurrentUserId();
+        if (managerId == Guid.Empty)
+            return Unauthorized(new { message = "Không xác định được người dùng hiện tại." });
+
+        var venue = await _dbContext.Venues
+            .AsNoTracking()
+            .FirstOrDefaultAsync(v => v.Id == id && v.OwnerUserId == managerId);
+
+        if (venue == null)
+            return NotFound(new { message = "Venue không tồn tại hoặc bạn không có quyền truy cập." });
+
+        static List<string>? ParseJsonArray(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return null;
+            try { return JsonSerializer.Deserialize<List<string>>(json); }
+            catch { return null; }
+        }
+
+        return Ok(new
+        {
+            venue.Id,
+            venue.Name,
+            venue.Address,
+            venue.Lat,
+            venue.Lng,
+            venue.ContactName,
+            venue.ContactPhone,
+            venue.WeeklyDiscountPercent,
+            venue.MonthlyDiscountPercent,
+            venue.SlotDuration,
+            venue.Description,
+            Includes = ParseJsonArray(venue.Includes),
+            Rules = ParseJsonArray(venue.Rules),
+            Amenities = ParseJsonArray(venue.Amenities),
+            venue.IsActive,
+            venue.CreatedAt
+        });
+    }
+
+    /// <summary>
     /// Tạo mới venue do manager hiện tại quản lý.
     /// </summary>
     [HttpPost]
