@@ -49,9 +49,13 @@ public class VenuesController : ControllerBase
                 v.SlotDuration,
                 v.CancelAllowed,
                 ThumbnailUrl = v.Files.OrderByDescending(f => f.CreatedAt).Select(f => f.FileUrl).FirstOrDefault(),
+                v.OwnerUserId,
                 OwnerName = v.OwnerUser != null ? v.OwnerUser.FullName : null,
                 OwnerEmail = v.OwnerUser != null ? v.OwnerUser.Email : null,
                 OwnerPhone = v.OwnerUser != null ? v.OwnerUser.PhoneNumber : null,
+                OwnerAvatarUrl = v.OwnerUser != null && v.OwnerUser.AvatarFile != null
+                    ? v.OwnerUser.AvatarFile.FileUrl
+                    : null,
                 MinPrice = v.Courts
                     .SelectMany(c => c.CourtPrices)
                     .Min(cp => (decimal?)cp.Price),
@@ -97,8 +101,10 @@ public class VenuesController : ControllerBase
             raw.CancelAllowed,
             raw.ThumbnailUrl,
             raw.TodayOpenHours,
+            raw.OwnerUserId,
             raw.OwnerName,
             raw.OwnerEmail,
+            raw.OwnerAvatarUrl,
             raw.OwnerPhone,
             raw.MinPrice,
             raw.MaxPrice,

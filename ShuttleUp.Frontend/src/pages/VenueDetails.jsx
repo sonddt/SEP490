@@ -1,6 +1,8 @@
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useChat } from '../hooks/useChat';
+import favoritesApi from '../api/favoritesApi';
 import VenueReviewModal from '../components/courts/VenueReviewModal';
 import StarRatingDisplay from '../components/common/StarRatingDisplay';
 import RichText from '../components/common/RichText';
@@ -15,16 +17,16 @@ import 'yet-another-react-lightbox/plugins/thumbnails.css';
 import LongTermTypeModal from '../components/booking/LongTermTypeModal';
 
 const AMENITIES_LIST = [
-  { key: 'parking',       label: 'Bãi đỗ xe',                  icon: 'feather-map-pin' },
-  { key: 'water',         label: 'Nước uống',                   icon: 'feather-droplet' },
-  { key: 'locker',        label: 'Tủ đồ & phòng thay đồ',      icon: 'feather-briefcase' },
-  { key: 'bathroom',      label: 'Phòng tắm & nhà vệ sinh',     icon: 'feather-wind' },
-  { key: 'lighting',      label: 'Đèn chiếu sáng',             icon: 'feather-sun' },
-  { key: 'security',      label: 'Camera an ninh',              icon: 'feather-camera' },
-  { key: 'wifi',          label: 'WiFi',                        icon: 'feather-wifi' },
-  { key: 'rental_racket', label: 'Cho thuê vợt',                icon: 'feather-activity' },
-  { key: 'buy_shuttle',   label: 'Mua cầu tại sân',            icon: 'feather-shopping-bag' },
-  { key: 'canteen',       label: 'Căn tin / Quầy ăn uống',     icon: 'feather-coffee' },
+  { key: 'parking', label: 'Bãi đỗ xe', icon: 'feather-map-pin' },
+  { key: 'water', label: 'Nước uống', icon: 'feather-droplet' },
+  { key: 'locker', label: 'Tủ đồ & phòng thay đồ', icon: 'feather-briefcase' },
+  { key: 'bathroom', label: 'Phòng tắm & nhà vệ sinh', icon: 'feather-wind' },
+  { key: 'lighting', label: 'Đèn chiếu sáng', icon: 'feather-sun' },
+  { key: 'security', label: 'Camera an ninh', icon: 'feather-camera' },
+  { key: 'wifi', label: 'WiFi', icon: 'feather-wifi' },
+  { key: 'rental_racket', label: 'Cho thuê vợt', icon: 'feather-activity' },
+  { key: 'buy_shuttle', label: 'Mua cầu tại sân', icon: 'feather-shopping-bag' },
+  { key: 'canteen', label: 'Căn tin / Quầy ăn uống', icon: 'feather-coffee' },
 ];
 
 const MOCK_GALLERY = [
@@ -37,19 +39,110 @@ const MOCK_GALLERY = [
   '/assets/img/gallery/gallery1/gallery-02.png',
 ];
 
+/* ─── Toast helper (inline, simple) ─── */
+function MiniToast({ msg, onClose }) {
+  useEffect(() => { const t = setTimeout(onClose, 2500); return () => clearTimeout(t); }, [onClose]);
+  return (
+    <div style={{
+      position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
+      background: '#166534', color: '#fff',
+      padding: '10px 18px', borderRadius: 10, fontSize: 14, fontWeight: 500,
+      display: 'flex', alignItems: 'center', gap: 8,
+      boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+    }}>
+      <i className="feather-check-circle" style={{ fontSize: 16 }} />
+      <span>{msg}</span>
+    </div>
+  );
+}
+
+/* ─── Contact Owner Modal ─── */
+function ContactOwnerModal({ open, onClose, venue, onChat }) {
+  if (!open) return null;
+  return (
+    <div className="modal fade show d-block" style={{ background: 'rgba(0,0,0,0.5)', zIndex: 1050 }} onClick={onClose}>
+      <div className="modal-dialog modal-dialog-centered modal-sm" onClick={e => e.stopPropagation()}>
+        <div className="modal-content" style={{ borderRadius: 16, overflow: 'hidden' }}>
+          <div className="modal-header border-0 pb-0" style={{ background: 'linear-gradient(135deg, #065f46 0%, #059669 100%)' }}>
+            <div className="text-center w-100 py-3">
+              <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                <i className="feather-user" style={{ fontSize: 24, color: '#fff' }} />
+              </div>
+              <h6 className="mb-0 text-white">{venue?.ownerName || 'Chủ sân'}</h6>
+              <small className="text-white" style={{ opacity: 0.8 }}>Liên hệ qua điện thoại hoặc tin nhắn</small>
+            </div>
+            <button type="button" className="btn-close btn-close-white position-absolute" style={{ top: 12, right: 12 }} onClick={onClose} />
+          </div>
+          <div className="modal-body p-4">
+            <div className="d-grid gap-3">
+              {/* Call button */}
+              <a
+                href={`tel:${venue?.phone || ''}`}
+                className="btn d-flex align-items-center justify-content-center gap-2"
+                style={{
+                  background: '#f0fdf4', border: '1.5px solid #86efac', color: '#166534',
+                  borderRadius: 12, padding: '14px 16px', fontWeight: 600, fontSize: 15,
+                  transition: 'all .2s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#dcfce7'; e.currentTarget.style.borderColor = '#4ade80'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#f0fdf4'; e.currentTarget.style.borderColor = '#86efac'; }}
+              >
+                <i className="feather-phone-call" style={{ fontSize: 18 }} />
+                <span>Gọi điện: <strong>{venue?.phone || 'Đang cập nhật'}</strong></span>
+              </a>
+
+              {/* Chat button */}
+              <button
+                type="button"
+                className="btn d-flex align-items-center justify-content-center gap-2"
+                style={{
+                  background: '#065f46', border: 'none', color: '#fff',
+                  borderRadius: 12, padding: '14px 16px', fontWeight: 600, fontSize: 15,
+                  transition: 'all .2s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#047857'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#065f46'; }}
+                onClick={() => { onChat(); onClose(); }}
+              >
+                <i className="fa-regular fa-comment-dots" style={{ fontSize: 18 }} />
+                Chat với chủ sân
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Policy Summary builder (matches Manager logic) ─── */
+function buildPolicySummary(c) {
+  if (!c) return null;
+  if (!c.allowCancel) return 'Người chơi không được phép tự huỷ đặt sân trên app.';
+  const mins = Number(c.cancelBeforeMinutes ?? 0);
+  let timeStr;
+  if (mins >= 1440) timeStr = `${mins / 1440} ngày`;
+  else if (mins >= 60) timeStr = `${mins / 60} giờ`;
+  else timeStr = `${mins} phút`;
+
+  const refund = (c.refundType || 'NONE').toUpperCase();
+  let refundStr = 'không hoàn tiền số tiền đã cọc';
+  if (refund === 'FULL') refundStr = 'hoàn 100% tiền cọc';
+  else if (refund === 'PERCENT') refundStr = `hoàn ${c.refundPercent ?? '?'}% tiền cọc`;
+
+  return `Người chơi được huỷ trước ${timeStr}, ${refundStr}.`;
+}
+
 export default function VenueDetails() {
-  // Support both route patterns:
-  //   /venue-details/:venueId  (used by VenueCard links)
-  //   /venues/:id              (legacy / alternative route)
   const { venueId, id } = useParams();
   const resolvedId = venueId ?? id;
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
+  const { openChatWithPeer, openingPeerId } = useChat();
   const isAdmin = user?.roles?.includes('ADMIN');
 
-  // ALL hooks MUST be declared before any conditional return (React Rules of Hooks)
   const [venue, setVenue] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -65,7 +158,14 @@ export default function VenueDetails() {
   const [reportOpen, setReportOpen] = useState(false);
   const [isLongTermModalOpen, setIsLongTermModalOpen] = useState(false);
 
-  // Build slides for lightbox
+  // New states
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [favLoading, setFavLoading] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [checkoutSettings, setCheckoutSettings] = useState(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
   const slides = MOCK_GALLERY.map((src) => ({ src }));
 
   const openLightbox = (idx) => {
@@ -75,12 +175,12 @@ export default function VenueDetails() {
 
   const handleBooking = () => {
     const payload = {
-        venueId: venue.id,
-        venueName: venue.name,
-        venueAddress: venue.address,
-        pricePerSlot: venue.startingPrice,
-        currency: venue.currency,
-        slotDuration: venue.slotDuration ?? 60,
+      venueId: venue.id,
+      venueName: venue.name,
+      venueAddress: venue.address,
+      pricePerSlot: venue.startingPrice,
+      currency: venue.currency,
+      slotDuration: venue.slotDuration ?? 60,
     };
     sessionStorage.setItem('booking_venue_context', JSON.stringify(payload));
     navigate('/booking', { state: payload });
@@ -90,28 +190,25 @@ export default function VenueDetails() {
     setIsLongTermModalOpen(true);
   };
 
+  // ── Load Venue ──
   useEffect(() => {
     async function loadVenue() {
       try {
         setLoading(true);
         setError(null);
-
         const response = await fetch(`/api/venues/${resolvedId}`);
-        if (!response.ok) {
-          throw new Error('Oops... Không tìm thấy thông tin sân này rồi.');
-        }
+        if (!response.ok) throw new Error('Oops... Không tìm thấy thông tin sân này rồi.');
         const data = await response.json();
-
-        // Map dữ liệu backend sang model dùng trong UI
         setVenue({
           id: data.id,
           name: data.name,
           isVerified: data.isVerified ?? true,
           address: data.address,
-          phone: data.phoneNumber ?? 'Đang cập nhật',
-          email: data.email ?? 'Đang cập nhật',
-          venueType: data.venueType ?? 'Sân cầu lông',
+          phone: data.phoneNumber ?? data.ownerPhone ?? 'Đang cập nhật',
+          email: data.email ?? data.ownerEmail ?? 'Đang cập nhật',
           ownerName: data.ownerName ?? 'Chủ sân',
+          ownerUserId: data.ownerUserId ?? null,
+          ownerAvatarUrl: data.ownerAvatarUrl ?? null,
           startingPrice: data.minPrice ?? 0,
           currency: '₫',
           rating: data.rating ?? 5.0,
@@ -132,10 +229,35 @@ export default function VenueDetails() {
         setLoading(false);
       }
     }
+    if (resolvedId) loadVenue();
+  }, [resolvedId]);
 
-    if (resolvedId) {
-      loadVenue();
-    }
+  // ── Load Favorites ──
+  useEffect(() => {
+    if (!user || !resolvedId) return;
+    (async () => {
+      try {
+        const favs = await favoritesApi.getMyFavorites();
+        const ids = new Set((Array.isArray(favs) ? favs : []).map(f => String(f.id ?? f.Id)));
+        setIsFavorited(ids.has(String(resolvedId)));
+      } catch { /* ignore */ }
+    })();
+  }, [user, resolvedId]);
+
+  // ── Load Checkout Settings (policies) ──
+  useEffect(() => {
+    if (!resolvedId) return;
+    (async () => {
+      try {
+        setCheckoutLoading(true);
+        const res = await fetch(`/api/venues/${resolvedId}/checkout-settings`);
+        if (res.ok) {
+          const data = await res.json();
+          setCheckoutSettings(data);
+        }
+      } catch { /* */ }
+      finally { setCheckoutLoading(false); }
+    })();
   }, [resolvedId]);
 
   const loadReviews = useCallback(async () => {
@@ -143,22 +265,13 @@ export default function VenueDetails() {
     try {
       setReviewsLoading(true);
       const res = await fetch(`/api/venues/${resolvedId}/reviews`);
-      if (res.ok) {
-        const data = await res.json();
-        setReviewsData(data);
-      } else {
-        setReviewsData(null);
-      }
-    } catch {
-      setReviewsData(null);
-    } finally {
-      setReviewsLoading(false);
-    }
+      if (res.ok) setReviewsData(await res.json());
+      else setReviewsData(null);
+    } catch { setReviewsData(null); }
+    finally { setReviewsLoading(false); }
   }, [resolvedId]);
 
-  useEffect(() => {
-    loadReviews();
-  }, [loadReviews]);
+  useEffect(() => { loadReviews(); }, [loadReviews]);
 
   useEffect(() => {
     const ob = searchParams.get('openReview');
@@ -201,22 +314,60 @@ export default function VenueDetails() {
         if (!response.ok) return;
         const data = await response.json();
         setVenue((prev) =>
-          prev
-            ? {
-                ...prev,
-                rating: data.rating ?? data.Rating ?? prev.rating,
-                reviewCount: data.reviewCount ?? data.ReviewCount ?? prev.reviewCount,
-              }
-            : prev
+          prev ? { ...prev, rating: data.rating ?? data.Rating ?? prev.rating, reviewCount: data.reviewCount ?? data.ReviewCount ?? prev.reviewCount } : prev
         );
-      } catch {
-        /* ignore */
-      }
+      } catch { /* */ }
     }
     refreshVenue();
   };
 
-  // Early returns AFTER all hooks
+  // ── Share handler ──
+  const handleShare = async () => {
+    const shareData = { title: venue?.name || 'ShuttleUp', text: `Xem sân ${venue?.name} trên ShuttleUp`, url: window.location.href };
+    try {
+      if (navigator.share) { await navigator.share(shareData); }
+      else { await navigator.clipboard.writeText(window.location.href); setToast('Đã sao chép liên kết sân!'); }
+    } catch {
+      try { await navigator.clipboard.writeText(window.location.href); setToast('Đã sao chép liên kết sân!'); } catch { /* */ }
+    }
+  };
+
+  // ── Favorite toggle ──
+  const handleToggleFavorite = async () => {
+    if (!user) { navigate(`/login?returnTo=${encodeURIComponent(location.pathname)}`); return; }
+    if (favLoading) return;
+    setFavLoading(true);
+    try {
+      if (isFavorited) { await favoritesApi.removeFavorite(resolvedId); setIsFavorited(false); setToast('Đã bỏ yêu thích'); }
+      else { await favoritesApi.addFavorite(resolvedId); setIsFavorited(true); setToast('Đã thêm vào yêu thích ❤️'); }
+    } catch { setToast('Có lỗi xảy ra, thử lại sau'); }
+    finally { setFavLoading(false); }
+  };
+
+  // ── Copy email ──
+  const handleCopyEmail = async () => {
+    try { await navigator.clipboard.writeText(venue?.email || ''); setToast('Đã sao chép email!'); } catch { /* */ }
+  };
+
+  // ── Scroll to reviews ──
+  const scrollToReviews = () => {
+    document.getElementById('reviews')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // ── Chat with owner ──
+  const handleChatOwner = () => {
+    if (!user) { navigate(`/login?returnTo=${encodeURIComponent(location.pathname)}`); return; }
+    if (!venue?.ownerUserId) { setToast('Không tìm thấy thông tin chủ sân'); return; }
+    openChatWithPeer({ userId: venue.ownerUserId, fullName: venue.ownerName, avatarUrl: venue.ownerAvatarUrl });
+  };
+
+  // ── Policy summary ──
+  const policySummary = useMemo(() => {
+    if (!checkoutSettings?.cancellation) return null;
+    return buildPolicySummary(checkoutSettings.cancellation);
+  }, [checkoutSettings]);
+
+  // Early returns
   if (loading) {
     return (
       <div className="main-wrapper content-below-header">
@@ -235,120 +386,70 @@ export default function VenueDetails() {
         <div className="content">
           <div className="container py-5 text-center">
             <p className="text-danger mb-3">{error || 'Không tìm thấy sân.'}</p>
-            <Link to="/venues" className="btn btn-secondary">
-              Quay lại danh sách sân
-            </Link>
+            <Link to="/venues" className="btn btn-secondary">Quay lại danh sách sân</Link>
           </div>
         </div>
       </div>
     );
   }
 
-  const avgStars = Number(
-    reviewsData?.averageStars ?? reviewsData?.AverageStars ?? venue.rating ?? 0
-  );
-  const reviewCountDisplay = Number(
-    reviewsData?.reviewCount ?? reviewsData?.ReviewCount ?? venue.reviewCount ?? 0
-  );
+  const avgStars = Number(reviewsData?.averageStars ?? reviewsData?.AverageStars ?? venue.rating ?? 0);
+  const reviewCountDisplay = Number(reviewsData?.reviewCount ?? reviewsData?.ReviewCount ?? venue.reviewCount ?? 0);
   const reviewsList = reviewsData?.reviews ?? reviewsData?.Reviews ?? [];
 
   return (
     <div className="main-wrapper content-below-header venue-coach-details">
-      <ReportModal
-        open={reportOpen}
-        onClose={() => setReportOpen(false)}
-        targetType="VENUE"
-        targetId={venue?.id}
-        title="Báo cáo cụm sân"
-      />
-      {/* Top gallery – Swiper slider để giống template */}
+      {toast && <MiniToast msg={toast} onClose={() => setToast(null)} />}
+      <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} targetType="VENUE" targetId={venue?.id} title="Báo cáo cụm sân" />
+      <ContactOwnerModal open={contactModalOpen} onClose={() => setContactModalOpen(false)} venue={venue} onChat={handleChatOwner} />
+
+      {/* Top gallery */}
       <section className="bannergallery-section">
         <Swiper
           modules={[Navigation]}
-          navigation={{
-            prevEl: '.vg-prev',
-            nextEl: '.vg-next',
-          }}
-          loop
-          spaceBetween={4}
-          slidesPerView={1}
-          breakpoints={{
-            576: { slidesPerView: 2, spaceBetween: 4 },
-            992: { slidesPerView: 3, spaceBetween: 4 },
-            1200: { slidesPerView: 4, spaceBetween: 4 },
-          }}
+          navigation={{ prevEl: '.vg-prev', nextEl: '.vg-next' }}
+          loop spaceBetween={4} slidesPerView={1}
+          breakpoints={{ 576: { slidesPerView: 2, spaceBetween: 4 }, 992: { slidesPerView: 3, spaceBetween: 4 }, 1200: { slidesPerView: 4, spaceBetween: 4 } }}
           className="main-gallery-slider owl-carousel owl-theme"
         >
           {MOCK_GALLERY.map((src, idx) => (
             <SwiperSlide key={`top-gallery-${idx}-${src}`}>
-              <div
-                className="gallery-widget-item"
-                onClick={() => openLightbox(idx)}
-                style={{ cursor: 'pointer' }}
-              >
-                <img
-                  className="img-fluid"
-                  alt={`Ảnh sân ${idx + 1}`}
-                  src={src}
-                  style={{ display: 'block', width: '100%' }}
-                />
+              <div className="gallery-widget-item" onClick={() => openLightbox(idx)} style={{ cursor: 'pointer' }}>
+                <img className="img-fluid" alt={`Ảnh sân ${idx + 1}`} src={src} style={{ display: 'block', width: '100%' }} />
               </div>
             </SwiperSlide>
           ))}
         </Swiper>
         <div className="owl-nav d-none d-md-block" style={{ position: 'absolute', top: '50%', width: '100%', transform: 'translateY(-50%)', zIndex: 10, pointerEvents: 'none' }}>
-          <button
-            className="owl-prev vg-prev"
-            type="button"
-            onMouseEnter={() => setPrevHovered(true)}
-            onMouseLeave={() => setPrevHovered(false)}
+          <button className="owl-prev vg-prev" type="button"
+            onMouseEnter={() => setPrevHovered(true)} onMouseLeave={() => setPrevHovered(false)}
             style={{ position: 'absolute', pointerEvents: 'auto', left: '30px', backgroundColor: prevHovered ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.65)', border: 'none', borderRadius: '50%', width: '46px', height: '46px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: prevHovered ? '0 4px 12px rgba(0,0,0,0.2)' : '0 2px 4px rgba(0,0,0,0.1)', transition: 'background-color 0.2s ease, box-shadow 0.2s ease', cursor: 'pointer' }}
-          >
-            <i className="feather-chevron-left" style={{ margin: 0, fontSize: '18px', color: '#333' }} />
-          </button>
-          <button
-            className="owl-next vg-next"
-            type="button"
-            onMouseEnter={() => setNextHovered(true)}
-            onMouseLeave={() => setNextHovered(false)}
+          ><i className="feather-chevron-left" style={{ margin: 0, fontSize: '18px', color: '#333' }} /></button>
+          <button className="owl-next vg-next" type="button"
+            onMouseEnter={() => setNextHovered(true)} onMouseLeave={() => setNextHovered(false)}
             style={{ position: 'absolute', pointerEvents: 'auto', right: '30px', backgroundColor: nextHovered ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.65)', border: 'none', borderRadius: '50%', width: '46px', height: '46px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: nextHovered ? '0 4px 12px rgba(0,0,0,0.2)' : '0 2px 4px rgba(0,0,0,0.1)', transition: 'background-color 0.2s ease, box-shadow 0.2s ease', cursor: 'pointer' }}
-          >
-            <i className="feather-chevron-right" style={{ margin: 0, fontSize: '18px', color: '#333' }} />
-          </button>
+          ><i className="feather-chevron-right" style={{ margin: 0, fontSize: '18px', color: '#333' }} /></button>
         </div>
         <div className="showphotos corner-radius-10" style={{ position: 'absolute', bottom: '16px', right: '16px', zIndex: 10 }}>
-          <button
-            type="button"
-            onClick={() => openLightbox(0)}
-            onMouseEnter={() => setMoreHovered(true)}
-            onMouseLeave={() => setMoreHovered(false)}
-            style={{ backgroundColor: moreHovered ? '#F59E0B' : '#FBBF24', color: '#192335', padding: '7px 14px', borderRadius: '6px', border: 'none', fontWeight: '600', fontSize: '13px', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'background-color 0.2s ease', whiteSpace: 'nowrap', cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
-          >
+          <button type="button" onClick={() => openLightbox(0)}
+            onMouseEnter={() => setMoreHovered(true)} onMouseLeave={() => setMoreHovered(false)}
+            style={{ backgroundColor: moreHovered ? '#F59E0B' : '#FBBF24', color: '#192335', padding: '7px 14px', borderRadius: '6px', border: 'none', fontWeight: '600', fontSize: '13px', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'background-color 0.2s ease', whiteSpace: 'nowrap', cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}>
             <i className="fa-regular fa-images me-2" style={{ color: '#192335', fontSize: '14px' }} /> Xem thêm hình
           </button>
         </div>
       </section>
 
-      {/* Lightbox with Zoom + Thumbnails on the right */}
       <Lightbox
-        open={lightboxOpen}
-        close={() => setLightboxOpen(false)}
-        slides={slides}
-        index={lightboxIndex}
+        open={lightboxOpen} close={() => setLightboxOpen(false)} slides={slides} index={lightboxIndex}
         plugins={[Zoom, Thumbnails]}
-        zoom={{
-          maxZoomPixelRatio: 4,
-          zoomInMultiplier: 1.5,
-          doubleTapDelay: 300,
-          doubleClickDelay: 300,
-          scrollToZoom: true,
-        }}
+        zoom={{ maxZoomPixelRatio: 4, zoomInMultiplier: 1.5, doubleTapDelay: 300, doubleClickDelay: 300, scrollToZoom: true }}
         thumbnails={{ position: 'end', width: 120, height: 80, gap: 10, border: 2, borderRadius: 6, padding: 0, showToggle: false }}
         animation={{ fade: 300, swipe: 300 }}
         on={{ backdropClick: () => setLightboxOpen(false) }}
         styles={{ root: { '--yarl__color_backdrop': 'rgba(0, 0, 0, 0.75)' } }}
       />
 
+      {/* Discount banner */}
       {(venue.weeklyDiscountPercent > 0 || venue.monthlyDiscountPercent > 0) && (
         <div className="container mt-4 mb-2">
           <div className="alert d-flex align-items-center mb-0" style={{ backgroundColor: '#fff7ed', borderLeft: '4px solid #ea580c', color: '#9a3412', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
@@ -356,11 +457,11 @@ export default function VenueDetails() {
             <div>
               <strong className="d-block mb-1 fs-5">Mừng Giờ Vàng - Ưu Đãi Đặt Lịch Dài Hạn!</strong>
               <span>
-                Cơ sở đang áp dụng chiết khấu 
-                {venue.weeklyDiscountPercent > 0 && <strong className="mx-1">{venue.weeklyDiscountPercent}%</strong>} 
-                {venue.weeklyDiscountPercent > 0 && venue.monthlyDiscountPercent > 0 && 'và'} 
-                {venue.monthlyDiscountPercent > 0 && <strong className="mx-1">{venue.monthlyDiscountPercent}%</strong>} 
-                khi Quý khách đăng ký khung giờ thuê cố định theo <strong>Tuần</strong> hoặc <strong>Tháng</strong>. 
+                Cơ sở đang áp dụng chiết khấu
+                {venue.weeklyDiscountPercent > 0 && <strong className="mx-1">{venue.weeklyDiscountPercent}%</strong>}
+                {venue.weeklyDiscountPercent > 0 && venue.monthlyDiscountPercent > 0 && 'và'}
+                {venue.monthlyDiscountPercent > 0 && <strong className="mx-1">{venue.monthlyDiscountPercent}%</strong>}
+                khi Quý khách đăng ký khung giờ thuê cố định theo <strong>Tuần</strong> hoặc <strong>Tháng</strong>.
                 Hãy đặt lịch ngay để được hưởng giá ưu đãi tự động trong hệ thống!
               </span>
             </div>
@@ -368,7 +469,7 @@ export default function VenueDetails() {
         </div>
       )}
 
-      {/* Venue header info */}
+      {/* ════ Venue header ════ */}
       <section className="venue-info white-bg d-block">
         <div className="container">
           <div className="row">
@@ -390,40 +491,49 @@ export default function VenueDetails() {
                   <i className="feather-phone-call" />
                   {venue.phone}
                 </li>
-                <li>
+                {/* Email: display only with copy icon */}
+                <li className="d-flex align-items-center gap-1">
                   <i className="feather-mail" />
-                  <a href={`mailto:${venue.email}`}>{venue.email}</a>
+                  <span style={{ color: '#6B7385' }}>{venue.email}</span>
+                  <button
+                    type="button"
+                    onClick={handleCopyEmail}
+                    title="Sao chép email"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: '#6B7385', transition: 'color .2s' }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#097E52'}
+                    onMouseLeave={e => e.currentTarget.style.color = '#6B7385'}
+                  >
+                    <i className="feather-copy" style={{ fontSize: 13 }} />
+                  </button>
                 </li>
               </ul>
             </div>
             <div className="col-lg-6 text-lg-end">
               <ul className="social-options float-lg-end d-sm-flex justify-content-start align-items-center">
+                {/* Share */}
                 <li>
-                  <a
-                    href="#"
-                    onClick={e => e.preventDefault()}
+                  <a href="#" onClick={e => { e.preventDefault(); handleShare(); }}
                     className="d-inline-flex align-items-center gap-1"
                     style={{ color: '#6B7385', textDecoration: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: '500', transition: 'color 0.2s' }}
                     onMouseEnter={e => e.currentTarget.style.color = '#097E52'}
                     onMouseLeave={e => e.currentTarget.style.color = '#6B7385'}
                   >
-                    <i className="feather-share-2" />
-                    Chia sẻ
+                    <i className="feather-share-2" /> Chia sẻ
                   </a>
                 </li>
+                {/* Favorite */}
                 <li>
-                  <a
-                    href="#"
-                    onClick={e => e.preventDefault()}
+                  <a href="#" onClick={e => { e.preventDefault(); handleToggleFavorite(); }}
                     className="d-inline-flex align-items-center gap-1"
-                    style={{ color: '#6B7385', textDecoration: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: '500', transition: 'color 0.2s' }}
-                    onMouseEnter={e => e.currentTarget.style.color = '#097E52'}
-                    onMouseLeave={e => e.currentTarget.style.color = '#6B7385'}
+                    style={{ color: isFavorited ? '#ef4444' : '#6B7385', textDecoration: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: '500', transition: 'color 0.2s' }}
+                    onMouseEnter={e => { if (!isFavorited) e.currentTarget.style.color = '#ef4444'; }}
+                    onMouseLeave={e => { if (!isFavorited) e.currentTarget.style.color = '#6B7385'; }}
                   >
-                    <i className="feather-star" />
-                    Thêm vào yêu thích
+                    <i className={isFavorited ? 'fas fa-heart' : 'far fa-heart'} />
+                    {isFavorited ? 'Đã yêu thích' : 'Thêm vào yêu thích'}
                   </a>
                 </li>
+                {/* Review count → scroll */}
                 <li className="venue-review-info d-flex justify-content-start align-items-center">
                   <span className="d-flex justify-content-center align-items-center">
                     {avgStars.toFixed(1)}
@@ -435,7 +545,7 @@ export default function VenueDetails() {
                       ))}
                     </div>
                     <p className="mb-0">
-                      <button type="button" className="btn btn-link p-0">
+                      <button type="button" className="btn btn-link p-0" onClick={scrollToReviews} style={{ textDecoration: 'underline', color: '#097E52' }}>
                         {reviewCountDisplay} đánh giá
                       </button>
                     </p>
@@ -446,74 +556,50 @@ export default function VenueDetails() {
             </div>
           </div>
           <hr />
+          {/* ── Bottom row: Price LEFT, Owner RIGHT ── */}
           <div className="row bottom-row d-flex align-items-center">
             <div className="col-lg-6">
-              <ul className="d-sm-flex details">
-                <li>
+              <div className="d-flex align-items-center">
+                <p className="d-inline-block me-2 mb-0" style={{ fontSize: 15, color: '#64748b' }}>Giá từ:</p>
+                <h3 className="primary-text mb-0 d-inline-block fw-bold" style={{ fontSize: '1.6rem' }}>
+                  {venue.currency}{venue.startingPrice?.toLocaleString('vi-VN')}
+                  <span style={{ fontSize: '0.85rem', fontWeight: 400 }}>/ giờ</span>
+                </h3>
+              </div>
+            </div>
+            <div className="col-lg-6">
+              <ul className="d-sm-flex details float-sm-end mb-0">
+                <li className="d-flex align-items-center">
                   <div className="profile-pic">
-                    <span className="venue-type">
-                      <img className="img-fluid" src="/assets/img/icons/venue-type.svg" alt="Venue type" />
-                    </span>
+                    <img className="img-fluid" src={venue.ownerAvatarUrl || '/assets/img/profiles/avatar-01.jpg'} alt="Owner" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
                   </div>
                   <div className="ms-2">
-                    <p>Loại sân</p>
-                    <h6 className="mb-0">{venue.venueType}</h6>
-                  </div>
-                </li>
-                <li>
-                  <div className="profile-pic">
-                    <img className="img-fluid" src="/assets/img/profiles/avatar-01.jpg" alt="Owner" />
-                  </div>
-                  <div className="ms-2">
-                    <p>Chủ sân</p>
-                    <h6 className="mb-0">{venue.ownerName}</h6>
+                    <p className="mb-0" style={{ fontSize: 12, color: '#94a3b8' }}>Chủ sân</p>
+                    <h6 className="mb-0" style={{ fontSize: 14 }}>{venue.ownerName}</h6>
                   </div>
                 </li>
               </ul>
-            </div>
-            <div className="col-lg-6">
-              <div className="d-flex float-sm-end align-items-center">
-                <p className="d-inline-block me-2 mb-0">Giá từ:</p>
-                <h3 className="primary-text mb-0 d-inline-block">
-                  {venue.currency}
-                  {venue.startingPrice}
-                  <span>/ giờ</span>
-                </h3>
-              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Main content */}
+      {/* ════ Main content ════ */}
       <div className="content">
         <div className="container">
           <div className="row">
-            {/* Left column: accordions */}
+            {/* Left column */}
             <div className="col-lg-8">
               <div className="venue-options white-bg mb-4">
                 <ul className="clearfix">
-                  <li className="active">
-                    <a href="#overview">Tổng quan</a>
-                  </li>
-                  <li>
-                    <a href="#includes">Bao gồm</a>
-                  </li>
-                  <li>
-                    <a href="#rules">Quy định</a>
-                  </li>
-                  <li>
-                    <a href="#amenities">Tiện ích</a>
-                  </li>
-                  <li>
-                    <a href="#gallery">Hình ảnh</a>
-                  </li>
-                  <li>
-                    <a href="#reviews">Đánh giá</a>
-                  </li>
-                  <li>
-                    <a href="#location">Vị trí</a>
-                  </li>
+                  <li className="active"><a href="#overview">Tổng quan</a></li>
+                  <li><a href="#includes">Bao gồm</a></li>
+                  <li><a href="#rules">Quy định</a></li>
+                  <li><a href="#policies">Chính sách</a></li>
+                  <li><a href="#amenities">Tiện ích</a></li>
+                  <li><a href="#gallery">Hình ảnh</a></li>
+                  <li><a href="#reviews">Đánh giá</a></li>
+                  <li><a href="#location">Vị trí</a></li>
                 </ul>
               </div>
 
@@ -523,12 +609,7 @@ export default function VenueDetails() {
                 {venue.description ? (
                   <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.85 }}>{venue.description}</p>
                 ) : (
-                  <>
-                    <p>
-                      Cơ sở đang trong quá trình cập nhật thông tin. Vui lòng liên hệ trực tiếp để biết thêm chi tiết
-                      về tiện nghi và dịch vụ.
-                    </p>
-                  </>
+                  <p>Cơ sở đang trong quá trình cập nhật thông tin. Vui lòng liên hệ trực tiếp để biết thêm chi tiết về tiện nghi và dịch vụ.</p>
                 )}
               </section>
 
@@ -538,10 +619,7 @@ export default function VenueDetails() {
                 {venue.includes && venue.includes.length > 0 ? (
                   <ul className="clearfix">
                     {venue.includes.map((item, i) => (
-                      <li key={i}>
-                        <i className="feather-check-square" />
-                        {item}
-                      </li>
+                      <li key={i}><i className="feather-check-square" />{item}</li>
                     ))}
                   </ul>
                 ) : (
@@ -555,16 +633,95 @@ export default function VenueDetails() {
                 {venue.rules && venue.rules.length > 0 ? (
                   <ul>
                     {venue.rules.map((rule, i) => (
-                      <li key={i}>
-                        <p>
-                          <i className="feather-alert-octagon" />
-                          {rule}
-                        </p>
-                      </li>
+                      <li key={i}><p><i className="feather-alert-octagon" />{rule}</p></li>
                     ))}
                   </ul>
                 ) : (
                   <p className="text-muted mb-0" style={{ fontSize: 14 }}>Chủ sân chưa cập nhật quy định.</p>
+                )}
+              </section>
+
+              {/* ══ NEW: Policies Section ══ */}
+              <section id="policies" className="white-bg mb-4 corner-radius-10 p-4">
+                <h4 className="mb-3 d-flex align-items-center gap-2">
+                  <i className="feather-shield" style={{ color: '#059669' }} />
+                  Chính sách sân
+                </h4>
+                {checkoutLoading ? (
+                  <p className="text-muted mb-0">Đang tải chính sách...</p>
+                ) : (
+                  <>
+                    {/* Venue Rules */}
+                    <div className="mb-4">
+                      <h6 className="d-flex align-items-center gap-2 mb-2" style={{ color: '#334155', fontWeight: 600 }}>
+                        <i className="feather-book-open" style={{ fontSize: 15, color: '#059669' }} />
+                        Quy định chung tại sân
+                      </h6>
+                      {checkoutSettings?.venueRules?.trim() ? (
+                        <div className="p-3 rounded" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', whiteSpace: 'pre-wrap', lineHeight: 1.8, fontSize: 14 }}>
+                          {checkoutSettings.venueRules}
+                        </div>
+                      ) : (
+                        <p className="text-muted mb-0" style={{ fontSize: 14 }}>Chủ sân chưa cập nhật quy định chung.</p>
+                      )}
+                    </div>
+
+                    {/* Cancellation & Refund */}
+                    <div>
+                      <h6 className="d-flex align-items-center gap-2 mb-2" style={{ color: '#334155', fontWeight: 600 }}>
+                        <i className="feather-rotate-ccw" style={{ fontSize: 15, color: '#d97706' }} />
+                        Chính sách huỷ & hoàn tiền
+                      </h6>
+                      {checkoutSettings?.cancellation ? (
+                        <div className="p-3 rounded" style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10 }}>
+                          <div className="d-flex align-items-start gap-2">
+                            <i className="feather-info" style={{ color: '#d97706', marginTop: 3, flexShrink: 0 }} />
+                            <div>
+                              {checkoutSettings.cancellation.allowCancel ? (
+                                <>
+                                  <p className="mb-1" style={{ fontSize: 14 }}>
+                                    <strong>Cho phép tự huỷ:</strong>{' '}
+                                    <span style={{ color: '#059669' }}>Có</span>
+                                  </p>
+                                  <p className="mb-1" style={{ fontSize: 14 }}>
+                                    <strong>Phải huỷ trước ít nhất:</strong>{' '}
+                                    {(() => {
+                                      const m = Number(checkoutSettings.cancellation.cancelBeforeMinutes ?? 0);
+                                      if (m >= 1440) return `${m / 1440} ngày`;
+                                      if (m >= 60) return `${m / 60} giờ`;
+                                      return `${m} phút`;
+                                    })()}
+                                  </p>
+                                  <p className="mb-0" style={{ fontSize: 14 }}>
+                                    <strong>Hoàn tiền:</strong>{' '}
+                                    {(() => {
+                                      const rt = (checkoutSettings.cancellation.refundType || 'NONE').toUpperCase();
+                                      if (rt === 'FULL') return <span style={{ color: '#059669' }}>100%</span>;
+                                      if (rt === 'PERCENT') return <span style={{ color: '#d97706' }}>{checkoutSettings.cancellation.refundPercent}%</span>;
+                                      return <span style={{ color: '#dc2626' }}>Không hoàn tiền</span>;
+                                    })()}
+                                  </p>
+                                </>
+                              ) : (
+                                <p className="mb-0" style={{ fontSize: 14, color: '#dc2626' }}>
+                                  Không cho phép tự huỷ đặt sân trên app.
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          {/* Summary badge */}
+                          {policySummary && (
+                            <div className="mt-3 p-2 rounded d-flex align-items-center gap-2" style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', fontSize: 13 }}>
+                              <i className="feather-bookmark" style={{ color: '#059669', flexShrink: 0 }} />
+                              <span style={{ color: '#065f46', fontWeight: 500 }}>Tóm tắt: {policySummary}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-muted mb-0" style={{ fontSize: 14 }}>Chủ sân chưa cập nhật chính sách huỷ & hoàn tiền.</p>
+                      )}
+                    </div>
+                  </>
                 )}
               </section>
 
@@ -574,10 +731,7 @@ export default function VenueDetails() {
                 {venue.amenities && venue.amenities.length > 0 ? (
                   <ul className="d-md-flex justify-content-start align-items-center flex-wrap" style={{ gap: '8px 24px' }}>
                     {AMENITIES_LIST.filter(a => venue.amenities.includes(a.key)).map(a => (
-                      <li key={a.key}>
-                        <i className={a.icon} aria-hidden="true" />
-                        {a.label}
-                      </li>
+                      <li key={a.key}><i className={a.icon} aria-hidden="true" />{a.label}</li>
                     ))}
                   </ul>
                 ) : (
@@ -639,23 +793,12 @@ export default function VenueDetails() {
                                   <StarRatingDisplay value={st} size={14} /> {st.toFixed(1)}
                                 </span>
                               </div>
-                              {cm ? (
-                                <RichText
-                                  text={cm}
-                                  className="mb-2 mt-1"
-                                  as="div"
-                                />
-                              ) : null}
+                              {cm ? <RichText text={cm} className="mb-2 mt-1" as="div" /> : null}
                               {Array.isArray(imgs) && imgs.length > 0 && (
                                 <div className="d-flex flex-wrap gap-2 mb-2">
                                   {imgs.map((url) => (
                                     <a key={url} href={url} target="_blank" rel="noreferrer">
-                                      <img
-                                        src={url}
-                                        alt=""
-                                        className="rounded"
-                                        style={{ width: 72, height: 72, objectFit: 'cover' }}
-                                      />
+                                      <img src={url} alt="" className="rounded" style={{ width: 72, height: 72, objectFit: 'cover' }} />
                                     </a>
                                   ))}
                                 </div>
@@ -664,9 +807,7 @@ export default function VenueDetails() {
                                 <div className="p-2 rounded mt-2" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
                                   <small className="text-muted d-block mb-1">Phản hồi từ chủ sân</small>
                                   <RichText text={reply} className="mb-0 small" as="div" />
-                                  {replyAt && (
-                                    <small className="text-muted">{new Date(replyAt).toLocaleString('vi-VN')}</small>
-                                  )}
+                                  {replyAt && <small className="text-muted">{new Date(replyAt).toLocaleString('vi-VN')}</small>}
                                 </div>
                               )}
                             </li>
@@ -689,17 +830,11 @@ export default function VenueDetails() {
                         ? `https://maps.google.com/maps?q=${venue.lat},${venue.lng}&z=16&output=embed`
                         : `https://maps.google.com/maps?q=${encodeURIComponent(venue.address)}&z=15&output=embed`
                     }
-                    height="445"
-                    style={{ border: 0, width: '100%' }}
-                    allowFullScreen
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
+                    height="445" style={{ border: 0, width: '100%' }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"
                   />
                 </div>
                 <div className="dull-bg d-flex justify-content-start align-items-center mt-3">
-                  <div className="white-bg me-2">
-                    <i className="fas fa-location-arrow" />
-                  </div>
+                  <div className="white-bg me-2"><i className="fas fa-location-arrow" /></div>
                   <div>
                     <h6>Địa chỉ sân</h6>
                     <p className="mb-0">{venue.address}</p>
@@ -708,82 +843,53 @@ export default function VenueDetails() {
               </section>
             </div>
 
-            {/* Right column: booking sidebar (static for Iter 1) */}
+            {/* ════ Right sidebar ════ */}
             <aside className="col-lg-4">
-              <div className="white-bg d-flex justify-content-start align-items-center availability">
-                <span className="icon-bg me-3">
-                  <img className="img-fluid" alt="Calendar" src="/assets/img/icons/head-calendar.svg" />
-                </span>
-                <div>
-                  <h4>Khả dụng</h4>
-                  <p className="mb-0">Kiểm tra lịch trống phù hợp với bạn</p>
-                </div>
-              </div>
-
-              <div className="white-bg book-court">
-                <h4 className="border-bottom">Đặt sân</h4>
-                <p className="mb-2">
-                  <strong>{venue.name}</strong> hiện đang mở đặt lịch.
+              {/* ── Booking Card (optimized) ── */}
+              <div className="white-bg book-court" style={{ borderRadius: 14, padding: '24px 20px' }}>
+                <h4 className="border-bottom pb-3 mb-3" style={{ fontSize: 18, fontWeight: 700, color: '#1e293b' }}>Đặt sân</h4>
+                <p className="mb-3" style={{ fontSize: 14, color: '#64748b' }}>
+                  <strong style={{ color: '#1e293b' }}>{venue.name}</strong> hiện đang mở đặt lịch.
                 </p>
-                <ul className="d-sm-flex align-items-center justify-content-evenly">
-                  <li>
-                    <h3 className="d-inline-block primary-text">
-                      {venue.currency}
-                      {venue.startingPrice}
-                    </h3>
-                    <span>/giờ</span>
-                    <p>tối đa 1 khách</p>
-                  </li>
-                  <li>
-                    <span>
-                      <i className="feather-plus" />
-                    </span>
-                  </li>
-                  <li>
-                    <h4 className="d-inline-block primary-text">$5</h4>
-                    <span>/giờ</span>
-                    <p>
-                      mỗi khách thêm <br />
-                      tối đa 4 khách
-                    </p>
-                  </li>
-                </ul>
-                <div className="d-grid btn-block mt-3 gap-2">
+                <div className="d-flex align-items-baseline gap-1 mb-3 p-3 rounded" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                  <h3 className="primary-text mb-0 fw-bold" style={{ fontSize: '1.5rem' }}>
+                    {venue.currency}{venue.startingPrice?.toLocaleString('vi-VN')}
+                  </h3>
+                  <span style={{ color: '#64748b', fontSize: 14 }}>/giờ</span>
+                </div>
+                <div className="d-grid gap-2">
                   {isAdmin ? (
                     <div className="alert alert-warning text-center mb-0 p-2" style={{ fontSize: '13px' }}>
                       <i className="feather-alert-triangle me-1" /> Tài khoản Quản trị không thể thao tác đặt sân.
                     </div>
                   ) : (
                     <>
-                      <button
-                        type="button"
-                        onClick={handleBooking}
+                      <button type="button" onClick={handleBooking}
                         className="btn btn-secondary d-inline-flex justify-content-center align-items-center"
+                        style={{ borderRadius: 10, padding: '12px 16px', fontWeight: 600 }}
                       >
-                        <i className="feather-calendar" />
-                        <span className="ms-2">ĐẶT LỊCH</span>
+                        <i className="feather-calendar" /><span className="ms-2">ĐẶT LỊCH</span>
                       </button>
-                      <button
-                        type="button"
-                        onClick={handleLongTermBooking}
+                      <button type="button" onClick={handleLongTermBooking}
                         className="btn btn-outline-primary d-inline-flex justify-content-center align-items-center"
+                        style={{ borderRadius: 10, padding: '12px 16px', fontWeight: 600 }}
                       >
-                        <i className="feather-repeat" />
-                        <span className="ms-2">ĐẶT LỊCH DÀI HẠN</span>
+                        <i className="feather-repeat" /><span className="ms-2">ĐẶT LỊCH DÀI HẠN</span>
                       </button>
                     </>
                   )}
                 </div>
               </div>
 
-              <div className="white-bg cage-owner-info">
-                <h4 className="border-bottom">Thông tin chủ sân</h4>
+              {/* ── Owner Info ── */}
+              <div className="white-bg cage-owner-info" style={{ borderRadius: 14, padding: '24px 20px', marginTop: 16 }}>
+                <h4 className="border-bottom pb-3 mb-3" style={{ fontSize: 18, fontWeight: 700, color: '#1e293b' }}>Thông tin chủ sân</h4>
                 <div className="d-flex justify-content-start align-items-center">
                   <div className="profile-pic me-2">
-                    <img className="img-fluid" alt="Owner" src="/assets/img/profiles/avatar-05.jpg" />
+                    <img className="img-fluid" alt="Owner" src={venue.ownerAvatarUrl || '/assets/img/profiles/avatar-05.jpg'} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover' }} />
                   </div>
                   <div>
-                    <h5>{venue.ownerName}</h5>
+                    <h5 className="mb-1" style={{ fontSize: 15 }}>{venue.ownerName}</h5>
                     <div className="rating d-flex align-items-center flex-wrap gap-1">
                       <StarRatingDisplay value={avgStars} size={15} />
                       <span className="ms-1">{avgStars.toFixed(1)}</span>
@@ -791,27 +897,29 @@ export default function VenueDetails() {
                     </div>
                   </div>
                 </div>
-                <div className="d-grid btn-block text-center mt-3">
-                  <Link
-                    to="/contact"
-                    className="btn btn-secondary d-inline-flex justify-content-center align-items-center"
-                  >
-                    <i className="feather-phone-call" />
-                    <span className="ms-2">Liên hệ chủ sân</span>
-                  </Link>
+                <div className="d-grid gap-2 mt-3">
+                  {/* Contact owner → opens modal */}
                   <button
                     type="button"
-                    className="btn btn-outline-secondary d-inline-flex justify-content-center align-items-center mt-2"
+                    onClick={() => setContactModalOpen(true)}
+                    className="btn btn-secondary d-inline-flex justify-content-center align-items-center"
+                    style={{ borderRadius: 10, padding: '12px 16px', fontWeight: 600 }}
+                  >
+                    <i className="feather-phone-call" /><span className="ms-2">Liên hệ chủ sân</span>
+                  </button>
+                  {/* Report */}
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary d-inline-flex justify-content-center align-items-center"
                     onClick={() => setReportOpen(true)}
                     disabled={!user}
                     title={!user ? 'Vui lòng đăng nhập để báo cáo' : 'Báo cáo cụm sân'}
+                    style={{ borderRadius: 10, padding: '12px 16px' }}
                   >
-                    <i className="feather-flag" />
-                    <span className="ms-2">Báo cáo cụm sân</span>
+                    <i className="feather-flag" /><span className="ms-2">Báo cáo cụm sân</span>
                   </button>
                 </div>
               </div>
-
             </aside>
           </div>
         </div>
@@ -821,27 +929,23 @@ export default function VenueDetails() {
         venueId={resolvedId}
         open={reviewModalOpen}
         initialBookingId={pendingReviewBookingId}
-        onClose={() => {
-          setReviewModalOpen(false);
-          setPendingReviewBookingId(null);
-        }}
+        onClose={() => { setReviewModalOpen(false); setPendingReviewBookingId(null); }}
         onSaved={handleReviewSaved}
       />
 
-      <LongTermTypeModal 
-        isOpen={isLongTermModalOpen} 
-        onClose={() => setIsLongTermModalOpen(false)} 
+      <LongTermTypeModal
+        isOpen={isLongTermModalOpen}
+        onClose={() => setIsLongTermModalOpen(false)}
         venuePayload={venue ? {
-            venueId: venue.id,
-            venueName: venue.name,
-            venueAddress: venue.address,
-            pricePerSlot: venue.startingPrice,
-            slotDuration: venue.slotDuration ?? 60,
-            weeklyDiscountPercent: venue.weeklyDiscountPercent,
-            monthlyDiscountPercent: venue.monthlyDiscountPercent
+          venueId: venue.id,
+          venueName: venue.name,
+          venueAddress: venue.address,
+          pricePerSlot: venue.startingPrice,
+          slotDuration: venue.slotDuration ?? 60,
+          weeklyDiscountPercent: venue.weeklyDiscountPercent,
+          monthlyDiscountPercent: venue.monthlyDiscountPercent
         } : null}
       />
     </div>
   );
 }
-
