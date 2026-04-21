@@ -1,9 +1,11 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useChat } from '../../hooks/useChat';
 import { toast } from 'react-toastify';
 
 export default function UserDashboardMenu() {
   const { user, logout } = useAuth();
+  const { openChatPanel } = useChat();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -14,8 +16,7 @@ export default function UserDashboardMenu() {
   };
 
   const navItemClass = (isActive) =>
-    `user-sidebar-nav-item flex items-center font-semibold leading-snug duration-200 ${
-      isActive ? 'is-active' : ''
+    `user-sidebar-nav-item flex items-center font-semibold leading-snug duration-200 ${isActive ? 'is-active' : ''
     }`;
 
   const iconClass = () =>
@@ -42,7 +43,7 @@ export default function UserDashboardMenu() {
 
       {/* Navigation Sections */}
       <div className="flex flex-col user-sidebar-nav-stack">
-        
+
         {/* OVERVIEW */}
         <div>
           <h6 className="user-sidebar-section-title font-bold text-slate-400 uppercase tracking-[0.08em]">Tổng quan</h6>
@@ -88,14 +89,15 @@ export default function UserDashboardMenu() {
               </NavLink>
             </li>
             <li>
-              <NavLink to="/chat" className={({ isActive }) => navItemClass(isActive) + ' group'}>
-                {({ isActive }) => (
-                  <>
-                    <i className={`fa-fw fa-${isActive ? 'solid' : 'regular'} fa-comments ${iconClass()}`}></i>
-                    <span>Trò chuyện</span>
-                  </>
-                )}
-              </NavLink>
+              <button
+                type="button"
+                className={`user-sidebar-nav-item flex items-center font-semibold leading-snug duration-200 group`}
+                onClick={openChatPanel}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', padding: 0 }}
+              >
+                <i className={`fa-fw fa-regular fa-comments ${iconClass()}`}></i>
+                <span>Trò chuyện</span>
+              </button>
             </li>
           </ul>
         </div>

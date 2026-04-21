@@ -1,146 +1,104 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useChat } from '../../hooks/useChat';
-import socialApi from '../../api/socialApi';
-
-function useDesktopRail() {
-  const [ok, setOk] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(min-width: 992px)').matches : false
-  );
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 992px)');
-    const fn = () => setOk(mq.matches);
-    mq.addEventListener('change', fn);
-    return () => mq.removeEventListener('change', fn);
-  }, []);
-  return ok;
-}
+import ChatPanel from './ChatPanel';
 
 /**
- * Thanh avatar bạn bè bên phải (desktop) — bấm để mở mini chat.
+ * Floating draggable badminton-themed FAB + ChatPanel.
+ * Replaces the old vertical edge tab.
  */
 export default function FriendsChatRail() {
   const { pathname } = useLocation();
-  const desktop = useDesktopRail();
-  const { openChatWithPeer, openingPeerId } = useChat();
-  const [friends, setFriends] = useState([]);
-  const [open, setOpen] = useState(false);
+  const { chatPanelOpen, toggleChatPanel } = useChat();
 
-  const load = useCallback(async () => {
-    try {
-      const f = await socialApi.getFriends();
-      setFriends(Array.isArray(f) ? f : []);
-    } catch {
-      setFriends([]);
-    }
+  /* ─── drag state ─────────────────────────────────── */
+  const [pos, setPos] = useState({ x: window.innerWidth - 80, y: window.innerHeight - 140 });
+  const dragging = useRef(false);
+  const offset = useRef({ x: 0, y: 0 });
+  const wasDragged = useRef(false);
+  const fabRef = useRef(null);
+
+  const clamp = useCallback((x, y) => {
+    const size = 56;
+    return {
+      x: Math.max(8, Math.min(window.innerWidth - size - 8, x)),
+      y: Math.max(8, Math.min(window.innerHeight - size - 8, y)),
+    };
   }, []);
 
-  const panelOpen = desktop && open;
+  /* pointer handlers */
+  const onPointerDown = useCallback((e) => {
+    dragging.current = true;
+    wasDragged.current = false;
+    const rect = fabRef.current.getBoundingClientRect();
+    offset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }, []);
 
-  if (!desktop || pathname.startsWith('/manager') || pathname.startsWith('/admin')) {
+  const onPointerMove = useCallback((e) => {
+    if (!dragging.current) return;
+    wasDragged.current = true;
+    const next = clamp(e.clientX - offset.current.x, e.clientY - offset.current.y);
+    setPos(next);
+  }, [clamp]);
+
+  const onPointerUp = useCallback(() => {
+    dragging.current = false;
+  }, []);
+
+  const handleClick = useCallback(() => {
+    if (wasDragged.current) return;     // ignore click after drag
+    toggleChatPanel();
+  }, [toggleChatPanel]);
+
+  /* keep inside viewport on resize */
+  useEffect(() => {
+    const onResize = () => setPos(p => clamp(p.x, p.y));
+    window.addEventListener('resize', onResize, { passive: true });
+    return () => window.removeEventListener('resize', onResize);
+  }, [clamp]);
+
+  /* Hidden on admin / manager */
+  if (pathname.startsWith('/manager') || pathname.startsWith('/admin')) {
     return null;
   }
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        right: 0,
-        top: '50%',
-        transform: 'translateY(-50%)',
-        zIndex: 1190,
-        display: 'flex',
-        flexDirection: 'row-reverse',
-        alignItems: 'stretch',
-        pointerEvents: 'none',
-      }}
-    >
-      <div style={{ pointerEvents: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <button
-          type="button"
-          title={open ? 'Thu gọn' : 'Bạn bè — chat nhanh'}
-          onClick={() => {
-            setOpen((o) => {
-              const next = !o;
-              if (next) load();
-              return next;
-            });
-          }}
-          className="btn btn-primary btn-sm shadow"
-          style={{
-            borderRadius: '12px 0 0 12px',
-            padding: '10px 6px',
-            writingMode: 'vertical-rl',
-            transform: 'rotate(180deg)',
-            fontSize: 12,
-            fontWeight: 700,
-          }}
-        >
-          💬 Bạn bè
-        </button>
+    <>
+      {/* ── Floating Action Button ── */}
+      <div
+        ref={fabRef}
+        className={`shuttle-chat-fab ${chatPanelOpen ? '--active' : ''}`}
+        style={{ left: pos.x, top: pos.y }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onClick={handleClick}
+        title="Mở chat"
+      >
+        {/* Shuttlecock SVG icon */}
+        <svg className="shuttle-chat-fab__icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* Cork / base */}
+          <circle cx="32" cy="44" r="10" fill="#fff" opacity="0.95" />
+          <circle cx="32" cy="44" r="7" fill="rgba(255,255,255,0.6)" />
+          {/* Feathers */}
+          <path d="M32 34 L22 14 Q27 12 32 16 Z" fill="rgba(255,255,255,0.85)" />
+          <path d="M32 34 L28 12 Q32 10 34 14 Z" fill="rgba(255,255,255,0.7)" />
+          <path d="M32 34 L42 14 Q37 12 32 16 Z" fill="rgba(255,255,255,0.85)" />
+          <path d="M32 34 L36 12 Q32 10 30 14 Z" fill="rgba(255,255,255,0.7)" />
+          <path d="M32 34 L20 20 Q24 16 28 20 Z" fill="rgba(255,255,255,0.6)" />
+          <path d="M32 34 L44 20 Q40 16 36 20 Z" fill="rgba(255,255,255,0.6)" />
+          {/* Chat bubble overlay */}
+          <circle cx="44" cy="48" r="10" fill="#fff" />
+          <circle cx="44" cy="48" r="8" fill="#10b981" />
+          <path d="M40 46 h8 M40 50 h5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+        {/* Pulse ring */}
+        <span className="shuttle-chat-fab__pulse"></span>
       </div>
 
-      {panelOpen && (
-        <div
-          style={{
-            pointerEvents: 'auto',
-            marginRight: 4,
-            background: '#fff',
-            borderRadius: '10px 0 0 10px',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
-            padding: '10px 8px',
-            maxHeight: 'min(420px, 70vh)',
-            overflowY: 'auto',
-            width: 200,
-          }}
-        >
-          <div className="small text-muted mb-2 fw-bold">Mở chat</div>
-          {friends.length === 0 && (
-            <p className="small text-muted mb-0">Chưa có bạn bè.</p>
-          )}
-          <ul className="list-unstyled mb-0 small">
-            {friends.map((x) => {
-              const id = x.id ?? x.Id;
-              const name = x.fullName ?? x.FullName ?? '';
-              const av = x.avatarUrl ?? x.AvatarUrl;
-              const busy = openingPeerId === String(id);
-              return (
-                <li key={id} className="mb-2">
-                  <button
-                    type="button"
-                    className="btn btn-light w-100 text-start d-flex align-items-center gap-2 py-2"
-                    disabled={busy}
-                    onClick={() =>
-                      openChatWithPeer({
-                        userId: id,
-                        fullName: name,
-                        avatarUrl: av,
-                      })
-                    }
-                  >
-                    {av ? (
-                      <img
-                        src={av}
-                        alt=""
-                        className="rounded-circle"
-                        style={{ width: 36, height: 36, objectFit: 'cover' }}
-                      />
-                    ) : (
-                      <span
-                        className="rounded-circle bg-secondary d-inline-flex align-items-center justify-content-center text-white"
-                        style={{ width: 36, height: 36, fontSize: 14 }}
-                      >
-                        {(name || '?').charAt(0)}
-                      </span>
-                    )}
-                    <span className="text-truncate">{busy ? 'Đang mở…' : name}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-    </div>
+      {/* ── Chat Panel ── */}
+      <ChatPanel />
+    </>
   );
 }

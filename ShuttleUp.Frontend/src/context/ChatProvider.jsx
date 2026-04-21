@@ -22,6 +22,11 @@ export function ChatProvider({ children }) {
   const [hubConnected, setHubConnected] = useState(false);
   const [windows, setWindows] = useState([]);
   const [openingPeerId, setOpeningPeerId] = useState(null);
+  const [chatPanelOpen, setChatPanelOpen] = useState(false);
+
+  const toggleChatPanel = useCallback(() => setChatPanelOpen(p => !p), []);
+  const openChatPanel = useCallback(() => setChatPanelOpen(true), []);
+  const closeChatPanel = useCallback(() => setChatPanelOpen(false), []);
 
   const connRef = useRef(null);
   const subscribersRef = useRef(new Map());
@@ -60,7 +65,7 @@ export function ChatProvider({ children }) {
     const c = (m.get(key) || 0) + 1;
     m.set(key, c);
     if (c === 1 && connRef.current?.state === signalR.HubConnectionState.Connected) {
-      connRef.current.invoke('JoinRoom', key).catch(() => {});
+      connRef.current.invoke('JoinRoom', key).catch(() => { });
     }
   }, []);
 
@@ -71,7 +76,7 @@ export function ChatProvider({ children }) {
     if (c <= 0) {
       m.delete(key);
       if (connRef.current?.state === signalR.HubConnectionState.Connected) {
-        connRef.current.invoke('LeaveRoom', key).catch(() => {});
+        connRef.current.invoke('LeaveRoom', key).catch(() => { });
       }
     } else {
       m.set(key, c);
@@ -126,7 +131,7 @@ export function ChatProvider({ children }) {
       setHubConnected(true);
       setConnStatus('Đã kết nối');
       joinCountsRef.current.forEach((count, roomId) => {
-        if (count > 0) conn.invoke('JoinRoom', roomId).catch(() => {});
+        if (count > 0) conn.invoke('JoinRoom', roomId).catch(() => { });
       });
     });
     conn.onclose(() => {
@@ -141,7 +146,7 @@ export function ChatProvider({ children }) {
         setConnStatus('Đã kết nối');
         connRef.current = conn;
         joinCountsRef.current.forEach((count, roomId) => {
-          if (count > 0) conn.invoke('JoinRoom', roomId).catch(() => {});
+          if (count > 0) conn.invoke('JoinRoom', roomId).catch(() => { });
         });
       })
       .catch(() => {
@@ -152,7 +157,7 @@ export function ChatProvider({ children }) {
     return () => {
       connRef.current = null;
       setHubConnected(false);
-      conn.stop().catch(() => {});
+      conn.stop().catch(() => { });
     };
   }, [isAuthenticated]);
 
@@ -198,13 +203,13 @@ export function ChatProvider({ children }) {
             return prev.map((w) =>
               String(w.roomId) === String(rid)
                 ? {
-                    ...w,
-                    minimized: false,
-                    unread: 0,
-                    title: fullName?.trim() || w.title,
-                    avatarUrl: avatarUrl ?? w.avatarUrl,
-                    z: Date.now(),
-                  }
+                  ...w,
+                  minimized: false,
+                  unread: 0,
+                  title: fullName?.trim() || w.title,
+                  avatarUrl: avatarUrl ?? w.avatarUrl,
+                  z: Date.now(),
+                }
                 : w
             );
           }
@@ -269,6 +274,10 @@ export function ChatProvider({ children }) {
     acquireRoom,
     releaseRoom,
     sendHubMessage,
+    chatPanelOpen,
+    toggleChatPanel,
+    openChatPanel,
+    closeChatPanel,
   };
 
   return (

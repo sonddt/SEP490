@@ -73,6 +73,7 @@ import ManagerAvailability from './pages/manager/ManagerAvailability';
 import ManagerProfile from './pages/manager/ManagerProfile';
 import ManagerRefunds from './pages/manager/ManagerRefunds';
 import ManagerFeaturedPosts from './pages/manager/ManagerFeaturedPosts';
+import ManagerProfileRequest from './pages/manager/ManagerProfileRequest';
 
 // Admin — Layout + Pages
 import AdminLayout from './layouts/AdminLayout';
@@ -159,7 +160,7 @@ function App() {
 
           {/* ═══ Player Profile & Features ═══ */}
           <Route path="/personalization" element={<ProtectedRoute><Personalization /></ProtectedRoute>} />
-          
+
           {/* Public Profile View (no sidebar) */}
           <Route path="/user/profile/:userId" element={<ProtectedRoute><UserPublicProfile /></ProtectedRoute>} />
 
@@ -183,7 +184,7 @@ function App() {
           <Route path="/profile/manager-info" element={<Navigate to="/user/profile/manager-info" replace />} />
           <Route path="/profile/change-password" element={<Navigate to="/user/profile/change-password" replace />} />
           <Route path="/profile/settings" element={<Navigate to="/user/profile/settings" replace />} />
-          
+
           {/* Legacy /user/* redirects */}
           <Route path="/user/dashboard" element={<Navigate to="/user/profile" replace />} />
           <Route path="/user/my-profile" element={<Navigate to="/user/profile" replace />} />
@@ -197,6 +198,9 @@ function App() {
           <Route path="/matching/create" element={<ProtectedRoute><MatchingCreate /></ProtectedRoute>} />
           <Route path="/matching/edit/:postId" element={<ProtectedRoute><MatchingEditPost /></ProtectedRoute>} />
           <Route path="/matching/:postId" element={<MatchingPostDetail />} />
+
+          {/* Manager Profile Request — accessible by any logged-in user (PENDING/REJECTED managers) */}
+          <Route path="/manager/profile-request" element={<ProtectedRoute><ManagerProfileRequest /></ProtectedRoute>} />
 
           {/* ═══════════════════════════════════════════════════════════
                MANAGER — Nested routes with ManagerLayout (sidebar)
@@ -239,7 +243,7 @@ function App() {
             {/* Finance */}
             <Route path="earnings" element={<ManagerEarnings />} />
             <Route path="payment-settings" element={<ManagerPaymentSettings />} />
-            
+
             {/* Manager Profile */}
             <Route path="profile" element={<ManagerProfile />} />
           </Route>

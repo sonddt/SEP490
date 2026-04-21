@@ -62,6 +62,7 @@ public class EmailService : IEmailService
         message.Body = body.ToMessageBody();
 
         using var client = new SmtpClient();
+        client.CheckCertificateRevocation = false;
         await client.ConnectAsync(
             smtpHost,
             int.Parse(_configuration["Email:SmtpPort"] ?? "587"),
@@ -95,6 +96,7 @@ public class EmailService : IEmailService
         message.Body = new BodyBuilder { HtmlBody = htmlBody }.ToMessageBody();
 
         using var client = new SmtpClient();
+        client.CheckCertificateRevocation = false;
         await client.ConnectAsync(
             smtpHost,
             int.Parse(_configuration["Email:SmtpPort"] ?? "587"),
