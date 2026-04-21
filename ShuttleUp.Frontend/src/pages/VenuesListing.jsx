@@ -503,13 +503,13 @@ export default function VenuesListing() {
 
   return (
     <div className="main-wrapper content-below-header">
-      <section className="breadcrumb breadcrumb-list mb-0">
-        <span className="primary-right-round"></span>
+      <section className="breadcrumb breadcrumb-list mb-0" style={{ padding: '40px 0', overflow: 'hidden', position: 'relative' }}>
+        <span className="primary-right-round" />
         <div className="container">
-          <h1 className="text-white">{breadcrumbTitle}</h1>
-          <ul>
+          <h1 className="text-white h2 mb-1">Danh sách Sân</h1>
+          <ul className="mb-0">
             <li><Link to="/">Trang chủ</Link></li>
-            <li>{breadcrumbTitle}</li>
+            <li>Danh sách Sân</li>
           </ul>
         </div>
       </section>

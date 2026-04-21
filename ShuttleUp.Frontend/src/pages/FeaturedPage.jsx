@@ -224,22 +224,28 @@ export default function FeaturedPage() {
 
   return (
     <div className="main-wrapper content-below-header">
-      <section className="breadcrumb breadcrumb-list mb-0">
+      <section className="breadcrumb breadcrumb-list mb-0" style={{ padding: '40px 0', overflow: 'hidden', position: 'relative' }}>
         <span className="primary-right-round" />
         <div className="container">
-          <h1 className="text-white">Nổi bật</h1>
-          <ul>
+          <h1 className="text-white h2 mb-1">Nổi bật</h1>
+          <ul className="mb-0">
             <li><Link to="/">Trang chủ</Link></li>
             <li>Nổi bật</li>
           </ul>
         </div>
       </section>
 
-      <div className="content" style={{ fontFamily: FONT_UI }}>
-        <div className="container py-5">
-          <p className="text-muted mb-4" style={{ maxWidth: 640, fontSize: 15 }}>
-            Tin ưu đãi, khuyến mãi và thông báo từ ShuttleUp cùng các cụm sân đối tác.
-          </p>
+      <div className="content" style={{ fontFamily: FONT_UI, padding: '0px 0' }}>
+        <div className="container pt-4 pb-5">
+          <div className="p-3 p-md-4 mb-4 rounded-4 shadow-sm text-white position-relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #047857 0%, #0d9488 100%)' }}>
+            <i className="feather-bell position-absolute text-white" style={{ fontSize: 90, right: '-5px', bottom: '-15px', opacity: 0.15, transform: 'rotate(-15deg)' }} />
+            <div className="position-relative" style={{ zIndex: 1 }}>
+              <h3 className="text-white fw-bold mb-2 h4">🎁 Ưu đãi & Tin tức</h3>
+              <p className="mb-0 opacity-75" style={{ maxWidth: 640, fontSize: '0.95rem', lineHeight: 1.5 }}>
+                Theo dõi các chương trình khuyến mãi, sự kiện, cập nhật thẻ giảm giá (coupon) và bản tin từ ShuttleUp cùng các cụm sân đối tác trên toàn quốc.
+              </p>
+            </div>
+          </div>
 
           {loading && (
             <div className="text-center py-5">
@@ -261,7 +267,7 @@ export default function FeaturedPage() {
               return (
                 <div key={p.id} className="col-md-6 col-lg-4">
                   <article
-                    className="white-bg corner-radius-10 overflow-hidden h-100 shadow-sm"
+                    className="white-bg corner-radius-10 overflow-hidden h-100 shadow-sm d-flex flex-column"
                     style={{ border: '1px solid #eef2f6' }}
                   >
                     {p.coverImageUrl ? (
@@ -286,7 +292,7 @@ export default function FeaturedPage() {
                         <i className="fa-regular fa-image text-muted" style={{ fontSize: 36 }} />
                       </div>
                     )}
-                    <div className="p-4">
+                    <div className="p-4 d-flex flex-column flex-grow-1">
                       <div className="d-flex flex-wrap gap-2 mb-2">
                         <span className="badge border-0" style={roleBadgeStyle(p)}>
                           {p.authorRole === 'ADMIN' ? 'ShuttleUp' : 'Cụm sân'}
@@ -302,11 +308,11 @@ export default function FeaturedPage() {
                       </div>
                       <h4 className="mb-2" style={{ fontSize: 18, fontWeight: 700 }}>{p.title}</h4>
                       {preview && (
-                        <p className="text-muted small mb-3" style={{ lineHeight: 1.6 }}>
+                        <p className="text-muted small mb-3 flex-grow-1" style={{ lineHeight: 1.6 }}>
                           {preview}
                         </p>
                       )}
-                      <div className="d-flex flex-wrap gap-2 align-items-center">
+                      <div className="d-flex flex-wrap gap-2 align-items-center mt-auto pt-3 border-top border-light">
                         {showDetailBtn && (
                           <button
                             type="button"

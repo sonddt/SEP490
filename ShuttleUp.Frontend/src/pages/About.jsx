@@ -55,11 +55,11 @@ const About = () => {
   return (
     <div className="main-wrapper content-below-header">
       {/* Breadcrumb */}
-      <section className="breadcrumb breadcrumb-list mb-0">
+      <section className="breadcrumb breadcrumb-list mb-0" style={{ padding: '40px 0', overflow: 'hidden', position: 'relative' }}>
         <span className="primary-right-round"></span>
         <div className="container">
-          <h1 className="text-white">Giới thiệu</h1>
-          <ul>
+          <h1 className="text-white h2 mb-1">Giới thiệu</h1>
+          <ul className="mb-0">
             <li><Link to="/">Trang chủ</Link></li>
             <li>Giới thiệu</li>
           </ul>
