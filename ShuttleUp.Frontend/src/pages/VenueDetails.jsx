@@ -594,7 +594,6 @@ export default function VenueDetails() {
                 <ul className="clearfix">
                   <li className="active"><a href="#overview">Tổng quan</a></li>
                   <li><a href="#includes">Bao gồm</a></li>
-                  <li><a href="#rules">Quy định</a></li>
                   <li><a href="#policies">Chính sách</a></li>
                   <li><a href="#amenities">Tiện ích</a></li>
                   <li><a href="#gallery">Hình ảnh</a></li>
@@ -627,100 +626,80 @@ export default function VenueDetails() {
                 )}
               </section>
 
-              {/* Rules */}
-              <section id="rules" className="white-bg mb-4 corner-radius-10 p-4">
-                <h4 className="mb-3">Quy định</h4>
-                {venue.rules && venue.rules.length > 0 ? (
-                  <ul>
-                    {venue.rules.map((rule, i) => (
-                      <li key={i}><p><i className="feather-alert-octagon" />{rule}</p></li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-muted mb-0" style={{ fontSize: 14 }}>Chủ sân chưa cập nhật quy định.</p>
-                )}
-              </section>
-
               {/* ══ NEW: Policies Section ══ */}
               <section id="policies" className="white-bg mb-4 corner-radius-10 p-4">
-                <h4 className="mb-3 d-flex align-items-center gap-2">
-                  <i className="feather-shield" style={{ color: '#059669' }} />
-                  Chính sách sân
-                </h4>
+                <h4 className="mb-3">Chính sách sân</h4>
                 {checkoutLoading ? (
                   <p className="text-muted mb-0">Đang tải chính sách...</p>
                 ) : (
                   <>
-                    {/* Venue Rules */}
-                    <div className="mb-4">
-                      <h6 className="d-flex align-items-center gap-2 mb-2" style={{ color: '#334155', fontWeight: 600 }}>
-                        <i className="feather-book-open" style={{ fontSize: 15, color: '#059669' }} />
-                        Quy định chung tại sân
-                      </h6>
-                      {checkoutSettings?.venueRules?.trim() ? (
-                        <div className="p-3 rounded" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', whiteSpace: 'pre-wrap', lineHeight: 1.8, fontSize: 14 }}>
-                          {checkoutSettings.venueRules}
-                        </div>
-                      ) : (
-                        <p className="text-muted mb-0" style={{ fontSize: 14 }}>Chủ sân chưa cập nhật quy định chung.</p>
-                      )}
-                    </div>
+                    {(!checkoutSettings?.venueRules?.trim() && !checkoutSettings?.cancellation) ? (
+                      <p className="text-muted mb-0" style={{ fontSize: 14 }}>
+                        Chủ sân hiện chưa cập nhật quy định và chính sách hoàn tiền cho cơ sở này.
+                      </p>
+                    ) : (
+                      <>
+                        {/* Venue Rules */}
+                        {checkoutSettings?.venueRules?.trim() && (
+                          <div className="mb-4">
+                            <h5 className="mb-3" style={{ fontSize: 16 }}>Quy định chung tại sân</h5>
+                            <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.85, fontSize: 15 }}>
+                              {checkoutSettings.venueRules}
+                            </p>
+                          </div>
+                        )}
 
-                    {/* Cancellation & Refund */}
-                    <div>
-                      <h6 className="d-flex align-items-center gap-2 mb-2" style={{ color: '#334155', fontWeight: 600 }}>
-                        <i className="feather-rotate-ccw" style={{ fontSize: 15, color: '#d97706' }} />
-                        Chính sách huỷ & hoàn tiền
-                      </h6>
-                      {checkoutSettings?.cancellation ? (
-                        <div className="p-3 rounded" style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10 }}>
-                          <div className="d-flex align-items-start gap-2">
-                            <i className="feather-info" style={{ color: '#d97706', marginTop: 3, flexShrink: 0 }} />
+                        {/* Cancellation & Refund */}
+                        {checkoutSettings?.cancellation && (
+                          <div>
+                            <h5 className="mb-3" style={{ fontSize: 16 }}>Chính sách huỷ & hoàn tiền</h5>
                             <div>
-                              {checkoutSettings.cancellation.allowCancel ? (
-                                <>
-                                  <p className="mb-1" style={{ fontSize: 14 }}>
-                                    <strong>Cho phép tự huỷ:</strong>{' '}
-                                    <span style={{ color: '#059669' }}>Có</span>
-                                  </p>
-                                  <p className="mb-1" style={{ fontSize: 14 }}>
-                                    <strong>Phải huỷ trước ít nhất:</strong>{' '}
-                                    {(() => {
-                                      const m = Number(checkoutSettings.cancellation.cancelBeforeMinutes ?? 0);
-                                      if (m >= 1440) return `${m / 1440} ngày`;
-                                      if (m >= 60) return `${m / 60} giờ`;
-                                      return `${m} phút`;
-                                    })()}
-                                  </p>
-                                  <p className="mb-0" style={{ fontSize: 14 }}>
-                                    <strong>Hoàn tiền:</strong>{' '}
-                                    {(() => {
-                                      const rt = (checkoutSettings.cancellation.refundType || 'NONE').toUpperCase();
-                                      if (rt === 'FULL') return <span style={{ color: '#059669' }}>100%</span>;
-                                      if (rt === 'PERCENT') return <span style={{ color: '#d97706' }}>{checkoutSettings.cancellation.refundPercent}%</span>;
-                                      return <span style={{ color: '#dc2626' }}>Không hoàn tiền</span>;
-                                    })()}
-                                  </p>
-                                </>
-                              ) : (
-                                <p className="mb-0" style={{ fontSize: 14, color: '#dc2626' }}>
-                                  Không cho phép tự huỷ đặt sân trên app.
-                                </p>
+                              <div className="d-flex align-items-start">
+                                <div>
+                                  {checkoutSettings.cancellation.allowCancel ? (
+                                    <>
+                                      <p className="mb-1" style={{ fontSize: 14 }}>
+                                        <strong>Cho phép tự huỷ:</strong>{' '}
+                                        <span style={{ color: '#059669' }}>Có</span>
+                                      </p>
+                                      <p className="mb-1" style={{ fontSize: 14 }}>
+                                        <strong>Phải huỷ trước ít nhất:</strong>{' '}
+                                        {(() => {
+                                          const m = Number(checkoutSettings.cancellation.cancelBeforeMinutes ?? 0);
+                                          if (m >= 1440) return `${m / 1440} ngày`;
+                                          if (m >= 60) return `${m / 60} giờ`;
+                                          return `${m} phút`;
+                                        })()}
+                                      </p>
+                                      <p className="mb-0" style={{ fontSize: 14 }}>
+                                        <strong>Hoàn tiền:</strong>{' '}
+                                        {(() => {
+                                          const rt = (checkoutSettings.cancellation.refundType || 'NONE').toUpperCase();
+                                          if (rt === 'FULL') return <span style={{ color: '#059669' }}>100%</span>;
+                                          if (rt === 'PERCENT') return <span style={{ color: '#d97706' }}>{checkoutSettings.cancellation.refundPercent}%</span>;
+                                          return <span style={{ color: '#dc2626' }}>Không hoàn tiền</span>;
+                                        })()}
+                                      </p>
+                                    </>
+                                  ) : (
+                                    <p className="mb-0" style={{ fontSize: 14, color: '#dc2626' }}>
+                                      Không cho phép tự huỷ đặt sân trên app.
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              {/* Summary badge */}
+                              {policySummary && (
+                                <div className="mt-3 p-2 rounded d-flex align-items-center gap-2" style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', fontSize: 13 }}>
+                                  <i className="feather-bookmark" style={{ color: '#059669', flexShrink: 0 }} />
+                                  <span style={{ color: '#065f46', fontWeight: 500 }}>Tóm tắt: {policySummary}</span>
+                                </div>
                               )}
                             </div>
                           </div>
-                          {/* Summary badge */}
-                          {policySummary && (
-                            <div className="mt-3 p-2 rounded d-flex align-items-center gap-2" style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', fontSize: 13 }}>
-                              <i className="feather-bookmark" style={{ color: '#059669', flexShrink: 0 }} />
-                              <span style={{ color: '#065f46', fontWeight: 500 }}>Tóm tắt: {policySummary}</span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-muted mb-0" style={{ fontSize: 14 }}>Chủ sân chưa cập nhật chính sách huỷ & hoàn tiền.</p>
-                      )}
-                    </div>
+                        )}
+                      </>
+                    )}
                   </>
                 )}
               </section>
