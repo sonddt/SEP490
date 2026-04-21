@@ -241,6 +241,11 @@ export default function Register() {
                       </Link>
                     </header>
                     <div className="shadow-card">
+                      <div className="mb-3">
+                        <Link to="/" className="back-link d-inline-flex align-items-center text-muted" style={{ fontSize: '14px', fontWeight: 500 }}>
+                          <i className="feather-arrow-left me-1"></i> Quay lại trang chủ
+                        </Link>
+                      </div>
                       <h2>Bắt đầu với ShuttleUp</h2>
                       <p>Khởi động hành trình thể thao của bạn cùng ShuttleUp ngay bây giờ.</p>
 

@@ -554,7 +554,7 @@ export default function ManagerProfile() {
                   </div>
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-semibold text-dark mb-2">Tỉnh / Thành phố</label>
-                    <input type="text" className="form-control form-control-lg bg-light border-0" placeholder="TP. Hồ Chí Minh" value={form.province} onChange={(e) => setF('province', e.target.value)} />
+                    <input type="text" className="form-control form-control-lg bg-light border-0" placeholder="TP. Hà Nội" value={form.province} onChange={(e) => setF('province', e.target.value)} />
                   </div>
                   <div className="col-12">
                     <label className="form-label fw-semibold text-dark mb-2">Địa chỉ</label>

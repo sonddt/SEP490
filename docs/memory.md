@@ -548,3 +548,21 @@ Kết bạn & quan hệ xã hội (Player):
 4. **Lưu ý triển khai**:
    - Đã xác nhận hoạt động chuẩn xác trên cả 3 loại đặt sân: Đặt lẻ, Đặt cố định, Đặt linh hoạt.
    - Đã xử lý lỗi biên (Edge cases) khi slotDuration không chia hết hoặc bằng 0.
+
+---
+
+## 21 tháng 4, 2026 (Manager Analytics & UI/UX Compliance)
+
+1. **Đại tu Analytics cho Chủ sân (Manager Earnings):**
+   - **Backend**: Endpoint `GET /api/manager/stats/earnings-analytics` cung cấp dữ liệu 12 tháng, doanh thu 30 ngày, Top 5 sân được đặt/hủy nhiều nhất và cơ cấu doanh thu theo cơ sở.
+   - **Frontend**: Sử dụng `recharts` để vẽ biểu đồ doanh thu (BarChart, AreaChart, PieChart). Thêm các thẻ xếp hạng (Ranking Cards) cho sân bãi. Giữ nguyên bảng giao dịch có xuất CSV.
+2. **Cập nhật giao diện & Điều hướng (Auth & Manager):**
+   - **Manager Profile Sync**: Đồng bộ giao diện `ManagerProfile.jsx` theo chuẩn Premium SaaS (Sử dụng SectionHeader, cấu trúc thẻ floating card, tối ưu hóa hiển thị giấy tờ kinh doanh và CCCD). Tích hợp `ShuttleDateField` để đồng nhất trải nghiệm nhập liệu.
+   - **Back Button**: Thêm nút "Quay lại trang chủ" vào `Login.jsx` và `Register.jsx` bên trong shadow-card để cải thiện lưu chuyển người dùng.
+   - **Thông tin nhóm**: Cập nhật số điện thoại **0394127869** và email **shuttleup.badminton@gmail.com** làm thông tin liên hệ chính thống của nhóm phát triển.
+   - **Địa chỉ Hà Nội**: Chuyển đổi trụ sở/địa chỉ hiển thị từ TP. HCM sang **Thành phố Hà Nội** trên toàn bộ hệ thống (Footer, Contact, Terms, Manager Profile).
+   - **Google Maps**: Cập nhật iframe bản đồ tại trang Liên hệ trỏ về khu vực Hà Nội.
+3. **Tối ưu hóa Footer:**
+   - Kiểm toán và loại bỏ các route không tồn tại/lạc hậu (`/managers`, `/events`, `/faq`).
+   - Đảm bảo các link điều hướng (`/terms`, `/user/profile`) hoạt động chính xác.
+4. **Terms of Service**: Tinh chỉnh nội dung pháp lý để phản ánh đúng các tính năng lõi (Đặt sân cầu lông, Giao lưu Matching, Đặt lịch dài hạn cố định/linh hoạt).

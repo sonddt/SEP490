@@ -108,7 +108,7 @@ export default function TermsOfService() {
         <div className="container py-5">
           <div className="text-center mb-4">
             <h2 style={{ fontWeight: 700 }}>ĐIỀU KHOẢN SỬ DỤNG</h2>
-            <p className="text-muted">Cập nhật lần cuối 16/03/2026</p>
+            <p className="text-muted">Cập nhật lần cuối 21/04/2026</p>
           </div>
 
           <div className="row">
@@ -161,10 +161,10 @@ export default function TermsOfService() {
                     <li>Trong phạm vi của Điều khoản này, các thuật ngữ sau đây được hiểu như sau:
                       <ul>
                         <li>"Ứng dụng": Nền tảng web ShuttleUp - Tìm kiếm và đặt sân cầu lông do chúng tôi cung cấp.</li>
-                        <li>"Người dùng": Bất kỳ cá nhân nào truy cập, sử dụng hoặc đăng ký tài khoản trên Ứng dụng để tìm kiếm và đặt sân.</li>
-                        <li>"Chủ sân": Cá nhân hoặc tổ chức sở hữu, quản lý hoặc được ủy quyền đại diện cho các sân thể thao và sử dụng Ứng dụng để đăng tải thông tin, quản lý lịch đặt sân và giao dịch trực tiếp với Người dùng.</li>
+                        <li>"Người dùng": Bất kỳ cá nhân nào truy cập, sử dụng hoặc đăng ký tài khoản trên Ứng dụng để tìm kiếm, đặt sân hoặc sử dụng các tính năng cộng đồng (Matching) để tìm kiếm bạn chơi.</li>
+                        <li>"Chủ sân": Cá nhân hoặc tổ chức sở hữu, quản lý hoặc được ủy quyền đại diện cho các sân thể thao (đặc biệt là sân cầu lông) và sử dụng Ứng dụng để đăng tải thông tin, quản lý lịch đặt sân, quản lý doanh thu và giao dịch với Người dùng.</li>
                         <li>"Sân": Cơ sở vật chất, địa điểm thể thao do Chủ sân cung cấp và đăng tải trên Ứng dụng.</li>
-                        <li>"Đặt chỗ": Hành động Người dùng lựa chọn một Sân vào một khung giờ cụ thể và xác nhận thanh toán thông qua Ứng dụng.</li>
+                        <li>"Đặt chỗ": Hành động Người dùng lựa chọn một Sân vào một khung giờ cụ thể (bao gồm cả đặt lịch lẻ, đặt lịch cố định hàng tuần hoặc đặt lịch linh hoạt) và xác nhận thông tin thông qua Ứng dụng.</li>
                       </ul>
                     </li>
                   </ul>
@@ -369,9 +369,9 @@ export default function TermsOfService() {
                   <h5 style={{ color: '#1b8b4b', fontWeight: 600 }}>Liên hệ</h5>
                   <p>Nếu bạn có bất kỳ câu hỏi, phản hồi hoặc muốn báo cáo vi phạm nào liên quan đến Ứng dụng, vui lòng liên hệ với chúng tôi qua các kênh sau:</p>
                   <ul>
-                    <li>Nền tảng: <strong>ShuttleUp</strong></li>
-                    <li>Email: <strong>cskh@shuttleup.vn</strong></li>
-                    <li>Hotline CSKH: <strong>+84 123 456 789</strong></li>
+                    <li>Nền tảng: <strong>ShuttleUp - Badminton Platform</strong></li>
+                    <li>Email: <strong>shuttleup.badminton@gmail.com</strong></li>
+                    <li>Hotline CSKH: <strong>0394127869</strong></li>
                   </ul>
                 </div>
 

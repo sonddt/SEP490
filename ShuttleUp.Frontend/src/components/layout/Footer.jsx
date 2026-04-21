@@ -31,9 +31,8 @@ const Footer = () => {
                 <ul>
                   <li><Link to="/about"><i className="fa-solid fa-angle-right"></i> Về chúng tôi</Link></li>
                   <li><Link to="/venues"><i className="fa-solid fa-angle-right"></i> Danh sách sân</Link></li>
-                  <li><Link to="/managers"><i className="fa-solid fa-angle-right"></i> Quản lý sân</Link></li>
-                  <li><Link to="/events"><i className="fa-solid fa-angle-right"></i> Sự kiện</Link></li>
                   <li><Link to="/contact"><i className="fa-solid fa-angle-right"></i> Liên hệ</Link></li>
+                  <li><Link to="/terms"><i className="fa-solid fa-angle-right"></i> Điều khoản</Link></li>
                 </ul>
               </div>
             </div>
@@ -44,8 +43,7 @@ const Footer = () => {
                   <li><Link to="/login"><i className="fa-solid fa-angle-right"></i> Đăng nhập</Link></li>
                   <li><Link to="/register"><i className="fa-solid fa-angle-right"></i> Đăng ký</Link></li>
                   <li><Link to="/user/bookings"><i className="fa-solid fa-angle-right"></i> Lịch sử đặt sân</Link></li>
-                  <li><Link to="/user/dashboard"><i className="fa-solid fa-angle-right"></i> Bảng điều khiển</Link></li>
-                  <li><Link to="/faq"><i className="fa-solid fa-angle-right"></i> Câu hỏi thường gặp</Link></li>
+                  <li><Link to="/user/profile"><i className="fa-solid fa-angle-right"></i> Trang cá nhân</Link></li>
                 </ul>
               </div>
             </div>
@@ -56,8 +54,8 @@ const Footer = () => {
                   <div className="footer-address">
                     <p><i className="feather-map-pin"></i> <span>Thành phố Hồ Chí Minh, Việt Nam</span></p>
                   </div>
-                  <p><i className="feather-phone"></i> +84 123 456 789</p>
-                  <p className="mb-0"><i className="feather-mail"></i> cskh@shuttleup.vn</p>
+                  <p><i className="feather-phone"></i> 0394127869</p>
+                  <p className="mb-0"><i className="feather-mail"></i> shuttleup.badminton@gmail.com</p>
                 </div>
               </div>
             </div>

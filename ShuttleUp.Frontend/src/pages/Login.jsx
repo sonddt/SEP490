@@ -259,6 +259,11 @@ export default function Login() {
                       </Link>
                     </header>
                     <div className="shadow-card">
+                      <div className="mb-3">
+                        <Link to="/" className="back-link d-inline-flex align-items-center text-muted" style={{ fontSize: '14px', fontWeight: 500 }}>
+                          <i className="feather-arrow-left me-1"></i> Quay lại trang chủ
+                        </Link>
+                      </div>
                       <h2>Chào mừng trở lại</h2>
                       <p>Vui lòng đăng nhập vào tài khoản của bạn</p>
 

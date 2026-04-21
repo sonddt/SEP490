@@ -23,7 +23,7 @@ const Contact = () => {
                 <i className="feather-mail d-flex justify-content-center align-items-center"></i>
                 <div className="info">
                   <h4>Email</h4>
-                  <p><a href="mailto:cskh@shuttleup.vn">cskh@shuttleup.vn</a></p>
+                  <p><a href="mailto:shuttleup.badminton@gmail.com">shuttleup.badminton@gmail.com</a></p>
                 </div>
               </div>
             </div>
@@ -32,7 +32,7 @@ const Contact = () => {
                 <i className="feather-phone-call d-flex justify-content-center align-items-center"></i>
                 <div className="info">
                   <h4>Số điện thoại</h4>
-                  <p>+84 123 456 789</p>
+                  <p>0394127869</p>
                 </div>
               </div>
             </div>
@@ -41,7 +41,7 @@ const Contact = () => {
                 <i className="feather-map-pin d-flex justify-content-center align-items-center"></i>
                 <div className="info">
                   <h4>Địa chỉ</h4>
-                  <p>Thành phố Hồ Chí Minh, Việt Nam</p>
+                  <p>Thành phố Hà Nội, Việt Nam</p>
                 </div>
               </div>
             </div>
@@ -50,7 +50,7 @@ const Contact = () => {
             <div className="col-12">
               <div className="google-maps">
                 <iframe
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.502742772933!2d106.7009817757817!3d10.772215589374768!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752f3e4c18a0d1%3A0x4e0d87ad9dca7eac!2zQ2h1bmcgVmnhu4d0IEPhuqduZyBOZ8OibiBI4bqjaSDEkOG7qWM!5e0!3m2!1svi!2svi!4v1700000000000!5m2!1svi!2svi"
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d119176.49508935408!2d105.74697779774643!3d21.0227357492978!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3135ab9bdad72359%3A0x1e363b9ca7554e2!2zSMOgIE7hu5lpLCBWaeG7h3QgTmFt!5e0!3m2!1svi!2svi!4v1713693000000!5m2!1svi!2svi"
                   height="445"
                   style={{ border: 0, width: '100%' }}
                   allowFullScreen=""
