@@ -136,7 +136,7 @@ const Header = ({ transparent = false }) => {
                 <Link to="/about" onClick={closeMobileMenu}>Giới thiệu</Link>
               </li>
 
-              {(isAuthenticated && !isAdmin) && (
+              {(!isAdmin) && (
                 <li className={isActive('/matching') ? 'active' : ''}>
                   <Link to="/matching" onClick={closeMobileMenu}>Tìm kèo</Link>
                 </li>

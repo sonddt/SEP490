@@ -23,20 +23,20 @@ export default function Services() {
             <div key={i} className="col-lg-3 col-md-6 d-flex">
               <div className="service-grid w-100 aos" data-aos="fade-up">
                 <div className="service-img">
-                  <Link to="/services">
+                  <Link to="#" onClick={(e) => e.preventDefault()}>
                     <img src={s.img} className="img-fluid" alt="Service" />
                   </Link>
                 </div>
                 <div className="service-content">
-                  <h4><Link to="/services">{s.title}</Link></h4>
-                  <Link to="/services">Xem Chi Tiết</Link>
+                  <h4><Link to="#" onClick={(e) => e.preventDefault()}>{s.title}</Link></h4>
+                  <Link to="#" onClick={(e) => e.preventDefault()}>Xem Chi Tiết</Link>
                 </div>
               </div>
             </div>
           ))}
         </div>
         <div className="view-all text-center aos" data-aos="fade-up">
-          <Link to="/services" className="btn btn-secondary d-inline-flex align-items-center">
+          <Link to="#" onClick={(e) => e.preventDefault()} className="btn btn-secondary d-inline-flex align-items-center">
             Tất Cả Dịch Vụ <span className="lh-1"><i className="feather-arrow-right-circle ms-2"></i></span>
           </Link>
         </div>

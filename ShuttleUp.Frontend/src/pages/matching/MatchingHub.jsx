@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import matchingApi from '../../api/matchingApi';
 import { useAuth } from '../../context/AuthContext';
 import MatchingPostCard from '../../components/matching/MatchingPostCard';
@@ -73,6 +73,8 @@ const skillOptions = [
 
 export default function MatchingHub() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const isAdmin = Array.isArray(user?.roles) && user.roles.some((r) => String(r).toUpperCase() === 'ADMIN');
   const [tab, setTab] = useState('all'); // 'all' | 'my' | 'joined'
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
@@ -139,9 +141,19 @@ export default function MatchingHub() {
   }, [loadPosts]);
 
   useEffect(() => {
-    if (tab === 'my') loadMyPosts();
-    if (tab === 'joined') loadJoinedPosts();
-  }, [tab, loadMyPosts, loadJoinedPosts]);
+    if (user) {
+      if (tab === 'my') loadMyPosts();
+      if (tab === 'joined') loadJoinedPosts();
+    }
+  }, [tab, loadMyPosts, loadJoinedPosts, user]);
+
+  const handleTabChange = (newTab) => {
+    if (!user && newTab !== 'all') {
+      navigate('/login', { state: { from: location.pathname } });
+      return;
+    }
+    setTab(newTab);
+  };
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -198,19 +210,19 @@ export default function MatchingHub() {
             <div style={{ display: 'flex', gap: '8px', backgroundColor: '#fff', padding: '6px', borderRadius: '16px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', border: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
                 <button
                   style={{ padding: '10px 24px', borderRadius: '12px', border: 'none', fontWeight: '700', fontSize: '15px', transition: 'all 0.2s', backgroundColor: tab === 'all' ? '#e8f5ee' : 'transparent', color: tab === 'all' ? '#097E52' : '#64748b' }}
-                  onClick={() => setTab('all')}
+                  onClick={() => handleTabChange('all')}
                 >
                   Tất cả bài đăng
                 </button>
                 <button
                   style={{ padding: '10px 24px', borderRadius: '12px', border: 'none', fontWeight: '700', fontSize: '15px', transition: 'all 0.2s', backgroundColor: tab === 'my' ? '#e8f5ee' : 'transparent', color: tab === 'my' ? '#097E52' : '#64748b' }}
-                  onClick={() => setTab('my')}
+                  onClick={() => handleTabChange('my')}
                 >
                   Bài đăng của tôi
                 </button>
                 <button
                   style={{ padding: '10px 24px', borderRadius: '12px', border: 'none', fontWeight: '700', fontSize: '15px', transition: 'all 0.2s', backgroundColor: tab === 'joined' ? '#e8f5ee' : 'transparent', color: tab === 'joined' ? '#097E52' : '#64748b' }}
-                  onClick={() => setTab('joined')}
+                  onClick={() => handleTabChange('joined')}
                 >
                   Bài post đã tham gia
                 </button>

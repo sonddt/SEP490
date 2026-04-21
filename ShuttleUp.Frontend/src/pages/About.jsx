@@ -2,21 +2,20 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const TEAM = [
-  { img: '/assets/img/aboutus/team-01.jpg', name: 'Caterine', role: 'Chief Executive Officer', desc: 'CEO với tầm nhìn chiến lược, dẫn dắt đổi mới và tăng trưởng bền vững.' },
-  { img: '/assets/img/aboutus/team-02.jpg', name: 'Anto', role: 'Marketing Manager', desc: 'Chuyên gia marketing, mở rộng thương hiệu và kết nối cộng đồng cầu lông.' },
-  { img: '/assets/img/aboutus/team-03.jpg', name: 'Lucas Finn', role: 'Team Leader', desc: 'Team Leader truyền cảm hứng, đảm bảo mọi dự án hoàn thành xuất sắc.' },
-  { img: '/assets/img/aboutus/team-04.jpg', name: 'Andrew', role: 'Designer', desc: 'Thiết kế giao diện và trải nghiệm người dùng cho nền tảng.' },
-  { img: '/assets/img/aboutus/team-05.jpg', name: 'Adrian', role: 'Business Head', desc: 'Điều hành kinh doanh và phát triển đối tác.' },
-  { img: '/assets/img/aboutus/team-06.jpg', name: 'Lucas Finn', role: 'Team Leader', desc: 'Đồng hành cùng đội ngũ đạt mục tiêu trong thể thao.' },
+  { img: '/assets/img/aboutus/team-01.jpg', name: 'Đinh Đăng Sơn', role: 'Team Leader / Fullstack', desc: 'Định hướng kiến trúc, dẫn dắt đội ngũ kỹ thuật và quản lý tiến độ dự án ShuttleUp.' },
+  { img: '/assets/img/aboutus/team-02.jpg', name: 'Thành viên 2', role: 'Backend Developer', desc: 'Xây dựng API, xử lý nghiệp vụ đặt sân và logic ghép kèo phức tạp.' },
+  { img: '/assets/img/aboutus/team-03.jpg', name: 'Thành viên 3', role: 'Frontend Developer', desc: 'Phát triển giao diện, tối ưu hoá trải nghiệm người dùng trên mọi thiết bị.' },
+  { img: '/assets/img/aboutus/team-04.jpg', name: 'Thành viên 4', role: 'Business Analyst', desc: 'Phân tích yêu cầu nghiệp vụ, định hình tính năng và tài liệu hoá quy trình.' },
+  { img: '/assets/img/aboutus/team-05.jpg', name: 'Thành viên 5', role: 'Quality Assurance', desc: 'Kiểm thử toàn diện, đảm bảo nền tảng hoạt động ổn định và không lỗi.' },
 ];
 
 const FEATURES = [
-  { icon: '/assets/img/icons/coache-icon-01.svg', title: 'Huấn luyện nhóm', desc: 'Nâng cao kỹ năng với các buổi huấn luyện nhóm dành cho người chơi cầu lông.' },
-  { icon: '/assets/img/icons/coache-icon-02.svg', title: 'Huấn luyện riêng', desc: 'Tìm HLV cầu lông riêng cho cách tiếp cận cá nhân hóa kỹ năng.' },
-  { icon: '/assets/img/icons/coache-icon-03.svg', title: 'Cửa hàng trang thiết bị', desc: 'Một điểm đến cho trang thiết bị cầu lông chất lượng cao.' },
-  { icon: '/assets/img/icons/coache-icon-04.svg', title: 'Bài học đổi mới', desc: 'Nâng cao kỹ năng với bài học đổi mới, kết hợp kỹ thuật và phương pháp hiện đại.' },
-  { icon: '/assets/img/icons/coache-icon-05.svg', title: 'Cộng đồng cầu lông', desc: 'Cộng đồng hỗ trợ, cùng nhau phát triển và vươn tới đỉnh cao.' },
-  { icon: '/assets/img/icons/coache-icon-06.svg', title: 'Thuê sân', desc: 'Đặt sân nhanh chóng, trải nghiệm chơi cầu lông liền mạch với ShuttleUp.' },
+  { icon: '/assets/img/icons/coache-icon-01.svg', title: 'Đặt sân nhanh chóng', desc: 'Hệ thống cho phép tìm kiếm và đặt sân linh hoạt: đặt theo giờ, đặt lịch cố định, hoặc linh hoạt theo tháng.' },
+  { icon: '/assets/img/icons/coache-icon-02.svg', title: 'Cộng đồng ghép kèo', desc: 'Tìm đồng đội phù hợp với trình độ của bạn để chia sẻ chi phí sân và gia tăng niềm vui thi đấu.' },
+  { icon: '/assets/img/icons/coache-icon-03.svg', title: 'Quản lý sân chuyên nghiệp', desc: 'Giải pháp toàn diện cho chủ cụm sân: quản lý lịch trống, khung giờ chuẩn, doanh thu và khuyến mãi.' },
+  { icon: '/assets/img/icons/coache-icon-04.svg', title: 'Tích hợp ưu đãi', desc: 'Săn các coupon đánh vãng lai, giảm giá thẻ tháng độc quyền chỉ có trên nên tảng ShuttleUp.' },
+  { icon: '/assets/img/icons/coache-icon-05.svg', title: 'Hỗ trợ đa dạng', desc: 'Giao diện tương thích từ điện thoại đến máy tính, giúp bạn quản lý và đặt sân ở bất kỳ đâu.' },
+  { icon: '/assets/img/icons/coache-icon-06.svg', title: 'Tin tức & Giải đấu', desc: 'Cập nhật kịp thời tin phong trào, giải đấu và tình hình của các đối tác cầu lông trên toàn quốc.' },
 ];
 
 const TESTIMONIALS = [
@@ -93,13 +92,13 @@ const About = () => {
               <div className="row">
                 <div className="col-12 col-sm-12 col-md-12 col-lg-8">
                   <h2>Tầm nhìn của chúng tôi</h2>
-                  <p>Chúng tôi hướng tới một hệ sinh thái cầu lông phát triển với công nghệ đổi mới, nâng cao kỹ năng và nuôi dưỡng tình yêu với môn thể thao này. Nền tảng ShuttleUp truyền cảm hứng để mỗi người phát huy tối đa tiềm năng cầu lông của mình.</p>
-                  <p>Chúng tôi cách mạng hóa trải nghiệm cầu lông, trao quyền cho người chơi và quản lý sân phát triển. Nền tảng cung cấp công cụ và hỗ trợ toàn diện cho sự phát triển trong cộng đồng cầu lông. Hãy cùng chúng tôi vươn tới sự xuất sắc!</p>
+                  <p>ShuttleUp là dự án đặt sân và tìm kiếm đồng đội (matching) chuyên biệt cho môn cầu lông tại Việt Nam. Chúng tôi tin rằng công nghệ có thể phá vỡ rào cản việc tìm kiếm bãi tập, cũng như giải quyết vấn nạn thiếu đồng đội.</p>
+                  <p>Từ ứng dụng web quản lý sân trơn tru đến hệ thống đề xuất nhóm chơi thông minh, ShuttleUp hướng đến việc trở thành hệ sinh thái cầu lông khép kín — giúp người chơi thoả đam mê và chủ sân tối ưu hoá hiệu suất phục vụ.</p>
                 </div>
                 <div className="col-12 col-sm-12 col-md-12 col-lg-4">
                   <div className="mission-bg">
-                    <h2>Sứ mệnh của chúng tôi</h2>
-                    <p>Chúng tôi mang đến cho người chơi và chủ sân một nền tảng kết nối thuận tiện, thông tin cá nhân hóa và tài nguyên hữu ích. Cùng nhau, chúng tôi xây dựng cộng đồng hợp tác, hỗ trợ sự phát triển và thành công trong cầu lông.</p>
+                    <h2>Sứ mệnh ShuttleUp</h2>
+                    <p>Cung cấp giải pháp kết nối 2 chiều hoàn hảo: Người chơi tìm sân, tìm nhóm dễ dàng — Chủ cụm sân tối giản vận hành, gia tăng doanh thu. Chúng tôi mong muốn mỗi trận cầu đều là một trải nghiệm tuyệt vời, không lo âu về hậu cần.</p>
                   </div>
                 </div>
               </div>
@@ -107,7 +106,8 @@ const About = () => {
           </div>
         </section>
 
-        {/* Our Team */}
+        {/* Our Team (Hidden for now, uncomment to restore) */}
+        {/*
         <section className="section ourteam dull-bg">
           <div className="container">
             <div className="section-heading">
@@ -148,6 +148,7 @@ const About = () => {
             </div>
           </div>
         </section>
+        */}
 
         {/* Our Features */}
         <section className="section white-bg">
