@@ -6,6 +6,7 @@ import { distanceToVenueKm } from '../../utils/geoDistance';
 import { useVenueLocationAnchor } from '../../hooks/useVenueLocationAnchor';
 import { useAuth } from '../../context/AuthContext';
 import { profileApi } from '../../api/profileApi';
+import favoritesApi from '../../api/favoritesApi';
 
 const formatVndShort = (v) => {
   const n = Number(v);
@@ -21,6 +22,7 @@ export default function FeaturedVenues() {
   // States for API data
   const [venues, setVenues] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [favoriteIds, setFavoriteIds] = useState(new Set());
 
   // States for Location Anchor
   const [useGps, setUseGps] = useState(false);
@@ -60,6 +62,51 @@ export default function FeaturedVenues() {
       loadProfileAddress();
     }
   }, [isAuthenticated, user]);
+
+  useEffect(() => {
+    async function loadFavs() {
+      if (!isAuthenticated) return;
+      try {
+        const favs = await favoritesApi.getMyFavorites();
+        setFavoriteIds(new Set(favs.map((f) => String(f.id ?? f.Id))));
+      } catch {
+        // ignore
+      }
+    }
+    loadFavs();
+  }, [isAuthenticated]);
+
+  const handleToggleFav = async (e, venueId) => {
+    e.preventDefault();
+    if (!isAuthenticated) {
+      alert('Vui lòng đăng nhập để lưu sân yêu thích.');
+      return;
+    }
+    const idStr = String(venueId).replace('loop', '');
+    const isFaved = favoriteIds.has(idStr);
+
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (isFaved) next.delete(idStr);
+      else next.add(idStr);
+      return next;
+    });
+
+    try {
+      if (isFaved) {
+        await favoritesApi.removeFavorite(idStr);
+      } else {
+        await favoritesApi.addFavorite(idStr);
+      }
+    } catch {
+      setFavoriteIds((prev) => {
+        const next = new Set(prev);
+        if (isFaved) next.add(idStr);
+        else next.delete(idStr);
+        return next;
+      });
+    }
+  };
 
   useEffect(() => {
     async function loadVenues() {
@@ -179,17 +226,17 @@ export default function FeaturedVenues() {
                           </div>
                         </div>
                         <div className="listing-content">
-                          <div className="list-reviews">
+                          <div className="list-reviews" style={{ height: 32 }}>
                             <div className="d-flex align-items-center">
                               <span className="rating-bg">{venue.rating.toFixed(1)}</span>
                               <span>{venue.reviewCount} Đánh giá</span>
                             </div>
-                            <a href="#" onClick={(e) => e.preventDefault()} className="fav-icon">
+                            <a href="#" onClick={(e) => handleToggleFav(e, venue.id)} className={`fav-icon ${favoriteIds.has(String(venue.id).replace('loop', '')) ? 'selected' : ''}`}>
                               <i className="feather-heart"></i>
                             </a>
                           </div>
-                          <h3 className="listing-title">
-                            <Link to={`/venue-details/${(String(venue.id)).replace('loop', '')}`}>{venue.name}</Link>
+                          <h3 className="listing-title" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', height: 60, lineHeight: 1.3 }}>
+                            <Link to={`/venue-details/${(String(venue.id)).replace('loop', '')}`} title={venue.name}>{venue.name}</Link>
                           </h3>
                           <div className="listing-details-group">
                             <p className="text-truncate">{venue.location}</p>
@@ -265,17 +312,17 @@ export default function FeaturedVenues() {
                           <Link to={`/venue-details/${c.id}`}>
                             <img src={c.img} alt="Venue" style={{ width: '100%', height: '220px', objectFit: 'cover', display: 'block' }} />
                           </Link>
-                          <div className="fav-item-venues">
-                            <div className="list-reviews coche-star">
-                              <a href="#" onClick={(e) => e.preventDefault()} className="fav-icon">
-                                <i className="feather-heart"></i>
+                          <div className="fav-item-venues d-flex justify-content-end p-2 mt-2">
+                            <div className="list-reviews coche-star d-inline-flex m-0 p-0 border-0 bg-transparent shadow-none w-auto h-auto">
+                              <a href="#" onClick={(e) => handleToggleFav(e, c.id)} className={`fav-icon position-relative ${favoriteIds.has(String(c.id).replace('loop', '')) ? 'selected' : ''}`} style={{ width: 36, height: 36, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                                <i className="feather-heart" style={{ fontSize: 15 }}></i>
                               </a>
                             </div>
                           </div>
                         </div>
                         <div className="listing-content">
-                          <h3 className="listing-title">
-                            <Link to={`/venue-details/${c.id}`}>{c.name}</Link>
+                          <h3 className="listing-title" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', height: 60, lineHeight: 1.3, marginTop: 16 }}>
+                            <Link to={`/venue-details/${c.id}`} title={c.name}>{c.name}</Link>
                           </h3>
                           <div className="listing-details-group">
                             <ul>

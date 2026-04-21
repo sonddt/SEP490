@@ -63,11 +63,10 @@ const Header = ({ transparent = false }) => {
 
   const isActive = (path) => path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
 
-  const isWhiteBg = !transparent || scrolled;
-  const logoSrc   = isWhiteBg ? '/assets/img/logo-black.svg' : '/assets/img/logo-white.svg';
+  const logoSrc   = transparent ? '/assets/img/logo-white.svg' : '/assets/img/logo-black.svg';
 
-  // Icon colour: white on transparent header OR when scrolled (fixed header stays green)
-  const iconColor = (!isWhiteBg || scrolled) ? '#fff' : '#555';
+  // iconColor logic: white on transparent background or on any scrolled (fixed) header
+  const iconColor = (transparent && !scrolled) ? '#fff' : (scrolled ? '#fff' : '#555');
 
   const headerClass = ['header', transparent && !scrolled ? 'header-trans' : '', scrolled ? 'fixed' : '']
     .filter(Boolean).join(' ');
@@ -139,13 +138,7 @@ const Header = ({ transparent = false }) => {
 
               {(isAuthenticated && !isAdmin) && (
                 <li className={isActive('/matching') ? 'active' : ''}>
-                  <Link to="/matching" onClick={closeMobileMenu}>Tìm kèo 🏸</Link>
-                </li>
-              )}
-
-              {(isAuthenticated && !isAdmin) && (
-                <li className={isActive('/chat') ? 'active' : ''}>
-                  <Link to="/chat" onClick={closeMobileMenu}>💬 Chat</Link>
+                  <Link to="/matching" onClick={closeMobileMenu}>Tìm kèo</Link>
                 </li>
               )}
 
@@ -159,18 +152,6 @@ const Header = ({ transparent = false }) => {
           <ul className="nav header-navbar-rht logged-in" style={{ alignItems: 'center', gap: 0 }}>
             {isAuthenticated ? (
               <>
-                {/* 3. Search */}
-                <li className="nav-item">
-                  <a
-                    className="nav-link"
-                    href="#"
-                    onClick={(e) => e.preventDefault()}
-                    style={{ padding: '8px 10px', display: 'flex', alignItems: 'center' }}
-                  >
-                    <i className="feather-search" style={{ fontSize: 22, color: iconColor }} />
-                  </a>
-                </li>
-
                 {/* 2. Notification */}
                 <NotificationDropdown
                   open={openDropdown === 'notif'}

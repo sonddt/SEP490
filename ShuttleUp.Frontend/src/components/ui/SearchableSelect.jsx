@@ -16,6 +16,7 @@ export default function SearchableSelect({
   notFoundLabel = 'Không tìm thấy',
   disabled = false,
   className = '',
+  triggerClass = '',
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -46,7 +47,7 @@ export default function SearchableSelect({
   }, [options, query]);
 
   const baseBtn =
-    'w-full flex items-center justify-between gap-2 border-0 bg-transparent py-2.5 px-0 text-left text-base font-medium transition-colors focus:outline-none disabled:opacity-60 disabled:pointer-events-none appearance-none';
+    `w-full flex items-center justify-between gap-2 border-0 bg-transparent py-2.5 px-0 text-left text-base font-medium transition-colors focus:outline-none disabled:opacity-60 disabled:pointer-events-none appearance-none ${triggerClass}`;
 
   return (
     <div ref={wrapRef} className={`relative ${className}`}>

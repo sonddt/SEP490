@@ -54,32 +54,38 @@ export default function HeroSection() {
                 <p className="sub-info">
                   Khám phá tiềm năng thể thao của bạn với các sân tập hiện đại, quy trình đặt lịch nhanh chóng và dễ dàng.
                 </p>
-                <div className="search-box">
-                  <form onSubmit={handleSearch}>
-                    <div className="search-input line">
+                <div className="search-box rounded-3 shadow-sm bg-white p-2">
+                  <form onSubmit={handleSearch} className="d-flex align-items-end gap-3">
+                    <div className="search-input">
                       <div className="form-group mb-0">
-                        <label>Tìm kiếm Tên Sân</label>
-                        <input 
-                          type="text" 
-                          className="form-control border-0 shadow-none bg-transparent" 
-                          placeholder="Nhập tên sân..." 
-                          value={keyword}
-                          onChange={(e) => setKeyword(e.target.value)}
-                        />
+                        <label className="fw-bold mb-1 ms-1" style={{ fontSize: '13px' }}>Tìm kiếm Tên Sân</label>
+                        <div className="border rounded-3 px-3 bg-white d-flex align-items-center" style={{ height: '44px' }}>
+                          <input 
+                            type="text" 
+                            className="form-control border-0 shadow-none bg-transparent p-0" 
+                            placeholder="Nhập tên sân..." 
+                            value={keyword}
+                            onChange={(e) => setKeyword(e.target.value)}
+                          />
+                        </div>
                       </div>
                     </div>
                     <div className="search-input">
                       <div className="form-group mb-0">
-                        <label>Khu vực (Tỉnh/Thành)</label>
-                        <SearchableSelect
-                          options={provinceOptions}
-                          value={locationStr}
-                          onChange={setLocationStr}
-                          placeholder={tree ? '-- Chọn tỉnh / thành phố --' : 'Đang tải...'}
-                          searchPlaceholder="Tìm kiếm..."
-                          emptyLabel="Đang tải danh sách..."
-                          notFoundLabel="Không tìm thấy khu vực"
-                        />
+                        <label className="fw-bold mb-1 ms-1" style={{ fontSize: '13px' }}>Khu vực (Tỉnh/Thành)</label>
+                        <div className="border rounded-3 px-3 bg-white" style={{ height: '44px', display: 'flex', alignItems: 'center' }}>
+                          <SearchableSelect
+                            className="w-100"
+                            triggerClass="py-0"
+                            options={provinceOptions}
+                            value={locationStr}
+                            onChange={setLocationStr}
+                            placeholder={tree ? '-- Chọn tỉnh / thành phố --' : 'Đang tải...'}
+                            searchPlaceholder="Tìm kiếm..."
+                            emptyLabel="Đang tải danh sách..."
+                            notFoundLabel="Không tìm thấy khu vực"
+                          />
+                        </div>
                       </div>
                     </div>
                     <div className="search-btn">
