@@ -9708,3 +9708,6 @@ p,
     height: 28px;
   }
 }
+/* Fix overlap between is-invalid icon and feather icons in auth forms */
+.group-img .form-control.is-invalid { background-position: right 45px center !important; }
+.pass-group .form-control.is-invalid { background-position: right 45px center !important; }
