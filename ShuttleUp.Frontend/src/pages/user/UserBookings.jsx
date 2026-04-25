@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getMyBookings, cancelBooking, getCancelPreview, updateRefundBankInfo, remindOwner, uploadRefundQr } from '../../api/bookingApi';
 import ReportModal from '../../components/common/ReportModal';
+import LongTermScheduleDisplay from '../../components/common/LongTermScheduleDisplay';
 
 function pad2(n) {
   return String(n).padStart(2, '0');
@@ -99,15 +100,16 @@ function mapApiRowToBooking(api) {
     refundAccountHolder: api.refundAccountHolder || '',
     refundQrImageUrl: api.refundQrImageUrl || '',
     paymentProofUrl: api.paymentProofUrl || null,
+    items: api.items || [],
   };
 }
 
 const TABS = [
-  { key: 'PENDING',   label: 'Chờ duyệt',  color: 'warning' },
-  { key: 'UPCOMING',  label: 'Sắp tới',    color: 'primary' },
+  { key: 'PENDING', label: 'Chờ duyệt', color: 'warning' },
+  { key: 'UPCOMING', label: 'Sắp tới', color: 'primary' },
   { key: 'COMPLETED', label: 'Hoàn thành', color: 'success' },
-  { key: 'REFUND',    label: 'Hoàn tiền',  color: 'info'    },
-  { key: 'CANCELLED', label: 'Đã huỷ',     color: 'danger'  },
+  { key: 'REFUND', label: 'Hoàn tiền', color: 'info' },
+  { key: 'CANCELLED', label: 'Đã huỷ', color: 'danger' },
 ];
 
 /** Màu + trạng thái hover/active cho từng tab (ảnh 2) */
@@ -146,10 +148,10 @@ const BOOKING_TAB_STYLES = {
 
 const REFUND_STATUS_LABEL = {
   PENDING_RECONCILIATION: { text: 'Chờ đối soát', color: 'warning' },
-  PENDING_REFUND:         { text: 'Chờ hoàn tiền', color: 'info'    },
-  COMPLETED:              { text: 'Đã hoàn tiền',  color: 'success' },
-  REJECTED:               { text: 'Từ chối hoàn',  color: 'danger'  },
-  REFUNDED:               { text: 'Đã hoàn tiền',  color: 'success' },
+  PENDING_REFUND: { text: 'Chờ hoàn tiền', color: 'info' },
+  COMPLETED: { text: 'Đã hoàn tiền', color: 'success' },
+  REJECTED: { text: 'Từ chối hoàn', color: 'danger' },
+  REFUNDED: { text: 'Đã hoàn tiền', color: 'success' },
 };
 
 function StatusBadge({ b }) {
@@ -158,8 +160,8 @@ function StatusBadge({ b }) {
     return <span className={`badge bg-${r.color}${r.color === 'warning' ? ' text-dark' : ''}`}>{r.text}</span>;
   }
   const map = {
-    PENDING:   <span className="badge bg-warning text-dark">Chờ duyệt</span>,
-    UPCOMING:  <span className="badge bg-primary">Sắp tới</span>,
+    PENDING: <span className="badge bg-warning text-dark">Chờ duyệt</span>,
+    UPCOMING: <span className="badge bg-primary">Sắp tới</span>,
     COMPLETED: <span className="badge bg-success">Hoàn thành</span>,
     CANCELLED: <span className="badge bg-danger">Đã huỷ</span>,
   };
@@ -175,13 +177,13 @@ const BANKS = [
 export default function UserBookings() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab,     setActiveTab]     = useState('PENDING');
-  const [timeFilter,    setTimeFilter]    = useState('all');
-  const [sortBy,        setSortBy]        = useState('newest');
+  const [activeTab, setActiveTab] = useState('PENDING');
+  const [timeFilter, setTimeFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('newest');
   const [detailBooking, setDetailBooking] = useState(null);
-  const [cancelTarget,  setCancelTarget]  = useState(null);
-  const [bookings,      setBookings]      = useState([]);
-  const [loading,       setLoading]       = useState(true);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
   const [cancelPreview, setCancelPreview] = useState(null);
@@ -489,219 +491,219 @@ export default function UserBookings() {
         </div>
       </div>
 
-          {/* ── Table ───────────────────────────────────────────────────── */}
-          <div className="row">
-            <div className="col-sm-12">
-              <div className="court-tab-content">
-                <div className="card card-tableset">
-                  <div className="card-body">
-                    <div className="coache-head-blk">
-                      <div className="row align-items-center">
-                        <div className="col-md-6">
-                          <div className="court-table-head">
-                            <h4>Lịch sử đặt sân của tôi</h4>
-                            <p>Xem và quản lý các lịch đặt sân của bạn</p>
-                          </div>
-                        </div>
-                        <div className="user-bookings-toolbar col-md-6 text-end d-flex gap-2 sm:gap-3 justify-content-start flex-wrap mt-3 mt-md-0 justify-content-md-end">
-                          <button
-                            type="button"
-                            className="user-bookings-toolbar-btn user-bookings-toolbar-btn--ghost"
-                            disabled={loading}
-                            onClick={() => loadBookings()}
-                          >
-                            <i className={`feather-refresh-cw user-bookings-toolbar-ico ${loading ? 'fa-spin' : ''}`} />
-                            {loading ? 'Đang tải…' : 'Làm mới'}
-                          </button>
-                          <Link to="/venues" className="user-bookings-toolbar-btn user-bookings-toolbar-btn--primary">
-                            <i className="feather-plus user-bookings-toolbar-ico" />Đặt sân mới
-                          </Link>
-                        </div>
+      {/* ── Table ───────────────────────────────────────────────────── */}
+      <div className="row">
+        <div className="col-sm-12">
+          <div className="court-tab-content">
+            <div className="card card-tableset">
+              <div className="card-body">
+                <div className="coache-head-blk">
+                  <div className="row align-items-center">
+                    <div className="col-md-6">
+                      <div className="court-table-head">
+                        <h4>Lịch sử đặt sân của tôi</h4>
+                        <p>Xem và quản lý các lịch đặt sân của bạn</p>
                       </div>
                     </div>
-
-                    <div className="table-responsive">
-                      <table className="user-bookings-table table table-borderless datatable">
-                        <thead className="thead-light">
-                          <tr>
-                            <th>Sân</th>
-                            <th>Mã đặt</th>
-                            <th>Lịch</th>
-                            <th>Thanh toán</th>
-                            <th>Trạng thái</th>
-                            <th>Đánh giá</th>
-                            <th className="text-nowrap">Thao tác</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {loading && (
-                            <tr>
-                              <td colSpan={7} className="text-center text-muted py-5">
-                                <div className="spinner-border spinner-border-sm text-secondary mb-2" role="status" />
-                                <div>Đang tải lịch đặt sân…</div>
-                              </td>
-                            </tr>
-                          )}
-                          {!loading && filtered.length === 0 && (
-                            <tr>
-                              <td colSpan={7} className="text-center text-muted py-5">
-                                <i className="feather-calendar" style={{ fontSize: 32, display: 'block', marginBottom: 8, opacity: 0.4 }} />
-                                Không có lịch đặt sân nào
-                              </td>
-                            </tr>
-                          )}
-                          {!loading && filtered.map(b => (
-                            <tr key={b.id} data-booking-row={b.id}>
-                              {/* Court */}
-                              <td>
-                                <h2 className="table-avatar">
-                                  <span className="avatar avatar-sm flex-shrink-0">
-                                    <img className="avatar-img" src={b.courtImg} alt=""
-                                      onError={e => { e.target.src = '/assets/img/venues/venues-01.jpg'; }} />
-                                  </span>
-                                  <span className="table-head-name flex-grow-1 ms-2">
-                                    <span>
-                                      {b.court}
-                                      {b.isLongTerm && (
-                                        <span className="badge bg-info text-dark ms-1">Lịch dài hạn</span>
-                                      )}
-                                    </span>
-                                    <small className="d-block text-muted">
-                                      <i className="feather-map-pin me-1" />{b.venueAddress}
-                                    </small>
-                                  </span>
-                                </h2>
-                              </td>
-                              {/* Code */}
-                              <td>
-                                <span
-                                  className="badge"
-                                  style={{ background: '#f0fdf4', color: 'var(--primary-color)', border: '1px solid #6ee7b7', fontFamily: 'monospace, ui-monospace, monospace' }}
-                                >
-                                  #{b.code}
-                                </span>
-                              </td>
-                              {/* Schedule (merged Date + Time) */}
-                              <td>
-                                <div>{b.date}</div>
-                                <small className="text-muted">{b.time}</small>
-                              </td>
-                              {/* Payment (merged Amount + Method) */}
-                              <td>
-                                <strong>{b.amount.toLocaleString('vi-VN')} ₫</strong>
-                                <div className="text-muted small" style={{ marginTop: 2 }}>
-                                  <i className={`${b.paymentMethod === 'Quét mã QR' ? 'feather-smartphone' : 'feather-credit-card'} me-1`} />
-                                  {b.paymentMethod}
-                                </div>
-                              </td>
-                              <td><StatusBadge b={b} /></td>
-                              <td>
-                                {b.venueId && (b.canReview || b.canEditReview) ? (
-                                  <Link
-                                    className="user-booking-action"
-                                    data-variant="review"
-                                    to={`/venue-details/${b.venueId}?openReview=1&bookingId=${b.id}`}
-                                    title={b.canEditReview ? 'Sửa đánh giá' : 'Viết đánh giá'}
-                                  >
-                                    <i className="feather-star" aria-hidden />
-                                    {b.canEditReview ? 'Sửa ĐG' : 'Đánh giá'}
-                                  </Link>
-                                ) : b.venueId && b.venueReviewId ? (
-                                  <Link
-                                    className="btn btn-sm btn-link text-muted p-0 small"
-                                    to={`/venue-details/${b.venueId}#reviews`}
-                                  >
-                                    Đã gửi
-                                  </Link>
-                                ) : (
-                                  <span className="text-muted small">—</span>
-                                )}
-                              </td>
-                              <td className="align-middle">
-                                <div className="d-flex align-items-center gap-1 flex-wrap">
-                                  <button
-                                    type="button"
-                                    title="Xem chi tiết"
-                                    className="btn btn-sm btn-outline-info d-inline-flex align-items-center justify-content-center shadow-none p-0"
-                                    style={{ width: 34, height: 34, borderRadius: 8, borderWidth: 1.5 }}
-                                    onClick={() => setDetailBooking(b)}
-                                  >
-                                    <i className="feather-eye m-0"></i>
-                                  </button>
-                                  {canUserCancel(b) && (
-                                    <button
-                                      type="button"
-                                      title="Huỷ sân"
-                                      className="btn btn-sm btn-outline-danger d-inline-flex align-items-center justify-content-center shadow-none p-0"
-                                      style={{ width: 34, height: 34, borderRadius: 8, borderWidth: 1.5 }}
-                                      onClick={() => openCancelPreview(b)}
-                                    >
-                                      <i className="feather-x-circle m-0"></i>
-                                    </button>
-                                  )}
-                                  {b.needsPaymentRetry && b.status === 'PENDING' && (
-                                    <button
-                                      type="button"
-                                      title="Thanh toán lại"
-                                      className="btn btn-sm btn-outline-primary d-inline-flex align-items-center justify-content-center shadow-none p-0"
-                                      style={{ width: 34, height: 34, borderRadius: 8, borderWidth: 1.5 }}
-                                      onClick={() => navigate(`/booking/payment?bookingId=${b.id}`)}
-                                    >
-                                      <i className="feather-credit-card m-0"></i>
-                                    </button>
-                                  )}
-                                  {b.status === 'PENDING' && (
-                                    <button
-                                      type="button"
-                                      title={remindCooldowns[b.id] ? `Chờ ${remindCooldowns[b.id]} phút nữa` : 'Nhắc chủ sân duyệt đơn'}
-                                      className="btn btn-sm btn-outline-warning text-dark d-inline-flex align-items-center justify-content-center shadow-none p-0"
-                                      style={{ width: 34, height: 34, borderRadius: 8, borderWidth: 1.5, ...(remindCooldowns[b.id] ? { opacity: 0.5, cursor: 'not-allowed' } : {}) }}
-                                      disabled={remindLoading === b.id || !!remindCooldowns[b.id]}
-                                      onClick={() => handleRemindOwner(b.id)}
-                                    >
-                                      {remindLoading === b.id
-                                        ? <span className="spinner-border spinner-border-sm m-0" role="status" />
-                                        : (remindCooldowns[b.id] ? <span style={{ fontSize: 11, fontWeight: 'bold' }}>{remindCooldowns[b.id]}m</span> : <i className="feather-bell m-0"></i>)
-                                      }
-                                    </button>
-                                  )}
-                                  {b.status !== 'CANCELLED' && (
-                                    <button
-                                      type="button"
-                                      title="Khiếu nại / tranh chấp giao dịch"
-                                      className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center justify-content-center shadow-none p-0"
-                                      style={{ width: 34, height: 34, borderRadius: 8, borderWidth: 1.5 }}
-                                      onClick={() => setDisputeTarget(b)}
-                                    >
-                                      <i className="feather-flag m-0"></i>
-                                    </button>
-                                  )}
-                                  {b.status === 'REFUND' && !b.refundAccountNumber && (
-                                    <button
-                                      type="button"
-                                      title="Nhập STK nhận hoàn tiền"
-                                      className="btn btn-sm btn-outline-success d-inline-flex align-items-center justify-content-center shadow-none p-0"
-                                      style={{ width: 34, height: 34, borderRadius: 8, borderWidth: 1.5 }}
-                                      onClick={() => {
-                                        setBankForm({ refundBankName: '', refundAccountNumber: '', refundAccountHolder: '' });
-                                        setShowBankForm(b);
-                                      }}
-                                    >
-                                      <i className="feather-credit-card m-0"></i>
-                                    </button>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div className="user-bookings-toolbar col-md-6 text-end d-flex gap-2 sm:gap-3 justify-content-start flex-wrap mt-3 mt-md-0 justify-content-md-end">
+                      <button
+                        type="button"
+                        className="user-bookings-toolbar-btn user-bookings-toolbar-btn--ghost"
+                        disabled={loading}
+                        onClick={() => loadBookings()}
+                      >
+                        <i className={`feather-refresh-cw user-bookings-toolbar-ico ${loading ? 'fa-spin' : ''}`} />
+                        {loading ? 'Đang tải…' : 'Làm mới'}
+                      </button>
+                      <Link to="/venues" className="user-bookings-toolbar-btn user-bookings-toolbar-btn--primary">
+                        <i className="feather-plus user-bookings-toolbar-ico" />Đặt sân mới
+                      </Link>
                     </div>
                   </div>
+                </div>
+
+                <div className="table-responsive">
+                  <table className="user-bookings-table table table-borderless datatable">
+                    <thead className="thead-light">
+                      <tr>
+                        <th>Sân</th>
+                        <th>Mã đặt</th>
+                        <th>Lịch</th>
+                        <th>Thanh toán</th>
+                        <th>Trạng thái</th>
+                        <th>Đánh giá</th>
+                        <th className="text-nowrap">Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loading && (
+                        <tr>
+                          <td colSpan={7} className="text-center text-muted py-5">
+                            <div className="spinner-border spinner-border-sm text-secondary mb-2" role="status" />
+                            <div>Đang tải lịch đặt sân…</div>
+                          </td>
+                        </tr>
+                      )}
+                      {!loading && filtered.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="text-center text-muted py-5">
+                            <i className="feather-calendar" style={{ fontSize: 32, display: 'block', marginBottom: 8, opacity: 0.4 }} />
+                            Không có lịch đặt sân nào
+                          </td>
+                        </tr>
+                      )}
+                      {!loading && filtered.map(b => (
+                        <tr key={b.id} data-booking-row={b.id}>
+                          {/* Court */}
+                          <td>
+                            <h2 className="table-avatar">
+                              <span className="avatar avatar-sm flex-shrink-0">
+                                <img className="avatar-img" src={b.courtImg} alt=""
+                                  onError={e => { e.target.src = '/assets/img/venues/venues-01.jpg'; }} />
+                              </span>
+                              <span className="table-head-name flex-grow-1 ms-2">
+                                <span>
+                                  {b.court}
+                                  {b.isLongTerm && (
+                                    <span className="badge bg-info text-dark ms-1">Lịch dài hạn</span>
+                                  )}
+                                </span>
+                                <small className="d-block text-muted">
+                                  <i className="feather-map-pin me-1" />{b.venueAddress}
+                                </small>
+                              </span>
+                            </h2>
+                          </td>
+                          {/* Code */}
+                          <td>
+                            <span
+                              className="badge"
+                              style={{ background: '#f0fdf4', color: 'var(--primary-color)', border: '1px solid #6ee7b7', fontFamily: 'monospace, ui-monospace, monospace' }}
+                            >
+                              #{b.code}
+                            </span>
+                          </td>
+                          {/* Schedule (merged Date + Time) */}
+                          <td>
+                            <div>{b.date}</div>
+                            <small className="text-muted">{b.time}</small>
+                          </td>
+                          {/* Payment (merged Amount + Method) */}
+                          <td>
+                            <strong>{b.amount.toLocaleString('vi-VN')} ₫</strong>
+                            <div className="text-muted small" style={{ marginTop: 2 }}>
+                              <i className={`${b.paymentMethod === 'Quét mã QR' ? 'feather-smartphone' : 'feather-credit-card'} me-1`} />
+                              {b.paymentMethod}
+                            </div>
+                          </td>
+                          <td><StatusBadge b={b} /></td>
+                          <td>
+                            {b.venueId && (b.canReview || b.canEditReview) ? (
+                              <Link
+                                className="user-booking-action"
+                                data-variant="review"
+                                to={`/venue-details/${b.venueId}?openReview=1&bookingId=${b.id}`}
+                                title={b.canEditReview ? 'Sửa đánh giá' : 'Viết đánh giá'}
+                              >
+                                <i className="feather-star" aria-hidden />
+                                {b.canEditReview ? 'Sửa ĐG' : 'Đánh giá'}
+                              </Link>
+                            ) : b.venueId && b.venueReviewId ? (
+                              <Link
+                                className="btn btn-sm btn-link text-muted p-0 small"
+                                to={`/venue-details/${b.venueId}#reviews`}
+                              >
+                                Đã gửi
+                              </Link>
+                            ) : (
+                              <span className="text-muted small">—</span>
+                            )}
+                          </td>
+                          <td className="align-middle">
+                            <div className="d-flex align-items-center gap-1 flex-wrap">
+                              <button
+                                type="button"
+                                title="Xem chi tiết"
+                                className="btn btn-sm btn-outline-info d-inline-flex align-items-center justify-content-center shadow-none p-0"
+                                style={{ width: 34, height: 34, borderRadius: 8, borderWidth: 1.5 }}
+                                onClick={() => setDetailBooking(b)}
+                              >
+                                <i className="feather-eye m-0"></i>
+                              </button>
+                              {canUserCancel(b) && (
+                                <button
+                                  type="button"
+                                  title="Huỷ sân"
+                                  className="btn btn-sm btn-outline-danger d-inline-flex align-items-center justify-content-center shadow-none p-0"
+                                  style={{ width: 34, height: 34, borderRadius: 8, borderWidth: 1.5 }}
+                                  onClick={() => openCancelPreview(b)}
+                                >
+                                  <i className="feather-x-circle m-0"></i>
+                                </button>
+                              )}
+                              {b.needsPaymentRetry && b.status === 'PENDING' && (
+                                <button
+                                  type="button"
+                                  title="Thanh toán lại"
+                                  className="btn btn-sm btn-outline-primary d-inline-flex align-items-center justify-content-center shadow-none p-0"
+                                  style={{ width: 34, height: 34, borderRadius: 8, borderWidth: 1.5 }}
+                                  onClick={() => navigate(`/booking/payment?bookingId=${b.id}`)}
+                                >
+                                  <i className="feather-credit-card m-0"></i>
+                                </button>
+                              )}
+                              {b.status === 'PENDING' && (
+                                <button
+                                  type="button"
+                                  title={remindCooldowns[b.id] ? `Chờ ${remindCooldowns[b.id]} phút nữa` : 'Nhắc chủ sân duyệt đơn'}
+                                  className="btn btn-sm btn-outline-warning text-dark d-inline-flex align-items-center justify-content-center shadow-none p-0"
+                                  style={{ width: 34, height: 34, borderRadius: 8, borderWidth: 1.5, ...(remindCooldowns[b.id] ? { opacity: 0.5, cursor: 'not-allowed' } : {}) }}
+                                  disabled={remindLoading === b.id || !!remindCooldowns[b.id]}
+                                  onClick={() => handleRemindOwner(b.id)}
+                                >
+                                  {remindLoading === b.id
+                                    ? <span className="spinner-border spinner-border-sm m-0" role="status" />
+                                    : (remindCooldowns[b.id] ? <span style={{ fontSize: 11, fontWeight: 'bold' }}>{remindCooldowns[b.id]}m</span> : <i className="feather-bell m-0"></i>)
+                                  }
+                                </button>
+                              )}
+                              {b.status !== 'CANCELLED' && (
+                                <button
+                                  type="button"
+                                  title="Khiếu nại / tranh chấp giao dịch"
+                                  className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center justify-content-center shadow-none p-0"
+                                  style={{ width: 34, height: 34, borderRadius: 8, borderWidth: 1.5 }}
+                                  onClick={() => setDisputeTarget(b)}
+                                >
+                                  <i className="feather-flag m-0"></i>
+                                </button>
+                              )}
+                              {b.status === 'REFUND' && !b.refundAccountNumber && (
+                                <button
+                                  type="button"
+                                  title="Nhập STK nhận hoàn tiền"
+                                  className="btn btn-sm btn-outline-success d-inline-flex align-items-center justify-content-center shadow-none p-0"
+                                  style={{ width: 34, height: 34, borderRadius: 8, borderWidth: 1.5 }}
+                                  onClick={() => {
+                                    setBankForm({ refundBankName: '', refundAccountNumber: '', refundAccountHolder: '' });
+                                    setShowBankForm(b);
+                                  }}
+                                >
+                                  <i className="feather-credit-card m-0"></i>
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
           </div>
+        </div>
+      </div>
 
       {/* ── Detail Modal ───────────────────────────────────────────────── */}
       {detailBooking && (
@@ -741,14 +743,23 @@ export default function UserBookings() {
                     <small className="text-muted d-block">Trạng thái</small>
                     <StatusBadge b={detailBooking} />
                   </div>
-                  <div className="col-6">
-                    <small className="text-muted d-block">Ngày</small>
-                    <strong>{detailBooking.date}</strong>
-                  </div>
-                  <div className="col-6">
-                    <small className="text-muted d-block">Khung giờ</small>
-                    <strong>{detailBooking.time}</strong>
-                  </div>
+                  {!detailBooking.isLongTerm && (
+                    <>
+                      <div className="col-6">
+                        <small className="text-muted d-block">Ngày</small>
+                        <strong>{detailBooking.date}</strong>
+                      </div>
+                      <div className="col-6">
+                        <small className="text-muted d-block">Khung giờ</small>
+                        <strong>{detailBooking.time}</strong>
+                      </div>
+                    </>
+                  )}
+                  {detailBooking.isLongTerm && (
+                    <div className="col-12">
+                      <LongTermScheduleDisplay items={detailBooking.items} />
+                    </div>
+                  )}
                   <div className="col-12 col-md-6">
                     <small className="text-muted d-block mb-1">Tổng tiền</small>
                     <strong className="text-success">{detailBooking.amount.toLocaleString('vi-VN')} ₫</strong>
@@ -758,7 +769,7 @@ export default function UserBookings() {
                     <div className="d-flex align-items-center gap-2 mt-1 flex-wrap">
                       <strong className="d-block">{detailBooking.paymentMethod}</strong>
                       {detailBooking.paymentProofUrl && (
-                        <button 
+                        <button
                           type="button"
                           className="btn btn-sm btn-primary d-inline-flex gap-1 align-items-center py-1 px-2 border-0 shadow-sm"
                           style={{ fontSize: '11px', borderRadius: '4px' }}
@@ -827,18 +838,18 @@ export default function UserBookings() {
           <div className="modal-dialog modal-dialog-centered modal-lg" onClick={e => e.stopPropagation()}>
             <div className="modal-content overflow-hidden border-0 bg-transparent shadow-none" style={{ borderRadius: '16px' }}>
               <div className="modal-header border-0 pb-0 position-absolute w-100 p-3" style={{ zIndex: 10, right: 0, justifyContent: 'flex-end' }}>
-                <button 
-                  type="button" 
-                  className="btn-close bg-white rounded-circle p-2 shadow" 
-                  onClick={() => setPreviewImage(null)} 
+                <button
+                  type="button"
+                  className="btn-close bg-white rounded-circle p-2 shadow"
+                  onClick={() => setPreviewImage(null)}
                   style={{ opacity: 1, cursor: 'pointer' }}
                 />
               </div>
               <div className="modal-body p-0 text-center d-flex align-items-center justify-content-center" style={{ minHeight: '300px' }}>
-                <img 
-                  src={previewImage} 
-                  alt="Ảnh chuyển khoản" 
-                  style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }} 
+                <img
+                  src={previewImage}
+                  alt="Ảnh chuyển khoản"
+                  style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}
                 />
               </div>
             </div>

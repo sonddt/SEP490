@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { BOOKING_STATUSES, PAYMENT_METHODS } from '../../data/bookingsMock';
+import LongTermScheduleDisplay from '../common/LongTermScheduleDisplay';
 
 function InfoRow({ label, value, valueClass = '' }) {
   return (
@@ -191,12 +192,17 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
               <PaymentProofSection proofImg={booking.paymentProofImg} />
             </div>
 
-            {/* Right: booking details */}
             <div className="col-md-6">
               <div className="bk-detail-section">
                 <h6 className="bk-detail-section-title">Thông tin lịch đặt</h6>
-                <InfoRow label="Ngày" value={booking.dateDisplay} />
-                <InfoRow label="Giờ" value={`${booking.timeStart} – ${booking.timeEnd}`} />
+                {!booking.isLongTerm ? (
+                  <>
+                    <InfoRow label="Ngày" value={booking.dateDisplay} />
+                    <InfoRow label="Giờ" value={`${booking.timeStart} – ${booking.timeEnd}`} />
+                  </>
+                ) : (
+                  <LongTermScheduleDisplay items={booking.items} />
+                )}
                 <InfoRow label="Số khách" value={`${booking.guests} người`} />
                 <InfoRow
                   label="Trạng thái"

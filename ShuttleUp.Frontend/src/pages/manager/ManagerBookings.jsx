@@ -10,9 +10,9 @@ import { normalizeSearchText } from '../../utils/searchNormalize';
 const PAGE_SIZE = 8;
 
 const TABS = [
-  { key: 'PENDING',   label: 'Chờ duyệt',  icon: 'feather-clock' },
-  { key: 'UPCOMING',  label: 'Sắp tới',     icon: 'feather-calendar' },
-  { key: 'COMPLETED', label: 'Hoàn thành',  icon: 'feather-check-circle' },
+  { key: 'PENDING', label: 'Chờ duyệt', icon: 'feather-clock' },
+  { key: 'UPCOMING', label: 'Sắp tới', icon: 'feather-calendar' },
+  { key: 'COMPLETED', label: 'Hoàn thành', icon: 'feather-check-circle' },
   { key: 'CANCELLED', label: 'Đã huỷ / Từ chối', icon: 'feather-x-circle' },
 ];
 
@@ -88,12 +88,13 @@ function mapManagerBookingFromApi(b) {
     note: b.guestNote || '',
     rejectReason: (b.managerStatusNote || '').trim() || null,
     createdAt,
+    items: b.items || [],
   };
 }
 
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 function isToday(d) { const n = new Date(); return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate(); }
-function isThisWeek(d) { const n = new Date(); const s = new Date(n); s.setDate(n.getDate() - n.getDay()); s.setHours(0,0,0,0); const e = new Date(s); e.setDate(s.getDate()+6); e.setHours(23,59,59,999); return d >= s && d <= e; }
+function isThisWeek(d) { const n = new Date(); const s = new Date(n); s.setDate(n.getDate() - n.getDay()); s.setHours(0, 0, 0, 0); const e = new Date(s); e.setDate(s.getDate() + 6); e.setHours(23, 59, 59, 999); return d >= s && d <= e; }
 function isThisMonth(d) { const n = new Date(); return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth(); }
 
 /* ── Action Dropdown ────────────────────────────────────────────────────── */
@@ -156,16 +157,16 @@ function ProofThumb({ img }) {
 /* ═══ MAIN ═══════════════════════════════════════════════════════════════ */
 export default function ManagerBookings() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [bookings, setBookings]   = useState([]);
-  const [loading, setLoading]     = useState(true);
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('PENDING');
-  const [search, setSearch]       = useState('');
+  const [search, setSearch] = useState('');
   const [timeFilter, setTimeFilter] = useState('all');
-  const [sortBy, setSortBy]       = useState('newest');
-  const [page, setPage]           = useState(1);
+  const [sortBy, setSortBy] = useState('newest');
+  const [page, setPage] = useState(1);
   const [detailModal, setDetailModal] = useState(null);
   const [rejectModal, setRejectModal] = useState(null);
-  const [toastMsg, setToastMsg]   = useState(null);
+  const [toastMsg, setToastMsg] = useState(null);
   const [processingId, setProcessingId] = useState(null);
 
   const fetchBookings = useCallback(async (showTableLoading = true) => {
@@ -232,7 +233,7 @@ export default function ManagerBookings() {
   const processed = useMemo(() => {
     let list = bookings.filter(b => b.status === activeTab);
     if (timeFilter === 'today') list = list.filter(b => isToday(new Date(b.date)));
-    if (timeFilter === 'week')  list = list.filter(b => isThisWeek(new Date(b.date)));
+    if (timeFilter === 'week') list = list.filter(b => isThisWeek(new Date(b.date)));
     if (timeFilter === 'month') list = list.filter(b => isThisMonth(new Date(b.date)));
     if (search.trim()) {
       const nq = normalizeSearchText(search);
@@ -252,7 +253,7 @@ export default function ManagerBookings() {
       if (sortBy === 'newest') return new Date(b.date) - new Date(a.date);
       if (sortBy === 'oldest') return new Date(a.date) - new Date(b.date);
       if (sortBy === 'amount_high') return b.amount - a.amount;
-      if (sortBy === 'amount_low')  return a.amount - b.amount;
+      if (sortBy === 'amount_low') return a.amount - b.amount;
       return 0;
     });
     return list;
