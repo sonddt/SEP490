@@ -566,6 +566,20 @@ Kết bạn & quan hệ xã hội (Player):
    - **Auth Back Button**: Thêm nút "Quay lại trang chủ" vào Login/Register.
    - **Contact Updates**: Cập nhật SĐT **0394127869**, Email **shuttleup.badminton@gmail.com** và địa chỉ **Hà Nội** (Bao gồm Google Maps).
    - **Terms of Service**: Tinh chỉnh nội dung pháp lý theo tính năng lõi của hệ thống.
+4. **Cải tiến hệ thống và Demo (21/4):**
+   - **Điều hướng & Mailer**: Sửa lỗi 404 cho Manager mới tại route `/manager/profile-request`, vô hiệu hóa tạm xác minh SSL trong Dev Env cho `EmailService` Forgot Password.
+   - **Tìm kiếm**: Xây dựng lại bộ lọc giá linh hoạt cho trang `VenuesListing` phản ánh đúng range giá Database.
+   - **Giao diện**: Làm sạch các thành phần thừa ở mục Policy & Rules trên trang chi tiết sân để tinh giản.
+   - **Cơ sở dữ liệu**: Bổ sung tệp `Database_new.txt` với dữ liệu mock thực tế phục vụ buổi trình bày thuyết phục.
+
+---
+
+## 24 tháng 4, 2026 (Nâng cấp bảo mật đăng ký - Registration Security)
+
+1. **Validation & Security**:
+   - Áp dụng bộ lọc và kiểm tra định dạng khắt khe cho Tên người dùng và Số điện thoại Việt Nam.
+   - Xây dựng cơ chế kiểm tra tính duy nhất (async duplication check) theo thời gian thực đối với Email/SĐT tránh tạo account rác.
+   - Rà soát chống tình trạng Race condition khi gửi request liên tục và chuẩn hóa luồng xử lý đầu vào.
 
 ---
 
@@ -592,3 +606,33 @@ Kết bạn & quan hệ xã hội (Player):
     *   **Xoá Template & File rác**: Loại bỏ 2 folder template cũ (`theme1`, `theme2`) và các file output tạm (`swagger_out.txt`, `swagger_out2.txt`).
     *   **Dọn dẹp Root**: Xoá các file `package.json`, `node_modules` thừa ở thư mục gốc (không thuộc project Frontend/Backend).
     *   **Loại bỏ mã nguồn thừa**: Xoá các file Page cũ không còn sử dụng (`Home.jsx`, `VenuesGrid.jsx`, `SettingPassword.jsx`) để làm sạch cây thư mục `src/pages/`.
+7.  **Sửa lỗi Schema Backend (Database.txt)**:
+    *   Bảo vệ Data Integrity bằng cách thêm các cột `ban_type` và `soft_ban_expires_at` vô bảng `users` để map thành công model Backend đang yêu cầu.
+
+---
+
+## 26 tháng 4, 2026 (Google Auth Provider — Conditional Password UI)
+
+1. **Database (`Database.txt`)**:
+   - Thêm cột `auth_provider VARCHAR(10) NOT NULL DEFAULT 'LOCAL'` vào `CREATE TABLE users`. Giá trị: `LOCAL` (đăng ký email) hoặc `GOOGLE` (đăng nhập Google).
+
+2. **Backend (DAL + BLL + Controller)**:
+   - `User.cs`: Thêm property `AuthProvider` (default `"LOCAL"`). EF convention tự map sang `auth_provider`.
+   - `LoginResponseDto.cs`: Thêm `AuthProvider` vào `UserInfoDto` để FE biết loại tài khoản.
+   - `AuthService.cs`:
+     - `RegisterAsync`: Set `AuthProvider = "LOCAL"`.
+     - `GoogleLoginAsync`: Set `AuthProvider = "GOOGLE"` khi tạo user mới.
+     - `BuildLoginResponse`: Trả `AuthProvider` trong response.
+     - `SetPasswordAsync` (mới): Cho Google user thêm mật khẩu lần đầu (chỉ NewPassword + ConfirmPassword, không cần CurrentPassword). Chặn nếu đã có password.
+   - `IAuthService.cs`: Thêm `SetPasswordAsync`.
+   - `SetPasswordRequestDto.cs` (mới): DTO cho endpoint set-password.
+   - `AuthController.cs`: Thêm `POST /api/auth/set-password` (Authorize).
+
+3. **Frontend**:
+   - `authApi.js`: Thêm `setPassword(data)` → `POST /api/auth/set-password`.
+   - `UserProfileChangePassword.jsx`: Conditional rendering:
+     - Google user (chưa có password) → form "Thêm mật khẩu" (2 input + Google badge).
+     - LOCAL user (hoặc đã set password) → form "Đổi mật khẩu" hiện tại (3 input).
+   - `AuthContext.jsx`: Không cần sửa — `authProvider` tự có trong `user` object từ login response.
+
+4. **Quy tắc**: Cùng email → cùng tài khoản. LOCAL user login Google → vẫn vào đúng tài khoản đó (code hiện tại đã xử lý qua `GetByEmailAsync`).

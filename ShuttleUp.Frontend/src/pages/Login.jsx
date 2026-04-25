@@ -151,7 +151,7 @@ export default function Login() {
       const newErrors = {};
       if (!emailOrPhone.trim()) newErrors.emailOrPhone = 'Bạn chưa nhập Email hoặc SĐT kìa.';
       if (!password) newErrors.password = 'Đừng quên nhập mật khẩu nhé!';
-      
+
       if (Object.keys(newErrors).length > 0) {
         setFieldErrors(newErrors);
         return;
@@ -317,8 +317,8 @@ export default function Login() {
                                   disabled={loading}
                                   value={emailOrPhone}
                                   onChange={(e) => {
-                                      setEmailOrPhone(e.target.value);
-                                      if (fieldErrors.emailOrPhone) setFieldErrors(prev => ({ ...prev, emailOrPhone: '' }));
+                                    setEmailOrPhone(e.target.value);
+                                    if (fieldErrors.emailOrPhone) setFieldErrors(prev => ({ ...prev, emailOrPhone: '' }));
                                   }}
                                 />
                               </div>
@@ -342,8 +342,8 @@ export default function Login() {
                                   disabled={loading}
                                   value={password}
                                   onChange={(e) => {
-                                      setPassword(e.target.value);
-                                      if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: '' }));
+                                    setPassword(e.target.value);
+                                    if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: '' }));
                                   }}
                                 />
                               </div>

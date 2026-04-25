@@ -153,6 +153,31 @@ public class AuthController : ControllerBase
         }
     }
 
+    // POST /api/auth/set-password  (Google user thêm mật khẩu)
+    [HttpPost("set-password")]
+    [Authorize]
+    public async Task<IActionResult> SetPassword([FromBody] SetPasswordRequestDto request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var userIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value;
+
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized(new { message = "Token không hợp lệ." });
+
+        try
+        {
+            await _authService.SetPasswordAsync(userId, request);
+            return Ok(new { message = "Tuyệt vời! Thêm mật khẩu thành công rồi nha." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpGet("check-email")]
     public async Task<IActionResult> CheckEmail([FromQuery] string email)
     {

@@ -24,4 +24,7 @@ public interface IAuthService
 
     /// <summary>Đổi mật khẩu khi đã đăng nhập (cần userId từ JWT)</summary>
     Task ChangePasswordAsync(Guid userId, ChangePasswordRequestDto request);
+
+    /// <summary>Thêm mật khẩu cho Google user (chưa có mật khẩu)</summary>
+    Task SetPasswordAsync(Guid userId, SetPasswordRequestDto request);
 }

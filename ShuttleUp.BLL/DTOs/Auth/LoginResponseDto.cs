@@ -14,4 +14,5 @@ public class UserInfoDto
     public string Email { get; set; } = null!;
     public string FullName { get; set; } = null!;
     public IEnumerable<string> Roles { get; set; } = [];
+    public string AuthProvider { get; set; } = "LOCAL";
 }

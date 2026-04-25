@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ShuttleUp.DAL.Models;
 
@@ -50,6 +51,10 @@ public partial class User
     public Guid? BlockedBy { get; set; }
 
     public Guid? AvatarFileId { get; set; }
+
+    /// <summary>LOCAL | GOOGLE</summary>
+    [Column("auth_provider")]
+    public string AuthProvider { get; set; } = "LOCAL";
 
     public DateTime? CreatedAt { get; set; }
 

@@ -73,6 +73,17 @@ export function changePassword(data) {
 }
 
 /**
+ * Thêm mật khẩu cho Google user (chưa có mật khẩu)
+ * @param {{ newPassword, confirmPassword }} data
+ */
+export function setPassword(data) {
+  return axiosClient.post('/auth/set-password', {
+    newPassword: data.newPassword,
+    confirmPassword: data.confirmPassword,
+  });
+}
+
+/**
  * Kiểm tra xem Email đã tồn tại hay chưa
  * @param {string} email
  */

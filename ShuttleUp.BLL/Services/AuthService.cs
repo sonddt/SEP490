@@ -80,6 +80,7 @@ public class AuthService : IAuthService
             PhoneNumber = request.PhoneNumber,
             Gender = request.Gender,
             DateOfBirth = request.DateOfBirth,
+            AuthProvider = "LOCAL",
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             Roles = roles,
@@ -148,6 +149,7 @@ public class AuthService : IAuthService
             Email = email,
             PasswordHash = string.Empty,   // không có mật khẩu, chỉ login qua Google
             FullName = payload.Name ?? email,
+            AuthProvider = "GOOGLE",
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             Roles = roles,
@@ -216,6 +218,20 @@ public class AuthService : IAuthService
         await _userRepository.UpdateAsync(user);
     }
 
+    // ── Set Password (Google user thêm mật khẩu lần đầu) ─────────────────────
+    public async Task SetPasswordAsync(Guid userId, SetPasswordRequestDto request)
+    {
+        var user = await _userRepository.GetByIdAsync(userId)
+            ?? throw new InvalidOperationException("Tài khoản không tồn tại.");
+
+        if (!string.IsNullOrEmpty(user.PasswordHash))
+            throw new InvalidOperationException("Tài khoản đã có mật khẩu. Vui lòng sử dụng chức năng đổi mật khẩu.");
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+        await _userRepository.UpdateAsync(user);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private string NormalizeVietnamPhone(string phone)
@@ -278,6 +294,7 @@ public class AuthService : IAuthService
                 Email = user.Email,
                 FullName = user.FullName,
                 Roles = user.Roles.Select(r => r.Name),
+                AuthProvider = user.AuthProvider,
             }
         };
     }
