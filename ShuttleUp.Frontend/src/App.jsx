@@ -17,15 +17,15 @@ import ChatPage from './pages/ChatPage';
 import Contact from './pages/Contact';
 import About from './pages/About';
 import FeaturedPage from './pages/FeaturedPage';
-import BookingTimeline from './pages/BookingTimeline';
-import BookingConfirm from './pages/BookingConfirm';
-import BookingPayment from './pages/BookingPayment';
-import BookingComplete from './pages/BookingComplete';
+import BookingTimeline from './pages/booking/BookingTimeline';
+import BookingConfirm from './pages/booking/BookingConfirm';
+import BookingPayment from './pages/booking/BookingPayment';
+import BookingComplete from './pages/booking/BookingComplete';
 
-import LongTermBooking from './pages/LongTermBooking';
-import LongTermConfirm from './pages/LongTermConfirm';
-import LongTermFlexible from './pages/LongTermFlexible';
-import LongTermFlexibleConfirm from './pages/LongTermFlexibleConfirm';
+import LongTermBooking from './pages/booking/LongTermBooking';
+import LongTermConfirm from './pages/booking/LongTermConfirm';
+import LongTermFlexible from './pages/booking/LongTermFlexible';
+import LongTermFlexibleConfirm from './pages/booking/LongTermFlexibleConfirm';
 import TermsOfService from './pages/TermsOfService';
 
 // Auth

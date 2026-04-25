@@ -586,3 +586,9 @@ Kết bạn & quan hệ xã hội (Player):
     *   **UserNotifications.jsx**: Sửa lỗi hiển thị nội dung thông báo bị trống bằng cách map trường `n.body` (đồng bộ hoàn toàn với logic hiển thị ở Header Dropdown).
 5.  **CSS Support (index.css)**:
     *   Bổ sung Keyframe animation `slideUpBar` cho các thanh công cụ sticky ở đáy màn hình.
+
+6.  **Refactor & Dọn dẹp Source Code**:
+    *   **Tổ chức lại thư mục Booking**: Di chuyển 8 file liên quan đến luồng đặt sân từ `pages/` vào thư mục chuyên biệt `pages/booking/`. Cập nhật toàn bộ import trong `App.jsx` và sửa path nội bộ (`../` -> `../../`).
+    *   **Xoá Template & File rác**: Loại bỏ 2 folder template cũ (`theme1`, `theme2`) và các file output tạm (`swagger_out.txt`, `swagger_out2.txt`).
+    *   **Dọn dẹp Root**: Xoá các file `package.json`, `node_modules` thừa ở thư mục gốc (không thuộc project Frontend/Backend).
+    *   **Loại bỏ mã nguồn thừa**: Xoá các file Page cũ không còn sử dụng (`Home.jsx`, `VenuesGrid.jsx`, `SettingPassword.jsx`) để làm sạch cây thư mục `src/pages/`.
