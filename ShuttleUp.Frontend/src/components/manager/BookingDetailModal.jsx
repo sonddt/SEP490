@@ -132,7 +132,7 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
 
   return (
     <div className="bk-modal-overlay" onClick={onClose}>
-      <div className="bk-modal bk-modal--lg" onClick={(e) => e.stopPropagation()}>
+      <div className="bk-modal bk-modal--lg" style={{ maxWidth: '850px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
 
         {/* Header */}
         <div className="bk-modal-header">
@@ -188,21 +188,43 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
                 </div>
               </div>
 
+              {/* Payment Info */}
+              <div className="bk-detail-section mt-3">
+                <h6 className="bk-detail-section-title">Thanh toán</h6>
+                <InfoRow label="Số tiền" value={
+                  <strong style={{ color: '#097E52', fontSize: '15px' }}>
+                    {booking.amount.toLocaleString('vi-VN')} ₫
+                  </strong>
+                } />
+                <InfoRow label="Hình thức" value={
+                  <span>
+                    <i className={pm.icon} style={{ fontSize: '12px', marginRight: '4px', color: '#64748b' }} />
+                    {pm.label}
+                  </span>
+                } />
+                <InfoRow label="Trạng thái TT" value={
+                  <strong style={{ color: paymentStatusColor }}>{paymentStatusLabel}</strong>
+                } />
+              </div>
+
               {/* Payment proof image */}
               <PaymentProofSection proofImg={booking.paymentProofImg} />
             </div>
 
+            {/* Right: booking details */}
             <div className="col-md-6">
+              {!booking.isLongTerm ? (
+                <div className="bk-detail-section mb-3">
+                  <h6 className="bk-detail-section-title">Thông tin lịch đặt</h6>
+                  <InfoRow label="Ngày" value={booking.dateDisplay} />
+                  <InfoRow label="Giờ" value={`${booking.timeStart} – ${booking.timeEnd}`} />
+                </div>
+              ) : (
+                <LongTermScheduleDisplay items={booking.items} />
+              )}
+
               <div className="bk-detail-section">
-                <h6 className="bk-detail-section-title">Thông tin lịch đặt</h6>
-                {!booking.isLongTerm ? (
-                  <>
-                    <InfoRow label="Ngày" value={booking.dateDisplay} />
-                    <InfoRow label="Giờ" value={`${booking.timeStart} – ${booking.timeEnd}`} />
-                  </>
-                ) : (
-                  <LongTermScheduleDisplay items={booking.items} />
-                )}
+                <h6 className="bk-detail-section-title">Thông tin bổ sung</h6>
                 <InfoRow label="Số khách" value={`${booking.guests} người`} />
                 <InfoRow
                   label="Trạng thái"
@@ -213,24 +235,6 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
                   }
                 />
                 <InfoRow label="Ngày đặt" value={booking.createdAt} />
-              </div>
-
-              <div className="bk-detail-section mt-3">
-                <h6 className="bk-detail-section-title">Thanh toán</h6>
-                <InfoRow label="Số tiền" value={
-                  <strong style={{ color: '#097E52', fontSize: 15 }}>
-                    {booking.amount.toLocaleString('vi-VN')} ₫
-                  </strong>
-                } />
-                <InfoRow label="Hình thức" value={
-                  <span>
-                    <i className={pm.icon} style={{ fontSize: 12, marginRight: 4, color: '#64748b' }} />
-                    {pm.label}
-                  </span>
-                } />
-                <InfoRow label="Trạng thái TT" value={
-                  <strong style={{ color: paymentStatusColor }}>{paymentStatusLabel}</strong>
-                } />
               </div>
 
               {booking.note && (
