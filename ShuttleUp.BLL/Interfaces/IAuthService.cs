@@ -6,6 +6,8 @@ public interface IAuthService
 {
     Task<LoginResponseDto> LoginAsync(LoginRequestDto request);
     Task<LoginResponseDto> RegisterAsync(RegisterRequestDto request);
+    Task<bool> CheckEmailExistsAsync(string email);
+    Task<bool> CheckPhoneExistsAsync(string phone);
 
     /// <summary>
     /// Đăng nhập / đăng ký qua Google ID token.

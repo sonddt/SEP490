@@ -152,4 +152,20 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+
+    [HttpGet("check-email")]
+    public async Task<IActionResult> CheckEmail([FromQuery] string email)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return BadRequest();
+        var exists = await _authService.CheckEmailExistsAsync(email);
+        return Ok(new { exists });
+    }
+
+    [HttpGet("check-phone")]
+    public async Task<IActionResult> CheckPhone([FromQuery] string phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone)) return BadRequest();
+        var exists = await _authService.CheckPhoneExistsAsync(phone);
+        return Ok(new { exists });
+    }
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
-import { registerEmail, loginGoogle } from '../api/authApi';
+import { registerEmail, loginGoogle, checkEmail, checkPhone } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
 import { managerProfileApi } from '../api/managerProfileApi';
 import { profileApi } from '../api/profileApi';
@@ -15,6 +15,8 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [isCheckingPhone, setIsCheckingPhone] = useState(false);
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -36,14 +38,13 @@ export default function Register() {
     navigate('/venues');
   };
 
-  const isValidGmail = (email) => {
+  const isValidEmail = (email) => {
     if (!email) return false;
-    return /^[A-Za-z0-9._%+-]+@gmail\.com$/i.test(email.trim());
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   };
 
-  // Số điện thoại: 9-11 chữ số (chỉ số)
   const normalizePhone = (phone) => (phone || '').replace(/\s+/g, '');
-  const isValidPhone = (phone) => /^\d{9,11}$/.test(normalizePhone(phone));
+  const isValidPhone = (phone) => /^(0|84)(3|5|7|8|9)[0-9]{8}$/.test(normalizePhone(phone));
 
   const validatePassword = (password) => {
     const p = password || '';
@@ -52,8 +53,7 @@ export default function Register() {
     const hasUpper = /[A-Z]/.test(p);
     const hasLower = /[a-z]/.test(p);
     const hasNumber = /\d/.test(p);
-    // Special chars theo ví dụ trong ảnh: ! @ # $ % ^ & * ( ) _ - + .
-    const hasSpecial = /[!@#$%^&*()_+\-\.]/.test(p);
+    const hasSpecial = /[^a-zA-Z0-9]/.test(p);
 
     // Ép độ dài phải nằm trong 8-32, phần còn lại cần thỏa tối thiểu 3/4 điều kiện.
     const otherPassed = [hasUpper, hasLower, hasNumber, hasSpecial].filter(Boolean).length;
@@ -69,6 +69,40 @@ export default function Register() {
   // tab → roles
   const getRoles = () => (activeTab === 'manager' ? ['MANAGER'] : ['PLAYER']);
 
+  const handleEmailBlur = async () => {
+    const email = (formData.email || '').trim();
+    if (!email || !isValidEmail(email)) return;
+    setIsCheckingEmail(true);
+    try {
+      const { data } = await checkEmail(email);
+      if (data.exists) {
+        setFieldErrors((prev) => ({ ...prev, email: 'Email này đã được sử dụng.' }));
+      } else if (fieldErrors.email === 'Email này đã được sử dụng.') {
+        setFieldErrors((prev) => ({ ...prev, email: '' }));
+      }
+    } catch { } // Ignore
+    finally {
+      setIsCheckingEmail(false);
+    }
+  };
+
+  const handlePhoneBlur = async () => {
+    const phone = normalizePhone(formData.phoneNumber);
+    if (!phone || !isValidPhone(phone)) return;
+    setIsCheckingPhone(true);
+    try {
+      const { data } = await checkPhone(phone);
+      if (data.exists) {
+        setFieldErrors((prev) => ({ ...prev, phoneNumber: 'Số điện thoại này đã được sử dụng.' }));
+      } else if (fieldErrors.phoneNumber === 'Số điện thoại này đã được sử dụng.') {
+        setFieldErrors((prev) => ({ ...prev, phoneNumber: '' }));
+      }
+    } catch { } // Ignore
+    finally {
+      setIsCheckingPhone(false);
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -80,25 +114,33 @@ export default function Register() {
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    if (isCheckingEmail || isCheckingPhone) return;
     setError('');
-    
+
     const newErrors = {};
-    if (!formData.fullName?.trim()) {
+    const name = (formData.fullName || '').trim();
+    if (!name) {
       newErrors.fullName = 'Bạn chưa nhập họ và tên kìa.';
+    } else if (!/^[a-zA-ZÀ-ỹ\u0110\u0111\s]{2,50}$/.test(name)) {
+      newErrors.fullName = 'Họ tên không hợp lệ (không dính số hay ký tự đặc biệt) và dài 2-50 ký tự.';
     }
 
     const email = (formData.email || '').trim();
     if (!email) {
       newErrors.email = 'Bạn chưa nhập email.';
-    } else if (!isValidGmail(email)) {
-      newErrors.email = 'Bạn nhớ nhập đúng định dạng Gmail nhé (ví dụ: yourname@gmail.com).';
+    } else if (!isValidEmail(email)) {
+      newErrors.email = 'Email không đúng định dạng chuẩn (ví dụ: yourname@domain.com).';
+    } else if (fieldErrors.email === 'Email này đã được sử dụng.') {
+      newErrors.email = fieldErrors.email;
     }
 
     const phoneNumber = normalizePhone(formData.phoneNumber);
     if (!phoneNumber) {
       newErrors.phoneNumber = 'Đừng quên nhập số điện thoại nha.';
     } else if (!isValidPhone(phoneNumber)) {
-      newErrors.phoneNumber = 'Số điện thoại phải có 9 đến 11 chữ số bạn nha.';
+      newErrors.phoneNumber = 'Số điện thoại không đúng định dạng Việt Nam (bắt đầu bằng 0/84, 10 số).';
+    } else if (fieldErrors.phoneNumber === 'Số điện thoại này đã được sử dụng.') {
+      newErrors.phoneNumber = fieldErrors.phoneNumber;
     }
 
     const password = formData.password || '';
@@ -107,7 +149,7 @@ export default function Register() {
     } else {
       const pwCheck = validatePassword(password);
       if (!pwCheck.ok) {
-        newErrors.password = 'Mật khẩu cần từ 8 đến 32 chữ số và thoả mãn 3/4 điều kiện: Chữ HOA, thường, số, ký tự đặc biệt.';
+        newErrors.password = 'Mật khẩu cần từ 8 đến 32 ký tự và thoả mãn 3/4 điều kiện: chữ HOA, thường, số, ký tự đặc biệt.';
       }
     }
 
@@ -131,7 +173,7 @@ export default function Register() {
         email,
         phoneNumber,
         password,
-        fullName: formData.fullName,
+        fullName: name,
         isManagerRoleRequested: activeTab === 'manager',
       });
       login(data);
@@ -147,7 +189,7 @@ export default function Register() {
           goAfterRegisterPlayer(profileUser.isPersonalized ?? null);
           return;
         }
-      } catch {}
+      } catch { }
       if (activeTab === 'manager') {
         navigate('/manager/profile-request');
       } else {
@@ -191,7 +233,7 @@ export default function Register() {
           goAfterRegisterPlayer(profileUser.isPersonalized ?? null);
           return;
         }
-      } catch {}
+      } catch { }
       // Nếu đang ở tab Manager thì coi như user đang yêu cầu đăng ký làm Manager → chuyển sang trang hồ sơ
       if (activeTab === 'manager') {
         // đảm bảo có hồ sơ PENDING (backend sẽ tạo nếu cần)
@@ -306,6 +348,7 @@ export default function Register() {
                                   name="email"
                                   value={formData.email}
                                   onChange={handleInputChange}
+                                  onBlur={handleEmailBlur}
                                 />
                               </div>
                               {fieldErrors.email && <div className="invalid-feedback d-block mt-1">{fieldErrors.email}</div>}
@@ -320,6 +363,7 @@ export default function Register() {
                                   name="phoneNumber"
                                   value={formData.phoneNumber}
                                   onChange={handleInputChange}
+                                  onBlur={handlePhoneBlur}
                                 />
                               </div>
                               {fieldErrors.phoneNumber && <div className="invalid-feedback d-block mt-1">{fieldErrors.phoneNumber}</div>}
@@ -386,8 +430,9 @@ export default function Register() {
                             <button
                               className="btn btn-secondary register-btn d-inline-flex justify-content-center align-items-center w-100 btn-block"
                               type="submit"
-                              disabled={loading}
+                              disabled={loading || isCheckingEmail || isCheckingPhone}
                             >
+                              {loading && <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>}
                               {loading ? 'Đang xử lý...' : 'Tạo Tài Khoản'}
                               {!loading && <i className="feather-arrow-right-circle ms-2"></i>}
                             </button>

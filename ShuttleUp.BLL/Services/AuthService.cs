@@ -41,7 +41,10 @@ public class AuthService : IAuthService
         if (!string.IsNullOrWhiteSpace(request.Email))
             user = await _userRepository.GetByEmailAsync(request.Email);
         else if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
-            user = await _userRepository.GetByPhoneAsync(request.PhoneNumber);
+        {
+            var normalizedPhone = NormalizeVietnamPhone(request.PhoneNumber);
+            user = await _userRepository.GetByPhoneAsync(normalizedPhone);
+        }
 
         if (user == null || string.IsNullOrEmpty(user.PasswordHash)
             || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
@@ -60,6 +63,7 @@ public class AuthService : IAuthService
         if (existing != null)
             throw new InvalidOperationException("Email đã được sử dụng.");
 
+        request.PhoneNumber = NormalizeVietnamPhone(request.PhoneNumber);
         var existingPhone = await _userRepository.GetByPhoneAsync(request.PhoneNumber);
         if (existingPhone != null)
             throw new InvalidOperationException("Số điện thoại đã được sử dụng.");
@@ -213,6 +217,30 @@ public class AuthService : IAuthService
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private string NormalizeVietnamPhone(string phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone)) return phone;
+        phone = phone.Trim();
+        if (phone.StartsWith("84") && phone.Length == 11)
+            return "0" + phone.Substring(2);
+        return phone;
+    }
+
+    public async Task<bool> CheckEmailExistsAsync(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return false;
+        var user = await _userRepository.GetByEmailAsync(email);
+        return user != null;
+    }
+
+    public async Task<bool> CheckPhoneExistsAsync(string phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone)) return false;
+        var normalizedPhone = NormalizeVietnamPhone(phone);
+        var user = await _userRepository.GetByPhoneAsync(normalizedPhone);
+        return user != null;
+    }
 
     /// <summary>
     /// Lấy danh sách Role entity từ DB theo tên.

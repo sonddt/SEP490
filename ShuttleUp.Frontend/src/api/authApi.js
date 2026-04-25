@@ -71,3 +71,19 @@ export function changePassword(data) {
     confirmPassword: data.confirmPassword,
   });
 }
+
+/**
+ * Kiểm tra xem Email đã tồn tại hay chưa
+ * @param {string} email
+ */
+export function checkEmail(email) {
+  return axiosClient.get(`/auth/check-email?email=${encodeURIComponent(email)}`);
+}
+
+/**
+ * Kiểm tra xem SĐT đã tồn tại hay chưa
+ * @param {string} phone
+ */
+export function checkPhone(phone) {
+  return axiosClient.get(`/auth/check-phone?phone=${encodeURIComponent(phone)}`);
+}

@@ -15,10 +15,11 @@ public class RegisterRequestDto : IValidatableObject
     public string Password { get; set; } = null!;
 
     [Required]
+    [RegularExpression(@"^[a-zA-ZÀ-ỹ\u0110\u0111\s]{2,50}$", ErrorMessage = "Họ và tên không hợp lệ (không chứa số, ký tự đặc biệt) và phải từ 2-50 ký tự.")]
     public string FullName { get; set; } = null!;
 
     [Required]
-    [RegularExpression(@"^\d{9,11}$", ErrorMessage = "Số điện thoại phải gồm 9-11 chữ số.")]
+    [RegularExpression(@"^(0|84)(3|5|7|8|9)[0-9]{8}$", ErrorMessage = "Số điện thoại không đúng định dạng Việt Nam (bắt đầu bằng 0 hoặc 84, gồm 10 chữ số).")]
     public string PhoneNumber { get; set; } = null!;
 
     public string? Gender { get; set; }
@@ -37,13 +38,13 @@ public class RegisterRequestDto : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        // 1) Gmail requirement
+        // 1) Universal email format requirement
         if (!string.IsNullOrWhiteSpace(Email))
         {
-            var gmailRegex = new Regex(@"^[A-Za-z0-9._%+\-]+@gmail\.com$", RegexOptions.IgnoreCase);
-            if (!gmailRegex.IsMatch(Email))
+            var universalEmailRegex = new Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.IgnoreCase);
+            if (!universalEmailRegex.IsMatch(Email))
                 yield return new ValidationResult(
-                    "Email phải đúng định dạng Gmail (ví dụ: yourname@gmail.com).",
+                    "Email không đúng định dạng chuẩn (ví dụ: yourname@domain.com).",
                     new[] { nameof(Email) }
                 );
         }
@@ -55,7 +56,7 @@ public class RegisterRequestDto : IValidatableObject
             var hasUpper = Regex.IsMatch(Password, "[A-Z]");
             var hasLower = Regex.IsMatch(Password, "[a-z]");
             var hasNumber = Regex.IsMatch(Password, "\\d");
-            var hasSpecial = Regex.IsMatch(Password, @"[!@#$%^&*()_+\-\.]");
+            var hasSpecial = Regex.IsMatch(Password, @"[^a-zA-Z0-9]");
 
             var otherPassed =
                 (hasUpper ? 1 : 0) +
