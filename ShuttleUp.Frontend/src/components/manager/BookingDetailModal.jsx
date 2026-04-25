@@ -110,6 +110,8 @@ function PaymentProofSection({ proofImg }) {
 }
 
 export default function BookingDetailModal({ booking, onClose, onAccept, onReject }) {
+  const [isProcessing, setIsProcessing] = useState(false);
+
   if (!booking) return null;
 
   const st = BOOKING_STATUSES[booking.status] || BOOKING_STATUSES.PENDING;
@@ -258,20 +260,26 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
               <button
                 type="button"
                 className="btn btn-secondary btn-sm d-flex align-items-center gap-2"
+                disabled={isProcessing}
                 onClick={async () => {
                   try {
+                    setIsProcessing(true);
                     await onAccept(booking.id);
                     onClose();
                   } catch {
                     /* lỗi đã toast ở parent */
+                  } finally {
+                    setIsProcessing(false);
                   }
                 }}
               >
-                <i className="feather-check-circle" />Chấp nhận
+                {isProcessing ? <div className="spinner-border spinner-border-sm" role="status" /> : <i className="feather-check-circle" />}
+                Chấp nhận
               </button>
               <button
                 type="button"
                 className="btn btn-danger btn-sm d-flex align-items-center gap-2"
+                disabled={isProcessing}
                 onClick={() => { onClose(); onReject(booking); }}
               >
                 <i className="feather-x-circle" />Từ chối

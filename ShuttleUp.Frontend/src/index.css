@@ -3854,13 +3854,13 @@ a:active {
     gap: 18px;
   }
 
-  .bk-stat-card__icon,
+  .bk-stat-card__icon-wrap,
   .mgr-stat-card__icon {
     width: 56px;
     height: 56px;
   }
 
-  .bk-stat-card__icon i,
+  .bk-stat-card__icon,
   .mgr-stat-card__icon i {
     font-size: 24px;
   }
@@ -9711,3 +9711,9 @@ p,
 /* Fix overlap between is-invalid icon and feather icons in auth forms */
 .group-img .form-control.is-invalid { background-position: right 45px center !important; }
 .pass-group .form-control.is-invalid { background-position: right 45px center !important; }
+
+/* Sticky save bar slide-up animation */
+@keyframes slideUpBar {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}

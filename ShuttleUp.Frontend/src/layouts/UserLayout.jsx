@@ -5,11 +5,11 @@ export default function UserLayout() {
   return (
     <div className="user-profile-shell main-wrapper font-['Be_Vietnam_Pro'] bg-slate-50 min-h-screen content-below-header">
       {/* Breadcrumb */}
-      <section className="breadcrumb breadcrumb-list mb-0">
+      <section className="breadcrumb breadcrumb-list mb-0" style={{ padding: '40px 0', overflow: 'hidden', position: 'relative' }}>
         <span className="primary-right-round"></span>
-        <div className="container-fluid user-profile-container-fluid">
-          <h1 className="text-white">Trang Cá Nhân</h1>
-          <ul>
+        <div className="container">
+          <h1 className="text-white h2 mb-1">Trang Cá Nhân</h1>
+          <ul className="mb-0">
             <li><Link to="/">Trang chủ</Link></li>
             <li>Tài khoản của tôi</li>
           </ul>

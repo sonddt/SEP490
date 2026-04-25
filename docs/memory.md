@@ -566,3 +566,23 @@ Kết bạn & quan hệ xã hội (Player):
    - **Auth Back Button**: Thêm nút "Quay lại trang chủ" vào Login/Register.
    - **Contact Updates**: Cập nhật SĐT **0394127869**, Email **shuttleup.badminton@gmail.com** và địa chỉ **Hà Nội** (Bao gồm Google Maps).
    - **Terms of Service**: Tinh chỉnh nội dung pháp lý theo tính năng lõi của hệ thống.
+
+---
+
+## 25 tháng 4, 2026 (Tối ưu giao diện Player & Cải tiến Profile Edit)
+
+1.  **Đại tu "Đặt sân của tôi" (UserBookings.jsx)**:
+    *   **Action Buttons**: Chuyển đổi toàn bộ nút thao tác (Xem chi tiết, Huỷ, Thanh toán lại, Nhắc duyệt, Khiếu nại) sang dạng icon-only hiện đại. Kích thước chuẩn 34x34px, bo góc 8px (squircle), sử dụng `btn-outline` với viền 1.5px sắc nét.
+    *   **Payment Proof Lightbox**: Thay thế việc mở ảnh chuyển khoản ở tab mới bằng một Modal Overlay (Lightbox) chuyên nghiệp ngay trên trang.
+2.  **Đồng bộ Layout & Breadcrumb (UserLayout.jsx)**:
+    *   **Breadcrumb Fix**: Đồng bộ padding (40px) và position của dải breadcrumb "Trang Cá Nhân" với các trang khác trong hệ thống, khắc phục việc tiêu đề bị dính sát vào Header.
+    *   **Container alignment**: Chuyển breadcrumb sang dùng `container` để canh lề chữ thẳng hàng với trang Tìm sân, trong khi giữ `container-fluid` cho phần nội dung chính bên dưới để đảm bảo không gian Sidebar.
+3.  **Cải tiến trang Chỉnh sửa hồ sơ (UserProfileEdit.jsx)**:
+    *   **Tái cấu trúc**: Di chuyển khối "Kỹ năng & Mục tiêu" (Cá nhân hoá) sang cột trái, ngay dưới ảnh đại diện.
+    *   **Gỡ bỏ sticky avatar**: Bỏ thuộc tính `sticky` trên card ảnh đại diện để giảm độ sâu khi cuộn cho người dùng.
+    *   **Floating Save Bar**: Triển khai thanh "Lưu thay đổi" dính ở đáy màn hình (Sticky Bottom Bar) bằng `IntersectionObserver`. Thanh này chỉ xuất hiện khi nút lưu gốc bị khuất và được giới hạn độ rộng (`ref` đo theo `contentCol`) để chỉ phủ lên vùng nội dung bên phải, không đè lên Sidebar.
+4.  **Backend & Thông báo**:
+    *   **BookingsController**: Cập nhật LINQ projection trong `GetMyBookings` để lấy `PaymentProofUrl`, hỗ trợ tính năng xem lại biên lai cho Player.
+    *   **UserNotifications.jsx**: Sửa lỗi hiển thị nội dung thông báo bị trống bằng cách map trường `n.body` (đồng bộ hoàn toàn với logic hiển thị ở Header Dropdown).
+5.  **CSS Support (index.css)**:
+    *   Bổ sung Keyframe animation `slideUpBar` cho các thanh công cụ sticky ở đáy màn hình.

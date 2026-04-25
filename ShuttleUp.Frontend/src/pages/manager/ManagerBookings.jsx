@@ -166,6 +166,7 @@ export default function ManagerBookings() {
   const [detailModal, setDetailModal] = useState(null);
   const [rejectModal, setRejectModal] = useState(null);
   const [toastMsg, setToastMsg]   = useState(null);
+  const [processingId, setProcessingId] = useState(null);
 
   const fetchBookings = useCallback(async (showTableLoading = true) => {
     if (showTableLoading) setLoading(true);
@@ -264,6 +265,7 @@ export default function ManagerBookings() {
   const showToast = (msg, type = 'success') => { setToastMsg({ msg, type }); setTimeout(() => setToastMsg(null), 3000); };
   const handleAccept = useCallback(async (bookingId) => {
     try {
+      setProcessingId(bookingId);
       await patchManagerBookingStatus(bookingId, { status: 'CONFIRMED' });
       await fetchBookings(false);
       showToast('Đã chấp nhận yêu cầu!');
@@ -271,10 +273,13 @@ export default function ManagerBookings() {
       showToast('Duyệt đơn thất bại. Vui lòng thử lại.', 'warning');
       await fetchBookings(false);
       throw new Error('accept failed');
+    } finally {
+      setProcessingId(null);
     }
   }, [fetchBookings]);
   const handleRejectConfirm = useCallback(async (bookingId, reason) => {
     try {
+      setProcessingId(bookingId);
       await patchManagerBookingStatus(bookingId, { status: 'CANCELLED', reason });
       setRejectModal(null);
       await fetchBookings(false);
@@ -283,16 +288,21 @@ export default function ManagerBookings() {
       showToast('Từ chối thất bại. Vui lòng thử lại.', 'warning');
       await fetchBookings(false);
       throw new Error('reject failed');
+    } finally {
+      setProcessingId(null);
     }
   }, [fetchBookings]);
   const handleCancel = useCallback(async (bookingId) => {
     try {
+      setProcessingId(bookingId);
       await patchManagerBookingStatus(bookingId, { status: 'CANCELLED' });
       await fetchBookings(false);
       showToast('Đã huỷ lịch.', 'info');
     } catch {
       showToast('Huỷ lịch thất bại. Vui lòng thử lại.', 'warning');
       await fetchBookings(false);
+    } finally {
+      setProcessingId(null);
     }
   }, [fetchBookings]);
 
@@ -525,27 +535,27 @@ export default function ManagerBookings() {
                       {/* Actions */}
                       <td>
                         <div className="d-flex gap-2 flex-wrap">
-                          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setDetailModal(b)}>
-                            <i className="feather-eye" /> Chi tiết
+                          <button type="button" title="Chi tiết" className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center justify-content-center" style={{ width: 32, height: 32, padding: 0 }} onClick={() => setDetailModal(b)}>
+                            <i className="feather-eye" />
                           </button>
                           {b.status === 'PENDING' && (
                             <>
-                              <button type="button" className="btn btn-sm btn-outline-success" onClick={() => handleAccept(b.id)}>
-                                <i className="feather-check" /> Duyệt
+                              <button type="button" title="Duyệt" className="btn btn-sm btn-outline-success d-inline-flex align-items-center justify-content-center" style={{ width: 32, height: 32, padding: 0 }} disabled={processingId === b.id} onClick={() => handleAccept(b.id)}>
+                                {processingId === b.id ? <div className="spinner-border spinner-border-sm" style={{ width: '1rem', height: '1rem' }} role="status" /> : <i className="feather-check" />}
                               </button>
-                              <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => setRejectModal(b)}>
-                                <i className="feather-x" /> Từ chối
+                              <button type="button" title="Từ chối" className="btn btn-sm btn-outline-danger d-inline-flex align-items-center justify-content-center" style={{ width: 32, height: 32, padding: 0 }} disabled={processingId === b.id} onClick={() => setRejectModal(b)}>
+                                <i className="feather-x" />
                               </button>
                             </>
                           )}
                           {b.status === 'UPCOMING' && (
-                            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => handleCancel(b.bookingId)}>
-                              <i className="feather-slash" /> Huỷ lịch
+                            <button type="button" title="Huỷ lịch" className="btn btn-sm btn-outline-danger d-inline-flex align-items-center justify-content-center" style={{ width: 32, height: 32, padding: 0 }} disabled={processingId === b.bookingId} onClick={() => handleCancel(b.bookingId)}>
+                              {processingId === b.bookingId ? <div className="spinner-border spinner-border-sm" style={{ width: '1rem', height: '1rem' }} role="status" /> : <i className="feather-slash" />}
                             </button>
                           )}
                           {b.rawStatus === 'PENDING_REFUND' && (
-                            <Link to="/manager/refunds" className="btn btn-sm btn-outline-warning">
-                              <i className="feather-dollar-sign" /> Xử lý hoàn tiền
+                            <Link to="/manager/refunds" title="Xử lý hoàn tiền" className="btn btn-sm btn-outline-warning d-inline-flex align-items-center justify-content-center" style={{ width: 32, height: 32, padding: 0 }}>
+                              <i className="feather-dollar-sign" />
                             </Link>
                           )}
                         </div>

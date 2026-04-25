@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import VietnamAddressFields from '../../components/user/VietnamAddressFields';
 import ShuttleDateField from '../../components/ui/ShuttleDateField';
@@ -51,12 +51,15 @@ function formatApiError(e, fallback) {
 
 export default function UserProfileEdit() {
   const fileInputRef = useRef(null);
+  const saveBarRef = useRef(null);
+  const contentColRef = useRef(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [avatarFile, setAvatarFile] = useState(null);
   const [cropperOpen, setCropperOpen] = useState(false);
   const [tempImageSrc, setTempImageSrc] = useState(null);
   const { user: authUser, updateUser } = useAuth();
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState(null);
+  const [showStickyBar, setShowStickyBar] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -148,6 +151,30 @@ export default function UserProfileEdit() {
     if (tempImageSrc) URL.revokeObjectURL(tempImageSrc);
     setTempImageSrc(null);
   };
+
+  // Observe save bar visibility for sticky bottom bar
+  useEffect(() => {
+    if (!saveBarRef.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowStickyBar(!entry.isIntersecting),
+      { threshold: 0.1 }
+    );
+    observer.observe(saveBarRef.current);
+    return () => observer.disconnect();
+  }, [loading]);
+
+  // Compute sticky bar bounds from the right content column
+  const [barBounds, setBarBounds] = useState(null);
+  useEffect(() => {
+    if (!showStickyBar || !contentColRef.current) { setBarBounds(null); return; }
+    const measure = () => {
+      const rect = contentColRef.current.getBoundingClientRect();
+      setBarBounds({ left: rect.left, width: rect.width });
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [showStickyBar]);
 
   const handleReset = () => {
     if (initialForm) {
@@ -380,9 +407,9 @@ export default function UserProfileEdit() {
       </div>
 
       <div className="row g-4">
-        {/* Avatar Sidebar */}
+        {/* Avatar Sidebar + Kỹ năng & Mục tiêu */}
         <div className="col-lg-4 col-md-5">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6 sticky top-28">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6">
             <h5 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
               <span className="w-1 h-5 bg-emerald-500 rounded-full"></span>
               Ảnh đại diện
@@ -421,6 +448,61 @@ export default function UserProfileEdit() {
                 Chấp nhận định dạng JPG, PNG. Dung lượng tối đa 2MB.
               </p>
             </div>
+          </div>
+
+          {/* Kỹ năng & Mục tiêu — moved here under avatar */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6 mt-4">
+            <h5 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <span className="w-1 h-5 bg-emerald-500 rounded-full"></span>
+              Kỹ năng &amp; Mục tiêu
+            </h5>
+            <div className="space-y-3">
+              <div>
+                <label className="form-label user-profile-form-label">Trình độ</label>
+                <select
+                  className="form-control rounded-xl border-slate-200 py-2.5"
+                  name="skillLevel"
+                  value={form.skillLevel}
+                  onChange={handleChange}
+                >
+                  <option value="">-- Chọn trình độ --</option>
+                  <option value="Yếu">Yếu / Mới chơi</option>
+                  <option value="Trung Bình">Trung Bình</option>
+                  <option value="Khá">Khá</option>
+                  <option value="Bán Chuyên">Bán Chuyên</option>
+                  <option value="Chuyên Nghiệp">Chuyên Nghiệp</option>
+                </select>
+              </div>
+              <div>
+                <label className="form-label user-profile-form-label">Mục tiêu</label>
+                <select
+                  className="form-control rounded-xl border-slate-200 py-2.5"
+                  name="playPurpose"
+                  value={form.playPurpose}
+                  onChange={handleChange}
+                >
+                  <option value="">-- Chọn mục tiêu --</option>
+                  <option value="Giải trí">Giải trí, vận động</option>
+                  <option value="Tập luyện">Tập luyện nghiêm túc</option>
+                  <option value="Thi đấu">Đánh giải, cọ xát</option>
+                </select>
+              </div>
+              <div>
+                <label className="form-label user-profile-form-label">Tần suất</label>
+                <select
+                  className="form-control rounded-xl border-slate-200 py-2.5"
+                  name="playFrequency"
+                  value={form.playFrequency}
+                  onChange={handleChange}
+                >
+                  <option value="">-- Tần suất --</option>
+                  <option value="Thỉnh thoảng">Thỉnh thoảng</option>
+                  <option value="1-2 lần/tuần">1-2 lần/tuần</option>
+                  <option value="Hàng ngày">Hàng ngày</option>
+                </select>
+              </div>
+            </div>
+
             <div className="mt-4 flex flex-col gap-2 pt-4 border-t border-slate-50">
               <button onClick={handleReset} type="button" className="w-full bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl font-bold py-2.5 transition-colors border-0">
                  Đặt lại ban đầu
@@ -430,7 +512,7 @@ export default function UserProfileEdit() {
         </div>
 
         {/* Form Content */}
-        <div className="col-lg-8 col-md-7">
+        <div className="col-lg-8 col-md-7" ref={contentColRef}>
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6">
             <form onSubmit={handleSubmit} className="user-profile-form space-y-6">
 
@@ -544,61 +626,8 @@ export default function UserProfileEdit() {
                 />
               </div>
 
-              {/* Personalization Section */}
-              <div className="space-y-4 pt-6 mt-6 border-t border-slate-50">
-                <h5 className="user-profile-form-section-title mb-4 flex items-center gap-2">
-                  <span className="w-1 h-5 rounded-full bg-emerald-500" aria-hidden />
-                  Kỹ năng & Mục tiêu
-                </h5>
-                <div className="row g-3">
-                  <div className="col-lg-4">
-                    <label className="form-label user-profile-form-label">Trình độ</label>
-                    <select
-                      className="form-control rounded-xl border-slate-200 py-2.5"
-                      name="skillLevel"
-                      value={form.skillLevel}
-                      onChange={handleChange}
-                    >
-                      <option value="">-- Chọn trình độ --</option>
-                      <option value="Yếu">Yếu / Mới chơi</option>
-                      <option value="Trung Bình">Trung Bình</option>
-                      <option value="Khá">Khá</option>
-                      <option value="Bán Chuyên">Bán Chuyên</option>
-                      <option value="Chuyên Nghiệp">Chuyên Nghiệp</option>
-                    </select>
-                  </div>
-                  <div className="col-lg-4">
-                    <label className="form-label user-profile-form-label">Mục tiêu</label>
-                    <select
-                      className="form-control rounded-xl border-slate-200 py-2.5"
-                      name="playPurpose"
-                      value={form.playPurpose}
-                      onChange={handleChange}
-                    >
-                      <option value="">-- Chọn mục tiêu --</option>
-                      <option value="Giải trí">Giải trí, vận động</option>
-                      <option value="Tập luyện">Tập luyện nghiêm túc</option>
-                      <option value="Thi đấu">Đánh giải, cọ xát</option>
-                    </select>
-                  </div>
-                  <div className="col-lg-4">
-                    <label className="form-label user-profile-form-label">Tần suất</label>
-                    <select
-                      className="form-control rounded-xl border-slate-200 py-2.5"
-                      name="playFrequency"
-                      value={form.playFrequency}
-                      onChange={handleChange}
-                    >
-                      <option value="">-- Tần suất --</option>
-                      <option value="Thỉnh thoảng">Thỉnh thoảng</option>
-                      <option value="1-2 lần/tuần">1-2 lần/tuần</option>
-                      <option value="Hàng ngày">Hàng ngày</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-slate-50">
+              {/* Inline save button (observed for sticky bar) */}
+              <div ref={saveBarRef} className="flex justify-end gap-3 pt-6 mt-6 border-t border-slate-50">
                 <button
                   type="submit"
                   disabled={saving}
@@ -628,6 +657,48 @@ export default function UserProfileEdit() {
         onCancel={handleCropperCancel}
         onSave={handleCropperSave}
       />
+
+      {/* Sticky bottom save bar — scoped to right content column */}
+      {showStickyBar && barBounds && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 0,
+            left: barBounds.left,
+            width: barBounds.width,
+            zIndex: 1040,
+            background: '#fff',
+            borderTop: '1px solid #e2e8f0',
+            boxShadow: '0 -4px 20px rgba(0,0,0,0.08)',
+            borderRadius: '16px 16px 0 0',
+            padding: '12px 24px',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+            gap: 12,
+            animation: 'slideUpBar 0.25s ease-out',
+          }}
+        >
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => saveBarRef.current?.closest('form')?.requestSubmit()}
+            className="bg-emerald-600 text-white hover:bg-emerald-700 min-w-[160px] px-6 py-2.5 rounded-xl font-bold shadow-md shadow-emerald-500/20 disabled:opacity-50 transition-all border-0 flex justify-center items-center gap-2"
+          >
+            {saving ? (
+              <>
+                <i className="fa-solid fa-spinner fa-spin" aria-hidden />
+                <span>Đang lưu...</span>
+              </>
+            ) : (
+              <>
+                <i className="fa-solid fa-floppy-disk" aria-hidden />
+                <span>Lưu thay đổi</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

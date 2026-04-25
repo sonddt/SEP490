@@ -12,8 +12,8 @@ const statusMap = {
 };
 
 const requestTypeMap = {
-  DANG_KY: 'Đăng ký',
-  CAP_NHAT: 'Cập nhật'
+  DANG_KY: { label: 'Đăng ký', cls: 'bg-primary' },
+  CAP_NHAT: { label: 'Cập nhật', cls: 'bg-info text-dark' }
 };
 
 export default function AdminManagerRequests() {
@@ -106,6 +106,7 @@ export default function AdminManagerRequests() {
                   />
                   <select
                     className="form-select d-inline-block w-auto"
+                    style={{ minWidth: '165px', paddingRight: '2.5rem' }}
                     value={filterStatus}
                     onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
                   >
@@ -134,7 +135,6 @@ export default function AdminManagerRequests() {
                       <th>Họ tên</th>
                       <th>Email</th>
                       <th>Loại đơn</th>
-                      <th>Mã số thuế</th>
                       <th>Ngày gửi</th>
                       <th>Trạng thái</th>
                       <th>Hành động</th>
@@ -171,8 +171,15 @@ export default function AdminManagerRequests() {
                             <td title={r.ownerEmail} className="text-muted" style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {r.ownerEmail || 'N/A'}
                             </td>
-                            <td>{requestTypeMap[r.requestType] || r.requestType || 'N/A'}</td>
-                            <td>{r.taxCode || 'N/A'}</td>
+                            <td>
+                              {requestTypeMap[r.requestType] ? (
+                                <span className={`badge ${requestTypeMap[r.requestType].cls}`}>
+                                  {requestTypeMap[r.requestType].label}
+                                </span>
+                              ) : (
+                                r.requestType || 'N/A'
+                              )}
+                            </td>
                             <td>{dateStr}</td>
                             <td>
                               <span className={`badge ${statusObj.cls}`}>
@@ -181,22 +188,26 @@ export default function AdminManagerRequests() {
                             </td>
                             <td>
                               <div className="d-flex gap-1">
-                                <button className="btn btn-sm btn-outline-secondary" onClick={() => setSelected(r)}>
-                                  <i className="feather-eye"></i> Chi tiết
+                                <button title="Chi tiết" className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center justify-content-center" style={{ width: 32, height: 32, padding: 0 }} onClick={() => setSelected(r)}>
+                                  <i className="feather-eye"></i>
                                 </button>
                                 {r.status === 'PENDING' && (
                                   <>
                                     <button
-                                      className="btn btn-sm btn-outline-success"
+                                      title="Duyệt"
+                                      className="btn btn-sm btn-outline-success d-inline-flex align-items-center justify-content-center"
+                                      style={{ width: 32, height: 32, padding: 0 }}
                                       onClick={() => { setConfirmAction({ request: r, action: 'approve' }); setActionNote('Hồ sơ đủ điều kiện duyệt.'); }}
                                     >
-                                      <i className="feather-check"></i> Duyệt
+                                      <i className="feather-check"></i>
                                     </button>
                                     <button
-                                      className="btn btn-sm btn-outline-danger"
+                                      title="Từ chối"
+                                      className="btn btn-sm btn-outline-danger d-inline-flex align-items-center justify-content-center"
+                                      style={{ width: 32, height: 32, padding: 0 }}
                                       onClick={() => { setConfirmAction({ request: r, action: 'reject' }); setActionNote(''); }}
                                     >
-                                      <i className="feather-x"></i> Từ chối
+                                      <i className="feather-x"></i>
                                     </button>
                                   </>
                                 )}

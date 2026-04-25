@@ -965,6 +965,11 @@ public class BookingsController : ControllerBase
                     .OrderByDescending(p => p.CreatedAt)
                     .Select(p => p.Method)
                     .FirstOrDefault(),
+                PaymentProofUrl = b.Payments
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Where(p => p.GatewayReference != null && p.GatewayReference.StartsWith("https"))
+                    .Select(p => p.GatewayReference)
+                    .FirstOrDefault(),
                 HasValidPaymentProof = b.Payments.Any(p =>
                     p.GatewayReference != null
                     && p.GatewayReference.StartsWith("https")),
@@ -1022,6 +1027,7 @@ public class BookingsController : ControllerBase
                 b.VenueAddress,
                 b.VenueId,
                 lastPaymentMethod = b.LastPaymentMethod,
+                paymentProofUrl = b.PaymentProofUrl,
                 hasValidPaymentProof = b.HasValidPaymentProof,
                 needsPaymentRetry = b.Status == "PENDING" && !b.HasValidPaymentProof,
                 b.Items,

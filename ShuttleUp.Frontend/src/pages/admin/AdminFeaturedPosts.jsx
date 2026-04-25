@@ -746,13 +746,12 @@ export default function AdminFeaturedPosts() {
       aria-modal="true"
     >
       <div className="modal-dialog modal-lg modal-dialog-scrollable" style={{ marginTop: '2rem' }}>
-        <div className="modal-content" style={{ borderRadius: 'var(--adm-radius)', boxShadow: '0 24px 48px rgba(0,0,0,.18)', border: '1px solid var(--adm-border)' }}>
+        <form onSubmit={submit} className="modal-content" style={{ borderRadius: 'var(--adm-radius)', boxShadow: '0 24px 48px rgba(0,0,0,.18)', border: '1px solid var(--adm-border)' }}>
           <div className="modal-header border-0 pb-0">
             <h5 className="modal-title fw-bold">{editingId ? 'Sửa bài Nổi bật' : 'Tạo bài Nổi bật'}</h5>
             <button type="button" className="btn-close" onClick={() => setModalOpen(false)} aria-label="Đóng" />
           </div>
-          <form onSubmit={submit}>
-            <div className="modal-body pt-2">
+          <div className="modal-body pt-2">
               {formError && <div className="alert alert-danger py-2 small mb-3">{formError}</div>}
               <div className="mb-3">
                 <label className="form-label fw-semibold small">Tiêu đề *</label>
@@ -832,8 +831,7 @@ export default function AdminFeaturedPosts() {
                 }}
               >{saving ? 'Đang lưu…' : 'Lưu'}</button>
             </div>
-          </form>
-        </div>
+        </form>
       </div>
     </div>,
     document.body,

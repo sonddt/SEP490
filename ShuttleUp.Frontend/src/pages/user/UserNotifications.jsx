@@ -198,7 +198,7 @@ export default function UserNotifications() {
                               </span>
                             </div>
                             <p className={`text-[13px] m-0 line-clamp-2 leading-relaxed ${!n.isRead ? 'text-slate-700' : 'text-slate-500'}`}>
-                              {n.message}
+                              {n.body || n.message}
                             </p>
                           </div>
 
