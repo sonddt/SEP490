@@ -23,6 +23,9 @@ export default function ManagerCoupons() {
   const [editingCoupon, setEditingCoupon] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const [couponToDelete, setCouponToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
   const [form, setForm] = useState({
     code: '',
     discountType: 'PERCENT',
@@ -209,15 +212,23 @@ export default function ManagerCoupons() {
     }
   };
 
-  const handleDelete = async (cpId) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa mã khuyến mãi này không?')) return;
+  const confirmDelete = (cp) => {
+    setCouponToDelete(cp);
+  };
+
+  const executeDelete = async () => {
+    if (!couponToDelete) return;
     try {
-      await deleteVenueCoupon(venueId, cpId);
+      setDeleting(true);
+      await deleteVenueCoupon(venueId, couponToDelete.id || couponToDelete.Id);
       notifySuccess('Đã xóa thành công');
+      setCouponToDelete(null);
       loadData();
     } catch (err) {
       console.error(err);
       notifyError('Không thể xóa mã khuyến mãi do đã có dữ liệu liên quan. Vui lòng chuyển trạng thái sang Không hoạt động thay vì xóa.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -478,7 +489,7 @@ export default function ManagerCoupons() {
                             <i className="feather-edit-3" style={{ fontSize: 14 }} />
                           </button>
                           <button
-                            onClick={() => handleDelete(id)}
+                            onClick={() => confirmDelete(cp)}
                             title="Xóa"
                             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#ef4444', cursor: 'pointer', transition: 'all .15s' }}
                             onMouseEnter={e => { e.currentTarget.style.background = '#fff1f2'; e.currentTarget.style.borderColor = '#fecaca'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(239,68,68,.25)'; }}
@@ -681,6 +692,51 @@ export default function ManagerCoupons() {
             </div>
           </div>
         </div>,
+          document.body
+        )}
+
+      {/* Delete Confirmation Modal */}
+      {couponToDelete &&
+        createPortal(
+          <div
+            className="modal fade show d-block mgr-coupon-modal"
+            style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}
+            role="dialog"
+          >
+            <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 400 }}>
+              <div className="modal-content border-0 shadow-lg" style={{ borderRadius: 24, overflow: 'hidden' }}>
+                <div className="p-4 text-center">
+                  <div className="mx-auto mb-3 d-flex align-items-center justify-content-center" style={{ width: 64, height: 64, borderRadius: '50%', background: '#fff1f2' }}>
+                    <i className="feather-trash-2" style={{ fontSize: 28, color: '#ef4444' }} />
+                  </div>
+                  <h5 className="fw-bold mb-2" style={{ color: '#1e293b' }}>Xóa mã khuyến mãi?</h5>
+                  <p className="mb-4" style={{ fontSize: 14, color: '#64748b', lineHeight: 1.5 }}>
+                    Bạn có chắc chắn muốn xóa mã <strong style={{ color: '#1e293b' }}>{couponToDelete.code || couponToDelete.Code}</strong> không? Hành động này không thể hoàn tác.
+                  </p>
+                  <div className="d-flex gap-2">
+                    <button
+                      type="button"
+                      className="btn w-50 fw-semibold"
+                      style={{ background: '#f1f5f9', color: '#475569', borderRadius: 12, padding: '12px 0', fontSize: 14 }}
+                      onClick={() => setCouponToDelete(null)}
+                      disabled={deleting}
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="button"
+                      className="btn w-50 fw-semibold"
+                      style={{ background: '#ef4444', color: '#fff', borderRadius: 12, padding: '12px 0', fontSize: 14 }}
+                      onClick={executeDelete}
+                      disabled={deleting}
+                    >
+                      {deleting ? 'Đang xóa...' : 'Xóa ngay'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>,
           document.body
         )}
     </div>
