@@ -165,6 +165,8 @@ public class AdminController : ControllerBase
                 u.FullName,
                 u.Email,
                 u.PhoneNumber,
+                u.Gender,
+                u.DateOfBirth,
                 u.IsActive,
                 u.BlockedAt,
                 u.BlockedReason,
