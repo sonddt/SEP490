@@ -128,6 +128,7 @@ public class MatchingController : ControllerBase
     //  GET /api/matching/posts — Danh sách bài đăng OPEN
     // ═══════════════════════════════════════════════════
     [HttpGet("posts")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetOpenPosts(
         [FromQuery] string? skillLevel,
         [FromQuery] string? province,
@@ -137,8 +138,7 @@ public class MatchingController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 12)
     {
-        if (!TryGetCurrentUserId(out var me))
-            return Unauthorized();
+        TryGetCurrentUserId(out var me);
 
         await _activity.ApplyExpiredOpenAndFullToInactiveAsync(HttpContext.RequestAborted);
 
@@ -330,10 +330,10 @@ public class MatchingController : ControllerBase
     //  GET /api/matching/posts/{id} — Chi tiết bài đăng
     // ═══════════════════════════════════════════════════
     [HttpGet("posts/{id:guid}")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetPostDetail(Guid id)
     {
-        if (!TryGetCurrentUserId(out var me))
-            return Unauthorized();
+        TryGetCurrentUserId(out var me);
 
         await _activity.EnsurePostInactiveIfElapsedAsync(id, HttpContext.RequestAborted);
 
