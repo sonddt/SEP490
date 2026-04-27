@@ -7671,6 +7671,30 @@ p,
   box-shadow: 0 1px 3px rgb(225 29 72 / 0.14);
 }
 
+.user-profile-shell .ub-tab-count--slate {
+  background: rgb(241 245 249 / 0.9);
+  color: #334155;
+}
+
+.user-profile-shell .ub-tab--idle-slate {
+  color: #475569;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid rgb(203 213 225 / 0.85) !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+}
+
+.user-profile-shell .ub-tab--idle-slate:hover {
+  border-color: rgb(148 163 184 / 0.95) !important;
+  background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%);
+  box-shadow: 0 2px 5px rgb(15 23 42 / 0.06);
+}
+
+.user-profile-shell .ub-tab--active-slate {
+  color: #fff;
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  box-shadow: 0 1px 3px rgb(71 85 105 / 0.14);
+}
+
 .user-profile-shell .user-bookings-select {
   font-size: clamp(0.75rem, 0.32vw + 0.68rem, 0.9375rem);
   padding-top: clamp(0.45rem, 0.4vw + 0.32rem, 0.65rem);

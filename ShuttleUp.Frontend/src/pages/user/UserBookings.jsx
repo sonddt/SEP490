@@ -105,6 +105,7 @@ function mapApiRowToBooking(api) {
 }
 
 const TABS = [
+  { key: 'ALL', label: 'Tất cả', color: 'secondary' },
   { key: 'PENDING', label: 'Chờ duyệt', color: 'warning' },
   { key: 'UPCOMING', label: 'Sắp tới', color: 'primary' },
   { key: 'COMPLETED', label: 'Hoàn thành', color: 'success' },
@@ -114,6 +115,12 @@ const TABS = [
 
 /** Màu + trạng thái hover/active cho từng tab (ảnh 2) */
 const BOOKING_TAB_STYLES = {
+  ALL: {
+    active: 'ub-tab--active-slate',
+    inactive: 'ub-tab--idle-slate',
+    countActive: 'ub-tab-count--on',
+    countIdle: 'ub-tab-count--slate',
+  },
   PENDING: {
     active: 'ub-tab--active-amber',
     inactive: 'ub-tab--idle-amber',
@@ -177,7 +184,7 @@ const BANKS = [
 export default function UserBookings() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState('PENDING');
+  const [activeTab, setActiveTab] = useState('ALL');
   const [timeFilter, setTimeFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [detailBooking, setDetailBooking] = useState(null);
@@ -250,7 +257,7 @@ export default function UserBookings() {
   }, [loadBookings]);
 
   const filtered = bookings
-    .filter(b => b.status === activeTab)
+    .filter(b => activeTab === 'ALL' || b.status === activeTab)
     .filter(b => matchesTimeFilter(b.filterDate, timeFilter))
     .sort((a, b) => {
       if (sortBy === 'newest') return b.sortTime - a.sortTime;
@@ -454,7 +461,7 @@ export default function UserBookings() {
                     >
                       <span className="ub-tab-label">{t.label}</span>
                       <span className={`user-bookings-tab-count ${on ? st.countActive : st.countIdle}`}>
-                        {bookings.filter(b => b.status === t.key).length}
+                        {t.key === 'ALL' ? bookings.length : bookings.filter(b => b.status === t.key).length}
                       </span>
                     </button>
                   );
