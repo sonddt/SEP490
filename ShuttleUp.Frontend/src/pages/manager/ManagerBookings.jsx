@@ -10,6 +10,7 @@ import { normalizeSearchText } from '../../utils/searchNormalize';
 const PAGE_SIZE = 8;
 
 const TABS = [
+  { key: 'ALL', label: 'Tất cả', icon: 'feather-list' },
   { key: 'PENDING', label: 'Chờ duyệt', icon: 'feather-clock' },
   { key: 'UPCOMING', label: 'Sắp tới', icon: 'feather-calendar' },
   { key: 'COMPLETED', label: 'Hoàn thành', icon: 'feather-check-circle' },
@@ -159,7 +160,7 @@ export default function ManagerBookings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('PENDING');
+  const [activeTab, setActiveTab] = useState('ALL');
   const [search, setSearch] = useState('');
   const [timeFilter, setTimeFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
@@ -228,10 +229,14 @@ export default function ManagerBookings() {
 
   useEffect(() => { setPage(1); }, [activeTab, search, timeFilter, sortBy]);
 
-  const counts = useMemo(() => bookings.reduce((a, b) => { a[b.status] = (a[b.status] || 0) + 1; return a; }, {}), [bookings]);
+  const counts = useMemo(() => {
+    const c = bookings.reduce((a, b) => { a[b.status] = (a[b.status] || 0) + 1; return a; }, {});
+    c['ALL'] = bookings.length;
+    return c;
+  }, [bookings]);
 
   const processed = useMemo(() => {
-    let list = bookings.filter(b => b.status === activeTab);
+    let list = bookings.filter(b => activeTab === 'ALL' || b.status === activeTab);
     if (timeFilter === 'today') list = list.filter(b => isToday(new Date(b.date)));
     if (timeFilter === 'week') list = list.filter(b => isThisWeek(new Date(b.date)));
     if (timeFilter === 'month') list = list.filter(b => isThisMonth(new Date(b.date)));
