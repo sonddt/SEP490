@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { notifySuccess, notifyError } from '../../hooks/useNotification';
 import axiosClient from '../../api/axiosClient';
+import ShuttleDateField, { ShuttleTimePicker, toYMD } from '../../components/ui/ShuttleDateField';
 import { normalizedIncludesAny } from '../../utils/searchNormalize';
 
 const EMPTY_FORM = {
@@ -590,11 +592,16 @@ export default function AdminFeaturedPosts() {
   const [venues, setVenues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+
+  const [imagePreview, setImagePreview] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -667,9 +674,12 @@ export default function AdminFeaturedPosts() {
   const handleFilterChange = (e) => { setFilterStatus(e.target.value); setPage(1); };
   const handleSortChange = (v) => { setSort(v); setPage(1); };
 
+  const setField = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
   const openCreate = () => {
     setEditingId(null);
     setForm(EMPTY_FORM);
+    setImagePreview('');
     setFormError('');
     setModalOpen(true);
   };
@@ -687,16 +697,36 @@ export default function AdminFeaturedPosts() {
       displayUntil: isoToLocal(row.displayUntil),
       venueId: row.venueId || '',
     });
+    setImagePreview(row.coverImageUrl || '');
     setFormError('');
     setModalOpen(true);
   };
 
+  const handleImagePick = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setFormError('Oops… Vui lòng chọn file ảnh (jpg, png, webp…).'); return; }
+    if (file.size > 5 * 1024 * 1024) { setFormError('Oops… Ảnh không được vượt quá 5 MB.'); return; }
+    setFormError('');
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await axiosClient.post('/admin/featured-posts/upload-image', fd);
+      const url = res?.url || res?.data?.url || res;
+      setField('coverImageUrl', url);
+      setImagePreview(url);
+    } catch (err) {
+      setFormError(err.response?.data?.message || 'Upload ảnh thất bại. Thử lại nhé!');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.title.trim()) {
-      setFormError('Oops… Tiêu đề không được để trống.');
-      return;
-    }
+    if (!form.title.trim()) { setFormError('Oops… Tiêu đề không được để trống.'); return; }
     setFormError('');
     setSaving(true);
     const body = {
@@ -708,13 +738,15 @@ export default function AdminFeaturedPosts() {
       isPublished: form.isPublished,
       displayFrom: localToIso(form.displayFrom),
       displayUntil: localToIso(form.displayUntil),
-      venueId: form.venueId ? form.venueId : null,
+      venueId: form.venueId || null,
     };
     try {
       if (editingId) {
         await axiosClient.put(`/admin/featured-posts/${editingId}`, body);
+        notifySuccess('Đã cập nhật bài đăng!');
       } else {
         await axiosClient.post('/admin/featured-posts', body);
+        notifySuccess('Đã tạo bài đăng mới!');
       }
       setModalOpen(false);
       load();
@@ -729,9 +761,10 @@ export default function AdminFeaturedPosts() {
     if (!window.confirm('Xoá bài đăng này?')) return;
     try {
       await axiosClient.delete(`/admin/featured-posts/${id}`);
+      notifySuccess('Đã xoá bài đăng.');
       load();
     } catch (e) {
-      setError(e.response?.data?.message || e.message);
+      notifyError(e.response?.data?.message || e.message);
     }
   };
 
@@ -740,101 +773,275 @@ export default function AdminFeaturedPosts() {
 
   const modal = modalOpen && createPortal(
     <div
-      className="modal fade show d-block"
-      style={{ backgroundColor: 'rgba(15,23,42,0.5)', zIndex: 1200, backdropFilter: 'blur(4px)' }}
+      className="modal"
+      style={{
+        display: 'block',
+        position: 'fixed', inset: 0,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        zIndex: 1200,
+        overflowY: 'auto',
+        padding: '1.75rem 0.5rem',
+        height: '100%',
+      }}
       role="dialog"
       aria-modal="true"
+      aria-labelledby="adm-fp-modal-title"
+      onClick={e => { if (e.target === e.currentTarget) setModalOpen(false); }}
     >
-      <div className="modal-dialog modal-lg modal-dialog-scrollable" style={{ marginTop: '2rem' }}>
-        <form onSubmit={submit} className="modal-content" style={{ borderRadius: 'var(--adm-radius)', boxShadow: '0 24px 48px rgba(0,0,0,.18)', border: '1px solid var(--adm-border)' }}>
-          <div className="modal-header border-0 pb-0">
-            <h5 className="modal-title fw-bold">{editingId ? 'Sửa bài Nổi bật' : 'Tạo bài Nổi bật'}</h5>
+      <div className="modal-dialog modal-lg" style={{ margin: '0 auto', maxWidth: 800 }}>
+        <div className="modal-content rounded-4 border-0 shadow-lg">
+
+          {/* Header */}
+          <div className="modal-header border-bottom-0 pb-0 pt-4 px-4">
+            <div className="d-flex align-items-center gap-3">
+              <div className="d-flex align-items-center justify-content-center rounded-3"
+                style={{ width: 44, height: 44, background: 'rgba(99,102,241,.12)', flexShrink: 0 }}>
+                <i className="feather-star" style={{ fontSize: 20, color: 'var(--adm-accent)' }} />
+              </div>
+              <div>
+                <h4 id="adm-fp-modal-title" className="modal-title fw-bold mb-1"
+                  style={{ fontSize: 17, color: '#1e293b' }}>
+                  {editingId ? 'Sửa bài Nổi bật' : 'Tạo bài Nổi bật'}
+                </h4>
+                <p className="mb-0" style={{ fontSize: 13, color: '#64748b' }}>
+                  Bài sẽ hiển thị khi đã bật xuất bản và trong khung thời gian hợp lệ.
+                </p>
+              </div>
+            </div>
             <button type="button" className="btn-close" onClick={() => setModalOpen(false)} aria-label="Đóng" />
           </div>
-          <div className="modal-body pt-2">
-              {formError && <div className="alert alert-danger py-2 small mb-3">{formError}</div>}
-              <div className="mb-3">
-                <label className="form-label fw-semibold small">Tiêu đề *</label>
-                <input className="form-control" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} required />
-              </div>
-              <div className="mb-3">
-                <label className="form-label fw-semibold small">Mô tả ngắn</label>
-                <input className="form-control" value={form.excerpt} onChange={(e) => setForm((f) => ({ ...f, excerpt: e.target.value }))} />
-              </div>
-              <div className="mb-3">
-                <label className="form-label fw-semibold small">Nội dung</label>
-                <textarea className="form-control" rows={4} value={form.body} onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))} />
-              </div>
-              <div className="row g-3">
-                <div className="col-md-6">
-                  <label className="form-label fw-semibold small">URL ảnh bìa</label>
-                  <input className="form-control" value={form.coverImageUrl} onChange={(e) => setForm((f) => ({ ...f, coverImageUrl: e.target.value }))} placeholder="https://..." />
+
+          <form onSubmit={submit}>
+            <div className="modal-body p-4 p-md-5 pt-4">
+              {formError && (
+                <div className="alert alert-danger d-flex align-items-start gap-2 mb-4 rounded-3" role="alert">
+                  <i className="feather-alert-circle mt-1 flex-shrink-0" />
+                  <div><strong>Oops:</strong> {formError}</div>
+                  <button type="button" className="btn-close ms-auto" onClick={() => setFormError('')} />
                 </div>
-                <div className="col-md-6">
-                  <label className="form-label fw-semibold small">Link CTA (nếu có)</label>
-                  <input className="form-control" value={form.linkUrl} onChange={(e) => setForm((f) => ({ ...f, linkUrl: e.target.value }))} />
+              )}
+
+              {/* Nội dung chính */}
+              <div className="mb-4">
+                <h6 style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.04em', color: '#94a3b8', textTransform: 'uppercase', marginBottom: 14 }}>
+                  <i className="feather-edit-3 me-2" />Nội dung bài đăng
+                </h6>
+                <div className="row g-3">
+                  <div className="col-12">
+                    <label className="form-label fw-semibold" style={{ fontSize: 13, color: '#475569' }}>
+                      Tiêu đề <span className="text-danger">*</span>
+                    </label>
+                    <input className="form-control bg-light border-0" style={{ fontSize: 14 }}
+                      placeholder="VD: Ưu đãi đặc biệt tháng 4"
+                      value={form.title} onChange={e => setField('title', e.target.value)} required />
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label fw-semibold" style={{ fontSize: 13, color: '#475569' }}>Mô tả ngắn</label>
+                    <input className="form-control bg-light border-0" style={{ fontSize: 14 }}
+                      placeholder="Tóm tắt hiển thị dưới tiêu đề"
+                      value={form.excerpt} onChange={e => setField('excerpt', e.target.value)} />
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label fw-semibold" style={{ fontSize: 13, color: '#475569' }}>Nội dung chi tiết</label>
+                    <textarea className="form-control bg-light border-0" style={{ fontSize: 14, resize: 'vertical' }}
+                      rows={3} placeholder="Nội dung đầy đủ, hướng dẫn, điều kiện..."
+                      value={form.body} onChange={e => setField('body', e.target.value)} />
+                  </div>
                 </div>
               </div>
-              <div className="row g-3 mt-1">
-                <div className="col-md-6">
-                  <label className="form-label fw-semibold small">Hiển thị từ</label>
-                  <input type="datetime-local" className="form-control" value={form.displayFrom} onChange={(e) => setForm((f) => ({ ...f, displayFrom: e.target.value }))} />
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label fw-semibold small">Hiển thị đến</label>
-                  <input type="datetime-local" className="form-control" value={form.displayUntil} onChange={(e) => setForm((f) => ({ ...f, displayUntil: e.target.value }))} />
+
+              {/* Ảnh bìa */}
+              <div className="mb-4 border-top pt-4">
+                <h6 style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.04em', color: '#94a3b8', textTransform: 'uppercase', marginBottom: 14 }}>
+                  <i className="feather-image me-2" />Ảnh bìa
+                </h6>
+                <div className="d-flex align-items-start gap-3 flex-wrap">
+                  <div style={{
+                    width: 160, height: 96, borderRadius: 10, border: '2px dashed var(--adm-border)',
+                    background: '#f8fafc', overflow: 'hidden', flexShrink: 0, position: 'relative',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    {imagePreview ? (
+                      <>
+                        <img src={imagePreview} alt="Ảnh bìa" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <button type="button" onClick={() => { setImagePreview(''); setField('coverImageUrl', ''); }}
+                          style={{ position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.55)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, transition: 'background .15s ease, transform .2s ease' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(220,38,38,.85)'; e.currentTarget.style.transform = 'scale(1.08)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,.55)'; e.currentTarget.style.transform = 'none'; }}
+                          title="Xoá ảnh"><i className="feather-x" /></button>
+                      </>
+                    ) : (
+                      <i className="feather-image" style={{ fontSize: 28, color: 'var(--adm-border)' }} />
+                    )}
+                    {uploading && (
+                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div className="spinner-border spinner-border-sm" style={{ color: 'var(--adm-accent)' }} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-grow-1" style={{ minWidth: 180 }}>
+                    <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImagePick} />
+                    <button type="button" disabled={uploading} onClick={() => fileInputRef.current?.click()}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: '1.5px solid var(--adm-accent)', background: '#fff', color: 'var(--adm-accent)', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginBottom: 8, transition: 'background .15s ease, color .15s ease, box-shadow .2s ease, transform .2s ease' }}
+                      onMouseEnter={(e) => {
+                        if (uploading) return;
+                        e.currentTarget.style.background = 'var(--adm-accent)';
+                        e.currentTarget.style.color = '#fff';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 4px 14px rgba(99,102,241,.35)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '#fff';
+                        e.currentTarget.style.color = 'var(--adm-accent)';
+                        e.currentTarget.style.transform = 'none';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}>
+                      <i className="feather-upload" style={{ fontSize: 14 }} />
+                      {uploading ? 'Đang tải lên…' : 'Chọn ảnh từ máy'}
+                    </button>
+                    <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 8px' }}>JPG, PNG, WEBP — tối đa 5 MB. Tỷ lệ đề xuất 16:9.</p>
+                    <label className="form-label fw-semibold" style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>Hoặc dán URL ảnh</label>
+                    <input type="url" className="form-control bg-light border-0" style={{ fontSize: 13 }}
+                      placeholder="https://..."
+                      value={form.coverImageUrl}
+                      onChange={e => { setField('coverImageUrl', e.target.value); setImagePreview(e.target.value); }} />
+                  </div>
                 </div>
               </div>
-              <p className="small text-muted mb-0 mt-2">Trang Nổi bật sắp xếp theo thời gian tạo: bài mới lên trước.</p>
-              <div className="mb-3 mt-3">
-                <label className="form-label fw-semibold small">Gắn cụm sân (tuỳ chọn)</label>
-                <select className="form-select" value={form.venueId} onChange={(e) => setForm((f) => ({ ...f, venueId: e.target.value }))}>
-                  <option value="">— Không gắn —</option>
-                  {venues.map((v) => (
-                    <option key={v.id} value={v.id}>{v.name}</option>
-                  ))}
-                </select>
+
+              {/* Link & Sân */}
+              <div className="mb-4 border-top pt-4">
+                <h6 style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.04em', color: '#94a3b8', textTransform: 'uppercase', marginBottom: 14 }}>
+                  <i className="feather-link me-2" />Liên kết & Gắn sân
+                </h6>
+                <div className="row g-3">
+                  <div className="col-12 col-md-6">
+                    <label className="form-label fw-semibold" style={{ fontSize: 13, color: '#475569' }}>Link CTA</label>
+                    <input type="text" className="form-control bg-light border-0" style={{ fontSize: 14 }}
+                      placeholder="/venue-details/... hoặc /venues"
+                      value={form.linkUrl} onChange={e => setField('linkUrl', e.target.value)} />
+                  </div>
+                  <div className="col-12 col-md-6">
+                    <label className="form-label fw-semibold" style={{ fontSize: 13, color: '#475569' }}>Gắn cụm sân (tuỳ chọn)</label>
+                    <select className="form-select bg-light border-0" style={{ fontSize: 14 }}
+                      value={form.venueId} onChange={e => setField('venueId', e.target.value)}>
+                      <option value="">— Không gắn —</option>
+                      {venues.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                    </select>
+                  </div>
+                </div>
               </div>
-              <div className="form-check">
-                <input className="form-check-input" type="checkbox" id="adm-fp-pub" checked={form.isPublished} onChange={(e) => setForm((f) => ({ ...f, isPublished: e.target.checked }))} />
-                <label className="form-check-label fw-semibold small" htmlFor="adm-fp-pub">Xuất bản (hiện trên trang Nổi bật)</label>
+
+              {/* Thời gian */}
+              <div className="mb-4 border-top pt-4">
+                <h6 style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.04em', color: '#94a3b8', textTransform: 'uppercase', marginBottom: 6 }}>
+                  <i className="feather-clock me-2" />Thời gian hiển thị
+                </h6>
+                <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 14 }}>Để trống để không giới hạn thời gian.</p>
+                <div className="row g-3">
+                  <div className="col-12 col-md-6">
+                    <label className="form-label fw-semibold" style={{ fontSize: 13, color: '#475569' }}>Hiển thị từ</label>
+                    <ShuttleDateField
+                      value={form.displayFrom ? form.displayFrom.substring(0, 10) : ''}
+                      onChange={(ymd) => {
+                        const time = form.displayFrom.length > 10 ? form.displayFrom.substring(10) : 'T00:00';
+                        setField('displayFrom', (ymd || '') + (ymd ? time : ''));
+                      }}
+                      placeholder="dd/mm/yyyy"
+                    />
+                    <ShuttleTimePicker
+                      hourValue={form.displayFrom ? (form.displayFrom.substring(11, 13) || '00') : '00'}
+                      minuteValue={form.displayFrom ? (form.displayFrom.substring(14, 16) || '00') : '00'}
+                      onHourChange={(h) => {
+                        let dp = form.displayFrom.substring(0, 10) || '';
+                        if (!dp) dp = toYMD(new Date());
+                        setField('displayFrom', dp + 'T' + h + ':' + (form.displayFrom.substring(14, 16) || '00'));
+                      }}
+                      onMinuteChange={(m) => {
+                        let dp = form.displayFrom.substring(0, 10) || '';
+                        if (!dp) dp = toYMD(new Date());
+                        setField('displayFrom', dp + 'T' + (form.displayFrom.substring(11, 13) || '00') + ':' + m);
+                      }}
+                      minuteOptions={['00', '15', '30', '45']}
+                    />
+                  </div>
+                  <div className="col-12 col-md-6">
+                    <label className="form-label fw-semibold" style={{ fontSize: 13, color: '#475569' }}>Hiển thị đến</label>
+                    <ShuttleDateField
+                      value={form.displayUntil ? form.displayUntil.substring(0, 10) : ''}
+                      onChange={(ymd) => {
+                        const time = form.displayUntil.length > 10 ? form.displayUntil.substring(10) : 'T23:59';
+                        setField('displayUntil', (ymd || '') + (ymd ? time : ''));
+                      }}
+                      placeholder="dd/mm/yyyy"
+                    />
+                    <ShuttleTimePicker
+                      hourValue={form.displayUntil ? (form.displayUntil.substring(11, 13) || '23') : '23'}
+                      minuteValue={form.displayUntil ? (form.displayUntil.substring(14, 16) || '59') : '59'}
+                      onHourChange={(h) => {
+                        let dp = form.displayUntil.substring(0, 10) || '';
+                        if (!dp) dp = toYMD(new Date());
+                        setField('displayUntil', dp + 'T' + h + ':' + (form.displayUntil.substring(14, 16) || '59'));
+                      }}
+                      onMinuteChange={(m) => {
+                        let dp = form.displayUntil.substring(0, 10) || '';
+                        if (!dp) dp = toYMD(new Date());
+                        setField('displayUntil', dp + 'T' + (form.displayUntil.substring(11, 13) || '23') + ':' + m);
+                      }}
+                      minuteOptions={['00', '15', '30', '45', '59']}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Phát sóng */}
+              <div className="border-top pt-4">
+                <h6 style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.04em', color: '#94a3b8', textTransform: 'uppercase', marginBottom: 14 }}>
+                  <i className="feather-settings me-2" />Cấu hình phát sóng
+                </h6>
+                <div className="form-check rounded-3 px-3 py-3 w-100" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                  <input className="form-check-input" type="checkbox" id="adm-fp-pub"
+                    checked={form.isPublished} onChange={e => setField('isPublished', e.target.checked)} />
+                  <label className="form-check-label fw-semibold" htmlFor="adm-fp-pub" style={{ fontSize: 13, color: '#334155' }}>
+                    Xuất bản ngay
+                  </label>
+                  <p className="mb-0 mt-1" style={{ paddingLeft: '1.5rem', fontSize: 12, color: '#94a3b8' }}>
+                    Bật để bài hiển thị công khai trong thời gian đã chọn. Trên trang Nổi bật, bài mới tạo sẽ hiển thị trước.
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="modal-footer border-0">
-              <button
-                type="button"
-                className="btn btn-light"
-                onClick={() => setModalOpen(false)}
+
+            <div className="modal-footer border-top-0 pt-0 pb-4 px-4 px-md-5 d-flex gap-3">
+              <button type="button" className="btn btn-light fw-bold px-4 py-2" onClick={() => setModalOpen(false)}
                 style={{ transition: 'background .15s ease, transform .2s ease, box-shadow .2s ease' }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(15,23,42,.08)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'none';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(15,23,42,.08)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
               >Huỷ</button>
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={saving}
-                style={{ transition: 'transform .2s ease, box-shadow .2s ease' }}
+              <button type="submit" disabled={saving || uploading}
+                className="btn fw-bold px-5 py-2 shadow-sm"
+                style={{ background: 'var(--adm-accent)', borderColor: 'var(--adm-accent)', color: '#fff', transition: 'background .15s ease, border-color .15s ease, transform .2s ease, box-shadow .2s ease' }}
                 onMouseEnter={(e) => {
-                  if (saving) return;
+                  if (saving || uploading) return;
+                  e.currentTarget.style.background = 'var(--adm-accent-hover)';
+                  e.currentTarget.style.borderColor = 'var(--adm-accent-hover)';
                   e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(99,102,241,.45)';
+                  e.currentTarget.style.boxShadow = '0 8px 22px rgba(99,102,241,.4)';
                 }}
                 onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'var(--adm-accent)';
+                  e.currentTarget.style.borderColor = 'var(--adm-accent)';
                   e.currentTarget.style.transform = 'none';
                   e.currentTarget.style.boxShadow = '';
-                }}
-              >{saving ? 'Đang lưu…' : 'Lưu'}</button>
+                }}>
+                {saving ? 'Đang lưu…' : editingId ? 'Lưu thay đổi' : 'Tạo bài đăng'}
+              </button>
             </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>,
-    document.body,
+    document.body
   );
 
   return (
