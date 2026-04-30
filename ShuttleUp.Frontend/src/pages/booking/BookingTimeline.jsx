@@ -20,6 +20,9 @@ function CalendarPopup({ value, onChange, onClose }) {
   const startOffset = (firstDay + 6) % 7; // Mon-based
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const todayIso    = localIsoDate(today);
+  const maxLimit    = new Date(today);
+  maxLimit.setDate(maxLimit.getDate() + 90);
+  const maxIso      = localIsoDate(maxLimit);
 
   const prevMonth = () => viewMonth === 0 ? (setViewYear(y => y - 1), setViewMonth(11)) : setViewMonth(m => m - 1);
   const nextMonth = () => viewMonth === 11 ? (setViewYear(y => y + 1), setViewMonth(0)) : setViewMonth(m => m + 1);
@@ -65,17 +68,18 @@ function CalendarPopup({ value, onChange, onClose }) {
             const isSelected = iso === tempDate;
             const isToday    = iso === todayIso;
             const isPast     = iso < todayIso;
+            const isTooFar   = iso > maxIso;
             return (
               <button
                 key={i}
-                disabled={isPast}
-                onClick={() => !isPast && setTempDate(iso)}
+                disabled={isPast || isTooFar}
+                onClick={() => !(isPast || isTooFar) && setTempDate(iso)}
                 style={{
                   border: 'none', borderRadius: '50%', width: '36px', height: '36px',
                   margin: '1px auto', display: 'block', fontSize: '14px',
-                  cursor: isPast ? 'not-allowed' : 'pointer',
+                  cursor: (isPast || isTooFar) ? 'not-allowed' : 'pointer',
                   backgroundColor: isSelected ? '#16a34a' : isToday ? '#dcfce7' : 'transparent',
-                  color: isSelected ? '#fff' : isPast ? '#ccc' : '#111',
+                  color: isSelected ? '#fff' : (isPast || isTooFar) ? '#ccc' : '#111',
                   fontWeight: isToday ? '700' : '400',
                 }}
               >{d}</button>
