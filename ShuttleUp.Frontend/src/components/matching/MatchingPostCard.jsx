@@ -163,7 +163,7 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
         <div className="matching-list-card" style={{ display: 'flex', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', overflow: 'hidden', transition: 'all 0.3s' }}>
           {/* Image Side */}
           <div className="matching-list-card-img" style={{ width: '280px', position: 'relative', flexShrink: 0 }}>
-            <Link to={`/matching/${post.id}`} style={{ display: 'block', height: '100%' }}>
+            <Link to={user ? `/matching/${post.id}` : '/login'} state={user ? undefined : { from: `/matching/${post.id}` }} style={{ display: 'block', height: '100%' }}>
               <img src={defaultImg} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={post.title} />
             </Link>
             <div style={{ position: 'absolute', top: '12px', left: '12px', display: 'flex', gap: '8px', zIndex: 1 }}>
@@ -209,7 +209,7 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
           <div className="matching-list-card-body" style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             <div style={{ marginBottom: '16px' }}>
               <h4 style={{ fontSize: '20px', fontWeight: '700', color: '#1e293b', marginBottom: '8px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                <Link to={`/matching/${post.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{post.title}</Link>
+                <Link to={user ? `/matching/${post.id}` : '/login'} state={user ? undefined : { from: `/matching/${post.id}` }} style={{ color: 'inherit', textDecoration: 'none' }}>{post.title}</Link>
               </h4>
               <div style={{ display: 'flex', gap: '16px', color: '#64748b', fontSize: '14px', fontWeight: '600', flexWrap: 'wrap' }}>
                 <span><i className="feather-map-pin me-1" style={{ color: '#097E52' }}></i> {post.venueName}{post.courtName ? ` — ${post.courtName}` : ''}</span>
@@ -249,12 +249,12 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
 
               <div style={{ display: 'flex', gap: '12px' }}>
                 {isPostOwner ? (
-                  <Link to={`/matching/${post.id}`} className="btn btn-primary" style={{ borderRadius: '10px', fontWeight: '700', padding: '8px 24px' }}>
+                  <Link to={user ? `/matching/${post.id}` : '/login'} state={user ? undefined : { from: `/matching/${post.id}` }} className="btn btn-primary" style={{ borderRadius: '10px', fontWeight: '700', padding: '8px 24px' }}>
                     Xem chi tiết
                   </Link>
                 ) : (
                   <>
-                    <Link to={`/matching/${post.id}`} className="btn btn-outline-primary" style={{ borderRadius: '10px', fontWeight: '700', padding: '8px 20px' }}>
+                    <Link to={user ? `/matching/${post.id}` : '/login'} state={user ? undefined : { from: `/matching/${post.id}` }} className="btn btn-outline-primary" style={{ borderRadius: '10px', fontWeight: '700', padding: '8px 20px' }}>
                       Chi tiết
                     </Link>
                     {canQuickJoin ? (
@@ -292,7 +292,7 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
       <div className="matching-post-card h-100 d-flex flex-column" style={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', overflow: 'hidden', backgroundColor: '#fff', transition: 'transform 0.2s' }}>
         {/* ── Image + Badges ── */}
         <div className="matching-card-img" style={{ position: 'relative', height: '180px' }}>
-          <Link to={`/matching/${post.id}`} style={{ display: 'block', height: '100%' }}>
+          <Link to={user ? `/matching/${post.id}` : '/login'} state={user ? undefined : { from: `/matching/${post.id}` }} style={{ display: 'block', height: '100%' }}>
             <img src={defaultImg} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={post.title} />
           </Link>
           <div style={{ position: 'absolute', top: '12px', left: '12px', display: 'flex', gap: '8px', zIndex: 1 }}>
@@ -337,7 +337,7 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
         {/* ── Content ── */}
         <div className="matching-card-body" style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
           <h4 style={{ fontSize: '18px', fontWeight: '800', color: '#1e293b', marginBottom: '12px', lineHeight: '1.4', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-            <Link to={`/matching/${post.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{post.title}</Link>
+            <Link to={user ? `/matching/${post.id}` : '/login'} state={user ? undefined : { from: `/matching/${post.id}` }} style={{ color: 'inherit', textDecoration: 'none' }}>{post.title}</Link>
           </h4>
           
           <div style={{ fontSize: '13px', fontWeight: '600', color: '#64748b', marginBottom: '6px' }}>
@@ -389,12 +389,12 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
         {/* ── CTA ── */}
         <div style={{ padding: '0 20px 20px' }}>
           {isPostOwner ? (
-            <Link to={`/matching/${post.id}`} className="btn btn-primary w-100" style={{ borderRadius: '10px', fontWeight: '800', padding: '10px' }}>
+            <Link to={user ? `/matching/${post.id}` : '/login'} state={user ? undefined : { from: `/matching/${post.id}` }} className="btn btn-primary w-100" style={{ borderRadius: '10px', fontWeight: '800', padding: '10px' }}>
               Xem chi tiết
             </Link>
           ) : (
             <div style={{ display: 'flex', gap: '10px' }}>
-              <Link to={`/matching/${post.id}`} className="btn btn-outline-primary flex-fill" style={{ borderRadius: '10px', fontWeight: '800', padding: '10px' }}>
+              <Link to={user ? `/matching/${post.id}` : '/login'} state={user ? undefined : { from: `/matching/${post.id}` }} className="btn btn-outline-primary flex-fill" style={{ borderRadius: '10px', fontWeight: '800', padding: '10px' }}>
                 Chi tiết
               </Link>
               {canQuickJoin ? (

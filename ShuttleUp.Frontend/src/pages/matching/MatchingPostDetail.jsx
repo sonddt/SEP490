@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate, useLocation } from 'react-router-dom';
 import matchingApi from '../../api/matchingApi';
 import MatchingMembers from '../../components/matching/MatchingMembers';
 import MatchingJoinRequests from '../../components/matching/MatchingJoinRequests';
@@ -74,6 +74,7 @@ function formatBookingSlotDetail(item) {
 export default function MatchingPostDetail() {
   const { postId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -93,6 +94,7 @@ export default function MatchingPostDetail() {
   }, []);
 
   const load = useCallback(async () => {
+    if (!user) return; // Wait for redirect if not logged in
     try {
       const res = await matchingApi.getPostDetail(postId);
       setPost(res);
@@ -101,9 +103,15 @@ export default function MatchingPostDetail() {
     } finally {
       setLoading(false);
     }
-  }, [postId, navigate]);
+  }, [postId, navigate, user]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login', { state: { from: location.pathname } });
+    }
+  }, [user, navigate, location.pathname]);
 
   useEffect(() => {
     setShowAllBookingSlots(false);
