@@ -33,7 +33,7 @@ const NAV_SECTIONS = [
   },
 ];
 
-export default function ManagerSidebar({ open, onClose }) {
+export default function ManagerSidebar({ open, onClose, collapsed, onToggleCollapse }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { count: unreadNotifCount } = useUnreadNotificationCount();
@@ -57,20 +57,35 @@ export default function ManagerSidebar({ open, onClose }) {
     <>
       <div className={`mgr-sidebar-overlay${open ? ' open' : ''}`} onClick={onClose} />
 
-      <aside className={`mgr-sidebar${open ? ' open' : ''}`}>
+      <aside className={`mgr-sidebar${open ? ' open' : ''}${collapsed ? ' collapsed' : ''}`}>
+        {/* Edge collapse handle */}
+        <button
+          type="button"
+          className="mgr-sidebar__collapse-btn"
+          onClick={onToggleCollapse}
+          title={collapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
+        >
+          <i className={collapsed ? 'feather-chevron-right' : 'feather-chevron-left'} />
+        </button>
+
         {/* Logo */}
-        <NavLink to="/manager/venues" className="mgr-sidebar__logo" onClick={onClose}>
-          <img src="/assets/img/logo-black.svg" alt="ShuttleUp" />
-          <div>
-            <span className="mgr-sidebar__logo-text">Hệ thống quản lý sân</span>
-          </div>
-        </NavLink>
+        <div className="mgr-sidebar__logo-wrap">
+          <NavLink to="/manager/venues" className="mgr-sidebar__logo" onClick={onClose}>
+            <img src="/assets/img/logo-black.svg" alt="ShuttleUp" />
+            {!collapsed && (
+              <div className="mgr-sidebar__logo-text">
+                Hệ thống<br />
+                <span>quản lý sân</span>
+              </div>
+            )}
+          </NavLink>
+        </div>
 
         {/* Navigation */}
         <nav className="mgr-sidebar__nav">
           {NAV_SECTIONS.map((section) => (
             <div key={section.label} className="mgr-sidebar__section">
-              <div className="mgr-sidebar__section-label">{section.label}</div>
+              {!collapsed && <div className="mgr-sidebar__section-label">{section.label}</div>}
               {section.items.map((item) => (
                 <NavLink
                   key={item.to}
@@ -78,11 +93,12 @@ export default function ManagerSidebar({ open, onClose }) {
                   end={item.to === '/manager/venues'}
                   className={({ isActive }) => `mgr-sidebar__item${isActive ? ' active' : ''}`}
                   onClick={onClose}
+                  title={collapsed ? item.label : undefined}
                 >
                   <span className="mgr-sidebar__item-icon">
                     <i className={item.icon} />
                   </span>
-                  {item.label}
+                  {!collapsed && item.label}
                   {item.badgeKey === 'notifications' && unreadNotifCount > 0 && (
                     <span className="mgr-sidebar__badge">
                       {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
@@ -95,28 +111,30 @@ export default function ManagerSidebar({ open, onClose }) {
 
           {/* Extra section */}
           <div className="mgr-sidebar__section" style={{ marginTop: 8 }}>
-            <div className="mgr-sidebar__section-label">Khác</div>
+            {!collapsed && <div className="mgr-sidebar__section-label">Khác</div>}
             <button
               type="button"
               className="mgr-sidebar__item"
               onClick={handleGoToProfile}
+              title={collapsed ? 'Hồ sơ của tôi' : undefined}
               style={{ width: '100%', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left' }}
             >
               <span className="mgr-sidebar__item-icon">
                 <i className="feather-user" />
               </span>
-              Hồ sơ của tôi
+              {!collapsed && 'Hồ sơ của tôi'}
             </button>
             <button
               type="button"
               className="mgr-sidebar__item"
               onClick={handleSwitchToPlayer}
+              title={collapsed ? 'Chế độ Người chơi' : undefined}
               style={{ width: '100%', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left' }}
             >
               <span className="mgr-sidebar__item-icon">
                 <i className="feather-refresh-cw" />
               </span>
-              Chế độ Người chơi
+              {!collapsed && 'Chế độ Người chơi'}
             </button>
           </div>
         </nav>
@@ -124,10 +142,12 @@ export default function ManagerSidebar({ open, onClose }) {
         {/* User section */}
         <div className="mgr-sidebar__user">
           <img src="/assets/img/profiles/avatar-01.jpg" alt="" />
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div className="mgr-sidebar__user-name">{user?.fullName || user?.email || 'Manager'}</div>
-            <div className="mgr-sidebar__user-role">Chủ sân</div>
-          </div>
+          {!collapsed && (
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div className="mgr-sidebar__user-name">{user?.fullName || user?.email || 'Manager'}</div>
+              <div className="mgr-sidebar__user-role">Chủ sân</div>
+            </div>
+          )}
           <button
             type="button"
             onClick={handleLogout}
@@ -141,3 +161,4 @@ export default function ManagerSidebar({ open, onClose }) {
     </>
   );
 }
+

@@ -32,6 +32,9 @@ function getPageMeta(pathname) {
 
 export default function ManagerLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem('mgr-sidebar-collapsed') === '1'; } catch { return false; }
+  });
   const [openDropdown, setOpenDropdown] = useState(null); // 'user' | null
   const location = useLocation();
   const navigate = useNavigate();
@@ -46,9 +49,22 @@ export default function ManagerLayout() {
     navigate('/login', { replace: true, state: { skipReturn: true } });
   };
 
+  const toggleCollapse = () => {
+    setCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem('mgr-sidebar-collapsed', next ? '1' : '0'); } catch { /* noop */ }
+      return next;
+    });
+  };
+
   return (
-    <div className="mgr-layout">
-      <ManagerSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    <div className={`mgr-layout${collapsed ? ' mgr-layout--collapsed' : ''}`}>
+      <ManagerSidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        collapsed={collapsed}
+        onToggleCollapse={toggleCollapse}
+      />
 
       <div className="mgr-content">
         <header className="mgr-topbar">
