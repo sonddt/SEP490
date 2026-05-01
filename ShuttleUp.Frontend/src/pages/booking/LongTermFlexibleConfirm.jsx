@@ -29,17 +29,19 @@ export default function LongTermFlexibleConfirm() {
     preview = null,
     totalHours: stateTotalHours = '0h',
     totalPrice: stateTotalPrice,
+    slotDuration: stateSlotDuration,
   } = state;
 
-  /* Compute slotDuration from first slot's time range */
+  /* Compute slotDuration from state or first slot's time range */
   const slotDuration = useMemo(() => {
+    if ([30, 60, 120].includes(stateSlotDuration)) return stateSlotDuration;
     const first = selectedSlots?.[0];
     if (!first?.startTime || !first?.endTime) return 30;
     const s = new Date(first.startTime);
     const e = new Date(first.endTime);
     const diffMins = Math.round((e - s) / 60000);
     return [30, 60, 120].includes(diffMins) ? diffMins : 30;
-  }, [selectedSlots]);
+  }, [stateSlotDuration, selectedSlots]);
 
   const slotLabelStr = slotDuration < 60 ? `${slotDuration} phút` : slotDuration === 60 ? '1 giờ' : `${slotDuration / 60} giờ`;
 
@@ -591,7 +593,16 @@ export default function LongTermFlexibleConfirm() {
                   <button
                     type="button"
                     className="btn btn-outline-secondary btn-icon"
-                    onClick={() => navigate('/booking/long-term/flexible', { state: { venueId, venueName, venueAddress } })}
+                    onClick={() => navigate('/booking/long-term/flexible', {
+                      state: {
+                        venueId,
+                        venueName,
+                        venueAddress,
+                        slotDuration: stateSlotDuration,
+                        cart: state.cart,
+                        selectedDate: state.date,
+                      },
+                    })}
                   >
                     <i className="feather-arrow-left-circle me-1" /> Quay lại chỉnh sửa
                   </button>

@@ -11,16 +11,19 @@ const BLOCK_REASONS = [
   { value: 'OTHER', label: 'Khác' },
 ];
 
-function SectionHeader({ icon, iconBg, iconColor, title, subtitle }) {
+function SectionHeader({ icon, iconBg, iconColor, title, subtitle, rightElement }) {
   return (
-    <div className="d-flex align-items-center gap-3 mb-4">
-      <div style={{ width: 42, height: 42, borderRadius: 10, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <i className={icon} style={{ color: iconColor, fontSize: 20 }} />
+    <div className="d-flex align-items-start align-items-sm-center justify-content-between mb-4 gap-3">
+      <div className="d-flex align-items-center gap-3">
+        <div style={{ width: 42, height: 42, borderRadius: 10, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <i className={icon} style={{ color: iconColor, fontSize: 20 }} />
+        </div>
+        <div>
+          <h5 style={{ margin: 0, fontWeight: 600, color: '#1e293b' }}>{title}</h5>
+          {subtitle && <span style={{ fontSize: 13, color: '#64748b', marginTop: 2, display: 'block' }}>{subtitle}</span>}
+        </div>
       </div>
-      <div>
-        <h5 style={{ margin: 0, fontWeight: 600, color: '#1e293b' }}>{title}</h5>
-        {subtitle && <span style={{ fontSize: 13, color: '#64748b', marginTop: 2, display: 'block' }}>{subtitle}</span>}
-      </div>
+      {rightElement && <div>{rightElement}</div>}
     </div>
   );
 }
@@ -56,9 +59,15 @@ export default function ManagerAddCourt() {
   const [existingImages, setExistingImages] = useState([]);
   const [newImageFiles, setNewImageFiles] = useState([]);
 
+  const [isBulkCreate, setIsBulkCreate] = useState(false);
+  const [bulkCount, setBulkCount] = useState('1');
+  const [bulkStartNumber, setBulkStartNumber] = useState('1');
+  const [progressMsg, setProgressMsg] = useState('');
+
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
 
   const [courtBlocks, setCourtBlocks] = useState([]);
@@ -246,6 +255,13 @@ export default function ManagerAddCourt() {
   };
   const toggleDay = (i, key, val) => setDayHours((p) => p.map((d, idx) => idx === i ? { ...d, [key]: val } : d));
 
+  const handleApplyToAllDays = () => {
+    const monday = dayHours[0]; // Thứ 2 is index 0
+    setDayHours(dayHours.map(() => ({ ...monday })));
+    setSuccessMsg('Đã sao chép lịch Thứ 2 cho tất cả các ngày.');
+    setTimeout(() => setSuccessMsg(''), 3000);
+  };
+
   useEffect(() => {
     if (!courtId) return;
     let mounted = true;
@@ -306,8 +322,8 @@ export default function ManagerAddCourt() {
     return () => { mounted = false; };
   }, [courtId, venueId]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e, addAnother = false) => {
+    if (e) e.preventDefault();
     try {
       const errors = {};
       if (!form.name?.trim()) errors.name = 'Bạn chưa đặt tên cho sân này!';
@@ -358,40 +374,87 @@ export default function ManagerAddCourt() {
         openHours
       };
 
-      let savedCourtId = courtId;
-      if (courtId) {
-        await axiosClient.put(`/manager/venues/${venueId}/courts/${courtId}`, request);
-      } else {
-        const created = await axiosClient.post(`/manager/venues/${venueId}/courts`, request);
-        savedCourtId = created?.id || created?.Id;
-      }
-
-      if (request.groupName) {
-        const merged = new Map();
-        [...groupSuggestions, request.groupName].forEach((name) => {
-          const cleaned = normalizeGroupName(name).slice(0, GROUP_NAME_MAX_LEN);
-          if (!cleaned) return;
-          const key = normalizeSearchText(cleaned);
-          if (!merged.has(key)) merged.set(key, cleaned);
-        });
-        const nextGroups = Array.from(merged.values());
-        setGroupSuggestions(nextGroups);
-        try {
-          localStorage.setItem(venueGroupStorageKey, JSON.stringify(nextGroups));
-        } catch {}
-      }
-
-      if (newImageFiles.length > 0 && savedCourtId) {
-        const fd = new FormData();
-        for (const file of newImageFiles) {
-          fd.append('imageFiles', file);
+      if (!courtId && isBulkCreate) {
+        const count = Number(bulkCount) || 1;
+        const startNum = Number(bulkStartNumber) || 1;
+        setProgressMsg(`Đang khởi tạo ${count} sân...`);
+        const prefix = form.name.trim() || 'Sân';
+        let successCount = 0;
+        
+        for (let i = 0; i < count; i++) {
+          const currentNumber = startNum + i;
+          const courtName = `${prefix} ${currentNumber}`;
+          setProgressMsg(`Đang tạo sân: ${courtName} (${i + 1}/${count})...`);
+          
+          try {
+             const req = { ...request, name: courtName };
+             const created = await axiosClient.post(`/manager/venues/${venueId}/courts`, req);
+             const savedCourtId = created?.id || created?.Id;
+             
+             if (newImageFiles.length > 0 && savedCourtId) {
+                const fd = new FormData();
+                for (const file of newImageFiles) { fd.append('imageFiles', file); }
+                await axiosClient.post(`/manager/venues/${venueId}/courts/${savedCourtId}/files`, fd);
+             }
+             successCount++;
+          } catch (err) {
+             console.error(`Failed to create ${courtName}`, err);
+          }
         }
-        await axiosClient.post(`/manager/venues/${venueId}/courts/${savedCourtId}/files`, fd);
-      }
+        
+        setProgressMsg('');
+        if (successCount < count) {
+           setErrorMsg(`Oops... Chỉ tạo thành công ${successCount}/${count} sân. Hãy kiểm tra lại trong danh sách.`);
+           return; 
+        } else {
+           navigate(`/manager/venues/${venueId}/courts`);
+           return;
+        }
+      } else {
+        let savedCourtId = courtId;
+        if (courtId) {
+          await axiosClient.put(`/manager/venues/${venueId}/courts/${courtId}`, request);
+        } else {
+          const created = await axiosClient.post(`/manager/venues/${venueId}/courts`, request);
+          savedCourtId = created?.id || created?.Id;
+        }
 
-      navigate(`/manager/venues/${venueId}/courts`);
+        if (request.groupName) {
+          const merged = new Map();
+          [...groupSuggestions, request.groupName].forEach((name) => {
+            const cleaned = normalizeGroupName(name).slice(0, GROUP_NAME_MAX_LEN);
+            if (!cleaned) return;
+            const key = normalizeSearchText(cleaned);
+            if (!merged.has(key)) merged.set(key, cleaned);
+          });
+          const nextGroups = Array.from(merged.values());
+          setGroupSuggestions(nextGroups);
+          try {
+            localStorage.setItem(venueGroupStorageKey, JSON.stringify(nextGroups));
+          } catch {}
+        }
+
+        if (newImageFiles.length > 0 && savedCourtId) {
+          const fd = new FormData();
+          for (const file of newImageFiles) {
+            fd.append('imageFiles', file);
+          }
+          await axiosClient.post(`/manager/venues/${venueId}/courts/${savedCourtId}/files`, fd);
+        }
+
+        if (addAnother) {
+           setForm(p => ({ ...p, name: '' }));
+           setNewImageFiles([]);
+           setSuccessMsg('Lưu thành công! Bạn có thể tiếp tục thêm sân khác với cấu hình tương tự.');
+           setTimeout(() => setSuccessMsg(''), 5000);
+           window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+           navigate(`/manager/venues/${venueId}/courts`);
+        }
+      }
     } catch (err) {
       console.error('Submit court failed', err);
+      setProgressMsg('');
       if (err.response?.data?.errors) {
         setFieldErrors(err.response.data.errors);
         setErrorMsg('Oops... Hệ thống phát hiện vài phần nhập chưa chuẩn xác.');
@@ -401,7 +464,11 @@ export default function ManagerAddCourt() {
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
-      setSubmitting(false);
+      if (!isBulkCreate) {
+         setSubmitting(false);
+      } else if (progressMsg === '') {
+         setSubmitting(false);
+      }
     }
   };
 
@@ -416,7 +483,7 @@ export default function ManagerAddCourt() {
   return (
     <div className="container-fluid px-0 px-md-3 pb-5">
       {/* Header */}
-      <div className="d-flex align-items-center gap-3 mb-4 border-bottom pb-4">
+      <div className="d-flex align-items-center gap-3 mb-4 border-bottom pb-4 flex-wrap">
         <button onClick={() => navigate(`/manager/venues/${venueId}/courts`)} className="btn btn-light shadow-sm d-flex align-items-center justify-content-center" style={{ width: 44, height: 44, borderRadius: 12 }}>
           <i className="feather-arrow-left fs-5" />
         </button>
@@ -424,13 +491,45 @@ export default function ManagerAddCourt() {
           <h3 className="mb-0 fw-bold text-dark">{courtId ? 'Cập nhật Sân con' : 'Đăng ký Sân con'}</h3>
           <p className="text-secondary mb-0 mt-1" style={{ fontSize: 14 }}>Thiết lập thông tin, giá và lịch trống riêng cho sân này</p>
         </div>
+        {!courtId && (
+          <div className="ms-auto bg-light rounded-pill p-1 d-flex align-items-center shadow-sm border mt-3 mt-sm-0">
+            <button
+              type="button"
+              className={`btn btn-sm rounded-pill px-3 ${!isBulkCreate ? 'btn-white fw-bold shadow-sm text-dark' : 'text-secondary'}`}
+              style={{ border: !isBulkCreate ? '1px solid #dee2e6' : 'none', background: !isBulkCreate ? '#fff' : 'transparent' }}
+              onClick={() => setIsBulkCreate(false)}
+            >
+              Tạo 1 sân
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm rounded-pill px-3 ${isBulkCreate ? 'btn-white fw-bold shadow-sm text-dark' : 'text-secondary'}`}
+              style={{ border: isBulkCreate ? '1px solid #dee2e6' : 'none', background: isBulkCreate ? '#fff' : 'transparent' }}
+              onClick={() => setIsBulkCreate(true)}
+            >
+              Tạo nhiều sân
+            </button>
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} noValidate>
         {errorMsg && (
-          <div className="alert alert-danger d-flex align-items-center mb-4" style={{ borderRadius: 10, border: 'none', background: '#fef2f2', color: '#991b1b', padding: '14px 20px' }}>
+          <div className="alert alert-danger d-flex align-items-center mb-4 shadow-sm" style={{ borderRadius: 10, border: 'none', background: '#fef2f2', color: '#991b1b', padding: '14px 20px' }}>
             <i className="feather-alert-circle fs-5 me-2" />
             <span className="fw-medium">{errorMsg}</span>
+          </div>
+        )}
+        {successMsg && (
+          <div className="alert alert-success d-flex align-items-center mb-4 shadow-sm" style={{ borderRadius: 10, border: 'none', background: '#f0fdf4', color: '#166534', padding: '14px 20px' }}>
+            <i className="feather-check-circle fs-5 me-2" />
+            <span className="fw-medium">{successMsg}</span>
+          </div>
+        )}
+        {progressMsg && (
+          <div className="alert alert-primary d-flex align-items-center mb-4 shadow-sm" style={{ borderRadius: 10, border: 'none', background: '#eff6ff', color: '#1e40af', padding: '14px 20px' }}>
+            <div className="spinner-border spinner-border-sm me-2" role="status" />
+            <span className="fw-medium">{progressMsg}</span>
           </div>
         )}
         <div className="row g-4">
@@ -445,10 +544,32 @@ export default function ManagerAddCourt() {
                 
                 <div className="row g-4">
                   <div className="col-12 col-md-6">
-                    <label className="form-label fw-semibold text-dark mb-2">Tên hiển thị <span className="text-danger">*</span></label>
-                    <input type="text" className={`form-control form-control-lg bg-light border-0 ${getFieldError('name') ? 'is-invalid' : ''}`} placeholder="Ví dụ: Sân số 1" value={form.name} onChange={(e) => setField('name', e.target.value)} />
+                    <label className="form-label fw-semibold text-dark mb-2">
+                      {isBulkCreate ? 'Tiền tố tên sân' : 'Tên hiển thị'} <span className="text-danger">*</span>
+                    </label>
+                    <input type="text" className={`form-control form-control-lg bg-light border-0 ${getFieldError('name') ? 'is-invalid' : ''}`} placeholder={isBulkCreate ? "Ví dụ: Sân" : "Ví dụ: Sân số 1"} value={form.name} onChange={(e) => setField('name', e.target.value)} />
                     {getFieldError('name') && <div className="invalid-feedback">{getFieldError('name')}</div>}
                   </div>
+                  {isBulkCreate && (
+                    <>
+                      <div className="col-6 col-md-3">
+                        <label className="form-label fw-semibold text-dark mb-2">Bắt đầu từ số <span className="text-danger">*</span></label>
+                        <input type="number" min={1} className="form-control form-control-lg bg-light border-0" value={bulkStartNumber} onChange={(e) => setBulkStartNumber(e.target.value)} />
+                      </div>
+                      <div className="col-6 col-md-3">
+                        <label className="form-label fw-semibold text-dark mb-2">Số lượng sân <span className="text-danger">*</span></label>
+                        <input type="number" min={1} max={50} className="form-control form-control-lg bg-light border-0" value={bulkCount} onChange={(e) => setBulkCount(e.target.value)} />
+                      </div>
+                      <div className="col-12 mt-2">
+                        <div className="alert alert-info py-2 small mb-0 d-flex align-items-center">
+                          <i className="feather-info me-2 fs-5 flex-shrink-0" />
+                          <span>
+                            Hệ thống sẽ tạo <strong>{Number(bulkCount) || 1}</strong> sân, tên từ <strong>"{form.name.trim() || 'Sân'} {Number(bulkStartNumber) || 1}"</strong> đến <strong>"{form.name.trim() || 'Sân'} {(Number(bulkStartNumber) || 1) + (Number(bulkCount) || 1) - 1}"</strong>.
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-semibold text-dark mb-2">Loại mặt thảm</label>
                     <select className="form-select form-select-lg bg-light border-0" value={form.surface} onChange={(e) => setField('surface', e.target.value)}>
@@ -576,7 +697,9 @@ export default function ManagerAddCourt() {
                 <div className="px-2">
                   {DAYS.map((day, i) => (
                     <div key={day} className="row align-items-center py-3 border-bottom" style={{ opacity: dayHours[i].enabled ? 1 : 0.6, transition: '0.2s' }}>
-                      <div className="col-3 col-sm-2 fw-bold text-dark">{day}</div>
+                      <div className="col-3 col-sm-2 fw-bold text-dark d-flex align-items-center pe-3">
+                        {day}
+                      </div>
                       
                       <div className="col-3 col-sm-4 px-1">
                         <select className="form-select form-select-sm bg-light border-0" value={dayHours[i].open} disabled={!dayHours[i].enabled} onChange={(e) => toggleDay(i, 'open', e.target.value)}>
@@ -591,8 +714,15 @@ export default function ManagerAddCourt() {
                       </div>
 
                       <div className="col-3 col-sm-2 text-end">
-                        <div className="form-check form-switch d-inline-block m-0" style={{ transform: 'scale(1.1)' }}>
-                          <input className="form-check-input m-0 cursor-pointer" type="checkbox" checked={dayHours[i].enabled} onChange={(e) => toggleDay(i, 'enabled', e.target.checked)} />
+                        <div className="d-flex align-items-center justify-content-end gap-2">
+                          {i === 0 && (
+                            <button type="button" className="btn btn-sm btn-light p-1 shadow-sm border d-flex align-items-center justify-content-center text-primary" style={{ width: 24, height: 24 }} onClick={handleApplyToAllDays} title="Áp dụng giờ Thứ 2 cho tất cả các ngày">
+                              <i className="feather-copy" style={{ fontSize: 12 }} />
+                            </button>
+                          )}
+                          <div className="form-check form-switch d-inline-block m-0" style={{ transform: 'scale(1.1)' }}>
+                            <input className="form-check-input m-0 cursor-pointer" type="checkbox" checked={dayHours[i].enabled} onChange={(e) => toggleDay(i, 'enabled', e.target.checked)} />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -738,12 +868,17 @@ export default function ManagerAddCourt() {
         </div>
 
         {/* Action Buttons */}
-        <div className="d-flex justify-content-end gap-3 mt-4 mb-4">
+        <div className="d-flex justify-content-end gap-3 mt-4 mb-4 flex-wrap">
           <Link to={`/manager/venues/${venueId}/courts`} className="btn btn-light fw-bold px-4 py-3 shadow-sm" style={{ borderRadius: 12 }}>
             Hủy bỏ
           </Link>
-          <button type="submit" className="btn btn-primary fw-bold px-5 py-3 shadow" disabled={submitting} style={{ borderRadius: 12 }}>
-             {submitting ? 'ĐANG LƯU...' : 'LƯU VÀ XUẤT BẢN'}
+          {!courtId && !isBulkCreate && (
+             <button type="button" className="btn btn-outline-primary fw-bold px-4 py-3 shadow-sm bg-white" disabled={submitting || progressMsg !== ''} style={{ borderRadius: 12 }} onClick={(e) => handleSubmit(e, true)}>
+               LƯU VÀ THÊM SÂN KHÁC
+             </button>
+          )}
+          <button type="submit" className="btn btn-primary fw-bold px-5 py-3 shadow" disabled={submitting || progressMsg !== ''} style={{ borderRadius: 12 }}>
+             {(submitting || progressMsg !== '') ? 'ĐANG LƯU...' : 'LƯU VÀ XUẤT BẢN'}
           </button>
         </div>
 

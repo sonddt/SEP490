@@ -3,6 +3,15 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import LongTermBookingSteps from '../../components/booking/LongTermBookingSteps';
 import { getVenueCourts, getVenueAvailability } from '../../api/bookingApi';
 
+function normalizeGroupName(value) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 // ── Mini Calendar Popup ────────────────────────────────────────────────────
 function CalendarPopup({ value, onChange, onClose }) {
   const today = new Date();
@@ -185,7 +194,7 @@ function toLocalDateTimeString(d) {
 }
 
 /** Giỏ: mỗi phần tử = một ngày + sân + danh sách chỉ số ô 30 phút */
-function buildFlexibleApiItems(cart, courts, pricePerSlot) {
+function buildFlexibleApiItems(cart, courts, pricePerSlot, slotDurationMins = 30) {
   const items = [];
   for (const entry of cart) {
     const { date, courtId, slotIndices } = entry;
@@ -198,8 +207,8 @@ function buildFlexibleApiItems(cart, courts, pricePerSlot) {
       while (j + 1 < sorted.length && sorted[j + 1] === sorted[j] + 1) j++;
       const startIdx = sorted[i];
       const endIdx = sorted[j];
-      const { start } = slotLocalBounds(date, startIdx);
-      const { end } = slotLocalBounds(date, endIdx);
+      const { start } = slotLocalBounds(date, startIdx, slotDurationMins);
+      const { end } = slotLocalBounds(date, endIdx, slotDurationMins);
       items.push({
         courtId,
         startTime: toLocalDateTimeString(start),
@@ -318,7 +327,11 @@ export default function LongTermFlexible() {
 
   const SLOT_COUNT = useMemo(() => computeSlotCount(slotDuration), [slotDuration]);
 
-  const [selectedDate, setSelectedDate] = useState(localIsoDate(new Date()));
+  // Restore selectedDate from state if navigating back from confirm page
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const fromState = venueState.selectedDate;
+    return fromState || localIsoDate(new Date());
+  });
   const [showCalendar, setShowCalendar]  = useState(false);
 
   // Ref to measure the grid container for computing the exact "fit" minimum
@@ -332,12 +345,39 @@ export default function LongTermFlexible() {
   // selections: { [courtId]: Set<slotIndex> }
   const [selections, setSelections] = useState({});
   /** @type {Array<{ date: string, courtId: string, courtName: string, slotIndices: number[] }>} */
-  const [cart, setCart] = useState([]);
+  // Restore cart from state if navigating back from confirm page
+  const [cart, setCart] = useState(() => {
+    const fromState = venueState.cart;
+    return Array.isArray(fromState) ? fromState : [];
+  });
 
   const [courts, setCourts] = useState([]);
   const [availabilityRows, setAvailabilityRows] = useState([]);
   const [loadCourts, setLoadCourts] = useState({ loading: false, error: '' });
   const [loadAvail, setLoadAvail] = useState({ loading: false, error: '' });
+
+  // ── Group support ────────────────────────────────────────────────────────
+  const hasGroupedCourts = useMemo(
+    () => courts.some((c) => String(c.groupName ?? c.GroupName ?? c.group_name ?? '').trim().length > 0),
+    [courts],
+  );
+
+  const groupedCourts = useMemo(() => {
+    if (!hasGroupedCourts) return { __ALL__: courts };
+    const grouped = {};
+    const displayByKey = {};
+    courts.forEach((court) => {
+      const rawGroupName = String(court.groupName ?? court.GroupName ?? court.group_name ?? '').trim();
+      const groupKey = rawGroupName ? normalizeGroupName(rawGroupName) : '__UNGROUPED__';
+      if (!grouped[groupKey]) grouped[groupKey] = [];
+      if (!displayByKey[groupKey]) displayByKey[groupKey] = rawGroupName || 'Chưa phân nhóm';
+      grouped[groupKey].push(court);
+    });
+    return Object.entries(grouped).reduce((acc, [key, rows]) => {
+      acc[displayByKey[key] || 'Chưa phân nhóm'] = rows;
+      return acc;
+    }, {});
+  }, [courts, hasGroupedCourts]);
 
   // Drag refs — distinguish click vs drag
   const isDraggingRef  = useRef(false);
@@ -349,7 +389,9 @@ export default function LongTermFlexible() {
   const dragBaseRef    = useRef(new Set());
 
   // ── Responsive min cell width ────────────────────────────────────────────
+  const GROUP_LABEL_W = hasGroupedCourts ? 96 : 0; // px reserved for group name column
   const COURT_LABEL_W = 72; // px reserved for court name column
+  const LEFT_LABEL_W  = GROUP_LABEL_W + COURT_LABEL_W;
   const MAX_CELL_W    = 56; // px maximum zoom
 
   // Measure container and derive minCellWidth dynamically
@@ -358,7 +400,7 @@ export default function LongTermFlexible() {
     if (!el) return;
     const measure = (width) => {
       const slots = SLOT_COUNT;
-      const minW = Math.max(10, Math.floor((width - COURT_LABEL_W) / slots));
+      const minW = Math.max(10, Math.floor((width - LEFT_LABEL_W) / slots));
       setContainerWidth(width);
       setCellWidth(prev => {
         // On first measure (prev===0) default to minW; otherwise preserve user zoom but re-clamp
@@ -372,11 +414,11 @@ export default function LongTermFlexible() {
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, [SLOT_COUNT]);
+  }, [SLOT_COUNT, LEFT_LABEL_W]);
 
   // Minimum cell width derived from current container width
   const minCellWidth = containerWidth > 0
-    ? Math.max(10, Math.floor((containerWidth - COURT_LABEL_W) / SLOT_COUNT))
+    ? Math.max(10, Math.floor((containerWidth - LEFT_LABEL_W) / SLOT_COUNT))
     : 10;
 
   // Effective cell width — never less than what fits the container
@@ -645,14 +687,14 @@ export default function LongTermFlexible() {
 
   const handleProceedConfirm = () => {
     if (cart.length === 0) return;
-    const apiItems = buildFlexibleApiItems(cart, courts, pricePerSlot);
+    const apiItems = buildFlexibleApiItems(cart, courts, pricePerSlot, slotDuration);
     if (apiItems.length === 0) return;
     const slotCount = cartSlotCount(cart);
     const totalCart = cartTotalPrice(cart, courts, pricePerSlot);
     const sessionDays = new Set(cart.map((e) => e.date)).size;
-    const hFloat = slotCount * 0.5;
-    const th = Math.floor(hFloat);
-    const tm = (hFloat - th) * 60;
+    const totalMinutes = slotCount * slotDuration;
+    const th = Math.floor(totalMinutes / 60);
+    const tm = totalMinutes % 60;
     const totalHours = tm > 0 ? `${th}h${tm}` : `${th}h`;
 
     const padTwo = (n) => String(n).padStart(2, '0');
@@ -661,12 +703,12 @@ export default function LongTermFlexible() {
       const court = courts.find((c) => c.id === line.courtId);
       if (!court) continue;
       for (const slotIdx of [...line.slotIndices].sort((a, b) => a - b)) {
-        const { start, end } = slotLocalBounds(line.date, slotIdx);
+        const { start, end } = slotLocalBounds(line.date, slotIdx, slotDuration);
         selectedSlots.push({
           courtName: line.courtName,
           timeLabel: `${padTwo(start.getHours())}:${padTwo(start.getMinutes())}`,
           timeEndLabel: `${padTwo(end.getHours())}:${padTwo(end.getMinutes())}`,
-          price: getPriceForSlot(court, slotIdx, line.date, pricePerSlot),
+          price: getPriceForSlot(court, slotIdx, line.date, pricePerSlot, slotDuration),
           slotIndex: slotIdx,
           dateIso: line.date,
         });
@@ -682,6 +724,7 @@ export default function LongTermFlexible() {
         venueName,
         venueAddress,
         pricePerSlot,
+        slotDuration,
         items: apiItems,
         cart,
         selectedSlots,
@@ -850,17 +893,25 @@ export default function LongTermFlexible() {
         ref={gridContainerRef}
         style={{ overflowX: effectiveCellW <= minCellWidth ? 'hidden' : 'auto', backgroundColor: '#fff', margin: '12px', borderRadius: '8px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}
       >
-        <div style={{ minWidth: effectiveCellW <= minCellWidth ? '100%' : `${COURT_LABEL_W + (timeSlots.length - 1) * effectiveCellW}px` }}>
+        <div style={{ minWidth: effectiveCellW <= minCellWidth ? '100%' : `${LEFT_LABEL_W + (timeSlots.length - 1) * effectiveCellW}px` }}>
 
           {/* Time header row — sticky */}
           <div
             className="d-flex"
             style={{ backgroundColor: '#f0fdf4', borderBottom: '1px solid #d1fae5', position: 'sticky', top: 0, zIndex: 20 }}
           >
+            {hasGroupedCourts && (
+              <div style={{
+                width: `${GROUP_LABEL_W}px`, minWidth: `${GROUP_LABEL_W}px`, position: 'sticky', left: 0,
+                backgroundColor: '#f0fdf4', zIndex: 22, borderRight: '1px solid #d1fae5',
+                fontSize: '11px', color: '#0f766e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700,
+              }}>Nhóm</div>
+            )}
             <div style={{
-              width: '72px', minWidth: '72px', position: 'sticky', left: 0,
+              width: `${COURT_LABEL_W}px`, minWidth: `${COURT_LABEL_W}px`, position: 'sticky', left: `${GROUP_LABEL_W}px`,
               backgroundColor: '#f0fdf4', zIndex: 21, borderRight: '1px solid #d1fae5',
-            }} />
+              fontSize: '11px', color: '#0f766e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700,
+            }}>Sân</div>
             {timeSlots.slice(0, -1).map((slot, i) => (
               <div
                 key={i}
@@ -877,60 +928,84 @@ export default function LongTermFlexible() {
             ))}
           </div>
 
-          {/* Court rows */}
-          {courts.map(court => (
-            <div key={court.id} className="d-flex" style={{ borderBottom: '1px solid #e5e7eb' }}>
+          {/* Court rows — grouped */}
+          {Object.entries(groupedCourts).map(([groupName, groupCourts]) => (
+            <React.Fragment key={groupName}>
+              {groupCourts.map((court, groupIndex) => (
+                <div key={court.id} className="d-flex" style={{ borderBottom: '1px solid #e5e7eb' }}>
 
-              {/* Court name — sticky */}
-              <div style={{
-                width: '72px', minWidth: '72px', position: 'sticky', left: 0,
-                backgroundColor: '#f8fafc', zIndex: 10, borderRight: '1px solid #e5e7eb',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '13px', fontWeight: '600', color: '#374151',
-              }}>
-                {court.name}
-              </div>
-
-              {/* Time cells */}
-              {timeSlots.slice(0, -1).map((_, slotIdx) => {
-                const { status, label, isBlockStart } = getCellStatus(court.id, slotIdx);
-                const bg          = getCellColor(status);
-                const isClickable = status === 'free' || status === 'selected';
-
-                return (
-                  <div
-                    key={slotIdx}
-                    onMouseDown={() => handleMouseDown(court.id, slotIdx)}
-                    onMouseEnter={() => handleMouseEnter(court.id, slotIdx)}
-                    onMouseUp={() => handleMouseUp(court.id, slotIdx)}
-                    style={{
-                      flex: effectiveCellW <= minCellWidth ? '1 1 0' : 'none',
-                      width: effectiveCellW <= minCellWidth ? 'auto' : `${effectiveCellW}px`,
-                      minWidth: effectiveCellW <= minCellWidth ? 0 : `${effectiveCellW}px`,
-                      flexShrink: effectiveCellW <= minCellWidth ? 1 : 0,
+                  {/* Group name — sticky column 1 */}
+                  {hasGroupedCourts && (
+                    <div style={{
+                      width: `${GROUP_LABEL_W}px`, minWidth: `${GROUP_LABEL_W}px`, position: 'sticky', left: 0,
+                      backgroundColor: '#ecfeff', zIndex: 12, borderRight: '1px solid #bae6fd', borderBottom: '1px solid #bae6fd',
+                      fontSize: '12px', fontWeight: '700', color: '#0e7490', textAlign: 'center',
+                      padding: '0 4px', lineHeight: 1.2,
                       height: '44px',
-                      backgroundColor: bg,
-                      borderRight: '1px solid #e5e7eb',
-                      cursor: isClickable ? 'pointer' : 'not-allowed',
-                      userSelect: 'none',
-                      display: 'flex', alignItems: 'center',
-                      overflow: 'hidden', position: 'relative',
-                    }}
-                    title={label || undefined}
-                  >
-                    {isBlockStart && label && (
-                      <span style={{
-                        fontSize: '10px', color: '#fff', paddingLeft: '4px',
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                        position: 'absolute', left: 0, right: 0,
-                      }}>
-                        {label}
-                      </span>
-                    )}
+                      overflow: 'hidden',
+                      whiteSpace: 'normal',
+                      wordBreak: 'break-word',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                    }}>
+                      {groupIndex === Math.floor((groupCourts.length - 1) / 2) ? groupName : ''}
+                    </div>
+                  )}
+
+                  {/* Court name — sticky column 2 */}
+                  <div style={{
+                    width: `${COURT_LABEL_W}px`, minWidth: `${COURT_LABEL_W}px`, position: 'sticky', left: `${GROUP_LABEL_W}px`,
+                    backgroundColor: '#f8fafc', zIndex: 10, borderRight: '1px solid #e5e7eb',
+                    borderBottom: '1px solid #e5e7eb',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '13px', fontWeight: '600', color: '#374151',
+                  }}>
+                    {court.name}
                   </div>
-                );
-              })}
-            </div>
+
+                  {/* Time cells */}
+                  {timeSlots.slice(0, -1).map((_, slotIdx) => {
+                    const { status, label, isBlockStart } = getCellStatus(court.id, slotIdx);
+                    const bg          = getCellColor(status);
+                    const isClickable = status === 'free' || status === 'selected';
+
+                    return (
+                      <div
+                        key={slotIdx}
+                        onMouseDown={() => handleMouseDown(court.id, slotIdx)}
+                        onMouseEnter={() => handleMouseEnter(court.id, slotIdx)}
+                        onMouseUp={() => handleMouseUp(court.id, slotIdx)}
+                        style={{
+                          flex: effectiveCellW <= minCellWidth ? '1 1 0' : 'none',
+                          width: effectiveCellW <= minCellWidth ? 'auto' : `${effectiveCellW}px`,
+                          minWidth: effectiveCellW <= minCellWidth ? 0 : `${effectiveCellW}px`,
+                          flexShrink: effectiveCellW <= minCellWidth ? 1 : 0,
+                          height: '44px',
+                          backgroundColor: bg,
+                          borderRight: '1px solid #e5e7eb',
+                          cursor: isClickable ? 'pointer' : 'not-allowed',
+                          userSelect: 'none',
+                          display: 'flex', alignItems: 'center',
+                          overflow: 'hidden', position: 'relative',
+                        }}
+                        title={label || undefined}
+                      >
+                        {isBlockStart && label && (
+                          <span style={{
+                            fontSize: '10px', color: '#fff', paddingLeft: '4px',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                            position: 'absolute', left: 0, right: 0,
+                          }}>
+                            {label}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </React.Fragment>
           ))}
         </div>
       </div>
