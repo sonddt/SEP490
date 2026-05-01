@@ -20,7 +20,6 @@ export function ChatProvider({ children }) {
   const { user, isAuthenticated } = useAuth();
   const [connStatus, setConnStatus] = useState('Chưa đăng nhập');
   const [hubConnected, setHubConnected] = useState(false);
-  const [windows, setWindows] = useState([]);
   const [openingPeerId, setOpeningPeerId] = useState(null);
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
 
@@ -39,7 +38,6 @@ export function ChatProvider({ children }) {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      setWindows([]);
       setHubConnected(false);
       setConnStatus('Chưa đăng nhập');
     }
@@ -108,17 +106,6 @@ export function ChatProvider({ children }) {
         const subs = subscribersRef.current.get(key);
         if (subs) subs.forEach((h) => h(msg));
       }
-      const rid = messageRoomId(msg);
-      const sid = senderId(msg);
-      const uid = userIdRef.current;
-      const self = uid != null && String(sid) === String(uid);
-      if (!rid || self) return;
-      setWindows((prev) =>
-        prev.map((w) => {
-          if (String(w.roomId) !== rid || !w.minimized) return w;
-          return { ...w, unread: (w.unread || 0) + 1 };
-        })
-      );
     };
 
     conn.on('ReceiveMessage', notifyMsg);
@@ -196,36 +183,7 @@ export function ChatProvider({ children }) {
         }
         const rid = roomIdOf(room);
         if (!rid) throw new Error('Thiếu room id');
-
-        setWindows((prev) => {
-          const exists = prev.find((w) => String(w.roomId) === String(rid));
-          if (exists) {
-            return prev.map((w) =>
-              String(w.roomId) === String(rid)
-                ? {
-                  ...w,
-                  minimized: false,
-                  unread: 0,
-                  title: fullName?.trim() || w.title,
-                  avatarUrl: avatarUrl ?? w.avatarUrl,
-                  z: Date.now(),
-                }
-                : w
-            );
-          }
-          return [
-            ...prev,
-            {
-              roomId: rid,
-              peerUserId: userId,
-              title: fullName?.trim() || 'Trò chuyện',
-              avatarUrl: avatarUrl || null,
-              minimized: false,
-              unread: 0,
-              z: Date.now(),
-            },
-          ];
-        });
+        // Room resolved — caller can navigate to /user/chat if needed
       } catch (e) {
         const msg =
           e?.response?.data?.message ||
@@ -239,37 +197,11 @@ export function ChatProvider({ children }) {
     [user?.id]
   );
 
-  const closeWindow = useCallback((roomId) => {
-    setWindows((prev) => prev.filter((w) => String(w.roomId) !== String(roomId)));
-  }, []);
-
-  const toggleMinimize = useCallback((roomId) => {
-    setWindows((prev) =>
-      prev.map((w) => {
-        if (String(w.roomId) !== String(roomId)) return w;
-        const next = !w.minimized;
-        return { ...w, minimized: next, unread: next ? w.unread : 0 };
-      })
-    );
-  }, []);
-
-  const bringToFront = useCallback((roomId) => {
-    setWindows((prev) =>
-      prev.map((w) =>
-        String(w.roomId) === String(roomId) ? { ...w, z: Date.now() } : w
-      )
-    );
-  }, []);
-
   const value = {
     connStatus,
     hubConnected,
-    windows,
     openingPeerId,
     openChatWithPeer,
-    closeWindow,
-    toggleMinimize,
-    bringToFront,
     subscribeToRoom,
     acquireRoom,
     releaseRoom,

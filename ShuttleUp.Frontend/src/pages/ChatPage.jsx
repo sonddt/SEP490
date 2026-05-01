@@ -195,9 +195,9 @@ export default function ChatPage() {
 
   return (
     <div>
-      <div className="chat-app-wrapper shadow-xl border border-slate-100 rounded-2xl overflow-hidden bg-white max-h-[80vh] h-[700px] flex mx-auto">
+      <div className="chat-app-wrapper shadow-xl border border-slate-100 rounded-2xl overflow-hidden bg-white flex mx-auto w-full" style={{ height: 'calc(100vh - 180px)', minHeight: '500px', maxHeight: '750px' }}>
         {/* Chat Left */}
-        <div className={`chat-sidebar-left border-r border-slate-200 bg-white w-full md:w-[350px] flex-shrink-0 flex flex-col transition-all duration-300 md:min-w-[350px] ${mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
+        <div className={`chat-sidebar-left border-r border-slate-200 bg-white w-full md:w-[350px] flex-shrink-0 flex flex-col transition-all duration-300 md:min-w-[350px] h-full ${mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
           <div className="chat-header border-b border-slate-100 p-4 bg-white flex items-center justify-between z-10">
             <h3 className="text-xl font-bold text-slate-800 m-0 flex items-center gap-2">
               <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
@@ -229,9 +229,9 @@ export default function ChatPage() {
                   />
                 </div>
                 <div className="mb-4">
-                  <label className="text-[13px] font-bold text-slate-600 mb-2 flex justify-between">
+                  <label className="text-[13px] font-bold text-slate-600 mb-2 flex justify-between items-center">
                     <span>Mời bạn bè</span>
-                    <span className="text-xs text-emerald-600">{selectedMemberIds.size} đã chọn</span>
+                    <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{selectedMemberIds.size} đã chọn</span>
                   </label>
 
                   <div className="max-h-[200px] overflow-y-auto pr-2 space-y-1 custom-scrollbar">
@@ -271,7 +271,7 @@ export default function ChatPage() {
                 <form className="p-4 bg-white border-b border-slate-100 sticky top-0 z-10 w-full shadow-sm">
                   <div className="relative">
                     <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                    <input type="text" className="form-control rounded-full border-slate-200 py-2.5 pl-10 pr-4 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-[13.5px] font-semibold bg-slate-50/50" placeholder="Tìm kiếm liên hệ..." />
+                    <input type="text" className="form-control rounded-full border-slate-200 py-2.5 !pl-11 pr-4 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-[13.5px] font-semibold bg-slate-50/50" placeholder="Tìm kiếm liên hệ..." />
                   </div>
                 </form>
                 <div className="chat-users-list p-2">
@@ -326,7 +326,7 @@ export default function ChatPage() {
         {/* /Chat Left */}
 
         {/* Chat Right */}
-        <div className={`chat-main-right flex flex-col w-full h-[800px] max-h-[85vh] bg-white transition-all duration-300 flex-1 ${!mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
+        <div className={`chat-main-right flex flex-col w-full h-full bg-white transition-all duration-300 flex-1 ${!mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
           {!activeRoom ? (
             <div className="flex-1 flex flex-col items-center justify-center bg-slate-50/50">
               <img src="/assets/img/chat/empty-chat.svg" alt="" className="w-64 opacity-60 mb-6" onError={(e) => e.target.style.display = 'none'} />
