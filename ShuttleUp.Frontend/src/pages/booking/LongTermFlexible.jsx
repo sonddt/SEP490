@@ -929,10 +929,42 @@ export default function LongTermFlexible() {
           </div>
 
           {/* Court rows — grouped */}
-          {Object.entries(groupedCourts).map(([groupName, groupCourts]) => (
+          {Object.entries(groupedCourts).map(([groupName, groupCourts], groupEntryIndex) => (
             <React.Fragment key={groupName}>
+              {/* ── Group header banner ── */}
+              {hasGroupedCourts && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  position: 'sticky',
+                  left: 0,
+                  width: '100%',
+                  backgroundColor: groupEntryIndex % 2 === 0 ? '#0e7490' : '#0f766e',
+                  borderTop: groupEntryIndex > 0 ? '3px solid #fff' : 'none',
+                  padding: '6px 12px',
+                  gap: '8px',
+                  zIndex: 15,
+                }}>
+                  <span style={{ fontSize: '14px' }}>
+                    {groupName.toLowerCase().includes('ngoài') || groupName.toLowerCase().includes('ngoai') ? '☀️' : '🏠'}
+                  </span>
+                  <span style={{
+                    fontSize: '12px', fontWeight: '700', color: '#fff',
+                    textTransform: 'uppercase', letterSpacing: '0.5px',
+                  }}>
+                    {groupName}
+                  </span>
+                  <span style={{
+                    fontSize: '11px', color: 'rgba(255,255,255,0.75)',
+                    marginLeft: '4px',
+                  }}>
+                    ({groupCourts.length} sân)
+                  </span>
+                </div>
+              )}
               {groupCourts.map((court, groupIndex) => (
                 <div key={court.id} className="d-flex" style={{ borderBottom: '1px solid #e5e7eb' }}>
+
 
                   {/* Group name — sticky column 1 */}
                   {hasGroupedCourts && (
