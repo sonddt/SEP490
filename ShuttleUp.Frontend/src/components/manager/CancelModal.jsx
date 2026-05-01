@@ -2,14 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 const QUICK_REASONS = [
-  'Khung giờ này đã được đặt trước',
   'Sân đang bảo trì trong ngày này',
   'Cụm sân tạm thời đóng cửa',
-  'Số lượng khách vượt quá giới hạn',
+  'Trùng lịch với sự kiện khác',
   'Lý do khác',
 ];
 
-export default function RejectModal({ booking, onConfirm, onClose }) {
+export default function CancelModal({ booking, onConfirm, onClose }) {
   const [reason, setReason] = useState('');
   const [customReason, setCustomReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -29,13 +28,15 @@ export default function RejectModal({ booking, onConfirm, onClose }) {
     if (!canSubmit) return;
     setSubmitting(true);
     try {
-      await onConfirm(booking.id, finalReason);
+      await onConfirm(booking.bookingId ?? booking.id, finalReason);
     } finally {
       setSubmitting(false);
     }
   };
 
   if (!booking) return null;
+
+  const hasPaid = booking.paymentStatus === 'PAID';
 
   return createPortal(
     <div className="bk-modal-overlay" onClick={onClose}>
@@ -45,11 +46,11 @@ export default function RejectModal({ booking, onConfirm, onClose }) {
         <div className="bk-modal-header bk-modal-header--danger">
           <div className="d-flex align-items-center gap-3">
             <div className="bk-modal-icon bk-modal-icon--danger">
-              <i className="feather-x-circle" />
+              <i className="feather-slash" />
             </div>
             <div>
-              <h5 className="bk-modal-title mb-0">Từ chối yêu cầu</h5>
-              <p className="bk-modal-sub mb-0">Vui lòng cho biết lý do từ chối</p>
+              <h5 className="bk-modal-title mb-0">Huỷ lịch đã duyệt</h5>
+              <p className="bk-modal-sub mb-0">Vui lòng cho biết lý do huỷ lịch</p>
             </div>
           </div>
           <button type="button" className="bk-modal-close" onClick={onClose}>
@@ -76,6 +77,18 @@ export default function RejectModal({ booking, onConfirm, onClose }) {
               </div>
             </div>
           </div>
+
+          {/* Refund notice */}
+          {hasPaid && (
+            <div className="alert alert-warning d-flex align-items-start gap-2 mb-3" style={{ fontSize: 13, borderRadius: 10 }}>
+              <i className="feather-alert-triangle" style={{ marginTop: 2, flexShrink: 0 }} />
+              <div>
+                <strong>Lưu ý:</strong> Đơn này đã thanh toán{' '}
+                <strong style={{ color: '#d97706' }}>{booking.amount?.toLocaleString('vi-VN')} ₫</strong>.
+                Sau khi huỷ, hệ thống sẽ tạo yêu cầu hoàn tiền và gửi email thông báo cho người chơi để cung cấp thông tin tài khoản nhận tiền hoàn.
+              </div>
+            </div>
+          )}
 
           {/* Quick reasons */}
           <div className="mb-3">
@@ -109,7 +122,7 @@ export default function RejectModal({ booking, onConfirm, onClose }) {
               ref={textareaRef}
               className="form-control"
               rows={3}
-              placeholder="Nhập lý do hoặc ghi chú thêm cho người đặt..."
+              placeholder="Nhập lý do huỷ lịch cho người đặt biết..."
               value={reason === 'Lý do khác' ? customReason : reason !== '' ? reason : customReason}
               onChange={(e) => {
                 if (reason === 'Lý do khác') {
@@ -123,7 +136,7 @@ export default function RejectModal({ booking, onConfirm, onClose }) {
               style={{ fontSize: 13, resize: 'vertical' }}
             />
             <small className="text-muted d-block mt-1" style={{ fontSize: 11 }}>
-              Lý do này sẽ được gửi đến người đặt sân
+              Lý do này sẽ được gửi đến người đặt sân qua thông báo và email
             </small>
           </div>
         </div>
@@ -131,7 +144,7 @@ export default function RejectModal({ booking, onConfirm, onClose }) {
         {/* Footer */}
         <div className="bk-modal-footer">
           <button type="button" className="btn btn-outline-secondary btn-sm" onClick={onClose}>
-            Huỷ
+            Huỷ bỏ
           </button>
           <button
             type="button"
@@ -142,7 +155,7 @@ export default function RejectModal({ booking, onConfirm, onClose }) {
             {submitting ? (
               <><span className="spinner-border spinner-border-sm" />Đang xử lý...</>
             ) : (
-              <><i className="feather-x-circle" />Xác nhận từ chối</>
+              <><i className="feather-slash" />Xác nhận huỷ lịch</>
             )}
           </button>
         </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { BOOKING_STATUSES, PAYMENT_METHODS } from '../../data/bookingsMock';
 import LongTermScheduleDisplay from '../common/LongTermScheduleDisplay';
 
@@ -110,7 +111,7 @@ function PaymentProofSection({ proofImg }) {
   );
 }
 
-export default function BookingDetailModal({ booking, onClose, onAccept, onReject }) {
+export default function BookingDetailModal({ booking, onClose, onAccept, onReject, onCancel }) {
   const [isProcessing, setIsProcessing] = useState(false);
 
   if (!booking) return null;
@@ -130,7 +131,7 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
       ? '#f59e0b'
       : '#94a3b8';
 
-  return (
+  return createPortal(
     <div className="bk-modal-overlay" onClick={onClose}>
       <div className="bk-modal bk-modal--lg" style={{ maxWidth: '850px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
 
@@ -249,7 +250,7 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
               {booking.rejectReason && (
                 <div className="bk-detail-section mt-3" style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '10px 14px' }}>
                   <h6 className="bk-detail-section-title" style={{ color: '#ef4444' }}>
-                    <i className="feather-alert-circle me-1" />Lý do từ chối
+                    <i className="feather-alert-circle me-1" />Lý do từ chối / huỷ
                   </h6>
                   <p className="mb-0" style={{ fontSize: 13, color: '#ef4444' }}>
                     {booking.rejectReason}
@@ -296,8 +297,18 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
               </button>
             </>
           )}
+          {booking.status === 'UPCOMING' && onCancel && (
+            <button
+              type="button"
+              className="btn btn-danger btn-sm d-flex align-items-center gap-2"
+              onClick={() => onCancel(booking)}
+            >
+              <i className="feather-slash" />Huỷ lịch
+            </button>
+          )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

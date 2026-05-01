@@ -242,10 +242,37 @@ public class ManagerBookingsController : ControllerBase
 
         if (booking.UserId is { } playerId)
         {
-            var title = next == "CONFIRMED" ? "Đơn đặt sân đã được duyệt" : "Cập nhật đơn đặt sân";
+            var venueName = booking.Venue?.Name ?? "sân";
+            var reasonText = string.IsNullOrWhiteSpace(booking.ManagerStatusNote)
+                ? "Đơn đã bị huỷ/từ chối."
+                : booking.ManagerStatusNote;
+
+            var title = next == "CONFIRMED" ? "Đơn đặt sân đã được duyệt" : "Đơn đặt sân đã bị huỷ";
             var body = next == "CONFIRMED"
-                ? $"Mã #{code} tại {booking.Venue?.Name ?? "sân"} đã được chủ sân xác nhận."
-                : $"Mã #{code}: {(string.IsNullOrWhiteSpace(booking.ManagerStatusNote) ? "Đơn đã bị huỷ/từ chối." : booking.ManagerStatusNote)}";
+                ? $"Mã #{code} tại {venueName} đã được chủ sân xác nhận."
+                : $"Mã #{code} tại {venueName} đã bị huỷ bởi chủ sân. Lý do: {reasonText}";
+
+            // Build richer HTML email for cancellation with refund instructions
+            string? htmlBody = null;
+            if (next != "CONFIRMED" && booking.Status == "PENDING_REFUND")
+            {
+                htmlBody = $"""
+                    <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
+                      <h2 style="color:#097E52">ShuttleUp</h2>
+                      <p style="font-size:16px;font-weight:600;color:#1e293b">{System.Net.WebUtility.HtmlEncode(title)}</p>
+                      <p style="margin:12px 0;color:#334155">Mã đặt sân: <strong>#{code}</strong> tại <strong>{System.Net.WebUtility.HtmlEncode(venueName)}</strong></p>
+                      <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:12px 16px;margin:12px 0">
+                        <p style="margin:0;color:#ef4444;font-weight:600"><strong>Lý do huỷ:</strong></p>
+                        <p style="margin:4px 0 0;color:#dc2626">{System.Net.WebUtility.HtmlEncode(reasonText)}</p>
+                      </div>
+                      <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:12px 16px;margin:12px 0">
+                        <p style="margin:0;color:#92400e;font-weight:600">💰 Thông báo hoàn tiền</p>
+                        <p style="margin:4px 0 0;color:#92400e">Đơn của bạn đã thanh toán và đủ điều kiện hoàn tiền. Vui lòng đăng nhập vào ShuttleUp và cung cấp thông tin tài khoản ngân hàng nhận tiền hoàn tại mục <strong>Đặt sân của tôi</strong> để chúng tôi xử lý hoàn tiền sớm nhất.</p>
+                      </div>
+                      <p style="color:#94a3b8;font-size:12px">Bạn nhận được email này vì có hoạt động liên quan tài khoản ShuttleUp.</p>
+                    </div>
+                    """;
+            }
 
             await _notify.NotifyUserAsync(
                 playerId,
@@ -266,7 +293,8 @@ public class ManagerBookingsController : ControllerBase
                     status = booking.Status,
                     title,
                     body,
-                });
+                },
+                htmlBodyOverride: htmlBody);
         }
 
         return Ok(new

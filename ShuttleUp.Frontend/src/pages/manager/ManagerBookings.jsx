@@ -4,6 +4,7 @@ import { BOOKING_STATUSES, PAYMENT_METHODS } from '../../data/bookingsMock';
 import { getManagerBookings, patchManagerBookingStatus } from '../../api/managerBookingsApi';
 import BookingDetailModal from '../../components/manager/BookingDetailModal';
 import RejectModal from '../../components/manager/RejectModal';
+import CancelModal from '../../components/manager/CancelModal';
 import { normalizeSearchText } from '../../utils/searchNormalize';
 import { useNotification } from '../../hooks/useNotification';
 
@@ -168,6 +169,7 @@ export default function ManagerBookings() {
   const [page, setPage] = useState(1);
   const [detailModal, setDetailModal] = useState(null);
   const [rejectModal, setRejectModal] = useState(null);
+  const [cancelModal, setCancelModal] = useState(null);
   const { notifySuccess, notifyError, notifyWarning, notifyInfo } = useNotification();
   const [processingId, setProcessingId] = useState(null);
 
@@ -297,10 +299,11 @@ export default function ManagerBookings() {
       setProcessingId(null);
     }
   }, [fetchBookings]);
-  const handleCancel = useCallback(async (bookingId) => {
+  const handleCancel = useCallback(async (bookingId, reason) => {
     try {
       setProcessingId(bookingId);
-      await patchManagerBookingStatus(bookingId, { status: 'CANCELLED' });
+      await patchManagerBookingStatus(bookingId, { status: 'CANCELLED', reason });
+      setCancelModal(null);
       await fetchBookings(false);
       notifyInfo('Đã huỷ lịch.');
     } catch {
@@ -544,7 +547,7 @@ export default function ManagerBookings() {
                             </>
                           )}
                           {b.status === 'UPCOMING' && (
-                            <button type="button" title="Huỷ lịch" className="btn btn-sm btn-outline-danger d-inline-flex align-items-center justify-content-center" style={{ width: 32, height: 32, padding: 0 }} disabled={processingId === b.bookingId} onClick={() => handleCancel(b.bookingId)}>
+                            <button type="button" title="Huỷ lịch" className="btn btn-sm btn-outline-danger d-inline-flex align-items-center justify-content-center" style={{ width: 32, height: 32, padding: 0 }} disabled={processingId === b.bookingId} onClick={() => setCancelModal(b)}>
                               {processingId === b.bookingId ? <div className="spinner-border spinner-border-sm" style={{ width: '1rem', height: '1rem' }} role="status" /> : <i className="feather-slash" />}
                             </button>
                           )}
@@ -598,11 +601,17 @@ export default function ManagerBookings() {
         onClose={() => setDetailModal(null)}
         onAccept={handleAccept}
         onReject={b => { setDetailModal(null); setRejectModal(b); }}
+        onCancel={b => { setDetailModal(null); setCancelModal(b); }}
       />
       <RejectModal
         booking={rejectModal}
         onConfirm={handleRejectConfirm}
         onClose={() => setRejectModal(null)}
+      />
+      <CancelModal
+        booking={cancelModal}
+        onConfirm={handleCancel}
+        onClose={() => setCancelModal(null)}
       />
     </>
   );
