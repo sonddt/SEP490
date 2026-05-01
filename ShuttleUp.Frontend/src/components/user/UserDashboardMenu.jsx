@@ -1,6 +1,6 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { toast } from 'react-toastify';
+import { notifySuccess } from '../../hooks/useNotification';
 
 export default function UserDashboardMenu() {
   const { user, logout } = useAuth();
@@ -9,7 +9,7 @@ export default function UserDashboardMenu() {
 
   const handleLogout = () => {
     logout();
-    toast.success('Đã đăng xuất thành công!');
+    notifySuccess('Đã đăng xuất thành công!');
     navigate('/');
   };
 

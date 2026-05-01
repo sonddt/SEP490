@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { changePassword, setPassword } from '../../api/authApi';
 import { useAuth } from '../../context/AuthContext';
+import { notifySuccess, notifyError } from '../../hooks/useNotification';
 
 export default function UserProfileChangePassword() {
   const { user, logout, updateUser } = useAuth();
@@ -78,10 +79,13 @@ export default function UserProfileChangePassword() {
     try {
       await changePassword(form);
       setSuccess('Tuyệt vời! Đổi mật khẩu thành công rồi nha. Bạn đăng nhập lại nhé!');
+      notifySuccess('Đổi mật khẩu thành công!');
       handleReset();
       setTimeout(() => { logout(); navigate('/login'); }, 2000);
     } catch (err) {
-      setError(err.response?.data?.message ?? err.response?.data?.title ?? 'Oops... Có sự cố khi đổi mật khẩu, bạn thử lại nha.');
+      const msg = err.response?.data?.message ?? err.response?.data?.title ?? 'Oops... Có sự cố khi đổi mật khẩu, bạn thử lại nha.';
+      setError(msg);
+      notifyError(msg);
     } finally {
       setLoading(false);
     }
@@ -119,12 +123,15 @@ export default function UserProfileChangePassword() {
     try {
       await setPassword(setForm2);
       setSuccess('Tuyệt vời! Thêm mật khẩu thành công. Bây giờ bạn có thể đăng nhập bằng email và mật khẩu!');
+      notifySuccess('Thêm mật khẩu thành công!');
       setSetForm2({ newPassword: '', confirmPassword: '' });
       setPasswordSet(true);
       // Cập nhật context: giờ user đã có password
       updateUser({ authProvider: 'GOOGLE' });
     } catch (err) {
-      setError(err.response?.data?.message ?? 'Oops... Có sự cố khi thêm mật khẩu, bạn thử lại nha.');
+      const msg = err.response?.data?.message ?? 'Oops... Có sự cố khi thêm mật khẩu, bạn thử lại nha.';
+      setError(msg);
+      notifyError(msg);
     } finally {
       setLoading(false);
     }

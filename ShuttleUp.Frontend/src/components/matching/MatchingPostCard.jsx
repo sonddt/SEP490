@@ -4,7 +4,7 @@ import matchingApi from '../../api/matchingApi';
 import MatchingScheduleModal from './MatchingScheduleModal';
 import { buildScheduleSummary } from '../../utils/matchingScheduleSummary';
 import { useAuth } from '../../context/AuthContext';
-import { toast } from 'react-toastify';
+import { notifySuccess, notifyError } from '../../hooks/useNotification';
 
 function sameUserId(a, b) {
   if (a == null || b == null) return false;
@@ -136,13 +136,13 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
     setJoinBusy(true);
     try {
       await matchingApi.joinPost(post.id, { message: joinMessage || undefined });
-      toast.success('Đã gửi yêu cầu tham gia! Chờ chủ bài duyệt nhé.');
+      notifySuccess('Đã gửi yêu cầu tham gia! Chờ chủ bài duyệt nhé.');
       setShowJoinModal(false);
       setJoinMessage('');
       onJoined?.();
     } catch (err) {
       const msg = err.response?.data?.message || 'Chưa gửi được yêu cầu — bạn thử lại sau nhé.';
-      toast.error(msg);
+      notifyError(msg);
     } finally {
       setJoinBusy(false);
     }

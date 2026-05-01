@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using ShuttleUp.Backend.Constants;
+using ShuttleUp.Backend.Services.Interfaces;
 using ShuttleUp.DAL.Models;
 using ShuttleUp.DAL.Repositories.Interfaces;
 using System.Security.Claims;
@@ -22,19 +24,22 @@ public class ManagerProfileController : ControllerBase
     private readonly IUserRepository _users;
     private readonly ShuttleUpDbContext _db;
     private readonly IConfiguration _config;
+    private readonly INotificationDispatchService _notify;
 
     public ManagerProfileController(
         IManagerProfileRepository repo,
         IManagerProfileRequestRepository requestRepo,
         IUserRepository users,
         ShuttleUpDbContext db,
-        IConfiguration config)
+        IConfiguration config,
+        INotificationDispatchService notify)
     {
         _repo = repo;
         _requestRepo = requestRepo;
         _users = users;
         _db = db;
         _config = config;
+        _notify = notify;
     }
 
     private Guid CurrentUserId =>
@@ -370,6 +375,30 @@ public class ManagerProfileController : ControllerBase
         {
             return BadRequest(new { message = ex.Message });
         }
+
+        // ── Notify tất cả Admin có hồ sơ mới chờ duyệt ──
+        try
+        {
+            var adminIds = await _db.Users
+                .AsNoTracking()
+                .Where(u => u.Roles.Any(r => r.Name == "ADMIN") && u.IsActive == true)
+                .Select(u => u.Id)
+                .ToListAsync();
+
+            var userName = user.FullName ?? "Người dùng";
+            var reqLabel = requestType == "CAP_NHAT" ? "cập nhật" : "đăng ký";
+
+            foreach (var adminId in adminIds)
+            {
+                await _notify.NotifyUserAsync(
+                    adminId,
+                    NotificationTypes.ManagerRequestSubmitted,
+                    $"Có hồ sơ {reqLabel} Chủ sân mới!",
+                    $"{userName} vừa gửi hồ sơ {reqLabel} Chủ sân. Bấm để xem chi tiết.",
+                    metadata: new { deepLink = "/admin/manager-requests" });
+            }
+        }
+        catch { /* không block response nếu notify fail */ }
 
         return Ok(new
         {

@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ShuttleUp.Backend.Constants;
 using ShuttleUp.Backend.Services.Interfaces;
 using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.DAL.Models;
@@ -24,19 +25,22 @@ public class AdminController : ControllerBase
     private readonly IBookingService _bookingService;
     private readonly IBanService     _banService;
     private readonly ShuttleUpDbContext _db;
+    private readonly INotificationDispatchService _notify;
 
     public AdminController(
         IUserService    userService,
         IVenueService   venueService,
         IBookingService bookingService,
         IBanService     banService,
-        ShuttleUpDbContext db)
+        ShuttleUpDbContext db,
+        INotificationDispatchService notify)
     {
         _userService    = userService;
         _venueService   = venueService;
         _bookingService = bookingService;
         _banService     = banService;
         _db             = db;
+        _notify         = notify;
     }
 
     // =========================================================================
@@ -503,6 +507,17 @@ public class AdminController : ControllerBase
 
         await _db.SaveChangesAsync();
 
+        // ── Notify user: hồ sơ đã được duyệt (SignalR + Email) ──
+        await _notify.NotifyUserAsync(
+            request.UserId,
+            NotificationTypes.ManagerRequestApproved,
+            "Hồ sơ Chủ sân đã được duyệt! 🎉",
+            !string.IsNullOrWhiteSpace(body.Note)
+                ? $"Ghi chú từ Admin: {body.Note}"
+                : "Chúc mừng bạn đã trở thành Chủ sân trên ShuttleUp! Hãy bắt đầu thêm sân ngay nhé.",
+            metadata: new { deepLink = "/manager/venues" },
+            sendEmail: true);
+
         return Ok(new { message = "Đã duyệt Cấp quyền Chủ sân thành công." });
     }
 
@@ -536,6 +551,15 @@ public class AdminController : ControllerBase
         request.DecisionNote = body.Note;
         
         await _db.SaveChangesAsync();
+
+        // ── Notify user: hồ sơ bị từ chối (SignalR + Email) ──
+        await _notify.NotifyUserAsync(
+            request.UserId,
+            NotificationTypes.ManagerRequestRejected,
+            "Hồ sơ Chủ sân chưa được duyệt",
+            $"Lý do: {body.Note?.Trim()}. Bạn có thể cập nhật lại hồ sơ và gửi lại.",
+            metadata: new { deepLink = "/user/manager-info" },
+            sendEmail: true);
 
         return Ok(new { message = "Đã từ chối cấp quyền Chủ sân thành công." });
     }

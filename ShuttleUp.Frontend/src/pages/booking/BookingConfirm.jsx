@@ -4,6 +4,7 @@ import BookingSteps from '../../components/booking/BookingSteps';
 import { useAuth } from '../../context/AuthContext';
 import { profileApi } from '../../api/profileApi';
 import { previewDiscount, createBooking } from '../../api/bookingApi';
+import { notifySuccess, notifyError } from '../../hooks/useNotification';
 
 function formatDateVN(isoDate) {
   if (!isoDate) return '';
@@ -180,12 +181,18 @@ export default function BookingConfirm() {
       });
       const bookingId = created.bookingId ?? created.BookingId;
       if (!bookingId) { setSubmitError('Phản hồi server không có mã đơn.'); setLoading(false); return; }
+      notifySuccess('Đặt sân thành công! Chuyển đến trang thanh toán...');
       navigate(`/booking/payment?bookingId=${bookingId}`);
     } catch (err) {
       const status = err.response?.status;
       const msg = err.response?.data?.message || err.message || 'Không tạo được đơn.';
-      if (status === 409) setSubmitError(`${msg} Vui lòng quay lại chọn giờ.`);
-      else setSubmitError(msg);
+      if (status === 409) {
+        setSubmitError(`${msg} Vui lòng quay lại chọn giờ.`);
+        notifyError('Trùng lịch! Khung giờ này đã được đặt.');
+      } else {
+        setSubmitError(msg);
+        notifyError(msg);
+      }
     } finally {
       setLoading(false);
     }

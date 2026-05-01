@@ -15,6 +15,10 @@ export function getNotificationTargetPath(metadataJson, isManager) {
   if (meta.deepLink && typeof meta.deepLink === 'string' && meta.deepLink.startsWith('/')) {
     return meta.deepLink;
   }
+  // Manager request notifications
+  if (meta.requestId) {
+    return isManager ? '/user/manager-info' : '/admin/manager-requests';
+  }
   if (meta.postId != null && meta.postId !== '') {
     return `/matching/${meta.postId}`;
   }

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 
 // ── Hooks & API ────────────────────────────────────────────────────────────
 import axiosClient from '../../api/axiosClient';
+import { notifySuccess, notifyError, notifyWarning } from '../../hooks/useNotification';
 
 const statusMap = {
   PENDING:  { label: 'Chờ duyệt',  cls: 'bg-warning text-dark' },
@@ -64,7 +65,7 @@ export default function AdminManagerRequests() {
     
     // Yêu cầu nhập lý do nếu là reject
     if (action === 'reject' && !actionNote.trim()) {
-      alert("Vui lòng nhập lý do từ chối.");
+      notifyWarning('Vui lòng nhập lý do từ chối.');
       return;
     }
 
@@ -76,9 +77,10 @@ export default function AdminManagerRequests() {
       setConfirmAction(null);
       setSelected(null);
       setActionNote('');
+      notifySuccess(action === 'approve' ? 'Đã duyệt hồ sơ Chủ sân.' : 'Đã từ chối hồ sơ Chủ sân.');
       fetchRequests();
     } catch (err) {
-      alert(err.message);
+      notifyError(err?.response?.data?.message || err.message || 'Thao tác thất bại.');
     } finally {
       setActionLoading(false);
     }

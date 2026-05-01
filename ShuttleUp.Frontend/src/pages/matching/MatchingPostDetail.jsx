@@ -10,7 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import { parseSlotDate, buildScheduleSummary } from '../../utils/matchingScheduleSummary';
 import { normalizeSearchText } from '../../utils/searchNormalize';
 
-import { toast } from 'react-toastify';
+import { notifyError, notifySuccess } from '../../hooks/useNotification';
 
 function sameUserId(a, b) {
   if (a == null || b == null) return false;
@@ -219,7 +219,7 @@ export default function MatchingPostDetail() {
       setJoinMessage('');
       await load();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Có lỗi xảy ra');
+      notifyError(err.response?.data?.message || 'Có lỗi xảy ra');
     } finally {
       setActionLoading(false);
     }
@@ -232,7 +232,7 @@ export default function MatchingPostDetail() {
         await matchingApi.cancelJoin(postId);
         await load();
       } catch (err) {
-        toast.error(err.response?.data?.message || 'Có lỗi xảy ra');
+        notifyError(err.response?.data?.message || 'Có lỗi xảy ra');
       } finally {
         setActionLoading(false);
       }
@@ -246,7 +246,7 @@ export default function MatchingPostDetail() {
         await matchingApi.closePost(postId);
         await load();
       } catch (err) {
-        toast.error(err.response?.data?.message || 'Có lỗi xảy ra');
+        notifyError(err.response?.data?.message || 'Có lỗi xảy ra');
       } finally {
         setActionLoading(false);
       }
@@ -260,7 +260,7 @@ export default function MatchingPostDetail() {
         await matchingApi.reopenPost(postId);
         await load();
       } catch (err) {
-        toast.error(err.response?.data?.message || 'Có lỗi xảy ra');
+        notifyError(err.response?.data?.message || 'Có lỗi xảy ra');
       } finally {
         setActionLoading(false);
       }
@@ -272,7 +272,7 @@ export default function MatchingPostDetail() {
       await matchingApi.acceptRequest(requestId);
       await load();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Có lỗi xảy ra');
+      notifyError(err.response?.data?.message || 'Có lỗi xảy ra');
     }
   };
 
@@ -281,7 +281,7 @@ export default function MatchingPostDetail() {
       await matchingApi.rejectRequest(requestId, { reason });
       await load();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Có lỗi xảy ra');
+      notifyError(err.response?.data?.message || 'Có lỗi xảy ra');
     }
   };
 
@@ -291,7 +291,7 @@ export default function MatchingPostDetail() {
         await matchingApi.removeMember(memberId);
         await load();
       } catch (err) {
-        toast.error(err.response?.data?.message || 'Có lỗi xảy ra');
+        notifyError(err.response?.data?.message || 'Có lỗi xảy ra');
       }
     });
   };
@@ -305,10 +305,10 @@ export default function MatchingPostDetail() {
           await matchingApi.removeMember(myMember.memberId);
           await load();
         } else {
-          toast.error('Không tìm thấy thông tin thành viên — tải lại trang và thử lại.');
+          notifyError('Không tìm thấy thông tin thành viên — tải lại trang và thử lại.');
         }
       } catch (err) {
-        toast.error(err.response?.data?.message || 'Có lỗi xảy ra');
+        notifyError(err.response?.data?.message || 'Có lỗi xảy ra');
       } finally {
         setActionLoading(false);
       }

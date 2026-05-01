@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import axiosClient from '../../api/axiosClient';
 import VenueAddressFields from '../../components/manager/VenueAddressFields';
 import { getManagerVenueCheckoutSettings, putVenueCheckoutSettings } from '../../api/managerVenueApi';
+import { notifySuccess, notifyError } from '../../hooks/useNotification';
 import {
   loadVietnamDivisionTree,
   provinceByCode,
@@ -465,14 +466,18 @@ export default function ManagerAddVenue() {
       }
 
       navigate('/manager/venues');
+      notifySuccess(venueId ? 'Cập nhật sân thành công!' : 'Tạo sân mới thành công!');
     } catch (err) {
       console.error('Submit venue failed', err);
       if (err.response?.data?.errors) {
         setFieldErrors(err.response.data.errors);
         setErrorMsg('Oops... Hệ thống phát hiện vài phần nhập chưa chuẩn xác.');
+        notifyError('Lưu thất bại. Vui lòng kiểm tra lại.');
       } else {
         setFieldErrors({});
-        setErrorMsg(err.response?.data?.message || err.response?.data?.title || 'Rất tiếc! Đã xảy ra sự cố khi lưu Cụm sân. Bạn thử lại nha!');
+        const msg = err.response?.data?.message || err.response?.data?.title || 'Rất tiếc! Đã xảy ra sự cố khi lưu Cụm sân. Bạn thử lại nha!';
+        setErrorMsg(msg);
+        notifyError(msg);
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {

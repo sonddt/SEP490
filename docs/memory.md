@@ -636,3 +636,17 @@ Kết bạn & quan hệ xã hội (Player):
    - `AuthContext.jsx`: Không cần sửa — `authProvider` tự có trong `user` object từ login response.
 
 4. **Quy tắc**: Cùng email → cùng tài khoản. LOCAL user login Google → vẫn vào đúng tài khoản đó (code hiện tại đã xử lý qua `GetByEmailAsync`).
+
+---
+
+## 30 tháng 4, 2026 (Notification System Rollout)
+
+1. **Backend**:
+   - Thêm các constant vào `NotificationTypes.cs` (`MANAGER_REQUEST_SUBMITTED`, v.v.).
+   - Tích hợp `INotificationDispatchService` vào `AdminController.cs` (gửi thông báo + email khi duyệt/từ chối yêu cầu quản lý) và `ManagerProfileController.cs` (thông báo đến tất cả admin khi có người dùng đăng ký làm quản lý).
+
+2. **Frontend Standardization (Toast & SignalR)**:
+   - Đồng bộ hóa các loại thông báo từ BE về FE trong `notificationTypes.js`. Cập nhật `notificationNavigation.js` và thêm tất cả message tiếng Việt vào `toastMessages.js`.
+   - Thay thế toàn bộ các thông báo rác, `alert()`, và `toast.*` (từ `react-toastify`) thành hook dùng chung `useNotification` (`notifySuccess`, `notifyError`, `notifyWarning`, `notifyInfo`).
+   - Cập nhật thông báo cho hàng loạt các luồng quan trọng: Edit Profile, Change Password, Admin Ban/Unban Account, Booking Payment, Manager Add Venue, và Admin duyệt Manager.
+   - Loại bỏ hoàn toàn sự phụ thuộc trực tiếp vào `react-toastify` ở cấp độ Component (ngoại trừ hook `useNotification` và root `App.jsx`). Mọi lời gọi `toast.error()` trong `MatchingPostDetail.jsx` và các file khác đã được chuyển đổi triệt để.

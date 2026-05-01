@@ -59,4 +59,17 @@ public static class NotificationTypes
 
     /// <summary>Thông báo về hành động xử lý vi phạm — gửi cho đối tượng bị báo cáo.</summary>
     public const string ReportTargetAction = "REPORT_TARGET_ACTION";
+
+    // ── Manager Request ─────────────────────────────────────────────
+    /// <summary>User vừa gửi / cập nhật hồ sơ Chủ sân — gửi cho các Admin.</summary>
+    public const string ManagerRequestSubmitted = "MANAGER_REQUEST_SUBMITTED";
+
+    /// <summary>Admin đã duyệt hồ sơ Chủ sân — gửi cho user.</summary>
+    public const string ManagerRequestApproved = "MANAGER_REQUEST_APPROVED";
+
+    /// <summary>Admin từ chối hồ sơ Chủ sân — gửi cho user.</summary>
+    public const string ManagerRequestRejected = "MANAGER_REQUEST_REJECTED";
+
+    /// <summary>User cập nhật hồ sơ cá nhân thành công.</summary>
+    public const string ProfileUpdated = "PROFILE_UPDATED";
 }

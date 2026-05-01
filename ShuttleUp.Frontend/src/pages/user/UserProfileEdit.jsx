@@ -5,6 +5,7 @@ import ShuttleDateField from '../../components/ui/ShuttleDateField';
 import { useAuth } from '../../context/AuthContext';
 import { profileApi } from '../../api/profileApi';
 import AvatarCropperModal from '../../components/user/AvatarCropperModal';
+import { notifySuccess, notifyError } from '../../hooks/useNotification';
 import {
   districtByCode,
   formatDistrictForStorage,
@@ -353,8 +354,11 @@ export default function UserProfileEdit() {
       initialSnapshotRef.current = `${nextForm.province}\n${nextForm.district}\n${nextForm.address}`;
       setInitialForm(nextForm);
       setSuccess('Tuyệt vời! Cập nhật hồ sơ thành công rồi nha.');
+      notifySuccess(avatarFile ? 'Cập nhật hồ sơ và ảnh đại diện thành công!' : 'Cập nhật hồ sơ thành công!');
     } catch (e2) {
-      setError(formatApiError(e2, 'Rất tiếc, cập nhật hồ sơ thất bại. Bạn thử lại nha!'));
+      const msg = formatApiError(e2, 'Rất tiếc, cập nhật hồ sơ thất bại. Bạn thử lại nha!');
+      setError(msg);
+      notifyError(msg);
     } finally {
       setSaving(false);
     }

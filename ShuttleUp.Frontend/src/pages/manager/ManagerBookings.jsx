@@ -5,6 +5,7 @@ import { getManagerBookings, patchManagerBookingStatus } from '../../api/manager
 import BookingDetailModal from '../../components/manager/BookingDetailModal';
 import RejectModal from '../../components/manager/RejectModal';
 import { normalizeSearchText } from '../../utils/searchNormalize';
+import { useNotification } from '../../hooks/useNotification';
 
 /* ── Constants ──────────────────────────────────────────────────────────── */
 const PAGE_SIZE = 8;
@@ -167,7 +168,7 @@ export default function ManagerBookings() {
   const [page, setPage] = useState(1);
   const [detailModal, setDetailModal] = useState(null);
   const [rejectModal, setRejectModal] = useState(null);
-  const [toastMsg, setToastMsg] = useState(null);
+  const { notifySuccess, notifyError, notifyWarning, notifyInfo } = useNotification();
   const [processingId, setProcessingId] = useState(null);
 
   const fetchBookings = useCallback(async (showTableLoading = true) => {
@@ -190,8 +191,7 @@ export default function ManagerBookings() {
       } else if (serverMsg) {
         msg = serverMsg;
       }
-      setToastMsg({ msg, type: 'warning' });
-      setTimeout(() => setToastMsg(null), 6000);
+      notifyWarning(msg);
     } finally {
       if (showTableLoading) setLoading(false);
     }
@@ -268,15 +268,14 @@ export default function ManagerBookings() {
   const currentPage = Math.min(page, totalPages);
   const pageItems = processed.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const showToast = (msg, type = 'success') => { setToastMsg({ msg, type }); setTimeout(() => setToastMsg(null), 3000); };
   const handleAccept = useCallback(async (bookingId) => {
     try {
       setProcessingId(bookingId);
       await patchManagerBookingStatus(bookingId, { status: 'CONFIRMED' });
       await fetchBookings(false);
-      showToast('Đã chấp nhận yêu cầu!');
+      notifySuccess('Đã chấp nhận yêu cầu!');
     } catch {
-      showToast('Duyệt đơn thất bại. Vui lòng thử lại.', 'warning');
+      notifyError('Duyệt đơn thất bại. Vui lòng thử lại.');
       await fetchBookings(false);
       throw new Error('accept failed');
     } finally {
@@ -289,9 +288,9 @@ export default function ManagerBookings() {
       await patchManagerBookingStatus(bookingId, { status: 'CANCELLED', reason });
       setRejectModal(null);
       await fetchBookings(false);
-      showToast('Đã từ chối yêu cầu.', 'warning');
+      notifyWarning('Đã từ chối yêu cầu.');
     } catch {
-      showToast('Từ chối thất bại. Vui lòng thử lại.', 'warning');
+      notifyError('Từ chối thất bại. Vui lòng thử lại.');
       await fetchBookings(false);
       throw new Error('reject failed');
     } finally {
@@ -303,9 +302,9 @@ export default function ManagerBookings() {
       setProcessingId(bookingId);
       await patchManagerBookingStatus(bookingId, { status: 'CANCELLED' });
       await fetchBookings(false);
-      showToast('Đã huỷ lịch.', 'info');
+      notifyInfo('Đã huỷ lịch.');
     } catch {
-      showToast('Huỷ lịch thất bại. Vui lòng thử lại.', 'warning');
+      notifyError('Huỷ lịch thất bại. Vui lòng thử lại.');
       await fetchBookings(false);
     } finally {
       setProcessingId(null);
@@ -316,14 +315,6 @@ export default function ManagerBookings() {
 
   return (
     <>
-      {/* Toast */}
-      {toastMsg && (
-        <div className={`bk-toast bk-toast--${toastMsg.type}`} style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, animation: 'bkToastIn 0.3s ease' }}>
-          <i className={toastMsg.type === 'success' ? 'feather-check-circle' : toastMsg.type === 'warning' ? 'feather-alert-circle' : 'feather-info'} />
-          {toastMsg.msg}
-        </div>
-      )}
-
       {/* Banner */}
       {activeTab === 'PENDING' && counts.PENDING > 0 && (
         <div className="bk-banner">

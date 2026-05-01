@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 
 import axiosClient from '../../api/axiosClient';
+import { notifySuccess, notifyError } from '../../hooks/useNotification';
 
 function roleBadge(roles = []) {
   if (roles.includes('ADMIN'))   return <span className="badge bg-dark">Admin</span>;
@@ -91,9 +92,11 @@ export default function AdminAccounts() {
       await axiosClient.post(`/admin/accounts/${user.id}/ban`, body);
       setConfirmAction(null);
       setBlockReason('');
+      notifySuccess(`Đã khóa tài khoản ${user.fullName}.`);
       load(page);
     } catch (e) {
       setActionError(e.message);
+      notifyError(e.response?.data?.message || 'Khóa tài khoản thất bại.');
     } finally {
       setActionLoading(false);
     }
@@ -108,9 +111,11 @@ export default function AdminAccounts() {
       await axiosClient.post(`/admin/accounts/${user.id}/unblock`, { restoreVenues });
       setConfirmAction(null);
       setRestoreVenues(true);
+      notifySuccess(`Đã mở khóa tài khoản ${user.fullName}.`);
       load(page);
     } catch (e) {
       setActionError(e.message);
+      notifyError(e.response?.data?.message || 'Mở khóa thất bại.');
     } finally {
       setActionLoading(false);
     }

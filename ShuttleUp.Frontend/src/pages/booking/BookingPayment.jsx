@@ -8,6 +8,7 @@ import {
   getBookingPaymentContext,
   cancelHold,
 } from '../../api/bookingApi';
+import { notifySuccess, notifyError } from '../../hooks/useNotification';
 
 const FALLBACK_BANK = {
   bank: 'Vietcombank',
@@ -255,6 +256,7 @@ export default function BookingPayment() {
       setLoading(false);
       clearInterval(intervalRef.current);
 
+      notifySuccess('Thanh toán thành công! Đơn đang chờ duyệt.');
       navigateComplete({
         venueId: pay.venueId,
         venueName: pay.venueName,
@@ -289,9 +291,16 @@ export default function BookingPayment() {
         || (Array.isArray(body?.errors) ? body.errors.join(' ') : null)
         || e.message
         || 'Đã có lỗi xảy ra.';
-      if (status === 409) setError(`${msg} Bạn có thể quay lại bước chọn giờ.`);
-      else if (status === 401) setError('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại rồi thử thanh toán.');
-      else setError(msg);
+      if (status === 409) {
+        setError(`${msg} Bạn có thể quay lại bước chọn giờ.`);
+        notifyError('Trùng lịch hoặc đơn đã hết hạn.');
+      } else if (status === 401) {
+        setError('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại rồi thử thanh toán.');
+        notifyError('Phiên đăng nhập hết hạn.');
+      } else {
+        setError(msg);
+        notifyError(msg);
+      }
     }
   };
 
