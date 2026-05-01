@@ -3,6 +3,7 @@ import chatApi from '../api/chatApi';
 import socialApi from '../api/socialApi';
 import { useAuth } from '../context/AuthContext';
 import { useChat } from '../hooks/useChat';
+import { notifyWarning } from '../hooks/useNotification';
 import { roomIdOf } from '../utils/chatDirectRoom';
 
 const EMOJIS = ['😀', '😂', '😊', '😍', '👍', '👏', '🔥', '❤️', '🎉', '🙏', '✅', '🏸', '💪', '😅', '🤝'];
@@ -144,7 +145,10 @@ export default function ChatPage() {
   };
 
   const handleCreate = async () => {
-    if (!newName.trim()) return;
+    if (!newName.trim()) {
+      notifyWarning('Vui lòng nhập tên phòng chat.');
+      return;
+    }
     const memberIds = [...selectedMemberIds].map((s) => s);
     try {
       const room = await chatApi.createRoom({
