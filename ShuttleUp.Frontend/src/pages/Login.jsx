@@ -73,6 +73,8 @@ export default function Login() {
       updateUser?.({
         avatarUrl: u.avatarUrl ?? null,
         isPersonalized: u.isPersonalized ?? null,
+        province: u.province ?? null,
+        district: u.district ?? null,
         skillLevel: u.skillLevel ?? null,
         playPurpose: u.playPurpose ?? null,
         playFrequency: u.playFrequency ?? null,

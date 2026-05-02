@@ -184,6 +184,11 @@ export default function Register() {
         updateUser?.({
           avatarUrl: profileUser.avatarUrl ?? null,
           isPersonalized: profileUser.isPersonalized ?? null,
+          province: profileUser.province ?? null,
+          district: profileUser.district ?? null,
+          skillLevel: profileUser.skillLevel ?? null,
+          playPurpose: profileUser.playPurpose ?? null,
+          playFrequency: profileUser.playFrequency ?? null,
         });
         if (activeTab !== 'manager') {
           goAfterRegisterPlayer(profileUser.isPersonalized ?? null);
@@ -228,6 +233,11 @@ export default function Register() {
         updateUser?.({
           avatarUrl: profileUser.avatarUrl ?? null,
           isPersonalized: profileUser.isPersonalized ?? null,
+          province: profileUser.province ?? null,
+          district: profileUser.district ?? null,
+          skillLevel: profileUser.skillLevel ?? null,
+          playPurpose: profileUser.playPurpose ?? null,
+          playFrequency: profileUser.playFrequency ?? null,
         });
         if (activeTab !== 'manager') {
           goAfterRegisterPlayer(profileUser.isPersonalized ?? null);

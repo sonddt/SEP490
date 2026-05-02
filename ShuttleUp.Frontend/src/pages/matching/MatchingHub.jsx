@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import matchingApi from '../../api/matchingApi';
+import { profileApi } from '../../api/profileApi';
 import { useAuth } from '../../context/AuthContext';
 import MatchingPostCard from '../../components/matching/MatchingPostCard';
 import ShuttleDateField from '../../components/ui/ShuttleDateField';
 import { normalizeSearchText } from '../../utils/searchNormalize';
+import { notifyInfo, notifySuccess, notifyWarning } from '../../hooks/useNotification';
 
 const sortOptions = [
   { value: 'newest', label: 'Mới nhất' },
@@ -72,7 +74,7 @@ const skillOptions = [
 ];
 
 export default function MatchingHub() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const isAdmin = Array.isArray(user?.roles) && user.roles.some((r) => String(r).toUpperCase() === 'ADMIN');
@@ -84,8 +86,30 @@ export default function MatchingHub() {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState({ skillLevel: user?.skillLevel || '', playDate: '', province: user?.province || '', sort: 'newest' });
+  const [filters, setFilters] = useState({ skillLevel: '', playDate: '', province: '', sort: 'newest' });
   const [searchText, setSearchText] = useState('');
+  const [isMatchingActive, setIsMatchingActive] = useState(false);
+  const profileSynced = useRef(false);
+
+  // Sync user profile on mount to ensure skillLevel/province are available
+  useEffect(() => {
+    if (!user || profileSynced.current) return;
+    if (user.skillLevel && user.province) { profileSynced.current = true; return; }
+    profileSynced.current = true;
+    profileApi.getMe().then((me) => {
+      const u = me?.user ?? {};
+      if (u.province || u.skillLevel) {
+        updateUser?.({
+          province: u.province ?? null,
+          district: u.district ?? null,
+          skillLevel: u.skillLevel ?? null,
+          playPurpose: u.playPurpose ?? null,
+          playFrequency: u.playFrequency ?? null,
+          isPersonalized: u.isPersonalized ?? null,
+        });
+      }
+    }).catch(() => {});
+  }, [user, updateUser]);
 
   const loadPosts = useCallback(async () => {
     setLoading(true);
@@ -158,12 +182,36 @@ export default function MatchingHub() {
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
     setPage(1);
+    setIsMatchingActive(false);
   };
   
   const handleResetFilters = () => {
     setFilters({ skillLevel: '', playDate: '', province: '', sort: 'newest' });
     setSearchText('');
     setPage(1);
+    setIsMatchingActive(false);
+  };
+
+  const handleMatchForYou = () => {
+    // Guest → redirect to login
+    if (!user) {
+      navigate('/login', { state: { from: location.pathname } });
+      return;
+    }
+    const mySkill = user.skillLevel;
+    const myProvince = user.province;
+    // Not personalized → redirect to personalization
+    if (!mySkill && !myProvince) {
+      notifyWarning('Hãy cập nhật hồ sơ để hệ thống gợi ý chính xác hơn!');
+      navigate('/personalization', { state: { from: '/matching' } });
+      return;
+    }
+    // Apply user profile as filters
+    setFilters({ skillLevel: mySkill || '', playDate: '', province: myProvince || '', sort: 'newest' });
+    setSearchText('');
+    setPage(1);
+    setIsMatchingActive(true);
+    notifySuccess('Đã lọc bài đăng phù hợp với trình độ và khu vực của bạn!');
   };
 
   const handleSearchChange = (e) => {
@@ -275,11 +323,7 @@ export default function MatchingHub() {
                             <input type="text" className="form-control" placeholder="VD: Quận 7" style={{ borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '700', color: '#1e293b' }} value={filters.province} onChange={(e) => handleFilterChange('province', e.target.value)} />
                         </div>
                         <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '2px', gap: '8px' }}>
-                            <button onClick={() => {
-                                setFilters({ skillLevel: user?.skillLevel || '', playDate: '', province: user?.province || '', sort: 'newest' });
-                                setSearchText('');
-                                setPage(1);
-                            }} style={{ height: '48px', padding: '0 16px', borderRadius: '12px', backgroundColor: '#e8f5ee', color: '#097E52', border: '1px solid #bbf7d0', fontWeight: '700', transition: 'all 0.2s', display: 'flex', alignItems: 'center' }}>
+                            <button onClick={handleMatchForYou} style={{ height: '48px', padding: '0 16px', borderRadius: '12px', backgroundColor: isMatchingActive ? '#097E52' : '#e8f5ee', color: isMatchingActive ? '#fff' : '#097E52', border: isMatchingActive ? '1px solid #097E52' : '1px solid #bbf7d0', fontWeight: '700', transition: 'all 0.2s', display: 'flex', alignItems: 'center', boxShadow: isMatchingActive ? '0 2px 8px rgba(9,126,82,0.25)' : 'none' }}>
                                 <i className="feather-target me-1"></i> Phù hợp với bạn
                             </button>
                             <button onClick={handleResetFilters} style={{ height: '48px', padding: '0 16px', borderRadius: '12px', backgroundColor: '#fef2f2', color: '#ef4444', border: '1px solid #fee2e2', fontWeight: '700', transition: 'all 0.2s', display: 'flex', alignItems: 'center' }}>
