@@ -118,12 +118,12 @@ export default function ManagerDashboard() {
                       return (
                         <tr key={b.id}>
                           <td>
-                            <h2 className="table-avatar">
+                            <h2 className="table-avatar d-flex align-items-center gap-2 mb-0" style={{ minWidth: 180 }}>
                               <span className="avatar avatar-sm flex-shrink-0" style={{ borderRadius: '50%' }}>
                                 <img className="avatar-img rounded-circle" src={'/assets/img/profiles/avatar-01.jpg'} alt="" onError={e => { e.target.src = '/assets/img/profiles/avatar-01.jpg'; }} />
                               </span>
-                              <span className="table-head-name flex-grow-1">
-                                <a href="#!" onClick={e => e.preventDefault()}>{b.player}</a>
+                              <span className="table-head-name flex-grow-1 text-truncate text-nowrap" style={{ fontSize: 14 }}>
+                                <a href="#!" onClick={e => e.preventDefault()} style={{ color: '#1e293b', fontWeight: 600 }}>{b.player}</a>
                               </span>
                             </h2>
                           </td>
