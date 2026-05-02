@@ -650,3 +650,16 @@ Kết bạn & quan hệ xã hội (Player):
    - Thay thế toàn bộ các thông báo rác, `alert()`, và `toast.*` (từ `react-toastify`) thành hook dùng chung `useNotification` (`notifySuccess`, `notifyError`, `notifyWarning`, `notifyInfo`).
    - Cập nhật thông báo cho hàng loạt các luồng quan trọng: Edit Profile, Change Password, Admin Ban/Unban Account, Booking Payment, Manager Add Venue, và Admin duyệt Manager.
    - Loại bỏ hoàn toàn sự phụ thuộc trực tiếp vào `react-toastify` ở cấp độ Component (ngoại trừ hook `useNotification` và root `App.jsx`). Mọi lời gọi `toast.error()` trong `MatchingPostDetail.jsx` và các file khác đã được chuyển đổi triệt để.
+
+---
+
+## 2 tháng 5, 2026 (Tối ưu hóa luồng thanh toán Bước 3 → 4)
+
+1. **Frontend (BookingPayment.jsx)**:
+   - Tích hợp tính năng tự động nén ảnh chứng từ thanh toán bằng Canvas API trước khi upload.
+   - Giảm dung lượng ảnh tải lên Cloudinary từ 3-10MB (ảnh gốc điện thoại) xuống còn ~300-500KB (giảm 90% dung lượng) nhằm loại bỏ nút thắt cổ chai về băng thông và thời gian upload.
+
+2. **Backend (BookingsController.cs)**:
+   - Chuyển đổi logic gửi notification và email cho chủ sân sang mô hình bất đồng bộ (fire-and-forget).
+   - Sử dụng Task.Run kết hợp với IServiceScopeFactory để tạo scope độc lập, đảm bảo an toàn cho DbContext khi chạy ngầm.
+   - API trả về 200 OK ngay lập tức sau khi lưu Database thành công, giúp người chơi thấy màn hình "Thanh toán thành công" chỉ trong 1-2 giây thay vì phải chờ 5-30 giây như trước.

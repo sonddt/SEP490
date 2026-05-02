@@ -27,6 +27,7 @@ public class BookingsController : ControllerBase
     private readonly IMatchingPostLifecycleService _matchingPostLifecycle;
     private readonly IMemoryCache _cache;
     private readonly IConfiguration _configuration;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public BookingsController(
         ShuttleUpDbContext dbContext,
@@ -34,7 +35,8 @@ public class BookingsController : ControllerBase
         INotificationDispatchService notify,
         IMatchingPostLifecycleService matchingPostLifecycle,
         IMemoryCache cache,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IServiceScopeFactory scopeFactory)
     {
         _dbContext = dbContext;
         _fileService = fileService;
@@ -42,6 +44,7 @@ public class BookingsController : ControllerBase
         _matchingPostLifecycle = matchingPostLifecycle;
         _cache = cache;
         _configuration = configuration;
+        _scopeFactory = scopeFactory;
     }
 
     private bool TryGetCurrentUserId(out Guid userId)
@@ -1693,87 +1696,100 @@ public class BookingsController : ControllerBase
 
         var bookingCode = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
 
+        // ── Fire-and-forget: gửi notification + email ở luồng ngầm ──
+        // Không block response — user thấy "Thành công" ngay lập tức.
         if (booking.Venue?.OwnerUserId is { } mgrId && mgrId != Guid.Empty)
         {
-            try
-            {
-                var notifTitle = wasHolding ? "📢 Có đơn đặt sân mới chờ duyệt" : "Có minh chứng thanh toán mới";
-                var notifBody = wasHolding
-                    ? $"Mã {bookingCode} — {booking.ContactName} — {booking.FinalAmount:N0} VNĐ."
-                    : $"Đơn {bookingCode} vừa có ảnh chứng từ từ người chơi.";
-                var notifType = wasHolding ? NotificationTypes.BookingNew : NotificationTypes.PaymentProof;
+            var capturedBookingId = booking.Id;
+            var capturedVenueId = booking.VenueId;
+            var capturedContactName = booking.ContactName;
+            var capturedFinalAmount = booking.FinalAmount;
+            var capturedOwnerName = booking.Venue?.OwnerUser?.FullName ?? "Chủ sân";
+            var capturedVenueName = booking.Venue?.Name ?? "sân";
+            var capturedMgrId = mgrId;
+            var capturedWasHolding = wasHolding;
+            var capturedBookingCode = bookingCode;
+            var capturedFrontUrl = _configuration["App:FrontendUrl"] ?? "http://localhost:5173";
 
-                // Build branded HTML email for new booking alert
-                string? newBookingHtml = null;
-                if (wasHolding)
+            _ = Task.Run(async () =>
+            {
+                try
                 {
-                    var ownerName = booking.Venue?.OwnerUser?.FullName ?? "Chủ sân";
-                    var vName = booking.Venue?.Name ?? "sân";
-                    var contactName = booking.ContactName ?? "Khách hàng";
-                    var frontUrl = _configuration["App:FrontendUrl"] ?? "http://localhost:5173";
-                    var mgrLink = $"{frontUrl}/manager/bookings";
+                    using var scope = _scopeFactory.CreateScope();
+                    var notify = scope.ServiceProvider.GetRequiredService<INotificationDispatchService>();
 
-                    newBookingHtml = $"""
-                        <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">
-                          <div style="background:linear-gradient(135deg,#059669,#10b981);padding:28px 24px;text-align:center">
-                            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700">🏸 ShuttleUp</h1>
-                            <p style="margin:6px 0 0;color:#d1fae5;font-size:14px">Đơn đặt sân mới</p>
-                          </div>
-                          <div style="padding:24px">
-                            <p style="color:#334155;font-size:15px;margin:0 0 16px">
-                              Xin chào <strong>{System.Net.WebUtility.HtmlEncode(ownerName)}</strong>,
-                            </p>
-                            <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:20px">
-                              <table style="width:100%;border-collapse:collapse;font-size:14px;color:#334155">
-                                <tr>
-                                  <td style="padding:6px 0;font-weight:600;width:130px">📋 Mã đơn:</td>
-                                  <td style="padding:6px 0"><strong>{bookingCode}</strong></td>
-                                </tr>
-                                <tr>
-                                  <td style="padding:6px 0;font-weight:600">👤 Khách hàng:</td>
-                                  <td style="padding:6px 0">{System.Net.WebUtility.HtmlEncode(contactName)}</td>
-                                </tr>
-                                <tr>
-                                  <td style="padding:6px 0;font-weight:600">📍 Sân:</td>
-                                  <td style="padding:6px 0">{System.Net.WebUtility.HtmlEncode(vName)}</td>
-                                </tr>
-                                <tr>
-                                  <td style="padding:6px 0;font-weight:600">💰 Tổng tiền:</td>
-                                  <td style="padding:6px 0"><strong>{booking.FinalAmount:N0} VNĐ</strong></td>
-                                </tr>
-                              </table>
+                    var notifTitle = capturedWasHolding ? "📢 Có đơn đặt sân mới chờ duyệt" : "Có minh chứng thanh toán mới";
+                    var notifBody = capturedWasHolding
+                        ? $"Mã {capturedBookingCode} — {capturedContactName} — {capturedFinalAmount:N0} VNĐ."
+                        : $"Đơn {capturedBookingCode} vừa có ảnh chứng từ từ người chơi.";
+                    var notifType = capturedWasHolding ? NotificationTypes.BookingNew : NotificationTypes.PaymentProof;
+
+                    string? newBookingHtml = null;
+                    if (capturedWasHolding)
+                    {
+                        var mgrLink = $"{capturedFrontUrl}/manager/bookings";
+                        newBookingHtml = $"""
+                            <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">
+                              <div style="background:linear-gradient(135deg,#059669,#10b981);padding:28px 24px;text-align:center">
+                                <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700">🏸 ShuttleUp</h1>
+                                <p style="margin:6px 0 0;color:#d1fae5;font-size:14px">Đơn đặt sân mới</p>
+                              </div>
+                              <div style="padding:24px">
+                                <p style="color:#334155;font-size:15px;margin:0 0 16px">
+                                  Xin chào <strong>{System.Net.WebUtility.HtmlEncode(capturedOwnerName)}</strong>,
+                                </p>
+                                <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:20px">
+                                  <table style="width:100%;border-collapse:collapse;font-size:14px;color:#334155">
+                                    <tr>
+                                      <td style="padding:6px 0;font-weight:600;width:130px">📋 Mã đơn:</td>
+                                      <td style="padding:6px 0"><strong>{capturedBookingCode}</strong></td>
+                                    </tr>
+                                    <tr>
+                                      <td style="padding:6px 0;font-weight:600">👤 Khách hàng:</td>
+                                      <td style="padding:6px 0">{System.Net.WebUtility.HtmlEncode(capturedContactName ?? "Khách hàng")}</td>
+                                    </tr>
+                                    <tr>
+                                      <td style="padding:6px 0;font-weight:600">📍 Sân:</td>
+                                      <td style="padding:6px 0">{System.Net.WebUtility.HtmlEncode(capturedVenueName)}</td>
+                                    </tr>
+                                    <tr>
+                                      <td style="padding:6px 0;font-weight:600">💰 Tổng tiền:</td>
+                                      <td style="padding:6px 0"><strong>{capturedFinalAmount:N0} VNĐ</strong></td>
+                                    </tr>
+                                  </table>
+                                </div>
+                                <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-bottom:20px">
+                                  <p style="margin:0;color:#92400e;font-size:13px">⏰ Duyệt đơn nhanh trong vòng <strong>60 phút</strong> để duy trì huy hiệu <strong>Elite Owner</strong>!</p>
+                                </div>
+                                <div style="text-align:center;margin:20px 0">
+                                  <a href="{mgrLink}"
+                                     style="display:inline-block;padding:12px 32px;background:#16a34a;color:#ffffff;
+                                            border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">
+                                    Xem và duyệt đơn ngay
+                                  </a>
+                                </div>
+                                <p style="color:#94a3b8;font-size:12px;margin:20px 0 0;text-align:center">
+                                  Bạn nhận được email này vì có đơn đặt sân mới trên ShuttleUp.
+                                </p>
+                              </div>
                             </div>
-                            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-bottom:20px">
-                              <p style="margin:0;color:#92400e;font-size:13px">⏰ Duyệt đơn nhanh trong vòng <strong>60 phút</strong> để duy trì huy hiệu <strong>Elite Owner</strong>!</p>
-                            </div>
-                            <div style="text-align:center;margin:20px 0">
-                              <a href="{mgrLink}"
-                                 style="display:inline-block;padding:12px 32px;background:#16a34a;color:#ffffff;
-                                        border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">
-                                Xem và duyệt đơn ngay
-                              </a>
-                            </div>
-                            <p style="color:#94a3b8;font-size:12px;margin:20px 0 0;text-align:center">
-                              Bạn nhận được email này vì có đơn đặt sân mới trên ShuttleUp.
-                            </p>
-                          </div>
-                        </div>
-                        """;
+                            """;
+                    }
+
+                    await notify.NotifyUserAsync(
+                        capturedMgrId,
+                        notifType,
+                        notifTitle,
+                        notifBody,
+                        NotificationMetadataBuilder.BookingForManager(capturedBookingId, capturedVenueId),
+                        sendEmail: capturedWasHolding,
+                        htmlBodyOverride: newBookingHtml);
                 }
-
-                await _notify.NotifyUserAsync(
-                    mgrId,
-                    notifType,
-                    notifTitle,
-                    notifBody,
-                    NotificationMetadataBuilder.BookingForManager(booking.Id, booking.VenueId),
-                    sendEmail: wasHolding,
-                    htmlBodyOverride: newBookingHtml);
-            }
-            catch (Exception ex)
-            {
-                _ = ex; /* swallow — do not break payment flow */
-            }
+                catch
+                {
+                    /* swallow — notification failure must not affect completed payment */
+                }
+            });
         }
 
         return Ok(new
