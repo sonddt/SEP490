@@ -7921,12 +7921,24 @@ p,
 .user-profile-shell .user-bookings-table.table {
   font-size: clamp(0.8125rem, 0.3vw + 0.7rem, 1rem);
   min-width: 860px;
+  table-layout: fixed;
 }
 
+/* Fixed column widths to prevent address overflow */
+.user-profile-shell .user-bookings-table.table th:nth-child(1),
+.user-profile-shell .user-bookings-table.table td:nth-child(1) { width: 26%; }
+.user-profile-shell .user-bookings-table.table th:nth-child(2),
+.user-profile-shell .user-bookings-table.table td:nth-child(2) { width: 9%; }
+.user-profile-shell .user-bookings-table.table th:nth-child(3),
+.user-profile-shell .user-bookings-table.table td:nth-child(3) { width: 11%; }
+.user-profile-shell .user-bookings-table.table th:nth-child(4),
+.user-profile-shell .user-bookings-table.table td:nth-child(4) { width: 11%; }
+.user-profile-shell .user-bookings-table.table th:nth-child(5),
+.user-profile-shell .user-bookings-table.table td:nth-child(5) { width: 9%; }
+.user-profile-shell .user-bookings-table.table th:nth-child(6),
+.user-profile-shell .user-bookings-table.table td:nth-child(6) { width: 14%; }
 .user-profile-shell .user-bookings-table.table th:last-child,
-.user-profile-shell .user-bookings-table.table td:last-child {
-  min-width: 180px;
-}
+.user-profile-shell .user-bookings-table.table td:last-child { width: 20%; min-width: 160px; }
 
 .user-profile-shell .user-bookings-table.table thead th {
   font-size: clamp(0.75rem, 0.25vw + 0.65rem, 0.9375rem);
@@ -7939,12 +7951,34 @@ p,
   vertical-align: middle;
 }
 
+/* Truncate venue name + address in first column */
+.user-profile-shell .user-bookings-table .table-head-name {
+  min-width: 0;
+  overflow: hidden;
+}
+
 .user-profile-shell .user-bookings-table .table-head-name span:first-child {
   font-size: clamp(0.8125rem, 0.32vw + 0.72rem, 1.0625rem);
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-profile-shell .user-bookings-table .table-head-name small {
   font-size: clamp(0.6875rem, 0.22vw + 0.62rem, 0.875rem) !important;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ensure table-avatar flex doesn't overflow */
+.user-profile-shell .user-bookings-table .table-avatar {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin: 0;
 }
 
 .user-profile-shell .user-bookings-table .badge {

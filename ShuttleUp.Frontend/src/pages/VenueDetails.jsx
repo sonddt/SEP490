@@ -91,22 +91,6 @@ function ContactOwnerModal({ open, onClose, venue, onChat }) {
                 <span>Gọi điện: <strong>{venue?.phone || 'Đang cập nhật'}</strong></span>
               </a>
 
-              {/* Chat button */}
-              <button
-                type="button"
-                className="btn d-flex align-items-center justify-content-center gap-2"
-                style={{
-                  background: '#065f46', border: 'none', color: '#fff',
-                  borderRadius: 12, padding: '14px 16px', fontWeight: 600, fontSize: 15,
-                  transition: 'all .2s',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#047857'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#065f46'; }}
-                onClick={() => { onChat(); onClose(); }}
-              >
-                <i className="fa-regular fa-comment-dots" style={{ fontSize: 18 }} />
-                Chat với chủ sân
-              </button>
             </div>
           </div>
         </div>
