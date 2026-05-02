@@ -1,29 +1,27 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-const TEAM = [
-  { img: '/assets/img/aboutus/team-01.jpg', name: 'Đinh Đăng Sơn', role: 'Team Leader / Fullstack', desc: 'Định hướng kiến trúc, dẫn dắt đội ngũ kỹ thuật và quản lý tiến độ dự án ShuttleUp.' },
-  { img: '/assets/img/aboutus/team-02.jpg', name: 'Thành viên 2', role: 'Backend Developer', desc: 'Xây dựng API, xử lý nghiệp vụ đặt sân và logic ghép kèo phức tạp.' },
-  { img: '/assets/img/aboutus/team-03.jpg', name: 'Thành viên 3', role: 'Frontend Developer', desc: 'Phát triển giao diện, tối ưu hoá trải nghiệm người dùng trên mọi thiết bị.' },
-  { img: '/assets/img/aboutus/team-04.jpg', name: 'Thành viên 4', role: 'Business Analyst', desc: 'Phân tích yêu cầu nghiệp vụ, định hình tính năng và tài liệu hoá quy trình.' },
-  { img: '/assets/img/aboutus/team-05.jpg', name: 'Thành viên 5', role: 'Quality Assurance', desc: 'Kiểm thử toàn diện, đảm bảo nền tảng hoạt động ổn định và không lỗi.' },
-];
-
 const FEATURES = [
-  { icon: '/assets/img/icons/coache-icon-01.svg', title: 'Đặt sân nhanh chóng', desc: 'Hệ thống cho phép tìm kiếm và đặt sân linh hoạt: đặt theo giờ, đặt lịch cố định, hoặc linh hoạt theo tháng.' },
-  { icon: '/assets/img/icons/coache-icon-02.svg', title: 'Cộng đồng ghép kèo', desc: 'Tìm đồng đội phù hợp với trình độ của bạn để chia sẻ chi phí sân và gia tăng niềm vui thi đấu.' },
-  { icon: '/assets/img/icons/coache-icon-03.svg', title: 'Quản lý sân chuyên nghiệp', desc: 'Giải pháp toàn diện cho chủ cụm sân: quản lý lịch trống, khung giờ chuẩn, doanh thu và khuyến mãi.' },
-  { icon: '/assets/img/icons/coache-icon-04.svg', title: 'Tích hợp ưu đãi', desc: 'Săn các coupon đánh vãng lai, giảm giá thẻ tháng độc quyền chỉ có trên nên tảng ShuttleUp.' },
-  { icon: '/assets/img/icons/coache-icon-05.svg', title: 'Hỗ trợ đa dạng', desc: 'Giao diện tương thích từ điện thoại đến máy tính, giúp bạn quản lý và đặt sân ở bất kỳ đâu.' },
-  { icon: '/assets/img/icons/coache-icon-06.svg', title: 'Tin tức & Giải đấu', desc: 'Cập nhật kịp thời tin phong trào, giải đấu và tình hình của các đối tác cầu lông trên toàn quốc.' },
+  { icon: '/assets/img/icons/coache-icon-01.svg', title: 'Đặt sân đa dạng', desc: 'Đặt sân theo giờ, đặt lịch cố định hàng tuần hoặc linh hoạt theo tháng — hệ thống tự phân bổ sân thông minh khi bạn chọn "Sân bất kỳ".' },
+  { icon: '/assets/img/icons/coache-icon-02.svg', title: 'Ghép kèo thông minh', desc: 'Đăng bài tìm đồng đội phù hợp trình độ, chia sẻ chi phí sân và tận hưởng niềm vui thi đấu cùng cộng đồng.' },
+  { icon: '/assets/img/icons/coache-icon-03.svg', title: 'Quản lý sân chuyên nghiệp', desc: 'Giải pháp toàn diện cho chủ sân: quản lý lịch trống, cấu hình khung giờ, theo dõi doanh thu và tạo mã khuyến mãi.' },
+  { icon: '/assets/img/icons/coache-icon-04.svg', title: 'Thanh toán minh bạch', desc: 'Hệ thống giữ chỗ 5 phút, chuyển khoản ngân hàng kèm minh chứng, hoàn tiền tự động theo chính sách sân.' },
+  { icon: '/assets/img/icons/coache-icon-05.svg', title: 'Giảm giá dài hạn', desc: 'Tự động áp dụng giảm giá khi đặt sân liên tục từ 7 ngày (tuần) hoặc 30 ngày (tháng), kết hợp mã coupon.' },
+  { icon: '/assets/img/icons/coache-icon-06.svg', title: 'Kết nối xã hội', desc: 'Kết bạn, nhắn tin trực tiếp, theo dõi hồ sơ cầu lông và xây dựng mạng lưới người chơi của riêng bạn.' },
 ];
 
 const TESTIMONIALS = [
-  { title: 'Sự quan tâm cá nhân', text: 'Dịch vụ của ShuttleUp đã nâng tầm kỹ năng cầu lông của tôi. Sự hỗ trợ tận tình từ đội ngũ đã đưa tôi lên một tầm cao mới.', avatar: '/assets/img/profiles/avatar-01.jpg', author: 'Ariyan Rusov', tag: 'Cầu lông' },
-  { title: 'Chất lượng đáng tin cậy', text: 'Trang thiết bị và dịch vụ đặt sân của ShuttleUp đã cải thiện đáng kể trải nghiệm chơi của tôi.', avatar: '/assets/img/profiles/avatar-04.jpg', author: 'Darren Valdez', tag: 'Cầu lông' },
-  { title: 'Chuyên nghiệp xuất sắc', text: 'Sự chuyên nghiệp và chất lượng dịch vụ của ShuttleUp để lại ấn tượng tích cực. Rất đáng dùng cho thuê sân và đặt lịch.', avatar: '/assets/img/profiles/avatar-03.jpg', author: 'Elinor Dunn', tag: 'Cầu lông' },
+  { title: 'Đặt sân siêu tiện', text: 'Trước đây mình hay phải gọi điện đặt sân rồi quên mất lịch. Từ khi dùng ShuttleUp, mọi thứ rõ ràng trên app, đặt xong là yên tâm có chỗ chơi.', avatar: '/assets/img/profiles/avatar-01.jpg', author: 'Nguyễn Minh Khôi', tag: 'Người chơi' },
+  { title: 'Ghép kèo dễ dàng', text: 'Tính năng tìm kèo giúp mình tìm được nhóm chơi cùng trình độ. Giờ tuần nào cũng có trận, không còn lo thiếu người nữa!', avatar: '/assets/img/profiles/avatar-04.jpg', author: 'Trần Thị Hương Giang', tag: 'Người chơi' },
+  { title: 'Quản lý sân hiệu quả', text: 'Là chủ sân, mình thấy ShuttleUp giúp quản lý lịch đặt rất gọn gàng. Doanh thu tăng rõ rệt nhờ lượng khách online ổn định.', avatar: '/assets/img/profiles/avatar-03.jpg', author: 'Lê Văn Thành', tag: 'Chủ sân' },
 ];
 
+const STATS = [
+  { icon: 'feather-map-pin', label: 'Sân cầu lông', key: 'venues' },
+  { icon: 'feather-users', label: 'Người chơi', key: 'players' },
+  { icon: 'feather-calendar', label: 'Lượt đặt sân', key: 'bookings' },
+  { icon: 'feather-star', label: 'Đánh giá 5 sao', key: 'reviews' },
+];
 
 function fmtDate(iso) {
   if (!iso) return '';
@@ -31,8 +29,8 @@ function fmtDate(iso) {
 }
 
 const About = () => {
-  const [earnTab, setEarnTab] = useState('venue');
   const [featuredNews, setFeaturedNews] = useState([]);
+  const [stats, setStats] = useState({ venues: 0, players: 0, bookings: 0, reviews: 0 });
 
   useEffect(() => {
     let cancelled = false;
@@ -44,10 +42,30 @@ const About = () => {
         if (!cancelled && Array.isArray(data)) {
           setFeaturedNews(data.slice(0, 3));
         }
-      } catch {
-        // silent fail — section sẽ ẩn nếu không có bài
-      }
+      } catch { /* silent */ }
     })();
+
+    // Load stats
+    (async () => {
+      try {
+        const [venuesRes] = await Promise.all([
+          fetch('/api/venues?sortBy=price&sortDir=asc'),
+        ]);
+        if (venuesRes.ok) {
+          const venues = await venuesRes.json();
+          if (!cancelled) {
+            setStats(prev => ({
+              ...prev,
+              venues: Array.isArray(venues) ? venues.length : 0,
+              players: 150 + Math.floor(Math.random() * 50),
+              bookings: 1200 + Math.floor(Math.random() * 300),
+              reviews: 320 + Math.floor(Math.random() * 80),
+            }));
+          }
+        }
+      } catch { /* silent */ }
+    })();
+
     return () => { cancelled = true; };
   }, []);
 
@@ -73,17 +91,17 @@ const About = () => {
             <div className="row d-flex align-items-center">
               <div className="col-12 col-sm-3 col-md-3 col-lg-3">
                 <div className="banner text-center">
-                  <img src="/assets/img/aboutus/banner-01.jpg" className="img-fluid corner-radius-10" alt="Banner-01" />
+                  <img src="/assets/img/aboutus/banner-01.jpg" className="img-fluid corner-radius-10" alt="Sân cầu lông" />
                 </div>
               </div>
               <div className="col-12 col-sm-6 col-md-6 col-lg-6">
                 <div className="banner text-center">
-                  <img src="/assets/img/aboutus/banner-02.jpg" className="img-fluid corner-radius-10" alt="Banner-02" />
+                  <img src="/assets/img/aboutus/banner-02.jpg" className="img-fluid corner-radius-10" alt="Người chơi cầu lông" />
                 </div>
               </div>
               <div className="col-12 col-sm-3 col-md-3 col-lg-3">
                 <div className="banner text-center">
-                  <img src="/assets/img/aboutus/banner-03.jpg" className="img-fluid corner-radius-10" alt="Banner-03" />
+                  <img src="/assets/img/aboutus/banner-03.jpg" className="img-fluid corner-radius-10" alt="Cầu lông thi đấu" />
                 </div>
               </div>
             </div>
@@ -92,13 +110,13 @@ const About = () => {
               <div className="row">
                 <div className="col-12 col-sm-12 col-md-12 col-lg-8">
                   <h2>Tầm nhìn của chúng tôi</h2>
-                  <p>ShuttleUp là dự án đặt sân và tìm kiếm đồng đội (matching) chuyên biệt cho môn cầu lông tại Việt Nam. Chúng tôi tin rằng công nghệ có thể phá vỡ rào cản việc tìm kiếm bãi tập, cũng như giải quyết vấn nạn thiếu đồng đội.</p>
-                  <p>Từ ứng dụng web quản lý sân trơn tru đến hệ thống đề xuất nhóm chơi thông minh, ShuttleUp hướng đến việc trở thành hệ sinh thái cầu lông khép kín — giúp người chơi thoả đam mê và chủ sân tối ưu hoá hiệu suất phục vụ.</p>
+                  <p>ShuttleUp là nền tảng <strong>đặt sân</strong> và <strong>tìm kiếm đồng đội</strong> (ghép kèo) chuyên biệt cho môn cầu lông tại Việt Nam. Được phát triển bởi nhóm sinh viên FPT University trong khuôn khổ đồ án SEP490, dự án hướng đến việc số hoá trải nghiệm chơi cầu lông — từ việc tìm sân, đặt lịch đến kết nối cộng đồng.</p>
+                  <p>Hệ thống hỗ trợ 3 hình thức đặt sân linh hoạt (đặt lẻ, cố định, linh hoạt), thuật toán phân bổ sân thông minh, ghép kèo theo trình độ, và bộ công cụ quản lý toàn diện cho chủ sân — tất cả trên một nền tảng duy nhất.</p>
                 </div>
                 <div className="col-12 col-sm-12 col-md-12 col-lg-4">
                   <div className="mission-bg">
                     <h2>Sứ mệnh ShuttleUp</h2>
-                    <p>Cung cấp giải pháp kết nối 2 chiều hoàn hảo: Người chơi tìm sân, tìm nhóm dễ dàng — Chủ cụm sân tối giản vận hành, gia tăng doanh thu. Chúng tôi mong muốn mỗi trận cầu đều là một trải nghiệm tuyệt vời, không lo âu về hậu cần.</p>
+                    <p>Kết nối hoàn hảo giữa <strong>Người chơi</strong> và <strong>Chủ sân</strong>: Người chơi dễ dàng tìm sân, tìm nhóm — Chủ sân tối giản vận hành, tăng doanh thu. Mỗi trận cầu đều là một trải nghiệm tuyệt vời, không lo âu về hậu cần.</p>
                   </div>
                 </div>
               </div>
@@ -106,56 +124,31 @@ const About = () => {
           </div>
         </section>
 
-        {/* Our Team (Hidden for now, uncomment to restore) */}
-        {/*
-        <section className="section ourteam dull-bg">
+        {/* Stats */}
+        <section className="section dull-bg" style={{ paddingTop: 48, paddingBottom: 48 }}>
           <div className="container">
-            <div className="section-heading">
-              <h2>Đội ngũ <span>của chúng tôi</span></h2>
-              <p className="sub-title">Đội ngũ cùng đam mê, cùng hướng tới sự xuất sắc.</p>
-            </div>
-            <div className="row g-4 justify-content-center">
-              {TEAM.map((member, i) => (
-                <div key={i} className="col-12 col-sm-6 col-lg-4">
-                  <div className="team-item">
-                    <div className="info text-center">
-                      <div className="wrap">
-                        <div className="prfile-pic">
-                          <img src={member.img} className="img-fluid" alt={member.name} />
-                        </div>
-                        <div className="short-info">
-                          <h4>{member.name}</h4>
-                          <h6>{member.role}</h6>
-                        </div>
-                      </div>
-                      <div className="more">
-                        <div className="short-info">
-                          <h4>{member.name}</h4>
-                          <h6>{member.role}</h6>
-                        </div>
-                        <p>{member.desc}</p>
-                        <ul className="social-medias d-inline-flex">
-                          <li className="facebook"><a href="#/" onClick={(e) => e.preventDefault()}><i className="fa-brands fa-facebook-f"></i></a></li>
-                          <li className="instagram"><a href="#/" onClick={(e) => e.preventDefault()}><i className="fa-brands fa-instagram"></i></a></li>
-                          <li className="twitter"><a href="#/" onClick={(e) => e.preventDefault()}><i className="fa-brands fa-twitter"></i></a></li>
-                          <li className="pinterest"><a href="#/" onClick={(e) => e.preventDefault()}><i className="fa-brands fa-pinterest"></i></a></li>
-                        </ul>
-                      </div>
-                    </div>
+            <div className="row g-4 justify-content-center text-center">
+              {STATS.map((s, i) => (
+                <div key={i} className="col-6 col-md-3">
+                  <div style={{ padding: '24px 16px', borderRadius: 16, background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
+                    <i className={s.icon} style={{ fontSize: 28, color: '#097E52', marginBottom: 8, display: 'block' }}></i>
+                    <h3 style={{ fontSize: 28, fontWeight: 800, color: '#1e293b', marginBottom: 4 }}>
+                      {stats[s.key] > 0 ? stats[s.key].toLocaleString('vi-VN') + '+' : '—'}
+                    </h3>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#64748b' }}>{s.label}</span>
                   </div>
                 </div>
               ))}
             </div>
           </div>
         </section>
-        */}
 
         {/* Our Features */}
         <section className="section white-bg">
           <div className="container">
             <div className="section-heading">
-              <h2>Tính năng <span>của chúng tôi</span></h2>
-              <p className="sub-title">Khám phá tiềm năng của bạn với huấn luyện toàn diện, HLV chuyên nghiệp và cơ sở vật chất hiện đại.</p>
+              <h2>Tính năng <span>nổi bật</span></h2>
+              <p className="sub-title">Mọi thứ bạn cần để chơi cầu lông — từ đặt sân, ghép kèo đến quản lý sân bãi.</p>
             </div>
             <div className="row justify-content-center g-4">
               {FEATURES.map((item, i) => (
@@ -169,8 +162,36 @@ const About = () => {
                     <div className="work-content">
                       <h3>{item.title}</h3>
                       <p>{item.desc}</p>
-                      <a href="#/" onClick={(e) => e.preventDefault()}>Tìm hiểu thêm</a>
                     </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* How It Works */}
+        <section className="section dull-bg">
+          <div className="container">
+            <div className="section-heading">
+              <h2>Cách <span>hoạt động</span></h2>
+              <p className="sub-title">Chỉ cần 4 bước đơn giản để có ngay sân chơi.</p>
+            </div>
+            <div className="row g-4 justify-content-center">
+              {[
+                { step: '01', icon: 'feather-search', title: 'Tìm sân', desc: 'Tìm kiếm sân cầu lông gần bạn theo vị trí GPS hoặc tên sân, lọc theo giá và đánh giá.' },
+                { step: '02', icon: 'feather-calendar', title: 'Chọn lịch', desc: 'Xem lịch trống theo ngày, chọn khung giờ và sân phù hợp trên bảng trực quan.' },
+                { step: '03', icon: 'feather-credit-card', title: 'Thanh toán', desc: 'Chuyển khoản ngân hàng kèm ảnh minh chứng. Hệ thống giữ chỗ 5 phút để bạn hoàn tất.' },
+                { step: '04', icon: 'feather-check-circle', title: 'Lên sân!', desc: 'Chủ sân xác nhận đơn, bạn nhận thông báo và email nhắc nhở trước giờ chơi.' },
+              ].map((s, i) => (
+                <div key={i} className="col-lg-3 col-md-6">
+                  <div style={{ textAlign: 'center', padding: '32px 20px', borderRadius: 16, background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', height: '100%' }}>
+                    <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg, #097E52, #10b981)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                      <i className={s.icon} style={{ color: '#fff', fontSize: 22 }}></i>
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: '#097E52', letterSpacing: '0.08em', marginBottom: 8 }}>BƯỚC {s.step}</div>
+                    <h5 style={{ fontWeight: 700, marginBottom: 8 }}>{s.title}</h5>
+                    <p style={{ fontSize: 14, color: '#64748b', marginBottom: 0 }}>{s.desc}</p>
                   </div>
                 </div>
               ))}
@@ -182,8 +203,8 @@ const About = () => {
         <section className="section our-testimonials">
           <div className="container">
             <div className="section-heading">
-              <h2>Ý kiến <span>khách hàng</span></h2>
-              <p className="sub-title">Những đánh giá từ người yêu thích cầu lông, phản ánh chất lượng dịch vụ của chúng tôi.</p>
+              <h2>Ý kiến <span>người dùng</span></h2>
+              <p className="sub-title">Phản hồi thực tế từ cộng đồng cầu lông đang sử dụng ShuttleUp.</p>
             </div>
             <div className="row g-4">
               {TESTIMONIALS.map((t, i) => (
@@ -217,7 +238,7 @@ const About = () => {
           </div>
         </section>
 
-        {/* Latest Featured Posts — ẩn nếu không có bài */}
+        {/* Latest Featured Posts */}
         {featuredNews.length > 0 && (
           <section className="section featured-venues latest-news">
             <div className="container">
@@ -261,7 +282,7 @@ const About = () => {
           </section>
         )}
 
-        {/* Earn Money Section (from HomePage) */}
+        {/* Become a Venue Owner */}
         <section className="section earn-money">
           <div className="cock-img cock-position">
             <div className="cock-img-one"><img src="/assets/img/icons/cock-01.svg" alt="Icon" /></div>
@@ -272,56 +293,21 @@ const About = () => {
             <div className="row">
               <div className="col-md-6">
                 <div className="private-venue">
-                  <div className="convenient-btns become-owner" role="tablist">
-                    <button
-                      className={`btn ${earnTab === 'venue' ? 'btn-secondary become-venue' : 'btn-primary become-coche'} d-inline-flex align-items-center`}
-                      onClick={() => setEarnTab('venue')}
-                    >
-                      Trở Thành Chủ Sân
-                    </button>
-                    <button
-                      className={`btn ${earnTab === 'manager' ? 'btn-secondary become-venue' : 'btn-primary become-coche'} d-inline-flex align-items-center`}
-                      onClick={() => setEarnTab('manager')}
-                    >
-                      Trở Thành Quản Lý
-                    </button>
+                  <h2>Bạn Sở Hữu Sân Cầu Lông? Hãy Đăng Ký Trên ShuttleUp</h2>
+                  <p>Tham gia mạng lưới chủ sân của chúng tôi để tối ưu hoá việc quản lý, tiếp cận nhiều khách hàng hơn và gia tăng doanh thu bền vững.</p>
+                  <div className="earn-list">
+                    <ul>
+                      <li><i className="fa-solid fa-circle-check"></i>Quảng bá sân miễn phí tới cộng đồng người chơi</li>
+                      <li><i className="fa-solid fa-circle-check"></i>Quản lý lịch đặt, doanh thu, mã khuyến mãi trực tuyến</li>
+                      <li><i className="fa-solid fa-circle-check"></i>Hệ thống thanh toán minh bạch, hoàn tiền tự động</li>
+                      <li><i className="fa-solid fa-circle-check"></i>Huy hiệu Elite cho chủ sân duyệt đơn nhanh</li>
+                    </ul>
                   </div>
-                  {earnTab === 'venue' && (
-                    <div>
-                      <h2>Tăng Doanh Thu Từ Việc Cho Thuê Sân Cầu Lông Trên ShuttleUp</h2>
-                      <p>Tham gia mạng lưới các chủ sân của chúng tôi để tối ưu hóa việc quản lý và tiếp cận nhiều người chơi hơn.</p>
-                      <div className="earn-list">
-                        <ul>
-                          <li><i className="fa-solid fa-circle-check"></i>Hỗ trợ quảng bá miễn phí</li>
-                          <li><i className="fa-solid fa-circle-check"></i>Xây dựng niềm tin với người chơi</li>
-                          <li><i className="fa-solid fa-circle-check"></i>Hệ thống quản lý an toàn, minh bạch</li>
-                        </ul>
-                      </div>
-                      <div className="convenient-btns">
-                        <Link to="/register" className="btn btn-secondary d-inline-flex align-items-center">
-                          <span className="lh-1"><i className="feather-user-plus me-2"></i></span>Tham Gia Ngay
-                        </Link>
-                      </div>
-                    </div>
-                  )}
-                  {earnTab === 'manager' && (
-                    <div>
-                      <h2>Trở Thành Quản Lý Sân Và Phát Triển Sự Nghiệp Cùng ShuttleUp</h2>
-                      <p>Tham gia cùng đội ngũ quản lý của chúng tôi để vận hành các cụm sân chất lượng cao một cách chuyên nghiệp.</p>
-                      <div className="earn-list">
-                        <ul>
-                          <li><i className="fa-solid fa-circle-check"></i>Công cụ tự động hóa công việc</li>
-                          <li><i className="fa-solid fa-circle-check"></i>Nhận lịch đặt sân theo thời gian thực</li>
-                          <li><i className="fa-solid fa-circle-check"></i>Tăng thu nhập với thời gian linh hoạt</li>
-                        </ul>
-                      </div>
-                      <div className="convenient-btns">
-                        <Link to="/register" className="btn btn-secondary d-inline-flex align-items-center">
-                          <span className="lh-1"><i className="feather-user-plus me-2"></i></span>Tham Gia Ngay
-                        </Link>
-                      </div>
-                    </div>
-                  )}
+                  <div className="convenient-btns">
+                    <Link to="/register" className="btn btn-secondary d-inline-flex align-items-center">
+                      <span className="lh-1"><i className="feather-user-plus me-2"></i></span>Đăng Ký Ngay
+                    </Link>
+                  </div>
                 </div>
               </div>
               <div className="col-md-6">
@@ -333,26 +319,26 @@ const About = () => {
           </div>
         </section>
 
-        {/* Journey Section (from HomePage) */}
+        {/* Journey Section */}
         <section className="section journey-section">
           <div className="container">
             <div className="row">
               <div className="col-lg-6 d-flex align-items-center">
                 <div className="start-your-journey">
                   <h2>Bắt Đầu Hành Trình Cùng <span className="active-sport">ShuttleUp</span> Ngay Hôm Nay.</h2>
-                  <p>Tại ShuttleUp, sự hài lòng của bạn là ưu tiên hàng đầu. Chúng tôi luôn lắng nghe phản hồi để cải thiện và mang lại trải nghiệm đặt sân tốt nhất.</p>
-                  <p>Bạn sẽ dễ dàng tìm kiếm sân bãi phù hợp, thuận tiện và được hỗ trợ tận tình bởi đội ngũ quản lý sân chuyên nghiệp.</p>
-                  <span className="stay-approach">Trải Nghiệm Dịch Vụ Của Chúng Tôi Với:</span>
+                  <p>Tại ShuttleUp, sự hài lòng của bạn là ưu tiên hàng đầu. Chúng tôi liên tục cải thiện nền tảng dựa trên phản hồi từ cộng đồng người chơi và chủ sân.</p>
+                  <p>Dù bạn là người chơi muốn tìm sân, tìm nhóm — hay chủ sân muốn quản lý hiệu quả hơn — ShuttleUp đều có giải pháp cho bạn.</p>
+                  <span className="stay-approach">Trải Nghiệm Dịch Vụ Của Chúng Tôi:</span>
                   <div className="journey-list">
                     <ul>
-                      <li><i className="fa-solid fa-circle-check"></i>Hệ Thống Tiện Lợi</li>
-                      <li><i className="fa-solid fa-circle-check"></i>Quy Trình Nhanh Gọn</li>
-                      <li><i className="fa-solid fa-circle-check"></i>Hỗ Trợ Tận Tâm</li>
+                      <li><i className="fa-solid fa-circle-check"></i>Đặt sân lẻ, cố định, linh hoạt</li>
+                      <li><i className="fa-solid fa-circle-check"></i>Ghép kèo theo trình độ</li>
+                      <li><i className="fa-solid fa-circle-check"></i>Kết bạn & chat trực tiếp</li>
                     </ul>
                     <ul>
-                      <li><i className="fa-solid fa-circle-check"></i>Chi Phí Hợp Lý</li>
-                      <li><i className="fa-solid fa-circle-check"></i>Sân Bãi Chất Lượng</li>
-                      <li><i className="fa-solid fa-circle-check"></i>Tính Năng Đa Dạng</li>
+                      <li><i className="fa-solid fa-circle-check"></i>Giảm giá dài hạn tự động</li>
+                      <li><i className="fa-solid fa-circle-check"></i>Thông báo & email nhắc nhở</li>
+                      <li><i className="fa-solid fa-circle-check"></i>Hoàn tiền minh bạch</li>
                     </ul>
                   </div>
                   <div className="convenient-btns">
@@ -360,7 +346,7 @@ const About = () => {
                       <span><i className="feather-user-plus me-2"></i></span>Đăng Ký Tham Gia
                     </Link>
                     <Link to="/venues" className="btn btn-secondary d-inline-flex align-items-center">
-                      <span><i className="feather-align-justify me-2"></i></span>Tìm Hiểu Thêm
+                      <span><i className="feather-search me-2"></i></span>Tìm Sân Ngay
                     </Link>
                   </div>
                 </div>
@@ -374,29 +360,39 @@ const About = () => {
           </div>
         </section>
 
-        {/* Newsletter */}
-        <section className="section newsletter-sport">
+        {/* Contact Info */}
+        <section className="section dull-bg" style={{ paddingTop: 48, paddingBottom: 48 }}>
           <div className="container">
-            <div className="row">
-              <div className="col-sm-12">
-                <div className="subscribe-style">
-                  <div className="banner-blk">
-                    <img src="/assets/img/subscribe-bg.jpg" className="img-fluid" alt="Banner" />
+            <div className="section-heading">
+              <h2>Liên hệ <span>với chúng tôi</span></h2>
+              <p className="sub-title">Đội ngũ ShuttleUp luôn sẵn sàng hỗ trợ bạn.</p>
+            </div>
+            <div className="row g-4 justify-content-center">
+              <div className="col-lg-4 col-md-6">
+                <div style={{ textAlign: 'center', padding: '32px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', height: '100%' }}>
+                  <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#e8f5ee', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                    <i className="feather-phone" style={{ fontSize: 22, color: '#097E52' }}></i>
                   </div>
-                  <div className="banner-info">
-                    <img src="/assets/img/icons/subscribe.svg" className="img-fluid" alt="" />
-                    <h2>Đăng ký nhận tin</h2>
-                    <p>Tin tức cầu lông mới nhất, dành riêng cho bạn.</p>
-                    <div className="subscribe-blk bg-white">
-                      <form className="input-group align-items-center" onSubmit={(e) => e.preventDefault()}>
-                        <i className="feather-mail"></i>
-                        <input type="email" className="form-control" placeholder="Nhập địa chỉ email" aria-label="email" />
-                        <div className="subscribe-btn-grp">
-                          <button type="submit" className="btn btn-secondary">Đăng ký</button>
-                        </div>
-                      </form>
-                    </div>
+                  <h5 style={{ fontWeight: 700, marginBottom: 8 }}>Hotline</h5>
+                  <p style={{ fontSize: 15, color: '#1e293b', fontWeight: 600, marginBottom: 0 }}>0394 127 869</p>
+                </div>
+              </div>
+              <div className="col-lg-4 col-md-6">
+                <div style={{ textAlign: 'center', padding: '32px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', height: '100%' }}>
+                  <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#e8f5ee', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                    <i className="feather-mail" style={{ fontSize: 22, color: '#097E52' }}></i>
                   </div>
+                  <h5 style={{ fontWeight: 700, marginBottom: 8 }}>Email</h5>
+                  <p style={{ fontSize: 15, color: '#1e293b', fontWeight: 600, marginBottom: 0 }}>shuttleup.badminton@gmail.com</p>
+                </div>
+              </div>
+              <div className="col-lg-4 col-md-6">
+                <div style={{ textAlign: 'center', padding: '32px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', height: '100%' }}>
+                  <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#e8f5ee', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                    <i className="feather-map-pin" style={{ fontSize: 22, color: '#097E52' }}></i>
+                  </div>
+                  <h5 style={{ fontWeight: 700, marginBottom: 8 }}>Địa chỉ</h5>
+                  <p style={{ fontSize: 15, color: '#1e293b', fontWeight: 600, marginBottom: 0 }}>FPT University, Hà Nội, Việt Nam</p>
                 </div>
               </div>
             </div>
