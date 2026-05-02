@@ -20,6 +20,9 @@ function getPageMeta(pathname) {
 
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem('adm-sidebar-collapsed') === '1'; } catch { return false; }
+  });
   const [openDropdown, setOpenDropdown] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -33,9 +36,22 @@ export default function AdminLayout() {
     navigate('/login', { replace: true, state: { skipReturn: true } });
   };
 
+  const toggleCollapse = () => {
+    setCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem('adm-sidebar-collapsed', next ? '1' : '0'); } catch { /* noop */ }
+      return next;
+    });
+  };
+
   return (
-    <div className="adm-layout">
-      <AdminSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    <div className={`adm-layout${collapsed ? ' adm-layout--collapsed' : ''}`}>
+      <AdminSidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        collapsed={collapsed}
+        onToggleCollapse={toggleCollapse}
+      />
 
       <div className="adm-content">
         <header className="adm-topbar">
@@ -89,3 +105,4 @@ export default function AdminLayout() {
     </div>
   );
 }
+

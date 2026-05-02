@@ -5754,9 +5754,16 @@ optgroup {
   display: flex;
   flex-direction: column;
   z-index: 1040;
-  transition: transform .25s ease;
+  transition: width .25s ease, transform .25s ease;
   box-shadow: 0 8px 32px rgba(0, 0, 0, .3);
   border-radius: 20px;
+  overflow: visible
+}
+
+.adm-sidebar__logo-wrap {
+  border-bottom: 1px solid rgba(255, 255, 255, .1);
+  padding: 0;
+  border-radius: 20px 20px 0 0;
   overflow: hidden
 }
 
@@ -5765,8 +5772,8 @@ optgroup {
   align-items: center;
   gap: 10px;
   padding: 22px 22px 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, .1);
-  text-decoration: none
+  text-decoration: none;
+  min-width: 0
 }
 
 .adm-sidebar__logo img {
@@ -5783,6 +5790,90 @@ optgroup {
 
 .adm-sidebar__logo:hover {
   text-decoration: none
+}
+
+/* ── Sidebar edge collapse handle ─────────────────────────────── */
+.adm-sidebar__collapse-btn {
+  position: absolute;
+  top: 50%;
+  right: -14px;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 56px;
+  border: none;
+  border-radius: 0 8px 8px 0;
+  background: linear-gradient(180deg, #312e81 0%, #1e1b4b 100%);
+  color: #fff;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  transition: all .2s;
+  opacity: .5;
+  box-shadow: 3px 0 8px rgba(0, 0, 0, .1)
+}
+
+.adm-sidebar__collapse-btn:hover {
+  opacity: 1;
+  width: 18px;
+  right: -18px;
+  box-shadow: 3px 0 12px rgba(0, 0, 0, .2)
+}
+
+.adm-sidebar.collapsed .adm-sidebar__collapse-btn {
+  opacity: .7
+}
+
+.adm-sidebar.collapsed .adm-sidebar__collapse-btn:hover {
+  opacity: 1
+}
+
+/* ── Collapsed sidebar ──────────────────────────────────────────── */
+.adm-sidebar.collapsed {
+  width: 78px
+}
+
+.adm-sidebar.collapsed .adm-sidebar__logo {
+  justify-content: center;
+  padding: 18px 8px
+}
+
+.adm-sidebar.collapsed .adm-sidebar__logo img {
+  height: 30px
+}
+
+.adm-sidebar.collapsed .adm-sidebar__section {
+  padding: 0 8px
+}
+
+.adm-sidebar.collapsed .adm-sidebar__item {
+  justify-content: center;
+  padding: 11px 0;
+  gap: 0
+}
+
+.adm-sidebar.collapsed .adm-sidebar__item-icon {
+  margin: 0
+}
+
+.adm-sidebar.collapsed .adm-sidebar__user {
+  justify-content: center;
+  padding: 14px 8px;
+  gap: 0
+}
+
+.adm-sidebar.collapsed .adm-sidebar__user img {
+  width: 32px;
+  height: 32px
+}
+
+/* ── Layout collapsed adjustments ─────────────────────────────── */
+.adm-layout--collapsed .adm-content {
+  margin-left: calc(78px + 28px);
+  width: calc(100% - 78px - 28px);
+  max-width: calc(100% - 78px - 28px)
 }
 
 .adm-sidebar__nav {
@@ -5935,7 +6026,8 @@ optgroup {
   position: relative;
   z-index: 1;
   padding-top: 14px;
-  overflow-x: hidden
+  overflow-x: hidden;
+  transition: margin-left .25s ease, width .25s ease, max-width .25s ease
 }
 
 .adm-topbar {
@@ -6033,7 +6125,12 @@ optgroup {
     display: block
   }
 
-  .adm-content {
+  .adm-sidebar__collapse-btn {
+    display: none
+  }
+
+  .adm-content,
+  .adm-layout--collapsed .adm-content {
     margin-left: 0;
     width: 100%;
     max-width: 100%;
