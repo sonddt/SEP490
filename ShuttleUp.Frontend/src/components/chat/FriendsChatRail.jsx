@@ -76,22 +76,15 @@ export default function FriendsChatRail() {
         onClick={handleClick}
         title="Mở chat"
       >
-        {/* Shuttlecock SVG icon */}
+        {/* Chat bubble icon */}
         <svg className="shuttle-chat-fab__icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-          {/* Cork / base */}
-          <circle cx="32" cy="44" r="10" fill="#fff" opacity="0.95" />
-          <circle cx="32" cy="44" r="7" fill="rgba(255,255,255,0.6)" />
-          {/* Feathers */}
-          <path d="M32 34 L22 14 Q27 12 32 16 Z" fill="rgba(255,255,255,0.85)" />
-          <path d="M32 34 L28 12 Q32 10 34 14 Z" fill="rgba(255,255,255,0.7)" />
-          <path d="M32 34 L42 14 Q37 12 32 16 Z" fill="rgba(255,255,255,0.85)" />
-          <path d="M32 34 L36 12 Q32 10 30 14 Z" fill="rgba(255,255,255,0.7)" />
-          <path d="M32 34 L20 20 Q24 16 28 20 Z" fill="rgba(255,255,255,0.6)" />
-          <path d="M32 34 L44 20 Q40 16 36 20 Z" fill="rgba(255,255,255,0.6)" />
-          {/* Chat bubble overlay */}
-          <circle cx="44" cy="48" r="10" fill="#fff" />
-          <circle cx="44" cy="48" r="8" fill="#10b981" />
-          <path d="M40 46 h8 M40 50 h5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
+          {/* Main chat bubble */}
+          <path d="M12 14 h28 a6 6 0 0 1 6 6 v14 a6 6 0 0 1-6 6 H26 l-8 8 v-8 H16 a6 6 0 0 1-6-6 V20 a6 6 0 0 1 6-6 Z" fill="#fff" opacity="0.95" />
+          {/* Chat lines */}
+          <path d="M20 24 h16 M20 30 h10" stroke="rgba(9,126,82,0.7)" strokeWidth="2.5" strokeLinecap="round" />
+          {/* Small secondary bubble */}
+          <path d="M34 38 h12 a4 4 0 0 1 4 4 v8 a4 4 0 0 1-4 4 h-2 v5 l-5-5 H34 a4 4 0 0 1-4-4 v-8 a4 4 0 0 1 4-4 Z" fill="rgba(255,255,255,0.7)" />
+          <path d="M36 44 h8 M36 48 h5" stroke="rgba(9,126,82,0.5)" strokeWidth="2" strokeLinecap="round" />
         </svg>
         {/* Pulse ring */}
         <span className="shuttle-chat-fab__pulse"></span>
