@@ -585,6 +585,7 @@ export default function MatchingCreate() {
                           <p><i className="feather-dollar-sign"></i> {renderPricePerPerson()} {form.expenseSharing === 'split_equal' && `(chia ${form.requiredPlayers + 1} người)`}</p>
                           {form.skillLevel && <span className="badge bg-info me-1">{skillOptions.find(o => o.value === form.skillLevel)?.label}</span>}
                           {form.genderPref && <span className="badge bg-secondary me-1">{form.genderPref}</span>}
+                          {form.playPurpose && <span className="badge bg-primary me-1">{form.playPurpose}</span>}
                           <span className="badge bg-success">{expenseOptions.find(o => o.value === form.expenseSharing)?.label}</span>
                         </div>
                       </div>
@@ -686,6 +687,10 @@ export default function MatchingCreate() {
                                     <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '16px', borderBottom: '1px solid #f1f5f9' }}>
                                         <span style={{ color: '#64748b', fontWeight: '600', display: 'flex', alignItems: 'center' }}><i className="feather-users me-2"></i>Giới tính</span>
                                         <span style={{ color: '#1e293b', fontWeight: '800' }}>{form.genderPref || 'Nam & Nữ đều được'}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '16px', borderBottom: '1px solid #f1f5f9' }}>
+                                        <span style={{ color: '#64748b', fontWeight: '600', display: 'flex', alignItems: 'center' }}><i className="feather-target me-2"></i>Mục đích</span>
+                                        <span style={{ color: '#1e293b', fontWeight: '800' }}>{form.playPurpose || 'Không yêu cầu'}</span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                         <span style={{ color: '#64748b', fontWeight: '600', display: 'flex', alignItems: 'center' }}><i className="feather-credit-card me-2"></i>Chi phí</span>

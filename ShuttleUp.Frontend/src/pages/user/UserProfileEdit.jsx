@@ -471,10 +471,11 @@ export default function UserProfileEdit() {
                 >
                   <option value="">-- Chọn trình độ --</option>
                   <option value="Yếu">Yếu / Mới chơi</option>
+                  <option value="Trung Bình Yếu">Trung Bình Yếu</option>
                   <option value="Trung Bình">Trung Bình</option>
                   <option value="Khá">Khá</option>
                   <option value="Bán Chuyên">Bán Chuyên</option>
-                  <option value="Chuyên Nghiệp">Chuyên Nghiệp</option>
+                  <option value="Chuyên Nghiệp">Chuyên nghiệp</option>
                 </select>
               </div>
               <div>
@@ -486,24 +487,26 @@ export default function UserProfileEdit() {
                   onChange={handleChange}
                 >
                   <option value="">-- Chọn mục tiêu --</option>
-                  <option value="Giải trí">Giải trí, vận động</option>
-                  <option value="Tập luyện">Tập luyện nghiêm túc</option>
-                  <option value="Thi đấu">Đánh giải, cọ xát</option>
+                  <option value="Giải trí, vận động">Giải trí, vận động</option>
+                  <option value="Tập luyện nghiêm túc">Tập luyện nghiêm túc</option>
+                  <option value="Tìm partner cố định">Tìm partner cố định</option>
+                  <option value="Đánh giải, cọ xát">Đánh giải, cọ xát</option>
                 </select>
               </div>
               <div>
                 <label className="form-label user-profile-form-label">Tần suất</label>
-                <select
-                  className="form-control rounded-xl border-slate-200 py-2.5"
-                  name="playFrequency"
-                  value={form.playFrequency}
-                  onChange={handleChange}
-                >
-                  <option value="">-- Tần suất --</option>
-                  <option value="Thỉnh thoảng">Thỉnh thoảng</option>
-                  <option value="1-2 lần/tuần">1-2 lần/tuần</option>
-                  <option value="Hàng ngày">Hàng ngày</option>
-                </select>
+                  <select
+                    className="form-control rounded-xl border-slate-200 py-2.5"
+                    name="playFrequency"
+                    value={form.playFrequency}
+                    onChange={handleChange}
+                  >
+                    <option value="">-- Tần suất --</option>
+                    <option value="Thỉnh thoảng">Thỉnh thoảng</option>
+                    <option value="1-2 lần/tuần">1-2 lần/tuần</option>
+                    <option value="Chỉ cuối tuần">Chỉ cuối tuần</option>
+                    <option value="Hàng ngày">Hàng ngày</option>
+                  </select>
               </div>
             </div>
 

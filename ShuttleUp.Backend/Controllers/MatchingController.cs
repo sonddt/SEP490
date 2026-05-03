@@ -188,6 +188,8 @@ public class MatchingController : ControllerBase
             var all = await query.ToListAsync();
             var filtered = all.Where(p =>
                 SearchNormalize.FoldedContains(p.Title, foldQ)
+                || SearchNormalize.FoldedContains(p.Venue?.Name, foldQ)
+                || SearchNormalize.FoldedContains(p.CourtName, foldQ)
                 || SearchNormalize.FoldedContains(p.Venue?.Address, foldQ)
                 || SearchNormalize.FoldedContains(p.CreatorUser?.FullName, foldQ)).ToList();
             total = filtered.Count;

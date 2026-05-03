@@ -46,14 +46,14 @@ function clientSortCompare(a, b, sort) {
   }
 }
 
-/** Lọc theo chuỗi: tiêu đề, địa chỉ sân, tên chủ bài — dùng cho tab Của tôi / Đã tham gia. */
+/** Lọc theo chuỗi: tiêu đề, tên sân, địa chỉ sân, tên chủ bài — dùng cho tab Của tôi / Đã tham gia. */
 function applyClientListFilterSort(items, search, sort) {
   let list = Array.isArray(items) ? [...items] : [];
   const nq = normalizeSearchText(search);
   if (nq) {
     list = list.filter((p) => {
       const blob = normalizeSearchText(
-        [p.title, p.venueAddress, p.host?.fullName].filter(Boolean).join(' '),
+        [p.title, p.venueName, p.courtName, p.venueAddress, p.host?.fullName].filter(Boolean).join(' '),
       );
       return blob.includes(nq);
     });
@@ -292,7 +292,7 @@ export default function MatchingHub() {
                     <input
                       type="search"
                       className="form-control"
-                      placeholder="Tiêu đề, địa chỉ sân, tên chủ bài…"
+                      placeholder="Tiêu đề, tên sân, địa chỉ sân, tên chủ bài…"
                       style={{ borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '600', color: '#1e293b' }}
                       value={searchText}
                       onChange={handleSearchChange}
@@ -379,7 +379,7 @@ export default function MatchingHub() {
                   <input
                     type="search"
                     className="form-control"
-                    placeholder="Tiêu đề, địa chỉ sân, tên chủ bài…"
+                    placeholder="Tiêu đề, tên sân, địa chỉ sân, tên chủ bài…"
                     style={{ borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '600', color: '#1e293b' }}
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
