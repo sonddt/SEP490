@@ -22,6 +22,7 @@ const skillLabels = {
 
 const expenseLabels = {
   split_equal: 'Chia đều',
+  per_person: 'Cố định/người',
   host_pays: 'Bao sân',
   female_free: 'Nữ miễn phí',
   negotiable: 'Thỏa thuận',
@@ -216,6 +217,9 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
                 {post.expenseSharing && (
                   <span><i className="feather-pie-chart me-1" style={{ color: '#097E52' }}></i> {expenseLabels[post.expenseSharing] || post.expenseSharing}</span>
                 )}
+                {post.playPurpose && (
+                  <span><i className="feather-target me-1" style={{ color: '#097E52' }}></i> {post.playPurpose}</span>
+                )}
               </div>
             </div>
 
@@ -346,9 +350,15 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
           </div>
           
           {post.expenseSharing && (
-            <div style={{ fontSize: '13px', fontWeight: '600', color: '#64748b', marginBottom: '16px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#64748b', marginBottom: '8px' }}>
               <i className="feather-pie-chart me-2" style={{ color: '#097E52' }}></i>
               {expenseLabels[post.expenseSharing] || post.expenseSharing}
+            </div>
+          )}
+          {post.playPurpose && (
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#64748b', marginBottom: '16px' }}>
+              <i className="feather-target me-2" style={{ color: '#097E52' }}></i>
+              {post.playPurpose}
             </div>
           )}
 
