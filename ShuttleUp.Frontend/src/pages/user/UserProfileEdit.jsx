@@ -574,9 +574,9 @@ export default function UserProfileEdit() {
                       onChange={handleChange}
                     >
                       <option value="">-- Chọn giới tính --</option>
-                      <option value="MALE">Nam</option>
-                      <option value="FEMALE">Nữ</option>
-                      <option value="OTHER">Khác</option>
+                      <option value="Nam">Nam</option>
+                      <option value="Nữ">Nữ</option>
+                      <option value="Khác">Khác</option>
                     </select>
                   </div>
                   <div className="col-lg-6">
