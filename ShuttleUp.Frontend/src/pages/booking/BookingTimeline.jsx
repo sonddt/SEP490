@@ -674,11 +674,28 @@ export default function BookingTimeline() {
         className="d-flex justify-content-between align-items-center px-4 py-3"
         style={{ backgroundColor: '#0f766e' }}
       >
-        <div>
-          <h5 className="mb-0 text-white fw-semibold">Đặt lịch ngày trực quan</h5>
-          {venueName !== 'Chọn sân' && (
-            <small className="text-white opacity-75">{venueName}{venueAddress ? ` — ${venueAddress}` : ''}</small>
-          )}
+        <div className="d-flex align-items-center gap-3">
+          <button
+            type="button"
+            onClick={() => venueId ? navigate(`/venue-details/${venueId}`) : navigate(-1)}
+            title="Quay lại"
+            style={{
+              background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: '50%', width: 36, height: 36, display: 'flex', alignItems: 'center',
+              justifyContent: 'center', cursor: 'pointer', color: '#fff', fontSize: 18,
+              transition: 'background 0.2s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+          >
+            <i className="feather-arrow-left" />
+          </button>
+          <div>
+            <h5 className="mb-0 text-white fw-semibold">Đặt lịch ngày trực quan</h5>
+            {venueName !== 'Chọn sân' && (
+              <small className="text-white opacity-75">{venueName}{venueAddress ? ` — ${venueAddress}` : ''}</small>
+            )}
+          </div>
         </div>
 
         {/* Date picker button */}

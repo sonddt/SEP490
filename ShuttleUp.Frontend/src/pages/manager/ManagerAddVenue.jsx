@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState, useCallback, useRef, lazy, Suspense } fro
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
 import VenueAddressFields from '../../components/manager/VenueAddressFields';
-import { getManagerVenueCheckoutSettings, putVenueCheckoutSettings } from '../../api/managerVenueApi';
+import { getManagerVenueCheckoutSettings, putVenueCheckoutSettings, uploadVenueFiles, deleteVenueFile } from '../../api/managerVenueApi';
 import { notifySuccess, notifyError } from '../../hooks/useNotification';
+import ImageCropperModal from '../../components/common/ImageCropperModal';
+import { compressImage, compressImages } from '../../utils/imageUtils';
 import {
   loadVietnamDivisionTree,
   provinceByCode,
@@ -175,8 +177,15 @@ export default function ManagerAddVenue() {
   const [dayHours, setDayHours] = useState(DAYS.map(() => ({ open: '06:00', close: '22:00', enabled: true })));
 
   const [thumbnailFiles, setThumbnailFiles] = useState([]);
+  const [thumbnailPreview, setThumbnailPreview] = useState(null);
+  const [existingThumbnail, setExistingThumbnail] = useState(null);
   const [galleryFiles, setGalleryFiles] = useState([]);
+  const [existingGallery, setExistingGallery] = useState([]);
 
+  // Cropper state
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropperSrc, setCropperSrc] = useState(null);
+  const thumbnailInputRef = useRef(null);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -315,6 +324,8 @@ export default function ManagerAddVenue() {
           amenities: Array.isArray(res?.amenities) ? res.amenities : (Array.isArray(res?.Amenities) ? res.Amenities : []),
           slotDuration: res?.slotDuration || res?.SlotDuration || 60,
         }));
+        setExistingThumbnail(res?.thumbnailUrl || res?.ThumbnailUrl || null);
+        setExistingGallery(res?.imageUrls || res?.ImageUrls || []);
       } catch (err) {
         console.error('Failed to load venue', err);
       } finally {
@@ -448,6 +459,23 @@ export default function ManagerAddVenue() {
       }
 
       if (id) {
+        if (thumbnailFiles.length > 0) {
+          const fd = new FormData();
+          for (const file of thumbnailFiles) {
+            const compressed = await compressImage(file);
+            fd.append('imageFiles', compressed);
+          }
+          fd.append('isThumbnail', 'true');
+          await uploadVenueFiles(id, fd);
+        }
+        if (galleryFiles.length > 0) {
+          const fd = new FormData();
+          const compressedGallery = await compressImages(galleryFiles);
+          for (const file of compressedGallery) fd.append('imageFiles', file);
+          fd.append('isThumbnail', 'false');
+          await uploadVenueFiles(id, fd);
+        }
+
         const policyErrors = validatePolicy();
         if (Object.keys(policyErrors).length > 0) {
           setPolicyFieldErrors(policyErrors);
@@ -663,19 +691,136 @@ export default function ManagerAddVenue() {
                 {/* Media Card */}
                 <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
                   <div className="card-body p-4 p-md-5">
-                    <SectionHeader icon="feather-image" iconBg="#fce7f3" iconColor="#db2777" title="3. Hình ảnh đại diện" subtitle="Tải lên ảnh đẹp nhất để thu hút khách" />
-                    <div className="position-relative bg-light rounded-4 d-flex align-items-center justify-content-center border" style={{ height: 260, borderStyle: 'dashed !important' }}>
-                      <input type="file" className="position-absolute top-0 start-0 w-100 h-100 opacity-0 cursor-pointer" accept="image/*" onChange={(e) => setThumbnailFiles(Array.from(e.target.files || []))} />
-                      {thumbnailFiles.length > 0 ? (
-                        <img src={URL.createObjectURL(thumbnailFiles[0])} alt="thumb" className="w-100 h-100 rounded-4" style={{ objectFit: 'cover' }} />
+                    <SectionHeader icon="feather-image" iconBg="#fce7f3" iconColor="#db2777" title="3. Hình ảnh đại diện" subtitle="Tải lên ảnh đẹp nhất để thu hút khách (Tự động đổi tên thành mac_dinh)" />
+                    <div
+                      className="position-relative bg-light rounded-4 d-flex align-items-center justify-content-center border cursor-pointer"
+                      style={{ height: 260, borderStyle: 'dashed !important' }}
+                      onClick={() => thumbnailInputRef.current?.click()}
+                    >
+                      <input
+                        ref={thumbnailInputRef}
+                        type="file"
+                        className="d-none"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const url = URL.createObjectURL(file);
+                          setCropperSrc(url);
+                          setCropperOpen(true);
+                          e.target.value = '';
+                        }}
+                      />
+                      {thumbnailPreview ? (
+                        <img src={thumbnailPreview} alt="thumb" className="w-100 h-100 rounded-4" style={{ objectFit: 'cover' }} />
+                      ) : existingThumbnail ? (
+                        <img src={existingThumbnail} alt="thumb" className="w-100 h-100 rounded-4" style={{ objectFit: 'cover' }} />
                       ) : (
                         <div className="text-center text-muted">
                           <div className="bg-white shadow-sm d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style={{ width: 64, height: 64 }}>
                             <i className="feather-upload-cloud text-primary" style={{ fontSize: 28 }} />
                           </div>
                           <h6 className="fw-semibold text-dark">Nhấn hoặc Kéo thả ảnh vào đây</h6>
-                          <span className="small text-secondary">Hỗ trợ JPG, PNG (Tối đa 5MB)</span>
+                          <span className="small text-secondary">Hỗ trợ JPG, PNG — Tự động cắt & nén</span>
                         </div>
+                      )}
+                    </div>
+                    {/* Cropper Modal */}
+                    <ImageCropperModal
+                      open={cropperOpen}
+                      imageSrc={cropperSrc}
+                      title="Chỉnh sửa ảnh đại diện"
+                      aspect={16 / 10}
+                      onCancel={() => {
+                        setCropperOpen(false);
+                        if (cropperSrc) URL.revokeObjectURL(cropperSrc);
+                        setCropperSrc(null);
+                      }}
+                      onSave={(blob) => {
+                        setCropperOpen(false);
+                        if (cropperSrc) URL.revokeObjectURL(cropperSrc);
+                        setCropperSrc(null);
+                        const file = new File([blob], 'thumbnail_cropped.jpg', { type: 'image/jpeg' });
+                        setThumbnailFiles([file]);
+                        setThumbnailPreview(URL.createObjectURL(blob));
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Gallery Card */}
+                <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
+                  <div className="card-body p-4 p-md-5">
+                    <SectionHeader icon="feather-layers" iconBg="#e0e7ff" iconColor="#4f46e5" title="4. Bộ sưu tập ảnh" subtitle="Góc chụp thực tế sân đấu (tối đa 8 ảnh)" />
+                    
+                    <div className="bg-light rounded-4 p-4 border" style={{ borderStyle: 'dashed !important', minHeight: 220 }}>
+                      <input type="file" multiple className="d-none" id="venueGalleryUpload" accept="image/*" onChange={async (e) => {
+                        const files = Array.from(e.target.files || []);
+                        const currentCount = existingGallery.length + galleryFiles.length;
+                        if (currentCount + files.length > 8) {
+                          notifyError('Tối đa chỉ được tải lên 8 ảnh.');
+                          return;
+                        }
+                        // Nén ảnh tự động trước khi thêm vào state
+                        const compressed = await compressImages(files);
+                        setGalleryFiles(p => [...p, ...compressed]);
+                      }} />
+                      
+                      <div className="d-flex flex-wrap gap-3 mb-3">
+                        {/* Existing Images */}
+                        {existingGallery.map((src, i) => (
+                          <div key={'ex_'+i} className="position-relative rounded-3 overflow-hidden shadow-sm border" style={{ width: 84, height: 84 }}>
+                            <img src={src} alt="gal" className="w-100 h-100 object-fit-cover" />
+                            <div className="position-absolute top-0 end-0 p-1">
+                              <button type="button" className="btn btn-sm btn-danger p-0 d-flex align-items-center justify-content-center shadow" style={{ width: 20, height: 20, borderRadius: '50%' }} onClick={() => {
+                                setConfirmModal({
+                                  title: 'Xóa ảnh',
+                                  message: 'Bạn có chắc muốn xóa ảnh này khỏi bộ sưu tập?',
+                                  confirmLabel: 'Xóa',
+                                  cancelLabel: 'Hủy',
+                                  variant: 'danger',
+                                  onConfirm: async () => {
+                                    setConfirmModal(null);
+                                    try {
+                                      if (venueId) await deleteVenueFile(venueId, src);
+                                      setExistingGallery(p => p.filter((_, idx) => idx !== i));
+                                      notifySuccess('Xóa ảnh thành công');
+                                    } catch (err) {
+                                      notifyError('Xóa ảnh thất bại. Vui lòng thử lại.');
+                                    }
+                                  },
+                                  onCancel: () => setConfirmModal(null),
+                                });
+                              }}>
+                                <i className="feather-x" style={{ fontSize: 10 }} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {/* New Images */}
+                        {galleryFiles.map((file, i) => (
+                          <div key={'new_'+i} className="position-relative rounded-3 overflow-hidden shadow-sm" style={{ width: 84, height: 84 }}>
+                            <img src={URL.createObjectURL(file)} alt="gal" className="w-100 h-100 object-fit-cover" />
+                            <div className="position-absolute top-0 end-0 p-1">
+                              <button type="button" className="btn btn-sm btn-danger p-0 d-flex align-items-center justify-content-center shadow" style={{ width: 20, height: 20, borderRadius: '50%' }} onClick={() => setGalleryFiles(p => p.filter((_, idx) => idx !== i))}>
+                                <i className="feather-x" style={{ fontSize: 10 }} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {/* Upload Trigger */}
+                        {existingGallery.length + galleryFiles.length < 8 && (
+                          <label htmlFor="venueGalleryUpload" className="d-flex flex-column align-items-center justify-content-center bg-white border border-secondary text-secondary rounded-3 cursor-pointer" style={{ width: 84, height: 84, borderStyle: 'dashed !important' }}>
+                            <i className="feather-plus mb-1" style={{ fontSize: 20 }} />
+                            <span style={{ fontSize: 11, fontWeight: 500 }}>Upload</span>
+                          </label>
+                        )}
+                      </div>
+                      
+                      {(existingGallery.length === 0 && galleryFiles.length === 0) && (
+                        <div className="text-secondary small mt-3"><i className="feather-info me-1" />Khuyến nghị tải hình ảnh sắc nét, định dạng JPG/PNG.</div>
                       )}
                     </div>
                   </div>
@@ -684,7 +829,7 @@ export default function ManagerAddVenue() {
                 {/* Schedule Card */}
                 <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
                   <div className="card-body p-4 p-md-5">
-                    <SectionHeader icon="feather-clock" iconBg="#fef3c7" iconColor="#d97706" title="4. Lịch hoạt động chung" subtitle="Cài đặt khung giờ làm việc tiêu chuẩn" />
+                    <SectionHeader icon="feather-clock" iconBg="#fef3c7" iconColor="#d97706" title="5. Lịch hoạt động chung" subtitle="Cài đặt khung giờ làm việc tiêu chuẩn" />
                     <div className="px-2">
                       {DAYS.map((day, i) => (
                         <div key={day} className="row align-items-center py-3 border-bottom" style={{ opacity: dayHours[i].enabled ? 1 : 0.5, transition: '0.2s' }}>
@@ -724,7 +869,7 @@ export default function ManagerAddVenue() {
                       icon="feather-file-text"
                       iconBg="#f0fdf4"
                       iconColor="#16a34a"
-                      title="5. Mô tả sân"
+                      title="6. Mô tả sân"
                       subtitle="Giới thiệu về cơ sở — hiển thị ở tab Tổng quan trang chi tiết sân"
                     />
                     <textarea
@@ -750,7 +895,7 @@ export default function ManagerAddVenue() {
                       icon="feather-check-square"
                       iconBg="#ecfdf5"
                       iconColor="#059669"
-                      title="6. Bao gồm"
+                      title="7. Bao gồm"
                       subtitle="Những gì khách được sử dụng khi thuê sân"
                     />
                     <EditableList
@@ -770,7 +915,7 @@ export default function ManagerAddVenue() {
                       icon="feather-alert-octagon"
                       iconBg="#fff7ed"
                       iconColor="#ea580c"
-                      title="7. Quy định"
+                      title="8. Quy định"
                       subtitle="Các quy tắc khách cần tuân thủ tại cơ sở"
                     />
                     <EditableList
@@ -791,7 +936,7 @@ export default function ManagerAddVenue() {
                       icon="feather-star"
                       iconBg="#eff6ff"
                       iconColor="#3b82f6"
-                      title="8. Tiện ích"
+                      title="9. Tiện ích"
                       subtitle="Chọn các cơ sở vật chất & dịch vụ hiện có tại cơ sở"
                     />
                     <div className="row g-3">

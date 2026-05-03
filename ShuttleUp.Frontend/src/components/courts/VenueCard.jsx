@@ -72,7 +72,13 @@ export default function VenueCard({
         <div className="listing-item listing-item-grid">
           <div className="listing-img">
             <Link to={`/venue-details/${venue.id}`}>
-              <img src={venue.img} className="img-fluid" alt={venue.name} />
+              <img
+                src={venue.img}
+                className="img-fluid"
+                alt={venue.name}
+                style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block' }}
+                onError={(e) => { e.target.onerror = null; e.target.src = '/assets/img/venues/venues-01.jpg'; }}
+              />
             </Link>
             <div className="fav-item-venues venue-card-fav-badges">
               <div
@@ -162,7 +168,11 @@ export default function VenueCard({
                     if (!venue.ownerId) e.preventDefault();
                   }}
                 >
-                  <img src={venue.avatar} alt={venue.owner || 'Chủ sân'} />
+                  <img
+                    src={venue.avatar}
+                    alt={venue.owner || 'Chủ sân'}
+                    onError={(e) => { e.target.onerror = null; e.target.src = '/assets/img/profiles/avatar-01.jpg'; }}
+                  />
                   {(venue.owner || '').trim() || 'Chủ sân'}
                 </Link>
               </div>

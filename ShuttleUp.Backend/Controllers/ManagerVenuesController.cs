@@ -419,6 +419,7 @@ public class ManagerVenuesController : ControllerBase
         if (pageSize > 100) pageSize = 100;
 
         var query = _dbContext.Venues.AsNoTracking()
+            .Include(v => v.Files)
             .Include(v => v.Courts).ThenInclude(c => c.Files)
             .Include(v => v.Bookings)
             .Where(v => v.OwnerUserId == managerId);
@@ -462,12 +463,9 @@ public class ManagerVenuesController : ControllerBase
             var courtCount = courts.Count;
             var activeCourts = courts.Count(c => c.IsActive == true && c.Status == "ACTIVE");
 
-            // Get first available image from any court's gallery
-            var imageUrl = courts
-                .SelectMany(c => c.Files ?? new List<ShuttleUp.DAL.Models.File>())
-                .Where(f => !string.IsNullOrWhiteSpace(f.FileUrl))
-                .Select(f => f.FileUrl)
-                .FirstOrDefault();
+            // Lấy ảnh đại diện (thumbnail) của cụm sân, nếu không có thì lấy ảnh mới nhất
+            var imageUrl = v.Files.Where(f => f.FileName != null && f.FileName.Contains("mac_dinh")).Select(f => f.FileUrl).FirstOrDefault() 
+                           ?? v.Files.OrderByDescending(f => f.CreatedAt).Select(f => f.FileUrl).FirstOrDefault();
 
             var monthBookings = (v.Bookings ?? new List<Booking>())
                 .Where(b => b.CreatedAt.HasValue && b.CreatedAt.Value >= startOfMonth
@@ -501,6 +499,167 @@ public class ManagerVenuesController : ControllerBase
             pageSize,
             items
         });
+    }
+
+    // =====================================================================
+    // VENUE FILES (GALLERY & THUMBNAIL)
+    // =====================================================================
+
+    /// <summary>
+    /// Upload ảnh cho venue (bao gồm ảnh đại diện và bộ sưu tập).
+    /// </summary>
+    [HttpPost("{venueId}/files")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(20_000_000)]
+    public async Task<IActionResult> UploadVenueFiles(
+        [FromRoute] Guid venueId,
+        [FromForm(Name = "imageFiles")] List<IFormFile> imageFiles,
+        [FromForm] bool isThumbnail = false)
+    {
+        var managerId = GetCurrentUserId();
+        if (managerId == Guid.Empty)
+            return Unauthorized(new { message = "Không xác định được người dùng hiện tại." });
+
+        var venue = await _dbContext.Venues
+            .Include(v => v.Files)
+            .FirstOrDefaultAsync(v => v.Id == venueId);
+
+        if (venue == null)
+            return NotFound(new { message = "Venue không tồn tại." });
+
+        if (venue.OwnerUserId != managerId)
+            return Forbid("Bạn không có quyền truy cập venue này.");
+
+        if (imageFiles == null || imageFiles.Count == 0)
+        {
+            return BadRequest(new { message = "Không có file nào được chọn." });
+        }
+
+        var cloudName = _config["Cloudinary:CloudName"]?.Trim();
+        var apiKey = _config["Cloudinary:ApiKey"]?.Trim();
+        var apiSecret = _config["Cloudinary:ApiSecret"]?.Trim();
+
+        if (string.IsNullOrWhiteSpace(cloudName) ||
+            string.IsNullOrWhiteSpace(apiKey) ||
+            string.IsNullOrWhiteSpace(apiSecret))
+        {
+            return StatusCode(500, new { message = "Chưa cấu hình Cloudinary trên server (CloudName/ApiKey/ApiSecret)." });
+        }
+
+        var account = new Account(cloudName, apiKey, apiSecret);
+        var cloudinary = new Cloudinary(account);
+
+        var targetFolder = "shuttleup_venues";
+        var uploadedUrls = new List<string>();
+
+        // Nếu là thumbnail, xóa (hoặc unlink) các thumbnail cũ (mac_dinh) để luôn chỉ có 1 thumbnail mac_dinh mới nhất.
+        if (isThumbnail)
+        {
+            var oldThumbnails = venue.Files.Where(f => f.FileName != null && f.FileName.Contains("mac_dinh")).ToList();
+            foreach (var ot in oldThumbnails)
+            {
+                venue.Files.Remove(ot); // Unlink từ venue_files (không xóa hẳn DB để backup nếu cần)
+            }
+        }
+
+        for (var i = 0; i < imageFiles.Count; i++)
+        {
+            var img = imageFiles[i];
+            if (img == null || img.Length == 0) continue;
+
+            // Đổi tên có chứa mac_dinh để hệ thống nhận diện làm ảnh đại diện
+            var publicId = isThumbnail
+                ? $"venue_{venueId}_mac_dinh_{Guid.NewGuid().ToString("N")[..8]}"
+                : $"venue_{venueId}_{Guid.NewGuid().ToString("N")[..8]}";
+
+            using var stream = img.OpenReadStream();
+            var uploadParams = new ImageUploadParams
+            {
+                File = new FileDescription(img.FileName, stream),
+                Folder = targetFolder,
+                PublicId = publicId,
+                Overwrite = true,
+                Transformation = new Transformation()
+                    .Crop("fill")
+                    .Gravity("auto")
+                    .Width(800)
+                    .Height(600)
+                    .FetchFormat("webp")
+            };
+
+            dynamic result;
+            try
+            {
+                result = await cloudinary.UploadAsync(uploadParams);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Cloudinary upload exception: " + ex.Message });
+            }
+
+            var secureUrl = result?.SecureUrl?.ToString();
+            if (string.IsNullOrWhiteSpace(secureUrl))
+            {
+                var errMsg = result?.Error?.Message?.ToString() ?? result?.Error?.ToString() ?? "SecureUrl is null";
+                return StatusCode(500, new { message = "Upload Cloudinary thất bại: " + errMsg });
+            }
+
+            uploadedUrls.Add(secureUrl);
+
+            var fileEntity = new ShuttleUp.DAL.Models.File
+            {
+                Id = Guid.NewGuid(),
+                FileUrl = secureUrl,
+                FileName = publicId,
+                MimeType = img.ContentType,
+                FileSize = (int?)img.Length,
+                UploadedByUserId = managerId,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _dbContext.Files.Add(fileEntity);
+            venue.Files.Add(fileEntity);
+        }
+
+        await _dbContext.SaveChangesAsync();
+        return Ok(new { imageUrls = uploadedUrls });
+    }
+
+    /// <summary>
+    /// Xóa 1 ảnh (file) của venue
+    /// </summary>
+    [HttpDelete("{venueId}/files")]
+    public async Task<IActionResult> DeleteVenueFile(
+        [FromRoute] Guid venueId,
+        [FromQuery] string fileUrl)
+    {
+        var managerId = GetCurrentUserId();
+        if (managerId == Guid.Empty)
+            return Unauthorized(new { message = "Không xác định được người dùng hiện tại." });
+
+        if (string.IsNullOrWhiteSpace(fileUrl))
+            return BadRequest(new { message = "Thiếu fileUrl." });
+
+        var venue = await _dbContext.Venues
+            .Include(v => v.Files)
+            .FirstOrDefaultAsync(v => v.Id == venueId);
+
+        if (venue == null)
+            return NotFound(new { message = "Venue không tồn tại." });
+
+        if (venue.OwnerUserId != managerId)
+            return Forbid("Bạn không có quyền truy cập venue này.");
+
+        var fileEntity = venue.Files.FirstOrDefault(f => f.FileUrl == fileUrl);
+        if (fileEntity != null)
+        {
+            venue.Files.Remove(fileEntity);
+            _dbContext.Files.Remove(fileEntity); 
+            await _dbContext.SaveChangesAsync();
+            return Ok(new { message = "Đã xóa ảnh." });
+        }
+
+        return NotFound(new { message = "Không tìm thấy ảnh trong venue này." });
     }
 
     // =====================================================================

@@ -48,7 +48,8 @@ public class VenuesController : ControllerBase
                 v.Amenities,
                 v.SlotDuration,
                 v.CancelAllowed,
-                ThumbnailUrl = v.Files.OrderByDescending(f => f.CreatedAt).Select(f => f.FileUrl).FirstOrDefault(),
+                ThumbnailUrl = v.Files.Where(f => f.FileName != null && f.FileName.Contains("mac_dinh")).Select(f => f.FileUrl).FirstOrDefault() ?? v.Files.OrderByDescending(f => f.CreatedAt).Select(f => f.FileUrl).FirstOrDefault(),
+                ImageUrls = v.Files.OrderByDescending(f => f.CreatedAt).Select(f => f.FileUrl).ToList(),
                 v.OwnerUserId,
                 OwnerName = v.OwnerUser != null ? v.OwnerUser.FullName : null,
                 OwnerEmail = v.OwnerUser != null ? v.OwnerUser.Email : null,
@@ -110,6 +111,7 @@ public class VenuesController : ControllerBase
             raw.MaxPrice,
             raw.Rating,
             raw.ReviewCount,
+            raw.ImageUrls,
         });
     }
 
@@ -238,6 +240,7 @@ public class VenuesController : ControllerBase
                 OwnerAvatarUrl = v.OwnerUser != null && v.OwnerUser.AvatarFile != null
                     ? v.OwnerUser.AvatarFile.FileUrl
                     : null,
+                ThumbnailUrl = v.Files.Where(f => f.FileName != null && f.FileName.Contains("mac_dinh")).Select(f => f.FileUrl).FirstOrDefault() ?? v.Files.OrderByDescending(f => f.CreatedAt).Select(f => f.FileUrl).FirstOrDefault(),
                 AmenitiesJson = v.Amenities,
                 Rating = v.VenueReviews.Any()
                     ? v.VenueReviews.Average(r => (double?)r.Stars) ?? 0.0
@@ -284,6 +287,7 @@ public class VenuesController : ControllerBase
             v.OwnerUserId,
             v.OwnerName,
             v.OwnerAvatarUrl,
+            v.ThumbnailUrl,
             Amenities = ParseJsonArray(v.AmenitiesJson),
             v.Rating,
             v.ReviewCount,

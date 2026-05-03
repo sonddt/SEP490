@@ -141,7 +141,7 @@ export default function ManagerSidebar({ open, onClose, collapsed, onToggleColla
 
         {/* User section */}
         <div className="mgr-sidebar__user">
-          <img src="/assets/img/profiles/avatar-01.jpg" alt="" />
+          <img src={user?.avatarUrl || '/assets/img/profiles/avatar-01.jpg'} alt="" onError={(e) => { e.target.onerror = null; e.target.src = '/assets/img/profiles/avatar-01.jpg'; }} />
           {!collapsed && (
             <div style={{ minWidth: 0, flex: 1 }}>
               <div className="mgr-sidebar__user-name">{user?.fullName || user?.email || 'Manager'}</div>

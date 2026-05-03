@@ -1,4 +1,4 @@
-﻿-- ======================================================================
+-- ======================================================================
 -- SHUTTLE_UP — MỘT FILE, CHẠY MỘT LẦN (single source of truth)
 -- ======================================================================
 -- Chỉ cần script này: không chạy thêm file migration rời cho venues (includes / rules /
@@ -1069,8 +1069,8 @@ INSERT INTO venues (id,owner_user_id,name,address,lat,lng,description,contact_na
 ('ac5a2586-f3c0-4ede-8ad8-33bd3b8b5213','b0000000-0000-0000-0000-000000000048','Sân Kỳ Anh','TT Kỳ Anh, Hà Tĩnh',18.0912,106.2834,'Khu kinh tế Vũng Áng.','Đinh Công Khang','0924176674','Agribank','970405','472351612242','Đinh Công Khang','[SĐT] - [Tên sân] - [Ngày]','["Vợt cho mượn","Cầu miễn phí 1 quả/giờ","Nước uống miễn phí","Khăn lau mồ hôi"]','["Mang giày trong nhà","Không hút thuốc trong sân","Đặt trước ít nhất 2 giờ","Không mang thức ăn vào sân"]','["parking","wifi","shower","canteen"]',1,60,'FULL',NULL,10,15,60,TRUE,NOW()-INTERVAL 76 DAY);
 
 INSERT INTO courts (id,venue_id,name,group_name,surface,max_guest,description,status,is_active) VALUES
-('a117fb15-89ef-42b9-8075-c1653051db77','d468bb18-9f37-4e76-a7e1-9922f0a47922','Sân 1',NULL,'Gỗ',4,'Mặt sân Gỗ','ACTIVE',TRUE),
-('97c373c0-f4df-4827-81ad-37bf5d016890','d468bb18-9f37-4e76-a7e1-9922f0a47922','Sân 2',NULL,'Thảm nhựa',4,'Mặt sân Thảm nhựa','ACTIVE',TRUE),
+('a117fb15-89ef-42b9-8075-c1653051db77','d468bb18-9f37-4e76-a7e1-9922f0a47922','Sân 1','Sân mái che','Gỗ',4,'Mặt sân Gỗ','ACTIVE',TRUE),
+('97c373c0-f4df-4827-81ad-37bf5d016890','d468bb18-9f37-4e76-a7e1-9922f0a47922','Sân 2','Sân mái che','Thảm nhựa',4,'Mặt sân Thảm nhựa','ACTIVE',TRUE),
 ('00ca9521-79b7-45c8-9e7d-7e8cd120124b','d468bb18-9f37-4e76-a7e1-9922f0a47922','Sân 3','Sân ngoài trời','Xi măng',4,'Sân ngoài trời, Mặt sân Xi măng','ACTIVE',TRUE),
 ('8f5e081d-d94a-4b84-a5dc-ab10186e9b09','9a3443f6-0671-4878-ae78-5912f0a7755e','Sân 1','Sân mái che','PU',4,'Sân mái che, Mặt sân PU','ACTIVE',TRUE),
 ('be32ea82-a36b-44e2-9717-afc0747a8a7a','9a3443f6-0671-4878-ae78-5912f0a7755e','Sân 2',NULL,'PU',4,'Mặt sân PU','ACTIVE',TRUE),
@@ -1281,8 +1281,8 @@ INSERT INTO courts (id,venue_id,name,group_name,surface,max_guest,description,st
 ('9a9959c8-45fe-4756-a294-20fb4b411891','ac5a2586-f3c0-4ede-8ad8-33bd3b8b5213','Sân 4','Sân VIP','PU',4,'Sân VIP, Mặt sân PU','ACTIVE',TRUE);
 
 INSERT INTO court_prices (id,court_id,start_time,end_time,price,is_weekend) VALUES
-('41c9a17e-0345-4d75-b354-d5a4469754bf','a117fb15-89ef-42b9-8075-c1653051db77','05:00:00','23:59:59',70000,FALSE),
-('d3bb6385-681b-4be3-979b-acd3b408cb06','a117fb15-89ef-42b9-8075-c1653051db77','05:00:00','23:59:59',85000,TRUE),
+('41c9a17e-0345-4d75-b354-d5a4469754bf','a117fb15-89ef-42b9-8075-c1653051db77','05:00:00','23:59:59',80000,FALSE),
+('d3bb6385-681b-4be3-979b-acd3b408cb06','a117fb15-89ef-42b9-8075-c1653051db77','05:00:00','23:59:59',100000,TRUE),
 ('5642d96a-c57c-498e-8203-d01f237ddb04','97c373c0-f4df-4827-81ad-37bf5d016890','05:00:00','23:59:59',80000,FALSE),
 ('6723d1c1-a5a2-485f-810c-10c474ab76e0','97c373c0-f4df-4827-81ad-37bf5d016890','05:00:00','23:59:59',100000,TRUE),
 ('150a57c1-a56b-4ae8-9884-c182d583660c','00ca9521-79b7-45c8-9e7d-7e8cd120124b','05:00:00','23:59:59',60000,FALSE),
@@ -2285,7 +2285,9 @@ INSERT INTO bookings (id,user_id,venue_id,status,total_amount,discount_amount,fi
 ('3bd39317-563f-4c4f-8ce7-71d5fa41ce70','c0000000-0000-0000-0000-000000000024','e364c0df-97a4-4cd7-9bd3-e7dbe29773c6','PENDING',120000,0,120000,'Lý Đức Duy','0855140287','Xin chào, tôi đặt sân cho nhóm 4 người',NOW()+INTERVAL 0 DAY),
 ('6d930a71-e46f-465f-8877-54a7879b1f90','c0000000-0000-0000-0000-000000000031','9a3443f6-0671-4878-ae78-5912f0a7755e','CONFIRMED',100000,0,100000,'Tô Phương Diễm','0974202753','Xin chào, tôi đặt sân cho nhóm 4 người',NOW()+INTERVAL -14 DAY),
 ('d1ed516e-98a7-4b61-b801-7bcca7d137df','c0000000-0000-0000-0000-000000000027','7db9e3b0-9066-42e4-87d1-9ef6e49c8680','APPROVED',90000,0,90000,'Võ Đức Bình','0964539448',NULL,NOW()+INTERVAL 0 DAY),
-('5b2c076a-8487-4d7d-922c-e3a8f5aee08f','c0000000-0000-0000-0000-000000000031','289d5acb-1da5-4bf5-8a9b-050262840888','CONFIRMED',100000,0,100000,'Tô Phương Diễm','0974202753',NULL,NOW()+INTERVAL -7 DAY);
+('5b2c076a-8487-4d7d-922c-e3a8f5aee08f','c0000000-0000-0000-0000-000000000031','289d5acb-1da5-4bf5-8a9b-050262840888','CONFIRMED',100000,0,100000,'Tô Phương Diễm','0974202753',NULL,NOW()+INTERVAL -7 DAY),
+('36811111-1111-1111-1111-111111111111','c0000000-0000-0000-0000-000000000001','d468bb18-9f37-4e76-a7e1-9922f0a47922','COMPLETED',80000,0,80000,'Lý Đình Anh','0943302862','Booking completed 4/5','2026-05-04 10:00:00'),
+('36822222-2222-2222-2222-222222222222','c0000000-0000-0000-0000-000000000002','d468bb18-9f37-4e76-a7e1-9922f0a47922','COMPLETED',80000,0,80000,'Dương Quang Đạt','0977208828','Booking completed 5/5','2026-05-05 10:00:00');
 
 INSERT INTO booking_items (id,booking_id,court_id,start_time,end_time,final_price,status) VALUES
 ('13012b1b-8aa8-4c68-a111-2063ef0c9cf4','b57a2af6-f9f6-4442-bf2f-cce7ae09116f','9a9959c8-45fe-4756-a294-20fb4b411891',CURDATE()+INTERVAL 2 DAY+INTERVAL 5 HOUR,CURDATE()+INTERVAL 2 DAY+INTERVAL 6 HOUR,160000,'APPROVED'),
@@ -2487,7 +2489,9 @@ INSERT INTO booking_items (id,booking_id,court_id,start_time,end_time,final_pric
 ('be864254-bd2d-4552-bdeb-c654da748d11','3bd39317-563f-4c4f-8ce7-71d5fa41ce70','338bd691-48bf-45c9-a8af-5abde8619bbd',CURDATE()+INTERVAL 2 DAY+INTERVAL 10 HOUR,CURDATE()+INTERVAL 2 DAY+INTERVAL 11 HOUR,120000,'PENDING'),
 ('b396f2b9-e9f5-45b3-ae95-e7b55152611c','6d930a71-e46f-465f-8877-54a7879b1f90','be32ea82-a36b-44e2-9717-afc0747a8a7a',CURDATE()+INTERVAL -14 DAY+INTERVAL 13 HOUR,CURDATE()+INTERVAL -14 DAY+INTERVAL 14 HOUR,100000,'CONFIRMED'),
 ('2fad751a-caff-413d-a035-d0cb58ed77b0','d1ed516e-98a7-4b61-b801-7bcca7d137df','2364ddc8-960a-4b61-855a-01b964c3453c',CURDATE()+INTERVAL 14 DAY+INTERVAL 14 HOUR,CURDATE()+INTERVAL 14 DAY+INTERVAL 15 HOUR,90000,'APPROVED'),
-('855a5124-098a-4fa2-b518-c08e5e62ab06','5b2c076a-8487-4d7d-922c-e3a8f5aee08f','4e9640e4-b508-4523-bfd2-5ea00fd78303',CURDATE()+INTERVAL -7 DAY+INTERVAL 12 HOUR,CURDATE()+INTERVAL -7 DAY+INTERVAL 13 HOUR,100000,'CONFIRMED');
+('855a5124-098a-4fa2-b518-c08e5e62ab06','5b2c076a-8487-4d7d-922c-e3a8f5aee08f','4e9640e4-b508-4523-bfd2-5ea00fd78303',CURDATE()+INTERVAL -7 DAY+INTERVAL 12 HOUR,CURDATE()+INTERVAL -7 DAY+INTERVAL 13 HOUR,100000,'CONFIRMED'),
+('3681item-1111-1111-1111-111111111111','36811111-1111-1111-1111-111111111111','a117fb15-89ef-42b9-8075-c1653051db77','2026-05-04 18:00:00','2026-05-04 19:00:00',80000,'COMPLETED'),
+('3682item-2222-2222-2222-222222222222','36822222-2222-2222-2222-222222222222','97c373c0-f4df-4827-81ad-37bf5d016890','2026-05-05 19:00:00','2026-05-05 20:00:00',80000,'COMPLETED');
 
 INSERT INTO payments (id,booking_id,method,status,amount,gateway_reference,created_at) VALUES
 ('fa9e1dcc-c1d1-4b6b-90ee-595e830df2d1','b57a2af6-f9f6-4442-bf2f-cce7ae09116f','BANK_TRANSFER','COMPLETED',160000,'VNP_A084B420',NOW()+INTERVAL 0 DAY),
@@ -2624,7 +2628,9 @@ INSERT INTO payments (id,booking_id,method,status,amount,gateway_reference,creat
 ('225ab2bb-c6f6-459a-a755-e0a254b47d64','d423f653-3b88-4bd7-9af4-99b4d4a5142a','BANK_TRANSFER','COMPLETED',100000,'VNP_8B1422EE',NOW()+INTERVAL 0 DAY),
 ('ba9fc9b9-7ab4-4937-b5df-20d4f7198860','6d930a71-e46f-465f-8877-54a7879b1f90','BANK_TRANSFER','COMPLETED',100000,'VNP_D5EA44C6',NOW()+INTERVAL -14 DAY),
 ('72b96c97-e4a1-4051-b289-4d4f2f00e0af','d1ed516e-98a7-4b61-b801-7bcca7d137df','BANK_TRANSFER','COMPLETED',90000,'VNP_BA769CB6',NOW()+INTERVAL 0 DAY),
-('9c75fa87-2982-49d5-abd1-8dc86b0ea70b','5b2c076a-8487-4d7d-922c-e3a8f5aee08f','BANK_TRANSFER','COMPLETED',100000,'VNP_5DFDDF40',NOW()+INTERVAL -7 DAY);
+('9c75fa87-2982-49d5-abd1-8dc86b0ea70b','5b2c076a-8487-4d7d-922c-e3a8f5aee08f','BANK_TRANSFER','COMPLETED',100000,'VNP_5DFDDF40',NOW()+INTERVAL -7 DAY),
+('368pay01-1111-1111-1111-111111111111','36811111-1111-1111-1111-111111111111','BANK_TRANSFER','COMPLETED',80000,'VNP_368R0001','2026-05-04 09:30:00'),
+('368pay02-2222-2222-2222-222222222222','36822222-2222-2222-2222-222222222222','BANK_TRANSFER','COMPLETED',80000,'VNP_368R0002','2026-05-05 09:30:00');
 
 INSERT INTO venue_reviews (id,venue_id,user_id,booking_id,stars,comment,owner_reply,owner_reply_at,created_at) VALUES
 ('39424b68-f2db-4cc2-84d9-5cb00188b1ea','2f991cc4-7eec-45e9-9ca9-c33a858a75a7','c0000000-0000-0000-0000-000000000001','a6b35615-180c-4594-8f9c-f130016ef846',5,'Parking hơi chật cuối tuần.','Cảm ơn bạn, chúc bạn chơi vui!',NOW()-INTERVAL 3 DAY,NOW()-INTERVAL 6 DAY),
@@ -2676,7 +2682,12 @@ INSERT INTO venue_reviews (id,venue_id,user_id,booking_id,stars,comment,owner_re
 ('56443596-40aa-4eb8-be42-49ff9cfed82a','77ec7e89-23e3-4ebf-815c-8d04517ca8e6','c0000000-0000-0000-0000-000000000036','0ec4e803-286e-4261-b8d5-d26aa08e6eb7',5,'Thảm mới, đánh rất êm chân.',NULL,NULL,NOW()-INTERVAL 7 DAY),
 ('17432c36-0a73-4f38-9f0e-ea7fde82adc2','02479280-0e74-4ca6-94eb-4a75fda80946','c0000000-0000-0000-0000-000000000007','d64b8097-c768-46d0-87cf-42a801975cd2',5,'Parking hơi chật cuối tuần.',NULL,NULL,NOW()-INTERVAL 14 DAY),
 ('b48a2b72-0429-4762-9aeb-959f71511d9b','62005e7a-e9b4-4fe6-9b9b-6e147eba68b5','c0000000-0000-0000-0000-000000000030','6cff8a60-63d9-4974-8ffa-2d2fd99fb26b',5,'Mặt sân vinyl rất tốt.','Cảm ơn feedback, chúng tôi sẽ cải thiện!',NOW()-INTERVAL 1 DAY,NOW()-INTERVAL 2 DAY),
-('59e42904-c2f8-4ab7-906e-2b5162def696','8749e755-0ffa-47f2-919a-7fa716f97dcf','c0000000-0000-0000-0000-000000000050','c6aa23f3-6707-4a30-afdb-8ae8efa9e427',4,'Sân rất đẹp, sạch sẽ, ánh sáng tốt!','Cảm ơn feedback, chúng tôi sẽ cải thiện!',NOW()-INTERVAL 1 DAY,NOW()-INTERVAL 1 DAY);
+('59e42904-c2f8-4ab7-906e-2b5162def696','8749e755-0ffa-47f2-919a-7fa716f97dcf','c0000000-0000-0000-0000-000000000050','c6aa23f3-6707-4a30-afdb-8ae8efa9e427',4,'Sân rất đẹp, sạch sẽ, ánh sáng tốt!','Cảm ơn feedback, chúng tôi sẽ cải thiện!',NOW()-INTERVAL 1 DAY,NOW()-INTERVAL 1 DAY),
+('368e0001-aaaa-4aaa-aaaa-aaaaaaaaaaaa','d468bb18-9f37-4e76-a7e1-9922f0a47922','c0000000-0000-0000-0000-000000000001','36811111-1111-1111-1111-111111111111',5,'Sân mái che rất thoáng, mặt sân gỗ êm chân. Giá 80k ngày thường rất hợp lý, sẽ quay lại!','Cảm ơn bạn đã ủng hộ 368 Badminton!',NOW()-INTERVAL 1 DAY,'2026-05-04 20:00:00'),
+('368e0002-bbbb-4bbb-bbbb-bbbbbbbbbbbb','d468bb18-9f37-4e76-a7e1-9922f0a47922','c0000000-0000-0000-0000-000000000002','36822222-2222-2222-2222-222222222222',5,'Đặt sân online nhanh, nhân viên thân thiện. Sân 2 thảm nhựa đánh rất ok.',NULL,NULL,'2026-05-05 21:00:00'),
+('368e0003-cccc-4ccc-cccc-cccccccccccc','d468bb18-9f37-4e76-a7e1-9922f0a47922','c0000000-0000-0000-0000-000000000008','e3f1beb1-6be9-45bb-9b07-c871a8ea8125',4,'Sân sạch sẽ, ánh sáng tốt, có quạt mát. Chỉ hơi thiếu chỗ để xe.','Cảm ơn bạn, chúng tôi sẽ mở rộng bãi xe sớm!',NOW()-INTERVAL 2 DAY,NOW()-INTERVAL 20 DAY),
+('368e0004-dddd-4ddd-dddd-dddddddddddd','d468bb18-9f37-4e76-a7e1-9922f0a47922','c0000000-0000-0000-0000-000000000043','cef6366b-b0dd-4077-8d41-39f002e916f7',5,'Sân 1 mái che chất lượng cao, đèn LED sáng đều không chói mắt. 10 điểm!',NULL,NULL,NOW()-INTERVAL 5 DAY),
+('368e0005-eeee-4eee-eeee-eeeeeeeeeeee','d468bb18-9f37-4e76-a7e1-9922f0a47922','c0000000-0000-0000-0000-000000000011','005ceee9-172f-494e-a94b-ecb4737d740e',4,'Giá tốt cho khu vực Hà Đông, sân mái che thoáng mát. Thảm nhựa mới thay đánh rất êm.','Rất vui khi bạn hài lòng, hẹn gặp lại!',NOW()-INTERVAL 1 DAY,NOW()-INTERVAL 7 DAY);
 
 INSERT INTO manager_profiles (user_id,tax_code,address,status,admin_user_id,decision_at,decision_note) VALUES
 ('b0000000-0000-0000-0000-000000000001','0366846975','Quận 7, TP. Hồ Chí Minh','APPROVED','a0000003-0000-0000-0000-000000000001',NOW()-INTERVAL 39 DAY,'Đủ điều kiện, hồ sơ hợp lệ'),
@@ -3133,18 +3144,17 @@ INSERT INTO venue_coupons (id,venue_id,code,discount_type,discount_value,min_boo
 ('c16fb7f5-19d9-47d0-880b-5d4e062db78d','0a67a7a5-961b-400b-abb2-b0c4a8b63d13','SANGSOM','PERCENT',10,200000,100000,NOW()-INTERVAL 5 DAY,NOW()+INTERVAL 60 DAY,50,8,TRUE,TRUE,NOW()-INTERVAL 5 DAY);
 
 INSERT INTO featured_posts (id,title,excerpt,body,cover_image_url,link_url,is_published,display_from,display_until,author_user_id,author_role,venue_id,created_at,updated_at) VALUES
-('f2847822-6a46-4fca-9b58-6000a91f8a69','ShuttleUp — Đặt sân cầu lông trong vài phút','Tìm sân theo khu vực, xem giờ trống và đặt lịch trực tuyến mọi lúc.','Nền tảng hỗ trợ người chơi và chủ sân kết nối minh bạch. Khám phá danh sách sân và bản đồ để chọn đúng nơi bạn cần.','/assets/img/venues/venues-07.jpg','/venues',1,NULL,NULL,'a0000003-0000-0000-0000-000000000001','ADMIN',NULL,NOW()-INTERVAL 4 DAY,NOW()-INTERVAL 4 DAY),
-('4a58a62e-5720-437d-a6fe-358377ced31a','Tìm kèo và chat — chơi cầu không cô đơn','Ghép đôi theo trình độ, nhắn tin với đối thủ / đồng đội ngay trên hệ thống.','Đăng bài tìm kèo, nhận phản hồi và sắp lịch thi đấu giao hữu. Tính năng Chat hỗ trợ trao đổi nhanh sau khi đăng nhập.','/assets/img/venues/venues-08.jpg','/matching',1,NULL,NULL,'a0000003-0000-0000-0000-000000000001','ADMIN',NULL,NOW()-INTERVAL 3 DAY,NOW()-INTERVAL 3 DAY),
-('a8b55376-d8fe-4742-81ef-c1ddead4622e','Hướng dẫn đặt sân dài hạn tiết kiệm','Đặt lịch cố định hoặc linh hoạt, giảm giá lên đến 15% khi đặt theo tháng.','ShuttleUp hỗ trợ đặt sân dài hạn với 2 hình thức: Đặt lịch cố định (lặp lại hàng tuần) và Đặt lịch linh hoạt (chọn ngày tùy ý). Giảm giá tự động khi đặt theo tuần hoặc tháng.','/assets/img/venues/venues-09.jpg','/venues',1,NULL,NULL,'a0000003-0000-0000-0000-000000000001','ADMIN',NULL,NOW()-INTERVAL 2 DAY,NOW()-INTERVAL 2 DAY),
-('39eeb304-989c-4da6-ba71-6d610107c299','Cập nhật tính năng mới: Hoàn tiền tự động','Hệ thống hoàn tiền minh bạch khi hủy sân theo chính sách của chủ sân.','Người chơi có thể yêu cầu hoàn tiền trực tiếp trên hệ thống. Chủ sân xác nhận và chuyển khoản, mọi thứ được ghi nhận rõ ràng.','/assets/img/venues/venues-07.jpg','/',1,NULL,NULL,'a0000003-0000-0000-0000-000000000001','ADMIN',NULL,NOW()-INTERVAL 1 DAY,NOW()-INTERVAL 1 DAY),
-('f6df05a7-9887-4f94-9d41-76d15f19f10f','Giảm giá đặc biệt tại 368 Badminton Zone — Mã: GIAM10','Áp mã GIAM10 khi đặt sân để nhận ưu đãi. Số lượng có hạn!','Liên hệ sân hoặc đặt trực tiếp trên ShuttleUp. Mã giảm giá: GIAM10. Xem chi tiết tại trang sân.','/assets/img/venues/venues-07.jpg','/venue-details/d468bb18-9f37-4e76-a7e1-9922f0a47922',1,NULL,NULL,'b0000000-0000-0000-0000-000000000011','MANAGER','d468bb18-9f37-4e76-a7e1-9922f0a47922',NOW()-INTERVAL 3 DAY,NOW()-INTERVAL 0 DAY),
-('2512cf98-a062-452c-bb85-d7e9ec887fcf','Sân Cầu Lông Kim Bông khuyến mãi lớn!','Áp mã GIAM20 khi đặt sân để nhận ưu đãi. Số lượng có hạn!','Liên hệ sân hoặc đặt trực tiếp trên ShuttleUp. Mã giảm giá: GIAM20. Xem chi tiết tại trang sân.','/assets/img/venues/venues-07.jpg','/venue-details/9a3443f6-0671-4878-ae78-5912f0a7755e',1,NULL,NULL,'b0000000-0000-0000-0000-000000000012','MANAGER','9a3443f6-0671-4878-ae78-5912f0a7755e',NOW()-INTERVAL 4 DAY,NOW()-INTERVAL 0 DAY),
-('4b4a5c0f-a307-4ebf-82f5-62cc9aefd2de','Sân Cầu Lông Bao Cấp khuyến mãi lớn!','Áp mã GIAM30 khi đặt sân để nhận ưu đãi. Số lượng có hạn!','Liên hệ sân hoặc đặt trực tiếp trên ShuttleUp. Mã giảm giá: GIAM30. Xem chi tiết tại trang sân.','/assets/img/venues/venues-07.jpg','/venue-details/49933dae-e7a4-4354-82a2-7dcbc032846e',1,NULL,NULL,'b0000000-0000-0000-0000-000000000013','MANAGER','49933dae-e7a4-4354-82a2-7dcbc032846e',NOW()-INTERVAL 5 DAY,NOW()-INTERVAL 1 DAY),
-('8d38c03c-1f34-4baf-b7ec-6a2021ef94d7','Giảm giá đặc biệt tại Sân Cầu Lông Victor — Mã: GIAM50K','Áp mã GIAM50K khi đặt sân để nhận ưu đãi. Số lượng có hạn!','Liên hệ sân hoặc đặt trực tiếp trên ShuttleUp. Mã giảm giá: GIAM50K. Xem chi tiết tại trang sân.','/assets/img/venues/venues-09.jpg','/venue-details/cb8b64df-7604-4d83-a510-7a6b48bc9c29',1,NULL,NULL,'b0000000-0000-0000-0000-000000000014','MANAGER','cb8b64df-7604-4d83-a510-7a6b48bc9c29',NOW()-INTERVAL 3 DAY,NOW()-INTERVAL 2 DAY),
-('fa5e7926-03a5-4483-b09d-ad1b64056ca6','Giảm giá đặc biệt tại Sân Đền Lừ — Mã: CUOITUAN','Áp mã CUOITUAN khi đặt sân để nhận ưu đãi. Số lượng có hạn!','Liên hệ sân hoặc đặt trực tiếp trên ShuttleUp. Mã giảm giá: CUOITUAN. Xem chi tiết tại trang sân.','/assets/img/venues/venues-07.jpg','/venue-details/77ec7e89-23e3-4ebf-815c-8d04517ca8e6',1,NULL,NULL,'b0000000-0000-0000-0000-000000000015','MANAGER','77ec7e89-23e3-4ebf-815c-8d04517ca8e6',NOW()-INTERVAL 3 DAY,NOW()-INTERVAL 0 DAY),
-('15364963-7c59-45e5-a056-5b414a0a9c93','Giảm giá đặc biệt tại Sân Cầu Giấy — Mã: MOIKHACH','Áp mã MOIKHACH khi đặt sân để nhận ưu đãi. Số lượng có hạn!','Liên hệ sân hoặc đặt trực tiếp trên ShuttleUp. Mã giảm giá: MOIKHACH. Xem chi tiết tại trang sân.','/assets/img/venues/venues-09.jpg','/venue-details/d112c6ff-4b13-4090-bd97-ef7b067b19c6',1,NULL,NULL,'b0000000-0000-0000-0000-000000000016','MANAGER','d112c6ff-4b13-4090-bd97-ef7b067b19c6',NOW()-INTERVAL 1 DAY,NOW()-INTERVAL 1 DAY),
-('4aadf19b-ad4d-4907-884c-75d6cb3a63fa','Sân Phan Đình Phùng khuyến mãi lớn!','Áp mã KHAIGIAM khi đặt sân để nhận ưu đãi. Số lượng có hạn!','Liên hệ sân hoặc đặt trực tiếp trên ShuttleUp. Mã giảm giá: KHAIGIAM. Xem chi tiết tại trang sân.','/assets/img/venues/venues-08.jpg','/venue-details/cc88cb7b-f1f7-471b-abf1-894962b042e5',1,NULL,NULL,'b0000000-0000-0000-0000-000000000001','MANAGER','cc88cb7b-f1f7-471b-abf1-894962b042e5',NOW()-INTERVAL 2 DAY,NOW()-INTERVAL 0 DAY),
-('1e80f7ce-a5af-48f7-aad2-fc6dad2c39c4','Ưu đãi UUDAI tại Sân Cầu Lông T19','Áp mã UUDAI khi đặt sân để nhận ưu đãi. Số lượng có hạn!','Liên hệ sân hoặc đặt trực tiếp trên ShuttleUp. Mã giảm giá: UUDAI. Xem chi tiết tại trang sân.','/assets/img/venues/venues-07.jpg','/venue-details/9122220d-35d3-4e8a-85b1-f925a6172213',1,NULL,NULL,'b0000000-0000-0000-0000-000000000002','MANAGER','9122220d-35d3-4e8a-85b1-f925a6172213',NOW()-INTERVAL 3 DAY,NOW()-INTERVAL 1 DAY);
+('f2847822-6a46-4fca-9b58-6000a91f8a69','ShuttleUp — Đặt sân cầu lông trong vài phút','Tìm sân theo khu vực, xem giờ trống và đặt lịch trực tuyến mọi lúc.','Nền tảng hỗ trợ người chơi và chủ sân kết nối minh bạch. Khám phá danh sách sân và bản đồ để chọn đúng nơi bạn cần.','/assets/img/venues/venues-07.jpg','/venues',1,NULL,NULL,'a0000003-0000-0000-0000-000000000001','ADMIN',NULL,NOW()-INTERVAL 4 DAY - INTERVAL 6 HOUR,NOW()-INTERVAL 4 DAY - INTERVAL 6 HOUR),
+('4a58a62e-5720-437d-a6fe-358377ced31a','Tìm kèo và chat — chơi cầu không cô đơn','Ghép đôi theo trình độ, nhắn tin với đối thủ / đồng đội ngay trên hệ thống.','Đăng bài tìm kèo, nhận phản hồi và sắp lịch thi đấu giao hữu. Tính năng Chat hỗ trợ trao đổi nhanh sau khi đăng nhập.','/assets/img/venues/venues-08.jpg','/matching',1,NULL,NULL,'a0000003-0000-0000-0000-000000000001','ADMIN',NULL,NOW()-INTERVAL 3 DAY - INTERVAL 14 HOUR,NOW()-INTERVAL 3 DAY - INTERVAL 14 HOUR),
+('a8b55376-d8fe-4742-81ef-c1ddead4622e','Hướng dẫn đặt sân dài hạn tiết kiệm','Đặt lịch cố định hoặc linh hoạt, giảm giá lên đến 15% khi đặt theo tháng.','ShuttleUp hỗ trợ đặt sân dài hạn với 2 hình thức: Đặt lịch cố định (lặp lại hàng tuần) và Đặt lịch linh hoạt (chọn ngày tùy ý). Giảm giá tự động khi đặt theo tuần hoặc tháng.','/assets/img/venues/venues-09.jpg','/venues',1,NULL,NULL,'a0000003-0000-0000-0000-000000000001','ADMIN',NULL,NOW()-INTERVAL 2 DAY - INTERVAL 8 HOUR,NOW()-INTERVAL 2 DAY - INTERVAL 8 HOUR),
+('f6df05a7-9887-4f94-9d41-76d15f19f10f','Giảm giá đặc biệt tại 368 Badminton Zone — Mã: GIAM10','Mã GIAM10 giảm 10% (tối đa 50.000đ) khi đặt sân. Số lượng có hạn!','Sử dụng mã GIAM10 khi đặt sân trực tiếp trên ShuttleUp để được giảm 10% (tối đa 50,000đ). Áp dụng cho đơn từ 100,000đ. Hạn sử dụng: 60 ngày kể từ hôm nay. Xem chi tiết tại trang sân.','/assets/img/venues/venues-07.jpg','/venue-details/d468bb18-9f37-4e76-a7e1-9922f0a47922',1,NULL,NULL,'b0000000-0000-0000-0000-000000000011','MANAGER','d468bb18-9f37-4e76-a7e1-9922f0a47922',NOW(),NOW()),
+('2512cf98-a062-452c-bb85-d7e9ec887fcf','Sân Cầu Lông Kim Bông khuyến mãi lớn!','Áp mã GIAM20 để giảm trực tiếp 20.000đ cho đơn đặt sân. Đặt ngay!','Sử dụng mã GIAM20 khi thanh toán để được giảm thẳng 20.000đ. Không yêu cầu giá trị đơn hàng tối thiểu. Hạn sử dụng: 30 ngày kể từ khi công bố. Nhanh tay đặt sân ngay!','/assets/img/venues/venues-07.jpg','/venue-details/9a3443f6-0671-4878-ae78-5912f0a7755e',1,NULL,NULL,'b0000000-0000-0000-0000-000000000012','MANAGER','9a3443f6-0671-4878-ae78-5912f0a7755e',NOW()-INTERVAL 4 DAY - INTERVAL 2 HOUR,NOW()-INTERVAL 4 DAY - INTERVAL 2 HOUR),
+('4b4a5c0f-a307-4ebf-82f5-62cc9aefd2de','Sân Cầu Lông Bao Cấp khuyến mãi lớn!','Áp mã GIAM30 giảm 30% (tối đa 100.000đ). Ưu đãi đặc biệt!','Nhập mã GIAM30 để được giảm 30% tổng thanh toán, tối đa 100.000đ cho mỗi đơn đặt sân. Áp dụng cho các đơn hàng từ 200.000đ trở lên. Nhanh tay lên vì số lượng mã có hạn!','/assets/img/venues/venues-07.jpg','/venue-details/49933dae-e7a4-4354-82a2-7dcbc032846e',1,NULL,NULL,'b0000000-0000-0000-0000-000000000013','MANAGER','49933dae-e7a4-4354-82a2-7dcbc032846e',NOW()-INTERVAL 5 DAY - INTERVAL 12 HOUR,NOW()-INTERVAL 5 DAY - INTERVAL 12 HOUR),
+('8d38c03c-1f34-4baf-b7ec-6a2021ef94d7','Giảm giá đặc biệt tại Sân Cầu Lông Victor — Mã: GIAM50K','Áp mã GIAM50K giảm trực tiếp 50.000đ cho đơn từ 150.000đ!','Cơ hội tiết kiệm tuyệt vời! Nhập mã GIAM50K khi đặt sân để được giảm thẳng 50.000đ. Điều kiện: Đơn hàng tối thiểu 150.000đ. Áp dụng đến cuối tháng này.','/assets/img/venues/venues-09.jpg','/venue-details/cb8b64df-7604-4d83-a510-7a6b48bc9c29',1,NULL,NULL,'b0000000-0000-0000-0000-000000000014','MANAGER','cb8b64df-7604-4d83-a510-7a6b48bc9c29',NOW()-INTERVAL 3 DAY - INTERVAL 5 HOUR,NOW()-INTERVAL 3 DAY - INTERVAL 5 HOUR),
+('fa5e7926-03a5-4483-b09d-ad1b64056ca6','Giảm giá đặc biệt tại Sân Đền Lừ — Mã: CUOITUAN','Áp mã CUOITUAN để được giảm 15% (tối đa 40.000đ) khi đặt lịch!','Đánh cầu thỏa thích cuối tuần với mã CUOITUAN. Giảm 15% tổng hóa đơn, mức giảm tối đa 40.000đ. Chỉ áp dụng cho các lịch đặt vào ngày Thứ Bảy và Chủ Nhật. Không yêu cầu đơn tối thiểu.','/assets/img/venues/venues-07.jpg','/venue-details/77ec7e89-23e3-4ebf-815c-8d04517ca8e6',1,NULL,NULL,'b0000000-0000-0000-0000-000000000015','MANAGER','77ec7e89-23e3-4ebf-815c-8d04517ca8e6',NOW()-INTERVAL 3 DAY - INTERVAL 21 HOUR,NOW()-INTERVAL 3 DAY - INTERVAL 21 HOUR),
+('15364963-7c59-45e5-a056-5b414a0a9c93','Giảm giá đặc biệt tại Sân Cầu Giấy — Mã: MOIKHACH','Mã MOIKHACH ưu đãi giảm 10% (tối đa 30.000đ) cho khách hàng mới.','Chào mừng khách hàng đến với Sân Cầu Giấy! Nhập mã MOIKHACH giảm 10% tối đa 30.000đ, áp dụng cho mọi đơn từ 50.000đ. Đặt sân để trải nghiệm chất lượng ngay hôm nay!','/assets/img/venues/venues-09.jpg','/venue-details/d112c6ff-4b13-4090-bd97-ef7b067b19c6',1,NULL,NULL,'b0000000-0000-0000-0000-000000000016','MANAGER','d112c6ff-4b13-4090-bd97-ef7b067b19c6',NOW()-INTERVAL 1 DAY - INTERVAL 11 HOUR,NOW()-INTERVAL 1 DAY - INTERVAL 11 HOUR),
+('4aadf19b-ad4d-4907-884c-75d6cb3a63fa','Sân Phan Đình Phùng khuyến mãi lớn!','Áp mã KHAIGIAM giảm 20% (tối đa 60.000đ) nhân dịp nâng cấp sân!','Nhân dịp nâng cấp hệ thống đèn LED và thảm mới, Sân Phan Đình Phùng gửi tặng bạn mã KHAIGIAM: Giảm 20% tối đa 60.000đ cho đơn từ 120.000đ. Trải nghiệm sân mới với giá cực hời!','/assets/img/venues/venues-08.jpg','/venue-details/cc88cb7b-f1f7-471b-abf1-894962b042e5',1,NULL,NULL,'b0000000-0000-0000-0000-000000000001','MANAGER','cc88cb7b-f1f7-471b-abf1-894962b042e5',NOW()-INTERVAL 2 DAY - INTERVAL 17 HOUR,NOW()-INTERVAL 2 DAY - INTERVAL 17 HOUR),
+('1e80f7ce-a5af-48f7-aad2-fc6dad2c39c4','Ưu đãi UUDAI tại Sân Cầu Lông T19','Áp mã UUDAI giảm 5% không giới hạn. Nhanh tay đặt lịch!','Ưu đãi nhỏ nhưng niềm vui lớn! Sử dụng mã UUDAI để được giảm 5% tổng hóa đơn đặt sân tại T19. Không giới hạn số tiền giảm tối đa, đặt càng nhiều giảm càng sâu. Áp dụng trong 1 tháng!','/assets/img/venues/venues-07.jpg','/venue-details/9122220d-35d3-4e8a-85b1-f925a6172213',1,NULL,NULL,'b0000000-0000-0000-0000-000000000002','MANAGER','9122220d-35d3-4e8a-85b1-f925a6172213',NOW()-INTERVAL 3 DAY - INTERVAL 1 HOUR,NOW()-INTERVAL 3 DAY - INTERVAL 1 HOUR);
 
 INSERT INTO violation_reports (id,reporter_user_id,target_type,target_id,reason,description,status,admin_user_id,admin_note,admin_action,decision_at,created_at) VALUES
 ('7e97964d-e943-4ef1-9f29-90ce4bcf40d8','c0000000-0000-0000-0000-000000000006','USER','c0000000-0000-0000-0000-000000000038','Hành vi không phù hợp','Người chơi sử dụng ngôn từ thô tục trong chat.','PENDING',NULL,NULL,NULL,NULL,NOW()-INTERVAL 5 DAY),
@@ -3634,3 +3644,156 @@ SELECT 'Coupons', COUNT(*) FROM venue_coupons UNION ALL
 SELECT 'Favorites', COUNT(*) FROM favorite_venues UNION ALL
 SELECT 'ManagerProfiles', COUNT(*) FROM manager_profiles UNION ALL
 SELECT 'ViolationReports', COUNT(*) FROM violation_reports;
+-- Update Avatar and Venue Images
+INSERT INTO files (id, file_url, file_name, mime_type, file_size, uploaded_by_user_id) VALUES
+('7767864d-df78-4fda-ace4-fca0d896576a', '/image/avatar/09bdad49-f644-4668-8da7-27bd95dec5d3.jpg', '09bdad49-f644-4668-8da7-27bd95dec5d3.jpg', 'image/jpeg', 100000, NULL),
+('399e3b8b-bb1c-4d22-b9d6-882c18262454', '/image/avatar/1006e718-c6a2-427e-9120-135755bf1489.jpg', '1006e718-c6a2-427e-9120-135755bf1489.jpg', 'image/jpeg', 100000, NULL),
+('c39bfabf-c4dd-4707-9f9d-d9ef81dad6a1', '/image/avatar/126cf1a4-2339-4ff6-b1be-8a51771dc7c7.jpg', '126cf1a4-2339-4ff6-b1be-8a51771dc7c7.jpg', 'image/jpeg', 100000, NULL),
+('4990ab91-3cac-4d93-8e9f-9e1f996f4b77', '/image/avatar/2ad42287-5f67-459c-8b32-571c7e113dab.jpg', '2ad42287-5f67-459c-8b32-571c7e113dab.jpg', 'image/jpeg', 100000, NULL),
+('e3eed343-b30c-4abc-ac10-3c18c754ab32', '/image/avatar/32f0e9a1-9604-4781-b43f-60dfa86328df.jpg', '32f0e9a1-9604-4781-b43f-60dfa86328df.jpg', 'image/jpeg', 100000, NULL),
+('190f583e-81b9-411d-bc9e-5e79b18312f3', '/image/avatar/6ac910a4-98cf-4398-8a7c-2559dcd4c640.jpg', '6ac910a4-98cf-4398-8a7c-2559dcd4c640.jpg', 'image/jpeg', 100000, NULL),
+('d8bd979b-e264-4231-98db-fab6861bd319', '/image/avatar/bf103042-cd74-4bb7-8bb4-a3ea2aade6db.jpg', 'bf103042-cd74-4bb7-8bb4-a3ea2aade6db.jpg', 'image/jpeg', 100000, NULL),
+('b9712257-095d-4256-b59a-3f3516e12ce2', '/image/368 badmintone zone/Screenshot 2026-05-04 001707.png', 'Screenshot 2026-05-04 001707.png', 'image/png', 1877728, NULL),
+('154fa2a4-54f9-4a6e-ab3b-925d68d4bb3e', '/image/368 badmintone zone/Screenshot 2026-05-04 001713.png', 'Screenshot 2026-05-04 001713.png', 'image/png', 1394443, NULL),
+('42cdd61d-ec87-47a7-8099-231a994f1914', '/image/368 badmintone zone/mac_dinh.png', 'mac_dinh.png', 'image/png', 1750374, NULL),
+('c4f7b81b-880f-4fef-88fa-85a0e676a586', '/image/368 badmintone zone/Screenshot 2026-05-04 001718.png', 'Screenshot 2026-05-04 001718.png', 'image/png', 1081410, NULL),
+('656867fc-c7d3-41d1-a28a-697e3379084c', '/image/368 badmintone zone/Screenshot 2026-05-04 001723.png', 'Screenshot 2026-05-04 001723.png', 'image/png', 2163461, NULL),
+('821bc0c1-1afb-4f58-911b-b65835387e13', '/image/368 badmintone zone/Screenshot 2026-05-04 001729.png', 'Screenshot 2026-05-04 001729.png', 'image/png', 2131827, NULL),
+('50f773ed-9739-48af-a6a3-08910130a4c5', '/image/368 badmintone zone/Screenshot 2026-05-04 001735.png', 'Screenshot 2026-05-04 001735.png', 'image/png', 1353606, NULL),
+('6278529d-f894-4ca1-b861-c228e237b0c3', '/image/368 badmintone zone/Screenshot 2026-05-04 001741.png', 'Screenshot 2026-05-04 001741.png', 'image/png', 1329200, NULL),
+('a07e8384-3619-4249-93b7-7577714aea4d', '/image/cau_long_bao_cap/617016934_122216858402316796_7366745809978017368_n.jpg', '617016934_122216858402316796_7366745809978017368_n.jpg', 'image/jpeg', 200000, NULL),
+('e46baa04-f381-4226-8731-d6b3c4c5a9b4', '/image/cau_long_bao_cap/618193808_122217524348316796_5802632874618975079_n.jpg', '618193808_122217524348316796_5802632874618975079_n.jpg', 'image/jpeg', 200000, NULL),
+('c2182329-4ff1-49d5-9c4f-1069584ab374', '/image/cau_long_bao_cap/618699228_122216858456316796_366817758147567421_n.jpg', '618699228_122216858456316796_366817758147567421_n.jpg', 'image/jpeg', 200000, NULL),
+('adf9d7b6-e07d-48e3-ae13-e431005e543b', '/image/cau_long_bao_cap/618699294_122217524282316796_2406884086538167826_n.jpg', '618699294_122217524282316796_2406884086538167826_n.jpg', 'image/jpeg', 200000, NULL),
+('4e4095b3-aeb8-4f7f-9e10-7d77309b3db4', '/image/cau_long_bao_cap/619069945_122217524366316796_4159197436277062492_n.jpg', '619069945_122217524366316796_4159197436277062492_n.jpg', 'image/jpeg', 200000, NULL),
+('fa724eb7-b2a8-490f-ad1e-7638d7d566be', '/image/cau_long_bao_cap/619573606_122217423866316796_6653417846640621044_n.jpg', '619573606_122217423866316796_6653417846640621044_n.jpg', 'image/jpeg', 200000, NULL),
+('3082392e-2319-4e9c-a80f-94085ad4319e', '/image/cau_long_bao_cap/621554929_122217524372316796_5245429629071778631_n.jpg', '621554929_122217524372316796_5245429629071778631_n.jpg', 'image/jpeg', 200000, NULL),
+('16ad096e-0509-42e1-84a4-eefb8a3eadc5', '/image/cau_long_bao_cap/622371901_122217524336316796_165761128709627893_n.jpg', '622371901_122217524336316796_165761128709627893_n.jpg', 'image/jpeg', 200000, NULL),
+('692bc6e5-53ac-4574-9620-7b701331067d', '/image/cau_long_bao_cap/mac_dinh.jpg', 'mac_dinh.jpg', 'image/jpeg', 200000, NULL),
+('fe54e6f6-2e9a-479b-b6a2-a11ce13ea153', '/image/sân mễ trì/483521684_122262289886024851_6039553264251928759_n.jpg', '483521684_122262289886024851_6039553264251928759_n.jpg', 'image/jpeg', 200000, NULL),
+('d987b679-0800-4beb-8eea-7eabdaa9bfa4', '/image/sân mễ trì/483522567_122262289898024851_3824148381804030644_n.jpg', '483522567_122262289898024851_3824148381804030644_n.jpg', 'image/jpeg', 200000, NULL),
+('367483f3-8434-46a4-af85-6f184b499250', '/image/sân mễ trì/483528476_122262289718024851_93345953470585052_n.jpg', '483528476_122262289718024851_93345953470585052_n.jpg', 'image/jpeg', 200000, NULL),
+('ad9f0bf3-69b3-48dd-b9a8-89122b7f2b65', '/image/sân mễ trì/mac_dinh.png', 'mac_dinh.png', 'image/png', 200000, NULL),
+('44d2bee7-f3c9-4714-86ab-24c0f98dbc4c', '/image/sân mễ trì/Screenshot 2026-05-03 230817.png', 'Screenshot 2026-05-03 230817.png', 'image/png', 200000, NULL),
+('06c565ce-e0c8-4eeb-8ce3-0163992b9167', '/image/Sân Cầu Lông Victor/488001967_1222638689516454_6014712836842448404_n.jpg', '488001967_1222638689516454_6014712836842448404_n.jpg', 'image/jpeg', 200000, NULL),
+('4792ace3-f20c-485c-9e4c-9d89761d05f3', '/image/Sân Cầu Lông Victor/491226148_1234459938334329_5727768365964737444_n.jpg', '491226148_1234459938334329_5727768365964737444_n.jpg', 'image/jpeg', 200000, NULL),
+('17218ea0-45ef-4e1f-a391-0cf13113abd6', '/image/Sân Cầu Lông Victor/629343405_1482461440200843_1742016881864312366_n.jpg', '629343405_1482461440200843_1742016881864312366_n.jpg', 'image/jpeg', 200000, NULL),
+('614c26dc-61de-4553-9ce6-de12ad2180ed', '/image/Sân Cầu Lông Victor/637928802_1488769759570011_129383708983034187_n.jpg', '637928802_1488769759570011_129383708983034187_n.jpg', 'image/jpeg', 200000, NULL),
+('35c6bd39-e2f4-4fc8-bc1d-5f85e80afc92', '/image/Sân Cầu Lông Victor/649725042_1509245550855765_7902159912164266076_n.jpg', '649725042_1509245550855765_7902159912164266076_n.jpg', 'image/jpeg', 200000, NULL),
+('72a15152-f7db-4da6-8538-ec513d226698', '/image/Sân Cầu Lông Victor/mac_dinh.jpg', 'mac_dinh.jpg', 'image/jpeg', 200000, NULL),
+('d1bab4d4-0920-4111-b77c-ea4ae3e05707', '/image/Sân Đào Duy Anh/mac_dinh.png', 'mac_dinh.png', 'image/png', 200000, NULL),
+('509f6f3b-5835-4e0d-a317-ddffad2274ae', '/image/Sân Đào Duy Anh/Screenshot 2026-05-03 231854.png', 'Screenshot 2026-05-03 231854.png', 'image/png', 200000, NULL),
+('e7fb5a19-9a40-4587-9dda-387a0aeb581a', '/image/Sân Đào Duy Anh/Screenshot 2026-05-03 231912.png', 'Screenshot 2026-05-03 231912.png', 'image/png', 200000, NULL),
+('66480d5e-852c-410a-80d4-1323c9f588ee', '/image/Sân Đào Duy Anh/Screenshot 2026-05-03 231918.png', 'Screenshot 2026-05-03 231918.png', 'image/png', 200000, NULL),
+('3063b203-55a6-44b1-b503-1ec469f83420', '/image/Sân Đào Duy Anh/Screenshot 2026-05-03 231924.png', 'Screenshot 2026-05-03 231924.png', 'image/png', 200000, NULL),
+('c35203b2-e220-43dd-afce-d8f821174771', '/image/Sân Đào Duy Anh/Screenshot 2026-05-03 231930.png', 'Screenshot 2026-05-03 231930.png', 'image/png', 200000, NULL),
+('ce105e93-6295-42d6-af0a-a909c83fbf22', '/image/sân cầu lông kim bông/472011078_122131803554426969_8452549625333279084_n.jpg', '472011078_122131803554426969_8452549625333279084_n.jpg', 'image/jpeg', 200000, NULL),
+('c06f7717-35d2-42c8-a339-bc714731688b', '/image/sân cầu lông kim bông/472046218_122131803500426969_3473628640569838709_n.jpg', '472046218_122131803500426969_3473628640569838709_n.jpg', 'image/jpeg', 200000, NULL),
+('2629b759-7d94-413b-83c2-90a84dc19810', '/image/sân cầu lông kim bông/472066019_122131803536426969_6605004720432007941_n.jpg', '472066019_122131803536426969_6605004720432007941_n.jpg', 'image/jpeg', 200000, NULL),
+('c945ea88-1688-492a-bf7a-938356a4d830', '/image/sân cầu lông kim bông/472172001_122131803734426969_8282660926367281020_n.jpg', '472172001_122131803734426969_8282660926367281020_n.jpg', 'image/jpeg', 200000, NULL),
+('2b88f94c-9307-4e0e-81e6-c7d89dbc2d3f', '/image/sân cầu lông kim bông/mac_dinh.jpg', 'mac_dinh.jpg', 'image/jpeg', 200000, NULL),
+('d8dd9194-d13a-4d25-981c-890db547719a', '/image/Sân Kỳ Đồng/mac_dinh.png', 'mac_dinh.png', 'image/png', 200000, NULL),
+('9ad4188d-21bd-4d01-8e28-3410f170a108', '/image/Sân Kỳ Đồng/Screenshot 2026-05-03 231616.png', 'Screenshot 2026-05-03 231616.png', 'image/png', 200000, NULL),
+('e5a10fa5-0329-4fa9-bbe2-13dd28b388a0', '/image/Sân Kỳ Đồng/Screenshot 2026-05-03 231623.png', 'Screenshot 2026-05-03 231623.png', 'image/png', 200000, NULL);
+INSERT INTO venue_files (venue_id, file_id) VALUES
+('d468bb18-9f37-4e76-a7e1-9922f0a47922', 'b9712257-095d-4256-b59a-3f3516e12ce2'),
+('d468bb18-9f37-4e76-a7e1-9922f0a47922', '154fa2a4-54f9-4a6e-ab3b-925d68d4bb3e'),
+('d468bb18-9f37-4e76-a7e1-9922f0a47922', '42cdd61d-ec87-47a7-8099-231a994f1914'),
+('d468bb18-9f37-4e76-a7e1-9922f0a47922', 'c4f7b81b-880f-4fef-88fa-85a0e676a586'),
+('d468bb18-9f37-4e76-a7e1-9922f0a47922', '656867fc-c7d3-41d1-a28a-697e3379084c'),
+('d468bb18-9f37-4e76-a7e1-9922f0a47922', '821bc0c1-1afb-4f58-911b-b65835387e13'),
+('d468bb18-9f37-4e76-a7e1-9922f0a47922', '50f773ed-9739-48af-a6a3-08910130a4c5'),
+('d468bb18-9f37-4e76-a7e1-9922f0a47922', '6278529d-f894-4ca1-b861-c228e237b0c3'),
+('49933dae-e7a4-4354-82a2-7dcbc032846e', 'a07e8384-3619-4249-93b7-7577714aea4d'),
+('49933dae-e7a4-4354-82a2-7dcbc032846e', 'e46baa04-f381-4226-8731-d6b3c4c5a9b4'),
+('49933dae-e7a4-4354-82a2-7dcbc032846e', 'c2182329-4ff1-49d5-9c4f-1069584ab374'),
+('49933dae-e7a4-4354-82a2-7dcbc032846e', 'adf9d7b6-e07d-48e3-ae13-e431005e543b'),
+('49933dae-e7a4-4354-82a2-7dcbc032846e', '4e4095b3-aeb8-4f7f-9e10-7d77309b3db4'),
+('49933dae-e7a4-4354-82a2-7dcbc032846e', 'fa724eb7-b2a8-490f-ad1e-7638d7d566be'),
+('49933dae-e7a4-4354-82a2-7dcbc032846e', '3082392e-2319-4e9c-a80f-94085ad4319e'),
+('49933dae-e7a4-4354-82a2-7dcbc032846e', '16ad096e-0509-42e1-84a4-eefb8a3eadc5'),
+('49933dae-e7a4-4354-82a2-7dcbc032846e', '692bc6e5-53ac-4574-9620-7b701331067d'),
+('e4698b30-284b-4b4b-88fb-be46c40ce693', 'fe54e6f6-2e9a-479b-b6a2-a11ce13ea153'),
+('e4698b30-284b-4b4b-88fb-be46c40ce693', 'd987b679-0800-4beb-8eea-7eabdaa9bfa4'),
+('e4698b30-284b-4b4b-88fb-be46c40ce693', '367483f3-8434-46a4-af85-6f184b499250'),
+('e4698b30-284b-4b4b-88fb-be46c40ce693', 'ad9f0bf3-69b3-48dd-b9a8-89122b7f2b65'),
+('e4698b30-284b-4b4b-88fb-be46c40ce693', '44d2bee7-f3c9-4714-86ab-24c0f98dbc4c'),
+('cb8b64df-7604-4d83-a510-7a6b48bc9c29', '06c565ce-e0c8-4eeb-8ce3-0163992b9167'),
+('cb8b64df-7604-4d83-a510-7a6b48bc9c29', '4792ace3-f20c-485c-9e4c-9d89761d05f3'),
+('cb8b64df-7604-4d83-a510-7a6b48bc9c29', '17218ea0-45ef-4e1f-a391-0cf13113abd6'),
+('cb8b64df-7604-4d83-a510-7a6b48bc9c29', '614c26dc-61de-4553-9ce6-de12ad2180ed'),
+('cb8b64df-7604-4d83-a510-7a6b48bc9c29', '35c6bd39-e2f4-4fc8-bc1d-5f85e80afc92'),
+('cb8b64df-7604-4d83-a510-7a6b48bc9c29', '72a15152-f7db-4da6-8538-ec513d226698'),
+('62005e7a-e9b4-4fe6-9b9b-6e147eba68b5', 'd1bab4d4-0920-4111-b77c-ea4ae3e05707'),
+('62005e7a-e9b4-4fe6-9b9b-6e147eba68b5', '509f6f3b-5835-4e0d-a317-ddffad2274ae'),
+('62005e7a-e9b4-4fe6-9b9b-6e147eba68b5', 'e7fb5a19-9a40-4587-9dda-387a0aeb581a'),
+('62005e7a-e9b4-4fe6-9b9b-6e147eba68b5', '66480d5e-852c-410a-80d4-1323c9f588ee'),
+('62005e7a-e9b4-4fe6-9b9b-6e147eba68b5', '3063b203-55a6-44b1-b503-1ec469f83420'),
+('62005e7a-e9b4-4fe6-9b9b-6e147eba68b5', 'c35203b2-e220-43dd-afce-d8f821174771'),
+('9a3443f6-0671-4878-ae78-5912f0a7755e', 'ce105e93-6295-42d6-af0a-a909c83fbf22'),
+('9a3443f6-0671-4878-ae78-5912f0a7755e', 'c06f7717-35d2-42c8-a339-bc714731688b'),
+('9a3443f6-0671-4878-ae78-5912f0a7755e', '2629b759-7d94-413b-83c2-90a84dc19810'),
+('9a3443f6-0671-4878-ae78-5912f0a7755e', 'c945ea88-1688-492a-bf7a-938356a4d830'),
+('9a3443f6-0671-4878-ae78-5912f0a7755e', '2b88f94c-9307-4e0e-81e6-c7d89dbc2d3f'),
+('0cf2289b-b22e-4fab-8545-f9193d4359d2', 'd8dd9194-d13a-4d25-981c-890db547719a'),
+('0cf2289b-b22e-4fab-8545-f9193d4359d2', '9ad4188d-21bd-4d01-8e28-3410f170a108'),
+('0cf2289b-b22e-4fab-8545-f9193d4359d2', 'e5a10fa5-0329-4fa9-bbe2-13dd28b388a0');
+UPDATE users SET avatar_file_id = '7767864d-df78-4fda-ace4-fca0d896576a' WHERE id = 'c0000000-0000-0000-0000-000000000001';
+UPDATE users SET avatar_file_id = '399e3b8b-bb1c-4d22-b9d6-882c18262454' WHERE id = 'c0000000-0000-0000-0000-000000000002';
+UPDATE users SET avatar_file_id = 'c39bfabf-c4dd-4707-9f9d-d9ef81dad6a1' WHERE id = 'c0000000-0000-0000-0000-000000000003';
+UPDATE users SET avatar_file_id = '4990ab91-3cac-4d93-8e9f-9e1f996f4b77' WHERE id = 'c0000000-0000-0000-0000-000000000004';
+UPDATE users SET avatar_file_id = 'e3eed343-b30c-4abc-ac10-3c18c754ab32' WHERE id = 'c0000000-0000-0000-0000-000000000005';
+UPDATE users SET avatar_file_id = '190f583e-81b9-411d-bc9e-5e79b18312f3' WHERE id = 'c0000000-0000-0000-0000-000000000006';
+UPDATE users SET avatar_file_id = 'd8bd979b-e264-4231-98db-fab6861bd319' WHERE id = 'c0000000-0000-0000-0000-000000000007';
+UPDATE venues SET thumbnail_file_id = '42cdd61d-ec87-47a7-8099-231a994f1914' WHERE id = 'd468bb18-9f37-4e76-a7e1-9922f0a47922';
+UPDATE venues SET thumbnail_file_id = '692bc6e5-53ac-4574-9620-7b701331067d' WHERE id = '49933dae-e7a4-4354-82a2-7dcbc032846e';
+UPDATE venues SET thumbnail_file_id = 'ad9f0bf3-69b3-48dd-b9a8-89122b7f2b65' WHERE id = 'e4698b30-284b-4b4b-88fb-be46c40ce693';
+UPDATE venues SET thumbnail_file_id = '72a15152-f7db-4da6-8538-ec513d226698' WHERE id = 'cb8b64df-7604-4d83-a510-7a6b48bc9c29';
+UPDATE venues SET thumbnail_file_id = 'd1bab4d4-0920-4111-b77c-ea4ae3e05707' WHERE id = '62005e7a-e9b4-4fe6-9b9b-6e147eba68b5';
+UPDATE venues SET thumbnail_file_id = '2b88f94c-9307-4e0e-81e6-c7d89dbc2d3f' WHERE id = '9a3443f6-0671-4878-ae78-5912f0a7755e';
+UPDATE venues SET thumbnail_file_id = 'd8dd9194-d13a-4d25-981c-890db547719a' WHERE id = '0cf2289b-b22e-4fab-8545-f9193d4359d2';
+
+
+-- Update all remaining users with random avatars (round-robin across 7 avatars)
+-- Avatar 1
+UPDATE users SET avatar_file_id = '7767864d-df78-4fda-ace4-fca0d896576a' WHERE id IN (
+'a0000003-0000-0000-0000-000000000001','c0000000-0000-0000-0000-000000000001','c0000000-0000-0000-0000-000000000008','c0000000-0000-0000-0000-000000000015','c0000000-0000-0000-0000-000000000022','c0000000-0000-0000-0000-000000000029','c0000000-0000-0000-0000-000000000036','c0000000-0000-0000-0000-000000000043','c0000000-0000-0000-0000-000000000050',
+'b0000000-0000-0000-0000-000000000001','b0000000-0000-0000-0000-000000000008','b0000000-0000-0000-0000-000000000015','b0000000-0000-0000-0000-000000000022','b0000000-0000-0000-0000-000000000029','b0000000-0000-0000-0000-000000000036','b0000000-0000-0000-0000-000000000043','b0000000-0000-0000-0000-000000000050'
+) AND avatar_file_id IS NULL;
+
+-- Avatar 2
+UPDATE users SET avatar_file_id = '399e3b8b-bb1c-4d22-b9d6-882c18262454' WHERE id IN (
+'a0000003-0000-0000-0000-000000000002','c0000000-0000-0000-0000-000000000002','c0000000-0000-0000-0000-000000000009','c0000000-0000-0000-0000-000000000016','c0000000-0000-0000-0000-000000000023','c0000000-0000-0000-0000-000000000030','c0000000-0000-0000-0000-000000000037','c0000000-0000-0000-0000-000000000044',
+'b0000000-0000-0000-0000-000000000002','b0000000-0000-0000-0000-000000000009','b0000000-0000-0000-0000-000000000016','b0000000-0000-0000-0000-000000000023','b0000000-0000-0000-0000-000000000030','b0000000-0000-0000-0000-000000000037','b0000000-0000-0000-0000-000000000044'
+) AND avatar_file_id IS NULL;
+
+-- Avatar 3
+UPDATE users SET avatar_file_id = 'c39bfabf-c4dd-4707-9f9d-d9ef81dad6a1' WHERE id IN (
+'a0000003-0000-0000-0000-000000000003','c0000000-0000-0000-0000-000000000003','c0000000-0000-0000-0000-000000000010','c0000000-0000-0000-0000-000000000017','c0000000-0000-0000-0000-000000000024','c0000000-0000-0000-0000-000000000031','c0000000-0000-0000-0000-000000000038','c0000000-0000-0000-0000-000000000045',
+'b0000000-0000-0000-0000-000000000003','b0000000-0000-0000-0000-000000000010','b0000000-0000-0000-0000-000000000017','b0000000-0000-0000-0000-000000000024','b0000000-0000-0000-0000-000000000031','b0000000-0000-0000-0000-000000000038','b0000000-0000-0000-0000-000000000045'
+) AND avatar_file_id IS NULL;
+
+-- Avatar 4
+UPDATE users SET avatar_file_id = '4990ab91-3cac-4d93-8e9f-9e1f996f4b77' WHERE id IN (
+'a0000003-0000-0000-0000-000000000004','c0000000-0000-0000-0000-000000000004','c0000000-0000-0000-0000-000000000011','c0000000-0000-0000-0000-000000000018','c0000000-0000-0000-0000-000000000025','c0000000-0000-0000-0000-000000000032','c0000000-0000-0000-0000-000000000039','c0000000-0000-0000-0000-000000000046',
+'b0000000-0000-0000-0000-000000000004','b0000000-0000-0000-0000-000000000011','b0000000-0000-0000-0000-000000000018','b0000000-0000-0000-0000-000000000025','b0000000-0000-0000-0000-000000000032','b0000000-0000-0000-0000-000000000039','b0000000-0000-0000-0000-000000000046'
+) AND avatar_file_id IS NULL;
+
+-- Avatar 5
+UPDATE users SET avatar_file_id = 'e3eed343-b30c-4abc-ac10-3c18c754ab32' WHERE id IN (
+'a0000003-0000-0000-0000-000000000005','c0000000-0000-0000-0000-000000000005','c0000000-0000-0000-0000-000000000012','c0000000-0000-0000-0000-000000000019','c0000000-0000-0000-0000-000000000026','c0000000-0000-0000-0000-000000000033','c0000000-0000-0000-0000-000000000040','c0000000-0000-0000-0000-000000000047',
+'b0000000-0000-0000-0000-000000000005','b0000000-0000-0000-0000-000000000012','b0000000-0000-0000-0000-000000000019','b0000000-0000-0000-0000-000000000026','b0000000-0000-0000-0000-000000000033','b0000000-0000-0000-0000-000000000040','b0000000-0000-0000-0000-000000000047'
+) AND avatar_file_id IS NULL;
+
+-- Avatar 6
+UPDATE users SET avatar_file_id = '190f583e-81b9-411d-bc9e-5e79b18312f3' WHERE id IN (
+'c0000000-0000-0000-0000-000000000006','c0000000-0000-0000-0000-000000000013','c0000000-0000-0000-0000-000000000020','c0000000-0000-0000-0000-000000000027','c0000000-0000-0000-0000-000000000034','c0000000-0000-0000-0000-000000000041','c0000000-0000-0000-0000-000000000048',
+'b0000000-0000-0000-0000-000000000006','b0000000-0000-0000-0000-000000000013','b0000000-0000-0000-0000-000000000020','b0000000-0000-0000-0000-000000000027','b0000000-0000-0000-0000-000000000034','b0000000-0000-0000-0000-000000000041','b0000000-0000-0000-0000-000000000048'
+) AND avatar_file_id IS NULL;
+
+-- Avatar 7
+UPDATE users SET avatar_file_id = 'd8bd979b-e264-4231-98db-fab6861bd319' WHERE id IN (
+'c0000000-0000-0000-0000-000000000007','c0000000-0000-0000-0000-000000000014','c0000000-0000-0000-0000-000000000021','c0000000-0000-0000-0000-000000000028','c0000000-0000-0000-0000-000000000035','c0000000-0000-0000-0000-000000000042','c0000000-0000-0000-0000-000000000049',
+'b0000000-0000-0000-0000-000000000007','b0000000-0000-0000-0000-000000000014','b0000000-0000-0000-0000-000000000021','b0000000-0000-0000-0000-000000000028','b0000000-0000-0000-0000-000000000035','b0000000-0000-0000-0000-000000000042','b0000000-0000-0000-0000-000000000049'
+) AND avatar_file_id IS NULL;
+
