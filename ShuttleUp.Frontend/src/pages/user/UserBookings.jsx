@@ -3,6 +3,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getMyBookings, cancelBooking, getCancelPreview, updateRefundBankInfo, remindOwner, uploadRefundQr } from '../../api/bookingApi';
 import ReportModal from '../../components/common/ReportModal';
 import LongTermScheduleDisplay from '../../components/common/LongTermScheduleDisplay';
+import { BankPicker } from '../../components/common/BankPicker';
+import { fetchVietqrBanks } from '../manager/managerCheckoutSettingsShared';
 
 function pad2(n) {
   return String(n).padStart(2, '0');
@@ -207,6 +209,19 @@ export default function UserBookings() {
   const [qrUploading, setQrUploading] = useState(false);
   const [qrUploadedUrl, setQrUploadedUrl] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
+
+  const [vietqrBanks, setVietqrBanks] = useState([]);
+  const [banksLoading, setBanksLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setBanksLoading(true);
+      const banks = await fetchVietqrBanks();
+      if (!cancelled) { setVietqrBanks(banks); setBanksLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const loadBookings = useCallback(async () => {
     setLoading(true);
@@ -991,11 +1006,12 @@ export default function UserBookings() {
                               <h6 className="mb-3"><i className="feather-credit-card me-2" />Thông tin nhận hoàn tiền</h6>
                               <div className="mb-2">
                                 <label className="form-label small fw-semibold">Ngân hàng <span className="text-danger">*</span></label>
-                                <select className="form-select form-select-sm" value={bankForm.refundBankName}
-                                  onChange={e => setBankForm(p => ({ ...p, refundBankName: e.target.value }))}>
-                                  <option value="">-- Chọn --</option>
-                                  {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
-                                </select>
+                                <BankPicker 
+                                  banks={vietqrBanks} 
+                                  value={bankForm.refundBankName} 
+                                  onSelect={(shortName) => setBankForm(p => ({ ...p, refundBankName: shortName }))} 
+                                  loading={banksLoading} 
+                                />
                               </div>
                               <div className="mb-2">
                                 <label className="form-label small fw-semibold">Số tài khoản <span className="text-danger">*</span></label>
@@ -1066,11 +1082,12 @@ export default function UserBookings() {
                   <p className="text-muted small mb-3">Nhập thông tin tài khoản để chủ sân chuyển khoản hoàn tiền cho bạn.</p>
                   <div className="mb-2">
                     <label className="form-label small fw-semibold">Ngân hàng</label>
-                    <select className="form-select form-select-sm" value={bankForm.refundBankName}
-                      onChange={e => setBankForm(p => ({ ...p, refundBankName: e.target.value }))}>
-                      <option value="">-- Chọn --</option>
-                      {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
-                    </select>
+                    <BankPicker 
+                      banks={vietqrBanks} 
+                      value={bankForm.refundBankName} 
+                      onSelect={(shortName) => setBankForm(p => ({ ...p, refundBankName: shortName }))} 
+                      loading={banksLoading} 
+                    />
                   </div>
                   <div className="mb-2">
                     <label className="form-label small fw-semibold">Số tài khoản</label>
