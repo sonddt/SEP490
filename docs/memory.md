@@ -687,3 +687,14 @@ Kết bạn & quan hệ xã hội (Player):
 
 3. **Frontend (Trang Chi tiết Sân - VenueDetails.jsx)**:
    - Khắc phục tình trạng ảnh bộ sưu tập bị lệch độ cao bằng cách áp dụng CSS chuẩn (`aspect-ratio: 16/10` kết hợp `object-fit: cover`) cho toàn bộ ảnh slider và grid.
+
+---
+
+## 9 tháng 5, 2026 (Cập nhật địa giới hành chính theo Nghị quyết mới - 34 tỉnh thành)
+
+1. **Đồng bộ hóa Database & Dữ liệu cốt lõi**:
+   - Viết script Node.js gộp 63 tỉnh/thành xuống còn 34 tỉnh/thành trong n-divisions.json theo đúng Nghị quyết của Quốc hội (hiệu lực từ 12/6/2025).
+   - Chạy script cập nhật Database_realistic.txt và database hiện hành (shuttle_up), thay thế toàn bộ địa chỉ chứa tên các tỉnh bị giải thể (như Bắc Giang, Vũng Tàu, Bình Dương...) sang tên tỉnh/thành mới (Bắc Ninh, Hồ Chí Minh...).
+
+2. **Giao diện & UI**:
+   - Cập nhật danh sách biến PROVINCES hardcode trong trang cá nhân hóa (Personalization.jsx) chỉ còn 34 tỉnh/thành (chuẩn hóa tên ngắn như Huế thay vì Thừa Thiên Huế).
