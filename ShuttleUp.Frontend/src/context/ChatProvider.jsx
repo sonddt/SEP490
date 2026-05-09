@@ -22,6 +22,7 @@ export function ChatProvider({ children }) {
   const [hubConnected, setHubConnected] = useState(false);
   const [openingPeerId, setOpeningPeerId] = useState(null);
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
+  const [activeChatRoom, setActiveChatRoom] = useState(null);
 
   const toggleChatPanel = useCallback(() => setChatPanelOpen(p => !p), []);
   const openChatPanel = useCallback(() => setChatPanelOpen(true), []);
@@ -183,7 +184,9 @@ export function ChatProvider({ children }) {
         }
         const rid = roomIdOf(room);
         if (!rid) throw new Error('Thiếu room id');
-        // Room resolved — caller can navigate to /user/chat if needed
+        // Room resolved — open panel and set active room
+        setActiveChatRoom(room);
+        openChatPanel();
       } catch (e) {
         const msg =
           e?.response?.data?.message ||
@@ -210,6 +213,8 @@ export function ChatProvider({ children }) {
     toggleChatPanel,
     openChatPanel,
     closeChatPanel,
+    activeChatRoom,
+    setActiveChatRoom,
   };
 
   return (

@@ -16,12 +16,12 @@ export default function ChatPanel() {
         connStatus, hubConnected,
         subscribeToRoom, acquireRoom, releaseRoom, sendHubMessage,
         openChatWithPeer,
+        activeChatRoom: activeRoom, setActiveChatRoom: setActiveRoom,
     } = useChat();
 
     /* ─── state ──────────────────────────────────────── */
     const [friends, setFriends] = useState([]);
     const [rooms, setRooms] = useState([]);
-    const [activeRoom, setActiveRoom] = useState(null);
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState('');
     const [emojiOpen, setEmojiOpen] = useState(false);

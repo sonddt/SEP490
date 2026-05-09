@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 const defaultAvatar = '/assets/img/profiles/avatar-01.jpg';
 
@@ -30,13 +31,17 @@ export default function MatchingJoinRequests({ requests = [], onAccept, onReject
       {requests.map((r) => (
         <div key={r.id} className="matching-request-row">
           <div className="matching-request-info">
-            <img
-              src={r.avatarUrl || defaultAvatar}
-              alt={r.fullName}
-              className="matching-member-avatar"
-            />
+            <Link to={`/user/profile/${r.userId}`} style={{ display: 'block', flexShrink: 0 }}>
+              <img
+                src={r.avatarUrl || defaultAvatar}
+                alt={r.fullName}
+                className="matching-member-avatar"
+              />
+            </Link>
             <div>
-              <span className="matching-member-name">{r.fullName}</span>
+              <Link to={`/user/profile/${r.userId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                <span className="matching-member-name">{r.fullName}</span>
+              </Link>
               <div className="matching-member-meta">
                 {r.skillLevel && <span className="badge-sm">{r.skillLevel}</span>}
                 {r.gender && <span className="badge-sm">{r.gender}</span>}
