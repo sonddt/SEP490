@@ -80,6 +80,44 @@ public class BookingsController : ControllerBase
     }
 
     /// <summary>
+    /// Trả về booking HOLDING đang active (chưa hết hạn) của user.
+    /// 204 No Content nếu không có đơn nào đang hold.
+    /// </summary>
+    [HttpGet("active-hold")]
+    public async Task<IActionResult> GetMyActiveHold()
+    {
+        if (!TryGetCurrentUserId(out var userId))
+            return Unauthorized(new { message = "Không xác định được người dùng." });
+
+        var now = DateTime.UtcNow;
+
+        var booking = await _dbContext.Bookings
+            .AsNoTracking()
+            .Include(b => b.Venue)
+            .Where(b => b.UserId == userId
+                        && b.Status == "HOLDING"
+                        && b.HoldExpiresAt != null
+                        && b.HoldExpiresAt > now)
+            .OrderByDescending(b => b.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (booking == null)
+            return NoContent();
+
+        var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
+
+        return Ok(new
+        {
+            bookingId = booking.Id,
+            bookingCode = code,
+            venueName = booking.Venue?.Name,
+            venueId = booking.VenueId,
+            totalPrice = booking.FinalAmount ?? booking.TotalAmount ?? 0,
+            holdExpiresAt = DateTime.SpecifyKind(booking.HoldExpiresAt!.Value, DateTimeKind.Utc),
+        });
+    }
+
+    /// <summary>
     /// Tạo đơn đặt sân + các khung giờ; kiểm tra trùng lịch server-side.
     /// </summary>
     [HttpPost]
@@ -219,6 +257,9 @@ public class BookingsController : ControllerBase
         }
 
         var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
+
+        // Fire-and-forget: notify player about the HOLDING booking
+        _ = FireHoldReminderNotificationAsync(userId, booking.Id, code);
 
         var response = new BookingResponseDto
         {
@@ -492,6 +533,9 @@ public class BookingsController : ControllerBase
         }
 
         var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
+
+        // Fire-and-forget: notify player about the HOLDING booking
+        _ = FireHoldReminderNotificationAsync(userId, booking.Id, code);
         
         Dictionary<Guid, string> courtNames = new();
         if (built.SmartItems != null)
@@ -691,6 +735,9 @@ public class BookingsController : ControllerBase
 
         var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
         var courtById = built.CourtById!;
+
+        // Fire-and-forget: notify player about the HOLDING booking
+        _ = FireHoldReminderNotificationAsync(userId, booking.Id, code);
 
         return StatusCode(StatusCodes.Status201Created, new
         {
@@ -1398,6 +1445,37 @@ public class BookingsController : ControllerBase
             message = "Đã huỷ giữ chỗ thành công. Các khung giờ đã được giải phóng.",
             bookingId = booking.Id,
             status = booking.Status,
+        });
+    }
+
+    /// <summary>
+    /// Fire-and-forget: gửi notification nhắc player về đơn HOLDING đang chờ thanh toán.
+    /// </summary>
+    private Task FireHoldReminderNotificationAsync(Guid userId, Guid bookingId, string bookingCode)
+    {
+        var capturedUserId = userId;
+        var capturedBookingId = bookingId;
+        var capturedCode = bookingCode;
+
+        return Task.Run(async () =>
+        {
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var notify = scope.ServiceProvider.GetRequiredService<INotificationDispatchService>();
+
+                await notify.NotifyUserAsync(
+                    capturedUserId,
+                    NotificationTypes.BookingHoldReminder,
+                    "⏳ Đơn đặt sân đang chờ thanh toán",
+                    $"Bạn có 5 phút để hoàn tất thanh toán cho đơn #{capturedCode}. Bấm vào đây để tiếp tục.",
+                    NotificationMetadataBuilder.BookingHoldReminderForPlayer(capturedBookingId),
+                    sendEmail: false);
+            }
+            catch
+            {
+                /* swallow — notification failure must not affect booking creation */
+            }
         });
     }
 

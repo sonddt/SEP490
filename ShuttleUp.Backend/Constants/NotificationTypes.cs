@@ -45,6 +45,9 @@ public static class NotificationTypes
     /// <summary>Người chơi giục chủ sân duyệt đơn PENDING.</summary>
     public const string BookingManagerReminder = "BOOKING_MANAGER_REMINDER";
 
+    /// <summary>Nhắc người chơi có đơn HOLDING đang chờ thanh toán.</summary>
+    public const string BookingHoldReminder = "BOOKING_HOLD_REMINDER";
+
     /// <summary>Admin yêu cầu hoàn tiền — gửi cho người chơi (khiếu nại BOOKING).</summary>
     public const string DisputeRefundPendingPlayer = "DISPUTE_REFUND_PENDING_PLAYER";
 

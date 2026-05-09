@@ -99,6 +99,18 @@ export function cancelHold(bookingId) {
   return axiosClient.post(`/bookings/${bookingId}/cancel-hold`);
 }
 
+/** Get the current user's active HOLDING booking (if any). Returns null if none. */
+export async function getMyActiveHold() {
+  try {
+    const data = await axiosClient.get('/bookings/active-hold', { _silenceToast: true });
+    // axiosClient interceptor strips .data — so `data` here is the response body directly
+    return data && data.bookingId ? data : null;
+  } catch {
+    // 204 No Content or any error → no active hold
+    return null;
+  }
+}
+
 /** @param {string} bookingId — Soft reminder: nudge the venue owner to approve a PENDING booking */
 export function remindOwner(bookingId) {
   return axiosClient.post(`/bookings/${bookingId}/remind-owner`);

@@ -23,4 +23,14 @@ public static class NotificationMetadataBuilder
             deepLink = $"/user/bookings?bookingId={bookingId}",
         };
     }
+
+    public static object BookingHoldReminderForPlayer(Guid bookingId)
+    {
+        return new
+        {
+            entityType = "booking",
+            bookingId,
+            deepLink = $"/booking/payment?bookingId={bookingId}",
+        };
+    }
 }

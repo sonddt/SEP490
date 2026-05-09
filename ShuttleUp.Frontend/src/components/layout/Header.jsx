@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import NotificationDropdown from './NotificationDropdown';
 import UserDropdown from './UserDropdown';
+import ActiveHoldBanner from './ActiveHoldBanner';
 
 const Header = ({ transparent = false }) => {
   const [scrolled, setScrolled]         = useState(false);
@@ -202,6 +203,7 @@ const Header = ({ transparent = false }) => {
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000 }}
         />
       )}
+      <ActiveHoldBanner />
     </header>
   );
 };
