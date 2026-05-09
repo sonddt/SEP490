@@ -20,9 +20,7 @@ const genderOptions = [
 ];
 
 const expenseOptions = [
-  { value: 'split_equal', label: 'Chia đều (Sân + Cầu)' },
   { value: 'host_pays', label: 'Miễn phí giao lưu (Bao sân)' },
-  { value: 'female_free', label: 'Nam bao Nữ' },
   { value: 'negotiable', label: 'Tùy thỏa thuận' },
 ];
 
@@ -47,7 +45,7 @@ export default function MatchingCreate() {
     requiredPlayers: 1,
     skillLevel: '',
     genderPref: '',
-    expenseSharing: 'split_equal',
+    expenseSharing: 'negotiable',
     playPurpose: '',
     notes: '',
   });
@@ -146,17 +144,8 @@ export default function MatchingCreate() {
   const bookingHasDiscount = Boolean(selectedBooking?.hasDiscount);
 
   const renderPricePerPerson = () => {
-    if (form.expenseSharing === 'negotiable') return 'Thỏa thuận';
     if (form.expenseSharing === 'host_pays') return 'Miễn phí';
-    
-    if (form.expenseSharing === 'female_free') {
-      const splitPrice = form.requiredPlayers > 0 ? Math.round(totalPrice / (form.requiredPlayers + 1)) : totalPrice;
-      return `Nam: ~${formatPrice(splitPrice)} / Nữ: 0đ`;
-    }
-
-    // split_equal (default)
-    const splitPrice = form.requiredPlayers > 0 ? Math.round(totalPrice / (form.requiredPlayers + 1)) : totalPrice;
-    return formatPrice(splitPrice);
+    return 'Thỏa thuận';
   };
 
   return (
@@ -582,7 +571,7 @@ export default function MatchingCreate() {
                           <h6>{form.title || `Tìm ${form.requiredPlayers} người đánh cầu lông`}</h6>
                           <p><i className="feather-map-pin"></i> {selectedBooking?.venueName}</p>
                           <p><i className="feather-clock"></i> {selectedItems.length} ca chơi</p>
-                          <p><i className="feather-dollar-sign"></i> {renderPricePerPerson()} {form.expenseSharing === 'split_equal' && `(chia ${form.requiredPlayers + 1} người)`}</p>
+                          <p><i className="feather-dollar-sign"></i> {renderPricePerPerson()}</p>
                           {form.skillLevel && <span className="badge bg-info me-1">{skillOptions.find(o => o.value === form.skillLevel)?.label}</span>}
                           {form.genderPref && <span className="badge bg-secondary me-1">{form.genderPref}</span>}
                           {form.playPurpose && <span className="badge bg-primary me-1">{form.playPurpose}</span>}

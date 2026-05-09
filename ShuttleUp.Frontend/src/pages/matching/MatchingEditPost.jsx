@@ -17,9 +17,7 @@ const genderOptions = [
 ];
 
 const expenseOptions = [
-  { value: 'split_equal', label: 'Chia đều' },
   { value: 'host_pays', label: 'Bao sân (Host trả)' },
-  { value: 'female_free', label: 'Nữ miễn phí' },
   { value: 'negotiable', label: 'Tùy thỏa thuận' },
 ];
 
@@ -37,7 +35,7 @@ export default function MatchingEditPost() {
     requiredPlayers: 1,
     skillLevel: '',
     genderPref: '',
-    expenseSharing: 'split_equal',
+    expenseSharing: 'negotiable',
     playPurpose: '',
     notes: '',
   });
@@ -61,7 +59,7 @@ export default function MatchingEditPost() {
         requiredPlayers: res.requiredPlayers ?? 1,
         skillLevel: res.skillLevel || '',
         genderPref: res.genderPref || '',
-        expenseSharing: res.expenseSharing || 'split_equal',
+        expenseSharing: res.expenseSharing || 'negotiable',
         playPurpose: res.playPurpose || '',
         notes: res.notes || '',
       });

@@ -698,3 +698,13 @@ Kết bạn & quan hệ xã hội (Player):
 
 2. **Giao diện & UI**:
    - Cập nhật danh sách biến PROVINCES hardcode trong trang cá nhân hóa (Personalization.jsx) chỉ còn 34 tỉnh/thành (chuẩn hóa tên ngắn như Huế thay vì Thừa Thiên Huế).
+
+## 9 tháng 5, 2026 (Đơn giản hóa hình thức chia tiền trong ghép kèo)
+
+1. **Frontend (MatchingCreate.jsx, MatchingEditPost.jsx)**:
+   - Lược bỏ hoàn toàn các lựa chọn phức tạp như Chia đều (Sân + Cầu) và Nam bao Nữ khỏi form tạo/sửa bài đăng ghép kèo.
+   - Chỉ giữ lại 2 lựa chọn: Tùy thỏa thuận (đặt làm mặc định) và Miễn phí giao lưu (Bao sân).
+   - Xóa bỏ logic tính toán phân chia tiền rườm rà ở phần Preview (Xem trước bài đăng) để giao diện gọn gàng hơn.
+
+2. **Backend / API**:
+   - Giữ nguyên logic xử lý dữ liệu cho các bài đăng cũ để đảm bảo tính tương thích ngược (backward compatibility), tránh lỗi khi render các bài đăng đã lưu mang thuộc tính chia tiền cũ.
