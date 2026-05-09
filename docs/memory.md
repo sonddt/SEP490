@@ -708,3 +708,19 @@ Kết bạn & quan hệ xã hội (Player):
 
 2. **Backend / API**:
    - Giữ nguyên logic xử lý dữ liệu cho các bài đăng cũ để đảm bảo tính tương thích ngược (backward compatibility), tránh lỗi khi render các bài đăng đã lưu mang thuộc tính chia tiền cũ.
+
+---
+
+## 9 tháng 5, 2026 (Hoàn thiện chức năng Ghép kèo & Sửa lỗi Admin UI)
+
+1. **Khắc phục chức năng Chat ở Hồ sơ người chơi**:
+   - **Vấn đề**: Nút "Nhắn tin" trên trang hồ sơ người dùng (`UserPublicProfile` / `RelationshipActions`) mở phòng chat nhưng không hiển thị box chat.
+   - **Giải pháp**: Đưa state quản lý phòng chat đang active (`activeChatRoom`) từ local (`ChatPanel.jsx`) lên global (`ChatContext`/`ChatProvider.jsx`), cho phép hệ thống gọi `openChatPanel()` và chọn đúng phòng chat qua `openChatWithPeer`.
+
+2. **Xử lý lỗi lệch múi giờ ở giao diện Admin**:
+   - **Vấn đề**: Mốc thời gian (Tạo báo cáo, Hoàn tiền...) lấy từ Database (UTC Unspecified) hiển thị lệch múi giờ ở giao diện quản trị viên do thiếu đuôi `Z` (khiến `new Date()` nhận nhầm thành giờ địa phương).
+   - **Giải pháp**: Xây dựng helper `parseDate()` đệm đuôi `Z` để ép kiểu UTC chuẩn. Áp dụng đồng bộ cho `AdminReports.jsx`, `ReportHistoryModal.jsx`, `AdminAccounts.jsx` và `AdminManagerRequests.jsx`.
+
+3. **Tối ưu UI/UX (Admin & Ghép kèo)**:
+   - Thêm tính năng click vào Avatar/Tên người chơi để chuyển hướng vào trang cá nhân trong danh sách "Duyệt Đơn Xin Tham Gia" (`MatchingJoinRequests.jsx`).
+   - Xóa bỏ cột thống kê "Tăng trưởng" ra khỏi Bảng Doanh thu theo sân và tính năng Xuất file Excel (`AdminRevenueStats.jsx`) để tinh giản dữ liệu cho Admin.

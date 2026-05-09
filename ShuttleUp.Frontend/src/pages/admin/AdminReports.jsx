@@ -58,6 +58,11 @@ const ACTION_OPTIONS = [
   { value: 'REFUND', label: 'Hoàn tiền (thủ công)', targets: ['BOOKING'] },
 ];
 
+const parseDate = (d) => {
+  if (!d) return null;
+  return new Date(d.endsWith('Z') ? d : d + 'Z');
+};
+
 export default function AdminReports() {
   const [type, setType] = useState('ALL');
   const [status, setStatus] = useState('PENDING');
@@ -215,11 +220,11 @@ export default function AdminReports() {
                       </td>
                       <td className="text-muted small" style={{ whiteSpace: 'nowrap' }}>
                         {r.status === 'REFUND_PENDING' && r.refundDeadlineAt
-                          ? new Date(r.refundDeadlineAt).toLocaleString('vi-VN')
+                          ? parseDate(r.refundDeadlineAt).toLocaleString('vi-VN')
                           : '—'}
                       </td>
                       <td className="text-muted small" style={{ whiteSpace: 'nowrap' }}>
-                        {r.createdAt ? new Date(r.createdAt).toLocaleString('vi-VN') : '—'}
+                        {r.createdAt ? parseDate(r.createdAt).toLocaleString('vi-VN') : '—'}
                       </td>
                       <td className="text-end">
                         <div className="btn-group">
@@ -264,7 +269,7 @@ export default function AdminReports() {
                   <div className="text-muted small d-flex flex-wrap align-items-center gap-1">
                     <span className="badge bg-light text-dark">{selected.targetType}</span>
                     {selected.targetName && <span> – <strong>{selected.targetName}</strong></span>}
-                    <span> · {selected.createdAt ? new Date(selected.createdAt).toLocaleString('vi-VN') : '—'}</span>
+                    <span> · {selected.createdAt ? parseDate(selected.createdAt).toLocaleString('vi-VN') : '—'}</span>
                     {selectedBadge && <span className={`badge ${selectedBadge.cls} ms-1`}>{selectedBadge.label}</span>}
                   </div>
                 </div>
@@ -304,7 +309,7 @@ export default function AdminReports() {
                     <div className="col-12">
                       <div className="alert alert-info mb-0 py-2" style={{ fontSize: '0.9rem' }}>
                         <strong>Hạn xử lý hoàn tiền (gợi ý):</strong>{' '}
-                        {new Date(selected.refundDeadlineAt).toLocaleString('vi-VN')}
+                        {parseDate(selected.refundDeadlineAt).toLocaleString('vi-VN')}
                         {selected.refundOverdue && (
                           <span className="text-danger fw-bold ms-2">Đã quá hạn SLA — ưu tiên xử lý.</span>
                         )}

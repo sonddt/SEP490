@@ -17,6 +17,11 @@ const requestTypeMap = {
   CAP_NHAT: { label: 'Cập nhật', cls: 'bg-info text-dark' }
 };
 
+const parseDate = (d) => {
+  if (!d) return null;
+  return new Date(d.endsWith('Z') ? d : d + 'Z');
+};
+
 export default function AdminManagerRequests() {
   const [requests, setRequests] = useState([]);
   const [filterStatus, setFilterStatus] = useState('');
@@ -160,8 +165,8 @@ export default function AdminManagerRequests() {
                     ) : (
                       requests.map((r, idx) => {
                         const rowNum = (page - 1) * 10 + idx + 1;
-                        const dateObj = new Date(r.requestedAt);
-                        const dateStr = dateObj.toLocaleDateString('vi-VN');
+                        const dateObj = parseDate(r.requestedAt);
+                        const dateStr = dateObj ? dateObj.toLocaleDateString('vi-VN') : 'N/A';
                         const statusObj = statusMap[r.status] || { label: r.status, cls: 'bg-secondary' };
 
                         return (
@@ -264,7 +269,7 @@ export default function AdminManagerRequests() {
                   </div>
                   <div className="col-6">
                     <label className="text-muted" style={{ fontSize: '0.82rem' }}>Ngày gửi (Tạo sân)</label>
-                    <div>{new Date(selected.requestedAt).toLocaleDateString('vi-VN')}</div>
+                    <div>{parseDate(selected.requestedAt).toLocaleDateString('vi-VN')}</div>
                   </div>
                   <div className="col-6">
                     <label className="text-muted" style={{ fontSize: '0.82rem' }}>Trạng thái</label>
@@ -344,7 +349,7 @@ export default function AdminManagerRequests() {
                       <div className="col-12"><hr className="my-1" /></div>
                       <div className="col-6">
                         <label className="text-muted" style={{ fontSize: '0.82rem' }}>Ngày xử lý</label>
-                        <div>{selected.decisionAt ? new Date(selected.decisionAt).toLocaleString('vi-VN') : 'N/A'}</div>
+                        <div>{selected.decisionAt ? parseDate(selected.decisionAt).toLocaleString('vi-VN') : 'N/A'}</div>
                       </div>
                       <div className="col-6">
                         <label className="text-muted" style={{ fontSize: '0.82rem' }}>Admin xử lý</label>

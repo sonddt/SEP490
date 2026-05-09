@@ -4,6 +4,11 @@ import { Link } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
 import { notifySuccess, notifyError } from '../../hooks/useNotification';
 
+const parseDate = (d) => {
+  if (!d) return null;
+  return new Date(d.endsWith('Z') ? d : d + 'Z');
+};
+
 function roleBadge(roles = []) {
   if (roles.includes('ADMIN'))   return <span className="badge bg-dark">Admin</span>;
   if (roles.includes('MANAGER')) return <span className="badge bg-success">Manager</span>;
@@ -11,11 +16,11 @@ function roleBadge(roles = []) {
 }
 function fmtDate(iso) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('vi-VN');
+  return parseDate(iso).toLocaleDateString('vi-VN');
 }
 function fmtDateTime(iso) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleString('vi-VN');
+  return parseDate(iso).toLocaleString('vi-VN');
 }
 
 export default function AdminAccounts() {
@@ -259,7 +264,7 @@ export default function AdminAccounts() {
                   <div className="col-6"><label className="text-muted small">Email</label><div>{selected.email}</div></div>
                   <div className="col-6"><label className="text-muted small">Điện thoại</label><div>{selected.phoneNumber || '—'}</div></div>
                   <div className="col-6"><label className="text-muted small">Giới tính</label><div>{selected.gender || '—'}</div></div>
-                  <div className="col-6"><label className="text-muted small">Ngày sinh</label><div>{selected.dateOfBirth ? new Date(selected.dateOfBirth).toLocaleDateString('vi-VN') : '—'}</div></div>
+                  <div className="col-6"><label className="text-muted small">Ngày sinh</label><div>{selected.dateOfBirth ? parseDate(selected.dateOfBirth).toLocaleDateString('vi-VN') : '—'}</div></div>
                   <div className="col-6"><label className="text-muted small">Ngày tạo</label><div>{fmtDate(selected.createdAt)}</div></div>
                   <div className="col-12"><label className="text-muted small">Vai trò</label><div className="d-flex gap-1">{roleBadge(selected.roles)}</div></div>
                   <div className="col-12">

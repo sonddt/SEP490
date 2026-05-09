@@ -77,7 +77,7 @@ export default function ReportHistoryModal({ reportId, onClose }) {
                             <span className={`badge ${s.cls} me-2`}>{s.label}</span>
                             <span className="text-muted small">bởi <strong>{log.adminName}</strong></span>
                           </div>
-                          <div className="text-muted small">{new Date(log.createdAt).toLocaleString('vi-VN')}</div>
+                          <div className="text-muted small">{new Date(log.createdAt.endsWith('Z') ? log.createdAt : log.createdAt + 'Z').toLocaleString('vi-VN')}</div>
                         </div>
                         <div className="small mb-1">
                           <strong>Hành động:</strong> {ACTION_LABELS[log.adminAction] || log.adminAction || 'Không hành động'}

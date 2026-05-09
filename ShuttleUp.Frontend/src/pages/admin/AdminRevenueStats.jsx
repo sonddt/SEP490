@@ -41,7 +41,6 @@ export default function AdminRevenueStats() {
         'Doanh thu (VNĐ)': v.revenue,
         'Doanh thu tháng này (VNĐ)': v.thisMonthRevenue,
         'Doanh thu tháng trước (VNĐ)': v.prevMonthRevenue,
-        'Tăng trưởng': v.growth,
       }));
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
@@ -142,14 +141,13 @@ export default function AdminRevenueStats() {
                   <th>Chủ sân</th>
                   <th>Tổng đặt sân</th>
                   <th>Doanh thu</th>
-                  <th>Tăng trưởng</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   [...Array(5)].map((_, i) => (
                     <tr key={i}>
-                      <td colSpan="6">
+                      <td colSpan="5">
                         <div className="placeholder-glow">
                           <span className="placeholder col-12" style={{ height: '30px' }}></span>
                         </div>
@@ -158,7 +156,7 @@ export default function AdminRevenueStats() {
                   ))
                 ) : !data?.venuesData || data.venuesData.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center text-muted py-4">Không có dữ liệu.</td>
+                    <td colSpan={5} className="text-center text-muted py-4">Không có dữ liệu.</td>
                   </tr>
                 ) : (data.venuesData.map((v, idx) => (
                   <tr key={v.id}>
@@ -167,11 +165,6 @@ export default function AdminRevenueStats() {
                     <td>{v.owner}</td>
                     <td>{v.totalBookings.toLocaleString()} lượt</td>
                     <td><strong className="text-success">{v.revenue.toLocaleString()} ₫</strong></td>
-                    <td>
-                      <span className={`badge ${v.growth?.startsWith('+') ? 'bg-success' : (v.growth?.startsWith('-') ? 'bg-danger' : 'bg-secondary')}`}>
-                        {v.growth}
-                      </span>
-                    </td>
                   </tr>
                 )))}
               </tbody>
@@ -181,7 +174,6 @@ export default function AdminRevenueStats() {
                     <td colSpan={3}>Tổng cộng</td>
                     <td>{data.venuesData.reduce((a, v) => a + v.totalBookings, 0).toLocaleString()} lượt</td>
                     <td className="text-success">{data.summary?.totalRevenue}</td>
-                    <td></td>
                   </tr>
                 </tfoot>
               )}
