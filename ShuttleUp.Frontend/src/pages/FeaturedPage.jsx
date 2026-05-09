@@ -85,11 +85,27 @@ function needsDetailModal(post) {
   return false;
 }
 
+function formatDate(isoString) {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+}
+
 export default function FeaturedPage() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [detailPost, setDetailPost] = useState(null);
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('ALL'); // 'ALL', 'ADMIN', 'MANAGER'
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
   useEffect(() => {
     let cancelled = false;
@@ -112,6 +128,30 @@ export default function FeaturedPage() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // Filter, sort, and paginate
+  const filteredPosts = posts
+    .filter((p) => {
+      const matchRole = roleFilter === 'ALL' || p.authorRole === roleFilter;
+      const term = searchTerm.toLowerCase();
+      const matchSearch = term === '' ||
+        (p.title || '').toLowerCase().includes(term) ||
+        (p.excerpt || '').toLowerCase().includes(term) ||
+        (p.venueName || '').toLowerCase().includes(term);
+      return matchRole && matchSearch;
+    })
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+  const totalPages = Math.ceil(filteredPosts.length / itemsPerPage);
+  const displayedPosts = filteredPosts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, roleFilter]);
 
   useEffect(() => {
     if (!detailPost) return undefined;
@@ -166,9 +206,15 @@ export default function FeaturedPage() {
                   </span>
                 )}
               </div>
-              <h2 id="featured-detail-title" className="modal-title fw-bold h5 mb-0" style={{ fontSize: '1.25rem' }}>
+              <h2 id="featured-detail-title" className="modal-title fw-bold h5 mb-1" style={{ fontSize: '1.25rem' }}>
                 {detailPost.title}
               </h2>
+              {detailPost.createdAt && (
+                <div className="text-muted small">
+                  <i className="feather-clock me-1"></i>
+                  Đăng ngày: {formatDate(detailPost.createdAt)}
+                </div>
+              )}
             </div>
             <button
               type="button"
@@ -260,92 +306,166 @@ export default function FeaturedPage() {
             </div>
           )}
 
-          <div className="row g-4">
-            {posts.map((p) => {
-              const preview = cardPreview(p);
-              const showDetailBtn = needsDetailModal(p);
-              return (
-                <div key={p.id} className="col-md-6 col-lg-4">
-                  <article
-                    className="white-bg corner-radius-10 overflow-hidden h-100 shadow-sm d-flex flex-column"
-                    style={{ border: '1px solid #eef2f6' }}
-                  >
-                    {p.coverImageUrl ? (
-                      <div
-                        className="position-relative"
-                        style={{ cursor: showDetailBtn ? 'pointer' : 'default' }}
-                        onClick={() => showDetailBtn && setDetailPost(p)}
-                        onKeyDown={(e) => {
-                          if (showDetailBtn && (e.key === 'Enter' || e.key === ' ')) {
-                            e.preventDefault();
-                            setDetailPost(p);
-                          }
-                        }}
-                        role={showDetailBtn ? 'button' : undefined}
-                        tabIndex={showDetailBtn ? 0 : undefined}
-                        aria-label={showDetailBtn ? 'Xem chi tiết bài đăng' : undefined}
-                      >
-                        <img src={p.coverImageUrl} alt="" className="w-100" style={{ height: 180, objectFit: 'cover' }} />
-                      </div>
-                    ) : (
-                      <div className="bg-light d-flex align-items-center justify-content-center" style={{ height: 140 }}>
-                        <i className="fa-regular fa-image text-muted" style={{ fontSize: 36 }} />
-                      </div>
-                    )}
-                    <div className="p-4 d-flex flex-column flex-grow-1">
-                      <div className="d-flex flex-wrap gap-2 mb-2">
-                        <span className="badge border-0" style={roleBadgeStyle(p)}>
-                          {p.authorRole === 'ADMIN' ? 'ShuttleUp' : 'Cụm sân'}
-                        </span>
-                        {p.venueName && (
-                          <span
-                            className="badge border-0"
-                            style={venueBadgeStyle(p.venueId || p.id)}
-                          >
-                            {p.venueName}
-                          </span>
-                        )}
-                      </div>
-                      <h4 className="mb-2" style={{ fontSize: 18, fontWeight: 700 }}>{p.title}</h4>
-                      {preview && (
-                        <p className="text-muted small mb-3 flex-grow-1" style={{ lineHeight: 1.6 }}>
-                          {preview}
-                        </p>
-                      )}
-                      <div className="d-flex flex-wrap gap-2 align-items-center mt-auto pt-3 border-top border-light">
-                        {showDetailBtn && (
-                          <button
-                            type="button"
-                            className="btn btn-primary btn-sm"
-                            style={{ background: '#097E52', borderColor: '#097E52' }}
-                            onClick={() => setDetailPost(p)}
-                          >
-                            Xem thêm
-                          </button>
-                        )}
-                        {!showDetailBtn && p.linkUrl && (
-                          <a
-                            href={p.linkUrl}
-                            className="btn btn-primary btn-sm"
-                            style={{ background: '#097E52', borderColor: '#097E52' }}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            Mở liên kết
-                          </a>
-                        )}
-                        {p.venueId && (
-                          <Link to={`/venue-details/${p.venueId}`} className="btn btn-outline-secondary btn-sm">
-                            Xem sân
-                          </Link>
-                        )}
-                      </div>
-                    </div>
-                  </article>
+          {!loading && !error && posts.length > 0 && (
+            <>
+              {/* Toolbar */}
+              <div className="row g-3 mb-4">
+                <div className="col-md-6 col-lg-4">
+                  <div className="input-group">
+                    <span className="input-group-text bg-white border-end-0 text-muted">
+                      <i className="feather-search"></i>
+                    </span>
+                    <input
+                      type="text"
+                      className="form-control border-start-0 ps-0"
+                      placeholder="Tìm kiếm bài viết, mã giảm giá..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
                 </div>
-              );
-            })}
-          </div>
+                <div className="col-md-6 col-lg-3">
+                  <select
+                    className="form-select"
+                    value={roleFilter}
+                    onChange={(e) => setRoleFilter(e.target.value)}
+                  >
+                    <option value="ALL">Tất cả thông báo</option>
+                    <option value="ADMIN">Từ hệ thống ShuttleUp</option>
+                    <option value="MANAGER">Khuyến mãi từ Cụm sân</option>
+                  </select>
+                </div>
+              </div>
+
+              {filteredPosts.length === 0 ? (
+                <div className="white-bg corner-radius-10 p-5 text-center text-muted">
+                  <i className="feather-search fs-3 mb-2 d-block text-secondary" />
+                  Không tìm thấy bài viết nào phù hợp với điều kiện lọc.
+                </div>
+              ) : (
+                <>
+                  <div className="row g-4 mb-4">
+                    {displayedPosts.map((p) => {
+                      const preview = cardPreview(p);
+                      const showDetailBtn = needsDetailModal(p);
+                      return (
+                        <div key={p.id} className="col-md-6 col-lg-4">
+                          <article
+                            className="white-bg corner-radius-10 overflow-hidden h-100 shadow-sm d-flex flex-column"
+                            style={{ border: '1px solid #eef2f6' }}
+                          >
+                            {p.coverImageUrl ? (
+                              <div
+                                className="position-relative"
+                                style={{ cursor: showDetailBtn ? 'pointer' : 'default' }}
+                                onClick={() => showDetailBtn && setDetailPost(p)}
+                                onKeyDown={(e) => {
+                                  if (showDetailBtn && (e.key === 'Enter' || e.key === ' ')) {
+                                    e.preventDefault();
+                                    setDetailPost(p);
+                                  }
+                                }}
+                                role={showDetailBtn ? 'button' : undefined}
+                                tabIndex={showDetailBtn ? 0 : undefined}
+                                aria-label={showDetailBtn ? 'Xem chi tiết bài đăng' : undefined}
+                              >
+                                <img src={p.coverImageUrl} alt="" className="w-100" style={{ height: 180, objectFit: 'cover' }} />
+                              </div>
+                            ) : (
+                              <div className="bg-light d-flex align-items-center justify-content-center" style={{ height: 140 }}>
+                                <i className="fa-regular fa-image text-muted" style={{ fontSize: 36 }} />
+                              </div>
+                            )}
+                            <div className="p-4 d-flex flex-column flex-grow-1">
+                              <div className="d-flex flex-wrap gap-2 mb-2 align-items-center">
+                                <span className="badge border-0" style={roleBadgeStyle(p)}>
+                                  {p.authorRole === 'ADMIN' ? 'ShuttleUp' : 'Cụm sân'}
+                                </span>
+                                {p.venueName && (
+                                  <span
+                                    className="badge border-0"
+                                    style={venueBadgeStyle(p.venueId || p.id)}
+                                  >
+                                    {p.venueName}
+                                  </span>
+                                )}
+                              </div>
+                              <h4 className="mb-2" style={{ fontSize: 18, fontWeight: 700 }}>{p.title}</h4>
+                              {p.createdAt && (
+                                <p className="text-muted small mb-2">
+                                  <i className="feather-clock me-1"></i>
+                                  {formatDate(p.createdAt)}
+                                </p>
+                              )}
+                              {preview && (
+                                <p className="text-muted small mb-3 flex-grow-1" style={{ lineHeight: 1.6 }}>
+                                  {preview}
+                                </p>
+                              )}
+                              <div className="d-flex flex-wrap gap-2 align-items-center mt-auto pt-3 border-top border-light">
+                                {showDetailBtn && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-primary btn-sm"
+                                    style={{ background: '#097E52', borderColor: '#097E52' }}
+                                    onClick={() => setDetailPost(p)}
+                                  >
+                                    Xem thêm
+                                  </button>
+                                )}
+                                {!showDetailBtn && p.linkUrl && (
+                                  <a
+                                    href={p.linkUrl}
+                                    className="btn btn-primary btn-sm"
+                                    style={{ background: '#097E52', borderColor: '#097E52' }}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    Mở liên kết
+                                  </a>
+                                )}
+                                {p.venueId && (
+                                  <Link to={`/venue-details/${p.venueId}`} className="btn btn-outline-secondary btn-sm">
+                                    Xem sân
+                                  </Link>
+                                )}
+                              </div>
+                            </div>
+                          </article>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {totalPages > 1 && (
+                    <div className="d-flex justify-content-center">
+                      <nav>
+                        <ul className="pagination">
+                          <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                            <button className="page-link" onClick={() => setCurrentPage(c => Math.max(1, c - 1))}>
+                              Trước
+                            </button>
+                          </li>
+                          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                            <li key={page} className={`page-item ${currentPage === page ? 'active' : ''}`}>
+                              <button className="page-link" onClick={() => setCurrentPage(page)}>
+                                {page}
+                              </button>
+                            </li>
+                          ))}
+                          <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                            <button className="page-link" onClick={() => setCurrentPage(c => Math.min(totalPages, c + 1))}>
+                              Sau
+                            </button>
+                          </li>
+                        </ul>
+                      </nav>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          )}
         </div>
       </div>
       {detailModal}

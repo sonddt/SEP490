@@ -263,7 +263,7 @@ export default function VenuesListing() {
           lng: v.lng ?? v.Lng ?? null,
           minPrice: v.minPrice ?? null,
           maxPrice: v.maxPrice ?? null,
-          img: '/assets/img/venues/venues-01.jpg',
+          img: v.thumbnailUrl ?? v.ThumbnailUrl ?? '/assets/img/venues/venues-01.jpg',
           rating: Number(v.rating ?? v.Rating ?? 0) || 0,
           reviewCount: Number(v.reviewCount ?? v.ReviewCount ?? 0) || 0,
           amenities: v.amenities ?? v.Amenities ?? [],

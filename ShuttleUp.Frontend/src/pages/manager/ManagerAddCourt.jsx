@@ -56,9 +56,6 @@ export default function ManagerAddCourt() {
   }
   const [dayHours, setDayHours] = useState(DAYS.map(() => ({ open: '06:00', close: '22:00', enabled: true })));
 
-  const [existingImages, setExistingImages] = useState([]);
-  const [newImageFiles, setNewImageFiles] = useState([]);
-
   const [isBulkCreate, setIsBulkCreate] = useState(false);
   const [bulkCount, setBulkCount] = useState('1');
   const [bulkStartNumber, setBulkStartNumber] = useState('1');
@@ -308,10 +305,6 @@ export default function ManagerAddCourt() {
         }));
         
         setDayHours(mappedHours);
-        
-        if (res?.Images || res?.images) {
-           setExistingImages(res.Images || res.images);
-        }
       } catch (err) {
         console.error('Failed to load court', err);
       } finally {
@@ -390,12 +383,6 @@ export default function ManagerAddCourt() {
              const req = { ...request, name: courtName };
              const created = await axiosClient.post(`/manager/venues/${venueId}/courts`, req);
              const savedCourtId = created?.id || created?.Id;
-             
-             if (newImageFiles.length > 0 && savedCourtId) {
-                const fd = new FormData();
-                for (const file of newImageFiles) { fd.append('imageFiles', file); }
-                await axiosClient.post(`/manager/venues/${venueId}/courts/${savedCourtId}/files`, fd);
-             }
              successCount++;
           } catch (err) {
              console.error(`Failed to create ${courtName}`, err);
@@ -429,22 +416,13 @@ export default function ManagerAddCourt() {
           });
           const nextGroups = Array.from(merged.values());
           setGroupSuggestions(nextGroups);
-          try {
-            localStorage.setItem(venueGroupStorageKey, JSON.stringify(nextGroups));
-          } catch {}
-        }
-
-        if (newImageFiles.length > 0 && savedCourtId) {
-          const fd = new FormData();
-          for (const file of newImageFiles) {
-            fd.append('imageFiles', file);
+            try {
+              localStorage.setItem(venueGroupStorageKey, JSON.stringify(nextGroups));
+            } catch {}
           }
-          await axiosClient.post(`/manager/venues/${venueId}/courts/${savedCourtId}/files`, fd);
-        }
 
-        if (addAnother) {
+          if (addAnother) {
            setForm(p => ({ ...p, name: '' }));
-           setNewImageFiles([]);
            setSuccessMsg('Lưu thành công! Bạn có thể tiếp tục thêm sân khác với cấu hình tương tự.');
            setTimeout(() => setSuccessMsg(''), 5000);
            window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -731,55 +709,13 @@ export default function ManagerAddCourt() {
               </div>
             </div>
 
-            {/* Media */}
-            <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
-              <div className="card-body p-4 p-md-5">
-                <SectionHeader icon="feather-image" iconBg="#fce7f3" iconColor="#db2777" title="4. Bộ sưu tập ảnh" subtitle="Góc chụp thực tế sân đấu (tối đa 5 ảnh)" />
-                
-                <div className="bg-light rounded-4 p-4 border" style={{ borderStyle: 'dashed !important', minHeight: 220 }}>
-                  <input type="file" multiple className="d-none" id="galleryUpload" accept="image/*" onChange={(e) => setNewImageFiles(p => [...p, ...Array.from(e.target.files || [])])} />
-                  
-                  <div className="d-flex flex-wrap gap-3 mb-3">
-                    {/* Existing Images */}
-                    {existingImages.map((src, i) => (
-                      <div key={'ex_'+i} className="position-relative rounded-3 overflow-hidden shadow-sm border" style={{ width: 84, height: 84 }}>
-                        <img src={src} alt="gal" className="w-100 h-100 object-fit-cover" />
-                      </div>
-                    ))}
-                    
-                    {/* New Images */}
-                    {newImageFiles.map((file, i) => (
-                      <div key={'new_'+i} className="position-relative rounded-3 overflow-hidden shadow-sm" style={{ width: 84, height: 84 }}>
-                        <img src={URL.createObjectURL(file)} alt="gal" className="w-100 h-100 object-fit-cover" />
-                        <div className="position-absolute top-0 end-0 p-1">
-                          <button type="button" className="btn btn-sm btn-danger p-0 d-flex align-items-center justify-content-center shadow" style={{ width: 20, height: 20, borderRadius: '50%' }} onClick={() => setNewImageFiles(p => p.filter((_, idx) => idx !== i))}>
-                            <i className="feather-x" style={{ fontSize: 10 }} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    
-                    {/* Upload Trigger */}
-                    <label htmlFor="galleryUpload" className="d-flex flex-column align-items-center justify-content-center bg-white border border-secondary text-secondary rounded-3 cursor-pointer" style={{ width: 84, height: 84, borderStyle: 'dashed !important' }}>
-                      <i className="feather-plus mb-1" style={{ fontSize: 20 }} />
-                      <span style={{ fontSize: 11, fontWeight: 500 }}>Upload</span>
-                    </label>
-                  </div>
-                  
-                  {(existingImages.length === 0 && newImageFiles.length === 0) && (
-                    <div className="text-secondary small mt-3"><i className="feather-info me-1" />Khuyến nghị tải hình ảnh sắc nét, định dạng JPG/PNG.</div>
-                  )}
-                </div>
-              </div>
-            </div>
-
           </div>
 
         {courtId && (
           <div className="col-12">
             <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
               <div className="card-body p-4 p-md-5">
-                <SectionHeader icon="feather-lock" iconBg="#fef3c7" iconColor="#d97706" title="5. Khóa lịch tạm" subtitle="Bảo trì, thời tiết — người chơi sẽ thấy ô không đặt được và nhận thông báo nếu có đơn trùng giờ" />
+                <SectionHeader icon="feather-lock" iconBg="#fef3c7" iconColor="#d97706" title="4. Khóa lịch tạm" subtitle="Bảo trì, thời tiết — người chơi sẽ thấy ô không đặt được và nhận thông báo nếu có đơn trùng giờ" />
                 <p className="text-muted small mb-3">Không thể tạo khóa nếu đã có đơn đặt trùng khung giờ. Hãy xử lý đơn trước hoặc chọn giờ khác.</p>
                 {blockError && <div className="alert alert-warning py-2 small mb-3" role="alert">{blockError}</div>}
                 <div className="row g-3 align-items-end mb-4">

@@ -341,6 +341,7 @@ export default function LongTermFlexible() {
   // cellWidth is the zoom level controlled by the slider
   // It's always clamped to >= minCellWidth so slider-at-min = no scroll
   const [cellWidth, setCellWidth] = useState(0); // 0 = uninitialized, will be set to minCellWidth on first measure
+  const [hasManualZoom, setHasManualZoom] = useState(false);
 
   // selections: { [courtId]: Set<slotIndex> }
   const [selections, setSelections] = useState({});
@@ -392,7 +393,7 @@ export default function LongTermFlexible() {
   const GROUP_LABEL_W = hasGroupedCourts ? 96 : 0; // px reserved for group name column
   const COURT_LABEL_W = 72; // px reserved for court name column
   const LEFT_LABEL_W  = GROUP_LABEL_W + COURT_LABEL_W;
-  const MAX_CELL_W    = 56; // px maximum zoom
+  const BASE_MAX_CELL_W = 56; // default maximum zoom target
 
   // Measure container and derive minCellWidth dynamically
   useEffect(() => {
@@ -405,7 +406,7 @@ export default function LongTermFlexible() {
       setCellWidth(prev => {
         // On first measure (prev===0) default to minW; otherwise preserve user zoom but re-clamp
         if (prev === 0) return minW;
-        return Math.max(prev, minW);
+        return Math.max(minW, prev);
       });
     };
     measure(el.getBoundingClientRect().width);
@@ -421,8 +422,23 @@ export default function LongTermFlexible() {
     ? Math.max(10, Math.floor((containerWidth - LEFT_LABEL_W) / SLOT_COUNT))
     : 10;
 
+  // Ensure slider is always valid even when minCellWidth > default max.
+  const sliderMaxCellW = Math.max(BASE_MAX_CELL_W, minCellWidth + 24);
+
   // Effective cell width — never less than what fits the container
-  const effectiveCellW = Math.max(cellWidth || minCellWidth, minCellWidth);
+  const effectiveCellW = Math.min(
+    Math.max(cellWidth || minCellWidth, minCellWidth),
+    sliderMaxCellW,
+  );
+
+  // Keep default zoom at minimum until user intentionally drags the slider.
+  useEffect(() => {
+    setCellWidth((prev) => {
+      if (!hasManualZoom) return minCellWidth;
+      const base = prev || minCellWidth;
+      return Math.min(Math.max(base, minCellWidth), sliderMaxCellW);
+    });
+  }, [minCellWidth, sliderMaxCellW, hasManualZoom]);
 
   useEffect(() => {
     if (!venueId) {
@@ -774,11 +790,28 @@ export default function LongTermFlexible() {
         className="d-flex justify-content-between align-items-center px-4 py-3"
         style={{ backgroundColor: '#0f766e' }}
       >
-        <div>
-          <h5 className="mb-0 text-white fw-semibold">Đặt lịch dài hạn — linh hoạt</h5>
-          {venueName !== 'Chọn sân' && (
-            <small className="text-white opacity-75">{venueName}{venueAddress ? ` — ${venueAddress}` : ''}</small>
-          )}
+        <div className="d-flex align-items-center gap-3">
+          <button
+            type="button"
+            onClick={() => venueId ? navigate(`/venue-details/${venueId}`) : navigate(-1)}
+            title="Quay lại"
+            style={{
+              background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: '50%', width: 36, height: 36, display: 'flex', alignItems: 'center',
+              justifyContent: 'center', cursor: 'pointer', color: '#fff', fontSize: 18,
+              transition: 'background 0.2s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+          >
+            <i className="feather-arrow-left" />
+          </button>
+          <div>
+            <h5 className="mb-0 text-white fw-semibold">Đặt lịch dài hạn — linh hoạt</h5>
+            {venueName !== 'Chọn sân' && (
+              <small className="text-white opacity-75">{venueName}{venueAddress ? ` — ${venueAddress}` : ''}</small>
+            )}
+          </div>
         </div>
 
         {/* Date picker button */}
@@ -1053,9 +1086,12 @@ export default function LongTermFlexible() {
         <input
           type="range"
           min={minCellWidth}
-          max={MAX_CELL_W}
+          max={sliderMaxCellW}
           value={effectiveCellW}
-          onChange={e => setCellWidth(Number(e.target.value))}
+          onChange={e => {
+            setHasManualZoom(true);
+            setCellWidth(Number(e.target.value));
+          }}
           style={{
             flex: 1, accentColor: '#16a34a', cursor: 'pointer', height: '4px',
           }}

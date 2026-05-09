@@ -13,6 +13,21 @@ namespace ShuttleUp.BLL.Services;
 
 public class AuthService : IAuthService
 {
+    // 7 default avatar file IDs (seeded in database)
+    private static readonly Guid[] DefaultAvatarFileIds =
+    [
+        Guid.Parse("7767864d-df78-4fda-ace4-fca0d896576a"),
+        Guid.Parse("399e3b8b-bb1c-4d22-b9d6-882c18262454"),
+        Guid.Parse("c39bfabf-c4dd-4707-9f9d-d9ef81dad6a1"),
+        Guid.Parse("4990ab91-3cac-4d93-8e9f-9e1f996f4b77"),
+        Guid.Parse("e3eed343-b30c-4abc-ac10-3c18c754ab32"),
+        Guid.Parse("190f583e-81b9-411d-bc9e-5e79b18312f3"),
+        Guid.Parse("d8bd979b-e264-4231-98db-fab6861bd319"),
+    ];
+
+    private static Guid PickRandomAvatar(Guid userId)
+        => DefaultAvatarFileIds[Math.Abs(userId.GetHashCode()) % DefaultAvatarFileIds.Length];
+
     private readonly IUserRepository _userRepository;
     private readonly IRoleRepository _roleRepository;
     private readonly IEmailService _emailService;
@@ -71,9 +86,10 @@ public class AuthService : IAuthService
         // Mặc định, mọi tài khoản đăng ký mới đều có Role PLAYER
         var roles = await ResolveRolesAsync(["PLAYER"]);
 
+        var userId = Guid.NewGuid();
         var user = new User
         {
-            Id = Guid.NewGuid(),
+            Id = userId,
             Email = request.Email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             FullName = request.FullName,
@@ -84,6 +100,7 @@ public class AuthService : IAuthService
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             Roles = roles,
+            AvatarFileId = PickRandomAvatar(userId),
         };
 
         await _userRepository.AddAsync(user);
@@ -143,9 +160,10 @@ public class AuthService : IAuthService
         var wantsManager = request.Roles.Any(r => r.Equals("MANAGER", StringComparison.OrdinalIgnoreCase));
         var roles = await ResolveRolesAsync(["PLAYER"]);
 
+        var newUserId = Guid.NewGuid();
         var newUser = new User
         {
-            Id = Guid.NewGuid(),
+            Id = newUserId,
             Email = email,
             PasswordHash = string.Empty,   // không có mật khẩu, chỉ login qua Google
             FullName = payload.Name ?? email,
@@ -153,6 +171,7 @@ public class AuthService : IAuthService
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             Roles = roles,
+            AvatarFileId = PickRandomAvatar(newUserId),
         };
 
         await _userRepository.AddAsync(newUser);

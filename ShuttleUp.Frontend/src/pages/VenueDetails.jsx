@@ -150,7 +150,8 @@ export default function VenueDetails() {
   const [checkoutSettings, setCheckoutSettings] = useState(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
-  const slides = MOCK_GALLERY.map((src) => ({ src }));
+  const venueGallery = venue?.imageUrls?.length > 0 ? venue.imageUrls : MOCK_GALLERY;
+  const slides = venueGallery.map((src) => ({ src }));
 
   const openLightbox = (idx) => {
     setLightboxIndex(idx);
@@ -194,6 +195,7 @@ export default function VenueDetails() {
           ownerUserId: data.ownerUserId ?? null,
           ownerAvatarUrl: data.ownerAvatarUrl ?? null,
           startingPrice: data.minPrice ?? 0,
+          maxPrice: data.maxPrice ?? null,
           currency: '₫',
           rating: data.rating ?? 5.0,
           reviewCount: data.reviewCount ?? 0,
@@ -206,6 +208,7 @@ export default function VenueDetails() {
           rules: Array.isArray(data.rules) ? data.rules : (Array.isArray(data.Rules) ? data.Rules : null),
           amenities: Array.isArray(data.amenities) ? data.amenities : (Array.isArray(data.Amenities) ? data.Amenities : null),
           slotDuration: data.slotDuration || data.SlotDuration || 60,
+          imageUrls: data.imageUrls || data.ImageUrls || [],
         });
       } catch (err) {
         setError(err.message || 'Oops... Có lỗi nảy sinh khi tải thông tin sân.');
@@ -396,10 +399,10 @@ export default function VenueDetails() {
           breakpoints={{ 576: { slidesPerView: 2, spaceBetween: 4 }, 992: { slidesPerView: 3, spaceBetween: 4 }, 1200: { slidesPerView: 4, spaceBetween: 4 } }}
           className="main-gallery-slider owl-carousel owl-theme"
         >
-          {MOCK_GALLERY.map((src, idx) => (
+          {venueGallery.map((src, idx) => (
             <SwiperSlide key={`top-gallery-${idx}-${src}`}>
               <div className="gallery-widget-item" onClick={() => openLightbox(idx)} style={{ cursor: 'pointer' }}>
-                <img className="img-fluid" alt={`Ảnh sân ${idx + 1}`} src={src} style={{ display: 'block', width: '100%' }} />
+                <img className="img-fluid" alt={`Ảnh sân ${idx + 1}`} src={src} style={{ display: 'block', width: '100%', height: '320px', objectFit: 'cover' }} />
               </div>
             </SwiperSlide>
           ))}
@@ -544,9 +547,17 @@ export default function VenueDetails() {
           <div className="row bottom-row d-flex align-items-center">
             <div className="col-lg-6">
               <div className="d-flex align-items-center">
-                <p className="d-inline-block me-2 mb-0" style={{ fontSize: 15, color: '#64748b' }}>Giá từ:</p>
+                <p className="d-inline-block me-2 mb-0" style={{ fontSize: 15, color: '#64748b' }}>Giá:</p>
                 <h3 className="primary-text mb-0 d-inline-block fw-bold" style={{ fontSize: '1.6rem' }}>
-                  {venue.currency}{venue.startingPrice?.toLocaleString('vi-VN')}
+                  {venue.maxPrice != null && venue.maxPrice !== venue.startingPrice ? (
+                    <>
+                      {venue.currency}{venue.startingPrice?.toLocaleString('vi-VN')}
+                      <span style={{ fontSize: '1rem', fontWeight: 400, color: '#94a3b8' }}> – </span>
+                      {venue.currency}{venue.maxPrice?.toLocaleString('vi-VN')}
+                    </>
+                  ) : (
+                    <>{venue.currency}{venue.startingPrice?.toLocaleString('vi-VN')}</>
+                  )}
                   <span style={{ fontSize: '0.85rem', fontWeight: 400 }}>/ giờ</span>
                 </h3>
               </div>
@@ -706,9 +717,9 @@ export default function VenueDetails() {
               <section id="gallery" className="white-bg mb-4 corner-radius-10 p-4">
                 <h4 className="mb-3">Hình ảnh</h4>
                 <div className="row g-2">
-                  {MOCK_GALLERY.map((src, idx) => (
+                  {venueGallery.map((src, idx) => (
                     <div key={`gallery-grid-${idx}-${src}`} className="col-6 col-md-4">
-                      <img className="img-fluid corner-radius-10" alt="Gallery" src={src} />
+                      <img className="img-fluid corner-radius-10" alt="Gallery" src={src} style={{ width: '100%', aspectRatio: '16/10', objectFit: 'cover' }} />
                     </div>
                   ))}
                 </div>
@@ -816,7 +827,15 @@ export default function VenueDetails() {
                 </p>
                 <div className="d-flex align-items-baseline gap-1 mb-3 p-3 rounded" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
                   <h3 className="primary-text mb-0 fw-bold" style={{ fontSize: '1.5rem' }}>
-                    {venue.currency}{venue.startingPrice?.toLocaleString('vi-VN')}
+                    {venue.maxPrice != null && venue.maxPrice !== venue.startingPrice ? (
+                      <>
+                        {venue.currency}{venue.startingPrice?.toLocaleString('vi-VN')}
+                        <span style={{ fontSize: '0.9rem', fontWeight: 400, color: '#94a3b8' }}> – </span>
+                        {venue.currency}{venue.maxPrice?.toLocaleString('vi-VN')}
+                      </>
+                    ) : (
+                      <>{venue.currency}{venue.startingPrice?.toLocaleString('vi-VN')}</>
+                    )}
                   </h3>
                   <span style={{ color: '#64748b', fontSize: 14 }}>/giờ</span>
                 </div>

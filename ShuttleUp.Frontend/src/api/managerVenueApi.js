@@ -39,3 +39,21 @@ export function updateCourtBlock(venueId, courtId, blockId, body) {
 export function deleteCourtBlock(venueId, courtId, blockId) {
   return axiosClient.delete(`/manager/venues/${venueId}/courts/${courtId}/blocks/${blockId}`);
 }
+
+/** 
+ * @param {string} venueId 
+ * @param {FormData} formData 
+ */
+export function uploadVenueFiles(venueId, formData) {
+  return axiosClient.post(`/manager/venues/${venueId}/files`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+}
+
+/** 
+ * @param {string} venueId 
+ * @param {string} fileUrl 
+ */
+export function deleteVenueFile(venueId, fileUrl) {
+  return axiosClient.delete(`/manager/venues/${venueId}/files`, { params: { fileUrl } });
+}

@@ -546,7 +546,24 @@ export default function LongTermBooking() {
           {/* ── Header card ──────────────────── */}
           <div className="card mb-4">
             <div className="card-body">
-              <h3 className="mb-1">Đặt lịch dài hạn</h3>
+              <div className="d-flex align-items-center gap-3 mb-1">
+                <button
+                  type="button"
+                  onClick={() => venueId ? navigate(`/venue-details/${venueId}`) : navigate(-1)}
+                  title="Quay lại"
+                  style={{
+                    background: '#f1f5f9', border: '1px solid #e2e8f0',
+                    borderRadius: '50%', width: 36, height: 36, display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', cursor: 'pointer', color: '#475569', fontSize: 18,
+                    transition: 'all 0.2s', flexShrink: 0,
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = '#0f766e'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#475569'; }}
+                >
+                  <i className="feather-arrow-left" />
+                </button>
+                <h3 className="mb-0">Đặt lịch dài hạn</h3>
+              </div>
 
               {/* Editing mode banner */}
               {isEditing && (

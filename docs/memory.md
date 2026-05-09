@@ -663,3 +663,27 @@ Kết bạn & quan hệ xã hội (Player):
    - Chuyển đổi logic gửi notification và email cho chủ sân sang mô hình bất đồng bộ (fire-and-forget).
    - Sử dụng Task.Run kết hợp với IServiceScopeFactory để tạo scope độc lập, đảm bảo an toàn cho DbContext khi chạy ngầm.
    - API trả về 200 OK ngay lập tức sau khi lưu Database thành công, giúp người chơi thấy màn hình "Thanh toán thành công" chỉ trong 1-2 giây thay vì phải chờ 5-30 giây như trước.
+
+---
+
+## 3 tháng 5, 2026 (Sửa lỗi logic Giảm giá dài hạn)
+
+1. **Database Seed Data (`Database_realistic.txt`)**:
+   - Sửa dữ liệu mẫu cho các sân bị thiết lập sai logic giảm giá dài hạn (ví dụ: đặt theo tuần giảm 10% nhưng đặt theo tháng chỉ giảm 5%).
+   - Tự động hoán đổi để đảm bảo phần trăm giảm giá của Tháng luôn lớn hơn hoặc bằng Tuần (VD: 5% Tuần, 10% Tháng). Sẵn sàng để chạy lại script đồng bộ toàn bộ DB.
+
+---
+
+## 4 tháng 5, 2026 (Tối ưu hóa Giao diện và Nén ảnh Cụm Sân)
+
+1. **Frontend (Quản lý Hình ảnh Sân)**:
+   - Thêm component `ImageCropperModal` cho phép chủ sân crop Hình ảnh đại diện (thumbnail) theo tỷ lệ chuẩn 16:10.
+   - Refactor logic nén ảnh Canvas API từ `BookingPayment.jsx` ra tiện ích dùng chung `utils/imageUtils.js`.
+   - Áp dụng nén tự động trước khi upload cho cả Hình ảnh đại diện và Bộ sưu tập ảnh ở phía Manager, giảm dung lượng ảnh (đến 90%) nhằm tăng tốc độ tải.
+   - Bổ sung tính năng Xóa ảnh cũ trong Bộ sưu tập với `ConfirmModal` đồng bộ UI.
+
+2. **Backend (ManagerVenuesController.cs)**:
+   - Bổ sung API `[HttpDelete("{venueId}/files")]` cho phép chủ sân xóa các ảnh cũ trong bộ sưu tập (nhận `fileUrl`), đồng bộ thay đổi vào cơ sở dữ liệu.
+
+3. **Frontend (Trang Chi tiết Sân - VenueDetails.jsx)**:
+   - Khắc phục tình trạng ảnh bộ sưu tập bị lệch độ cao bằng cách áp dụng CSS chuẩn (`aspect-ratio: 16/10` kết hợp `object-fit: cover`) cho toàn bộ ảnh slider và grid.

@@ -25,8 +25,11 @@ const skillLabels = {
   advanced: 'Khá giỏi', expert: 'Chuyên nghiệp',
 };
 const expenseLabels = {
-  split_equal: 'Chia đều', host_pays: 'Bao sân',
-  female_free: 'Nữ miễn phí', negotiable: 'Thỏa thuận',
+  split_equal: 'Chia đều',
+  per_person: 'Cố định/người',
+  host_pays: 'Bao sân',
+  female_free: 'Nữ miễn phí',
+  negotiable: 'Thỏa thuận',
 };
 
 const BOOKING_SLOTS_PREVIEW = 4;
@@ -464,7 +467,8 @@ export default function MatchingPostDetail() {
                         <div>
                             <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Yêu cầu trình độ</div>
                             <div style={{ fontSize: '16px', color: '#1e293b', fontWeight: '700', marginBottom: '2px' }}>{post.skillLevel ? (skillLabels[post.skillLevel] || post.skillLevel) : 'Mọi trình độ'}</div>
-                            <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}><i className="feather-users me-1"></i> {post.genderPref || 'Nam & Nữ đều được'}</div>
+                            <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600', marginBottom: '2px' }}><i className="feather-users me-1"></i> {post.genderPref || 'Nam & Nữ đều được'}</div>
+                            {post.playPurpose && <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}><i className="feather-target me-1"></i> {post.playPurpose}</div>}
                         </div>
                     </div>
 

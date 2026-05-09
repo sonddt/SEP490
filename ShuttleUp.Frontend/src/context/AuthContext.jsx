@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { isJwtExpired } from '../utils/jwtRoles';
+import { profileApi } from '../api/profileApi';
 
 const AuthContext = createContext(null);
 
@@ -24,12 +25,14 @@ function readInitialUser() {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(readInitialUser);
+  const avatarFetchedRef = useRef(false);
 
   const login = useCallback((data) => {
     // data = { accessToken, tokenType, expiresInMinutes, user: { id, email, fullName, roles } }
     localStorage.setItem('token', data.accessToken);
     localStorage.setItem('user', JSON.stringify(data.user));
     setUser(data.user);
+    avatarFetchedRef.current = false; // trigger avatar fetch
   }, []);
 
   const updateUser = useCallback((patch) => {
@@ -46,7 +49,25 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
+    avatarFetchedRef.current = false;
   }, []);
+
+  // Auto-fetch avatarUrl from profile API after login or on initial load
+  useEffect(() => {
+    if (!user || avatarFetchedRef.current) return;
+    const token = localStorage.getItem('token');
+    if (!token || isJwtExpired(token)) return;
+
+    avatarFetchedRef.current = true;
+    profileApi.getMe()
+      .then((data) => {
+        const u = data?.user ?? data?.User;
+        if (u?.avatarUrl && u.avatarUrl !== user.avatarUrl) {
+          updateUser({ avatarUrl: u.avatarUrl });
+        }
+      })
+      .catch(() => { /* ignore - avatar just won't update */ });
+  }, [user, updateUser]);
 
   useEffect(() => {
     const onApiCleared = () => setUser(null);

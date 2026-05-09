@@ -539,9 +539,9 @@ export default function ManagerProfile() {
                     <label className="form-label fw-semibold text-dark mb-2">Giới tính</label>
                     <select className="form-select form-select-lg bg-light border-0" value={form.gender} onChange={(e) => setF('gender', e.target.value)}>
                       <option value="">Chưa chọn</option>
-                      <option value="MALE">Nam</option>
-                      <option value="FEMALE">Nữ</option>
-                      <option value="OTHER">Khác</option>
+                      <option value="Nam">Nam</option>
+                      <option value="Nữ">Nữ</option>
+                      <option value="Khác">Khác</option>
                     </select>
                   </div>
                   <div className="col-12 col-md-6">
