@@ -43,6 +43,7 @@ namespace ShuttleUp.Backend
             builder.Services.AddScoped<IFileRepository, FileRepository>();
             builder.Services.AddScoped<IVenueCouponRepository, VenueCouponRepository>();
             builder.Services.AddScoped<IViolationReportRepository, ViolationReportRepository>();
+            builder.Services.AddScoped<IFeaturedPostRepository, FeaturedPostRepository>();
 
             // ── BLL — Services ────────────────────────────────────────────────────
             builder.Services.AddScoped<IEmailService, EmailService>();
