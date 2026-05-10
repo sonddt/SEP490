@@ -23,3 +23,9 @@
 - Mọi Assistant **BẮT BUỘC** phải trình bày kế hoạch triển khai (Implementation Plan) chi tiết trước khi thực hiện bất kỳ thay đổi nào về mã nguồn.
 - Chỉ được phép bắt đầu viết code sau khi nhận được sự xác nhận/chấp thuận từ phía người dùng.
 - Kế hoạch cần nêu rõ: Mục tiêu, các file sẽ thay đổi, logic xử lý và cách kiểm tra (Verification).
+
+## Quy tắc 5: Kiến trúc 3 lớp (3-Layer Architecture)
+- **Tuyệt đối KHÔNG** inject trực tiếp `ShuttleUpDbContext` vào bất kỳ Controller nào.
+- Controller chỉ được phép gọi đến Service (`IXxxService`).
+- Service (`IXxxService`) sẽ gọi đến Repository (`IXxxRepository`) để tương tác với Database.
+- Các hàm tính toán thuần túy độc lập, không cần query DB thì tách ra thư mục `Helpers` hoặc `Utils`, tuyệt đối không inject DbContext/Repository vào Helper.

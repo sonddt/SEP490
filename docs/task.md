@@ -24,3 +24,7 @@
 - [ ] Code Hub kết nối Socket ở backend.
 - [ ] Setup Frontend hứng sự kiện (Toast notification).
 - [ ] Tích hợp tính năng In-app chat giữa Host và người Join Kèo.
+
+## Epic 5: Refactoring Kiến trúc & Kỹ thuật
+- [x] Áp dụng chuẩn Kiến trúc 3 lớp (Controller -> Service -> Repository) cho toàn bộ API phần Admin & Manager (Việt Anh). Gỡ bỏ hoàn toàn `ShuttleUpDbContext` khỏi 7 Controllers.
+- [ ] Mở rộng chuẩn Kiến trúc 3 lớp cho 13 Controllers còn lại của dự án (`BookingsController`, `MatchingController`, `SocialController`, v.v...).
