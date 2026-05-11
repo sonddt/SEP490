@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ShuttleUp.DAL.Models;
 
-namespace ShuttleUp.Backend.Services;
+namespace ShuttleUp.Backend.BackgroundServices;
 
 /// <summary>
 /// Periodically cancels HOLDING bookings whose hold window has expired,

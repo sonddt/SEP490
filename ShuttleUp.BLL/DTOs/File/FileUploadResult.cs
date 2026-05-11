@@ -1,4 +1,4 @@
-namespace ShuttleUp.Backend.Services;
+namespace ShuttleUp.BLL.DTOs.File;
 
 public class FileUploadResult
 {

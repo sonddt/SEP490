@@ -3,7 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using ShuttleUp.Backend.Services.Interfaces;
+using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.DAL.Models;
 using DalFile = ShuttleUp.DAL.Models.File;
 

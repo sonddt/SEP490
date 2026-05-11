@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using ShuttleUp.Backend.Services.Interfaces;
+using ShuttleUp.BLL.Interfaces;
 
-namespace ShuttleUp.Backend.Services;
+namespace ShuttleUp.BLL.Services;
 
 public class BannedUserCache : IBannedUserCache
 {

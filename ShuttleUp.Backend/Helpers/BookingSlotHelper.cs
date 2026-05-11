@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using ShuttleUp.BLL.DTOs.Booking;
 using ShuttleUp.DAL.Models;
 
-namespace ShuttleUp.Backend.Services;
+namespace ShuttleUp.Backend.Helpers;
 
 /// <summary>Chuẩn hoá slot 30 phút, giá và kiểm tra trùng — dùng chung đặt lẻ và đặt dài hạn.</summary>
 public static class BookingSlotHelper
@@ -230,16 +230,16 @@ public static class BookingSlotHelper
         // Ngoài ra, bỏ qua các holding CHƯA hết hạn nhưng LÀ CỦA NGƯỜI CHƠI NÀY (Cho phép họ tạo mới và huỷ cái cũ).
         if (excludeHoldingUserId != null)
         {
-            query = query.Where(bi => 
+            query = query.Where(bi =>
                 bi.Booking!.Status != "HOLDING" ||
-                (bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now && bi.Booking.UserId != excludeHoldingUserId)
+                bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now && bi.Booking.UserId != excludeHoldingUserId
             );
         }
         else
         {
-            query = query.Where(bi => 
+            query = query.Where(bi =>
                 bi.Booking!.Status != "HOLDING" ||
-                (bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now)
+                bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now
             );
         }
 
@@ -381,7 +381,7 @@ public static class BookingSlotHelper
                          && bi.Booking != null
                          && bi.Booking.Status != "CANCELLED"
                          && (bi.Booking.Status != "HOLDING"
-                             || (bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now)))
+                             || bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now))
             .ToListAsync(ct);
 
         var existingBlocks = await db.CourtBlocks

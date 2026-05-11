@@ -1,8 +1,8 @@
 using System.Text.Json.Serialization;
 
-namespace ShuttleUp.Backend;
+namespace ShuttleUp.BLL.DTOs.Policy;
 
-public class CancellationPolicySnapshot
+public class CancellationPolicySnapshotDto
 {
     [JsonPropertyName("allowCancel")]
     public bool AllowCancel { get; set; } = true;

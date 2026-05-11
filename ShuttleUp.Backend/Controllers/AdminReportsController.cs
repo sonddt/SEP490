@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ShuttleUp.Backend.Constants;
 using ShuttleUp.Backend.Helpers;
-using ShuttleUp.Backend.Services.Interfaces;
 using ShuttleUp.BLL.Interfaces;
 
 namespace ShuttleUp.Backend.Controllers;

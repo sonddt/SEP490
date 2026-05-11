@@ -3,10 +3,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using ShuttleUp.Backend.Services.Interfaces;
+using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.DAL.Models;
 
-namespace ShuttleUp.Backend.Services;
+namespace ShuttleUp.BLL.Services;
 
 public class BanService : IBanService
 {
@@ -36,10 +36,10 @@ public class BanService : IBanService
             .Include(u => u.Roles)
             .FirstOrDefaultAsync(u => u.Id == targetUserId);
 
-        if (user == null) 
+        if (user == null)
             return new BanCheckResult(BanScenario.Immediate, 0, false, null);
 
-        if (user.BanType == "SOFT") 
+        if (user.BanType == "SOFT")
         {
             return new BanCheckResult(BanScenario.OverrideGrace, 0, true, user.SoftBanExpiresAt);
         }
@@ -54,7 +54,7 @@ public class BanService : IBanService
                 .Where(b => b.Status == "PENDING" || b.Status == "CONFIRMED")
                 .Where(b => b.BookingItems.Any(bi => bi.StartTime > now))
                 .CountAsync();
-                
+
             if (ongoingCount > 0)
             {
                 return new BanCheckResult(BanScenario.GracePeriod, ongoingCount, false, null);

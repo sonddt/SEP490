@@ -1,10 +1,10 @@
 using System;
 using System.Threading.Tasks;
 
-namespace ShuttleUp.Backend.Services.Interfaces;
+namespace ShuttleUp.BLL.Interfaces;
 
-public enum BanScenario 
-{ 
+public enum BanScenario
+{
     Immediate,
     GracePeriod,
     OverrideGrace

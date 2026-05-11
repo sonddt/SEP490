@@ -7,9 +7,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using ShuttleUp.Backend.Services.Interfaces;
 using ShuttleUp.DAL.Models;
 using DalFile = ShuttleUp.DAL.Models.File;
+using ShuttleUp.BLL.Interfaces;
 
 namespace ShuttleUp.Backend.Controllers;
 

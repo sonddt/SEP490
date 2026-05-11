@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using ShuttleUp.Backend.Configurations;
 using ShuttleUp.Backend.Constants;
-using ShuttleUp.Backend.Services.Interfaces;
 using ShuttleUp.BLL.DTOs.Manager;
 using ShuttleUp.BLL.DTOs.Review;
 using ShuttleUp.BLL.DTOs.Venue;

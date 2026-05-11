@@ -6,10 +6,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using ShuttleUp.Backend.Services.Interfaces;
+using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.DAL.Models;
 
-namespace ShuttleUp.Backend.Services;
+namespace ShuttleUp.Backend.BackgroundServices;
 
 public sealed class SoftBanFinalizationService : BackgroundService
 {
@@ -97,7 +97,7 @@ public sealed class SoftBanFinalizationService : BackgroundService
                     cancellationToken: ct
                 );
             }
-            
+
             _logger.LogInformation("Soft ban finalized for User {UserId}. Notified {Count} affected bookings.", user.Id, upcomingBookings.Count);
         }
 

@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using ShuttleUp.Backend.Constants;
-using ShuttleUp.Backend.Services.Interfaces;
+using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.DAL.Models;
 
-namespace ShuttleUp.Backend.Services;
+namespace ShuttleUp.Backend.BackgroundServices;
 
 /// <summary>
 /// Background job chạy ngầm mỗi N phút, quét các BookingItem sắp diễn ra

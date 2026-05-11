@@ -1,4 +1,4 @@
-namespace ShuttleUp.Backend.Services.Interfaces;
+namespace ShuttleUp.BLL.Interfaces;
 
 /// <summary>
 /// Đồng bộ trạng thái bài matching khi hết ca chơi trong tương lai → <c>Inactive</c>.

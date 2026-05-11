@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
+using ShuttleUp.BLL.DTOs.File;
 
-namespace ShuttleUp.Backend.Services.Interfaces;
+namespace ShuttleUp.BLL.Interfaces;
 
 public interface IFileService
 {

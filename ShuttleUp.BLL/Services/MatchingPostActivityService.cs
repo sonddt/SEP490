@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using ShuttleUp.Backend.Services.Interfaces;
+using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.DAL.Models;
 
-namespace ShuttleUp.Backend.Services;
+namespace ShuttleUp.BLL.Services;
 
 public class MatchingPostActivityService : IMatchingPostActivityService
 {

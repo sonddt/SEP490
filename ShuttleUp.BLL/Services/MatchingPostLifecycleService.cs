@@ -1,9 +1,9 @@
-using ShuttleUp.Backend.Constants;
-using ShuttleUp.Backend.Services.Interfaces;
+using ShuttleUp.BLL.Constants;
 using ShuttleUp.DAL.Models;
 using Microsoft.EntityFrameworkCore;
+using ShuttleUp.BLL.Interfaces;
 
-namespace ShuttleUp.Backend.Services;
+namespace ShuttleUp.BLL.Services;
 
 public class MatchingPostLifecycleService : IMatchingPostLifecycleService
 {

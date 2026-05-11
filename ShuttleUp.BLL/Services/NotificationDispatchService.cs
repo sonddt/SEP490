@@ -1,28 +1,26 @@
 using System.Text.Json;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using ShuttleUp.Backend.Hubs;
-using ShuttleUp.Backend.Services.Interfaces;
+using Microsoft.Extensions.Logging;
 using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.DAL.Models;
 
-namespace ShuttleUp.Backend.Services;
+namespace ShuttleUp.BLL.Services;
 
 public class NotificationDispatchService : INotificationDispatchService
 {
     private readonly ShuttleUpDbContext _db;
-    private readonly IHubContext<NotificationHub> _hub;
+    private readonly ISignalRNotifier _notifier;
     private readonly IEmailService _email;
     private readonly ILogger<NotificationDispatchService> _logger;
 
     public NotificationDispatchService(
         ShuttleUpDbContext db,
-        IHubContext<NotificationHub> hub,
+        ISignalRNotifier notifier,
         IEmailService email,
         ILogger<NotificationDispatchService> logger)
     {
         _db = db;
-        _hub = hub;
+        _notifier = notifier;
         _email = email;
         _logger = logger;
     }
@@ -57,23 +55,19 @@ public class NotificationDispatchService : INotificationDispatchService
 
         Guid? bookingIdFromMeta = TryGetBookingId(metaJson);
 
-        var group = $"user-{userId}";
-        await _hub.Clients.Group(group).SendAsync(
-            "notification",
-            new
-            {
-                id = entity.Id,
-                type = entity.Type,
-                title = entity.Title,
-                body = entity.Body,
-                createdAt = entity.CreatedAt,
-                bookingId = bookingIdFromMeta,
-            },
-            cancellationToken);
+        await _notifier.SendNotificationAsync(userId, new
+        {
+            id = entity.Id,
+            type = entity.Type,
+            title = entity.Title,
+            body = entity.Body,
+            createdAt = entity.CreatedAt,
+            bookingId = bookingIdFromMeta,
+        }, cancellationToken);
 
         if (bookingStatusPayload != null)
         {
-            await _hub.Clients.Group(group).SendAsync("bookingStatus", bookingStatusPayload, cancellationToken);
+            await _notifier.SendBookingStatusAsync(userId, bookingStatusPayload, cancellationToken);
         }
 
         if (!sendEmail)
@@ -86,8 +80,6 @@ public class NotificationDispatchService : INotificationDispatchService
 
         try
         {
-            // If caller provided a pre-built HTML template, use it directly
-            // to avoid double-encoding rich HTML content.
             string emailHtml;
             if (!string.IsNullOrWhiteSpace(htmlBodyOverride))
             {

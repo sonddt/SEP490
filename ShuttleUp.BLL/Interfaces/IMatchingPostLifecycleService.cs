@@ -1,6 +1,6 @@
 using ShuttleUp.DAL.Models;
 
-namespace ShuttleUp.Backend.Services.Interfaces;
+namespace ShuttleUp.BLL.Interfaces;
 
 public interface IMatchingPostLifecycleService
 {

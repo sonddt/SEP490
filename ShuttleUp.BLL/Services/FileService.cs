@@ -2,10 +2,11 @@ using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
-using ShuttleUp.Backend.Configurations;
-using ShuttleUp.Backend.Services.Interfaces;
+using ShuttleUp.BLL.Configurations;
+using ShuttleUp.BLL.DTOs.File;
+using ShuttleUp.BLL.Interfaces;
 
-namespace ShuttleUp.Backend.Services;
+namespace ShuttleUp.BLL.Services;
 
 public class FileService : IFileService
 {

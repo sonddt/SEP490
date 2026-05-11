@@ -1,6 +1,6 @@
 using ShuttleUp.DAL.Models;
 
-namespace ShuttleUp.Backend;
+namespace ShuttleUp.Backend.Helpers;
 
 internal static class BookingApprovalRules
 {

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace ShuttleUp.Backend.Services.Interfaces;
+namespace ShuttleUp.BLL.Interfaces;
 
 public interface IBannedUserCache
 {

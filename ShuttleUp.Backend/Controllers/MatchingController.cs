@@ -6,8 +6,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ShuttleUp.Backend.Constants;
-using ShuttleUp.Backend.Services.Interfaces;
 using ShuttleUp.Backend.Utils;
+using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.DAL.Models;
 
 namespace ShuttleUp.Backend.Controllers;

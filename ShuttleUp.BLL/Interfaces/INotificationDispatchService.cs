@@ -1,4 +1,4 @@
-namespace ShuttleUp.Backend.Services.Interfaces;
+namespace ShuttleUp.BLL.Interfaces;
 
 /// <summary>
 /// Gửi thông báo in-app (DB + SignalR), tùy chọn email. Dùng cho mọi role qua user_id.

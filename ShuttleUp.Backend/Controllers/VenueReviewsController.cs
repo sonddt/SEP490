@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using FileEntity = ShuttleUp.DAL.Models.File;
 using ShuttleUp.Backend.Constants;
 using ShuttleUp.Backend.Helpers;
-using ShuttleUp.Backend.Services.Interfaces;
 using ShuttleUp.BLL.DTOs.Review;
 using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.DAL.Models;

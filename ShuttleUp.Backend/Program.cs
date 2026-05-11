@@ -8,15 +8,15 @@ namespace ShuttleUp.Backend
     using Microsoft.Extensions.Options;
     using Microsoft.IdentityModel.Tokens;
     using Microsoft.OpenApi.Models;
-    using ShuttleUp.Backend.Configurations;
-    using ShuttleUp.Backend.Services;
-    using ShuttleUp.Backend.Services.Interfaces;
+    using ShuttleUp.BLL.Configurations;
     using ShuttleUp.Backend.Middleware;
+    using ShuttleUp.Backend.Infrastructure;
     using ShuttleUp.BLL.Interfaces;
     using ShuttleUp.BLL.Services;
     using ShuttleUp.DAL.Models;
     using ShuttleUp.DAL.Repositories;
     using ShuttleUp.DAL.Repositories.Interfaces;
+    using ShuttleUp.Backend.BackgroundServices;
 
     public class Program
     {
@@ -99,11 +99,12 @@ namespace ShuttleUp.Backend
 
                 return settings;
             });
-            builder.Services.AddHostedService<ShuttleUp.Backend.Services.ExpiredHoldCleanupService>();
-            builder.Services.AddHostedService<ShuttleUp.Backend.Services.UpcomingBookingReminderService>();
-            builder.Services.AddHostedService<ShuttleUp.Backend.Services.SoftBanFinalizationService>();
+            builder.Services.AddHostedService<ExpiredHoldCleanupService>();
+            builder.Services.AddHostedService<UpcomingBookingReminderService>();
+            builder.Services.AddHostedService<SoftBanFinalizationService>();
             builder.Services.AddMemoryCache();
             builder.Services.AddScoped<INotificationDispatchService, NotificationDispatchService>();
+            builder.Services.AddScoped<ISignalRNotifier, NotificationHubNotifier>();
             builder.Services.AddScoped<IMatchingPostLifecycleService, MatchingPostLifecycleService>();
             builder.Services.AddScoped<IMatchingPostActivityService, MatchingPostActivityService>();
             builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
