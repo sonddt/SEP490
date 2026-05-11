@@ -25,25 +25,30 @@ public class Repository<T> : IRepository<T> where T : class
         return await _dbSet.ToListAsync();
     }
 
-    public async Task AddAsync(T entity)
+    public async Task AddAsync(T entity, bool saveChanges = true)
     {
         await _dbSet.AddAsync(entity);
-        await _context.SaveChangesAsync();
+        if (saveChanges) await _context.SaveChangesAsync();
     }
 
-    public async Task UpdateAsync(T entity)
+    public async Task UpdateAsync(T entity, bool saveChanges = true)
     {
         _dbSet.Update(entity);
-        await _context.SaveChangesAsync();
+        if (saveChanges) await _context.SaveChangesAsync();
     }
 
-    public async Task DeleteAsync(Guid id)
+    public async Task DeleteAsync(Guid id, bool saveChanges = true)
     {
         var entity = await GetByIdAsync(id);
         if (entity != null)
         {
             _dbSet.Remove(entity);
-            await _context.SaveChangesAsync();
+            if (saveChanges) await _context.SaveChangesAsync();
         }
+    }
+
+    public async Task SaveChangesAsync()
+    {
+        await _context.SaveChangesAsync();
     }
 }

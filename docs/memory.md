@@ -687,3 +687,16 @@ Kết bạn & quan hệ xã hội (Player):
 
 3. **Frontend (Trang Chi tiết Sân - VenueDetails.jsx)**:
    - Khắc phục tình trạng ảnh bộ sưu tập bị lệch độ cao bằng cách áp dụng CSS chuẩn (`aspect-ratio: 16/10` kết hợp `object-fit: cover`) cho toàn bộ ảnh slider và grid.
+
+---
+
+## 10 tháng 5, 2026 (Refactor Kiến trúc 3 lớp - Phần Admin & Manager)
+
+1. **Chuẩn hóa Kiến trúc (Controller -> Service -> Repository)**:
+   - Chuyển đổi thành công 100% (7/7) Controllers thuộc phần công việc của Việt Anh sang chuẩn kiến trúc 3 lớp: `ManagerVenuesController`, `AdminController`, `AdminReportsController`, `ManagerStatsController`, `ManagerProfileController`, `ManagerFeaturedPostsController`, `AdminFeaturedPostsController`.
+   - **Tuyệt đối không còn** sự phụ thuộc trực tiếp vào `ShuttleUpDbContext`, khởi tạo `new HttpClient()`, hay `new Cloudinary()` tại các Controllers này.
+2. **Backend Services & Repositories**:
+   - Xây dựng và triển khai hàng loạt Service mới trong tầng BLL (`ShuttleUp.BLL`): `AdminService`, `ReportService`, `ManagerStatsService`, `ManagerProfileService`, `FeaturedPostService`, `BankLookupService`.
+   - Cấu hình và đăng ký DI (Dependency Injection) đầy đủ cho các lớp Repositories và Services mới tại `Program.cs`.
+3. **Mục tiêu tiếp theo**:
+   - Đã lập bản đánh giá và Implementation Plan (Phase 2) cho 13 Controllers còn lại của dự án (như `BookingsController`, `MatchingController`, v.v...) để dứt điểm triệt để "Lỗ hổng Refactor nửa mùa".

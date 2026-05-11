@@ -39,6 +39,11 @@ namespace ShuttleUp.Backend
             builder.Services.AddScoped<IMatchingRepository, MatchingRepository>();
             builder.Services.AddScoped<IManagerProfileRepository, ManagerProfileRepository>();
             builder.Services.AddScoped<IManagerProfileRequestRepository, ManagerProfileRequestRepository>();
+            builder.Services.AddScoped<ICourtBlockRepository, CourtBlockRepository>();
+            builder.Services.AddScoped<IFileRepository, FileRepository>();
+            builder.Services.AddScoped<IVenueCouponRepository, VenueCouponRepository>();
+            builder.Services.AddScoped<IViolationReportRepository, ViolationReportRepository>();
+            builder.Services.AddScoped<IFeaturedPostRepository, FeaturedPostRepository>();
 
             // ── BLL — Services ────────────────────────────────────────────────────
             builder.Services.AddScoped<IEmailService, EmailService>();
@@ -104,6 +109,15 @@ namespace ShuttleUp.Backend
             builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
             builder.Services.AddScoped<IBanService, BanService>();
             builder.Services.AddSingleton<IBannedUserCache, BannedUserCache>();
+
+            // ── New services (3-layer refactor) ──
+            builder.Services.AddScoped<IFeaturedPostService, FeaturedPostService>();
+            builder.Services.AddScoped<IManagerStatsService, ManagerStatsService>();
+            builder.Services.AddScoped<IManagerProfileService, ManagerProfileService>();
+            builder.Services.AddScoped<IReportService, ReportService>();
+            builder.Services.AddScoped<IAdminService, AdminService>();
+            builder.Services.AddScoped<IBankLookupService, BankLookupService>();
+            builder.Services.AddHttpClient("VietQR");
 
             // ── JWT Authentication ────────────────────────────────────────────────
             var jwtKey = builder.Configuration["Jwt:Key"]!;

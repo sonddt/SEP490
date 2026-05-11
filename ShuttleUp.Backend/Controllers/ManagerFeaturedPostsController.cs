@@ -2,10 +2,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using ShuttleUp.BLL.DTOs.Featured;
+using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.Backend.Services.Interfaces;
-using ShuttleUp.DAL.Models;
 
 namespace ShuttleUp.Backend.Controllers;
 
@@ -14,12 +13,12 @@ namespace ShuttleUp.Backend.Controllers;
 [Authorize(Roles = "MANAGER")]
 public class ManagerFeaturedPostsController : ControllerBase
 {
-    private readonly ShuttleUpDbContext _db;
+    private readonly IFeaturedPostService _featuredPostService;
     private readonly IFileService _fileService;
 
-    public ManagerFeaturedPostsController(ShuttleUpDbContext db, IFileService fileService)
+    public ManagerFeaturedPostsController(IFeaturedPostService featuredPostService, IFileService fileService)
     {
-        _db = db;
+        _featuredPostService = featuredPostService;
         _fileService = fileService;
     }
 
@@ -30,111 +29,52 @@ public class ManagerFeaturedPostsController : ControllerBase
         if (managerId == Guid.Empty)
             return Unauthorized();
 
-        var list = await _db.FeaturedPosts
-            .AsNoTracking()
-            .Where(p => p.AuthorUserId == managerId && p.AuthorRole == "MANAGER")
-            .OrderByDescending(p => p.CreatedAt)
-            .ThenByDescending(p => p.Id)
-            .Select(p => new
-            {
-                p.Id,
-                p.Title,
-                p.Excerpt,
-                p.Body,
-                p.CoverImageUrl,
-                p.LinkUrl,
-                p.IsPublished,
-                p.DisplayFrom,
-                p.DisplayUntil,
-                p.VenueId,
-                VenueName = p.Venue != null ? p.Venue.Name : (string?)null,
-                p.CreatedAt,
-                p.UpdatedAt
-            })
-            .ToListAsync();
-
+        var list = await _featuredPostService.GetByAuthorAsync(managerId, "MANAGER");
         return Ok(list);
     }
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] FeaturedPostUpsertDto dto)
     {
-        if (dto == null || string.IsNullOrWhiteSpace(dto.Title))
-            return BadRequest(new { message = "Tiêu đề không được để trống." });
-
         var managerId = GetCurrentUserId();
         if (managerId == Guid.Empty)
             return Unauthorized();
 
-        if (dto.VenueId.HasValue)
+        try
         {
-            var owns = await _db.Venues.AnyAsync(v => v.Id == dto.VenueId.Value && v.OwnerUserId == managerId);
-            if (!owns)
-                return BadRequest(new { message = "Bạn chỉ được gắn bài với cụm sân do bạn quản lý." });
+            var result = await _featuredPostService.CreateAsync(managerId, "MANAGER", dto);
+            return Ok(new { result.Id, message = "Đã tạo bài đăng." });
         }
-
-        var now = DateTime.UtcNow;
-        var post = new FeaturedPost
+        catch (InvalidOperationException ex)
         {
-            Id = Guid.NewGuid(),
-            Title = dto.Title.Trim(),
-            Excerpt = string.IsNullOrWhiteSpace(dto.Excerpt) ? null : dto.Excerpt.Trim(),
-            Body = string.IsNullOrWhiteSpace(dto.Body) ? null : dto.Body.Trim(),
-            CoverImageUrl = string.IsNullOrWhiteSpace(dto.CoverImageUrl) ? null : dto.CoverImageUrl.Trim(),
-            LinkUrl = string.IsNullOrWhiteSpace(dto.LinkUrl) ? null : dto.LinkUrl.Trim(),
-            IsPublished = dto.IsPublished,
-            DisplayFrom = dto.DisplayFrom,
-            DisplayUntil = dto.DisplayUntil,
-            AuthorUserId = managerId,
-            AuthorRole = "MANAGER",
-            VenueId = dto.VenueId,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-
-        _db.FeaturedPosts.Add(post);
-        await _db.SaveChangesAsync();
-
-        return Ok(new { post.Id, message = "Đã tạo bài đăng." });
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] FeaturedPostUpsertDto dto)
     {
-        if (dto == null || string.IsNullOrWhiteSpace(dto.Title))
-            return BadRequest(new { message = "Tiêu đề không được để trống." });
-
         var managerId = GetCurrentUserId();
         if (managerId == Guid.Empty)
             return Unauthorized();
 
-        var post = await _db.FeaturedPosts.FirstOrDefaultAsync(p => p.Id == id);
-        if (post == null)
-            return NotFound(new { message = "Không tìm thấy bài đăng." });
-
-        if (post.AuthorUserId != managerId || post.AuthorRole != "MANAGER")
-            return Forbid();
-
-        if (dto.VenueId.HasValue)
+        try
         {
-            var owns = await _db.Venues.AnyAsync(v => v.Id == dto.VenueId.Value && v.OwnerUserId == managerId);
-            if (!owns)
-                return BadRequest(new { message = "Bạn chỉ được gắn bài với cụm sân do bạn quản lý." });
+            await _featuredPostService.UpdateAsync(id, managerId, "MANAGER", dto);
+            return Ok(new { message = "Đã cập nhật." });
         }
-
-        post.Title = dto.Title.Trim();
-        post.Excerpt = string.IsNullOrWhiteSpace(dto.Excerpt) ? null : dto.Excerpt.Trim();
-        post.Body = string.IsNullOrWhiteSpace(dto.Body) ? null : dto.Body.Trim();
-        post.CoverImageUrl = string.IsNullOrWhiteSpace(dto.CoverImageUrl) ? null : dto.CoverImageUrl.Trim();
-        post.LinkUrl = string.IsNullOrWhiteSpace(dto.LinkUrl) ? null : dto.LinkUrl.Trim();
-        post.IsPublished = dto.IsPublished;
-        post.DisplayFrom = dto.DisplayFrom;
-        post.DisplayUntil = dto.DisplayUntil;
-        post.VenueId = dto.VenueId;
-        post.UpdatedAt = DateTime.UtcNow;
-
-        await _db.SaveChangesAsync();
-        return Ok(new { message = "Đã cập nhật." });
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpDelete("{id:guid}")]
@@ -144,16 +84,19 @@ public class ManagerFeaturedPostsController : ControllerBase
         if (managerId == Guid.Empty)
             return Unauthorized();
 
-        var post = await _db.FeaturedPosts.FirstOrDefaultAsync(p => p.Id == id);
-        if (post == null)
+        try
+        {
+            await _featuredPostService.DeleteAsync(id, managerId, "MANAGER");
+            return NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
             return NotFound();
-
-        if (post.AuthorUserId != managerId || post.AuthorRole != "MANAGER")
+        }
+        catch (UnauthorizedAccessException)
+        {
             return Forbid();
-
-        _db.FeaturedPosts.Remove(post);
-        await _db.SaveChangesAsync();
-        return NoContent();
+        }
     }
 
     [HttpPost("upload-image")]
