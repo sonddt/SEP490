@@ -23,3 +23,11 @@
 - Mọi Assistant **BẮT BUỘC** phải trình bày kế hoạch triển khai (Implementation Plan) chi tiết trước khi thực hiện bất kỳ thay đổi nào về mã nguồn.
 - Chỉ được phép bắt đầu viết code sau khi nhận được sự xác nhận/chấp thuận từ phía người dùng.
 - Kế hoạch cần nêu rõ: Mục tiêu, các file sẽ thay đổi, logic xử lý và cách kiểm tra (Verification).
+
+## Quy tắc 5: Tuân thủ mô hình 3 lớp (3-Tier Architecture) & Quản lý Helpers
+- **Backend (Controllers)**: KHÔNG BAO GIỜ inject `ShuttleUpDbContext`. Chỉ inject các `Service`. Nhiệm vụ chính là nhận/trả request, validate input sơ bộ.
+- **BLL (Services)**: KHÔNG BAO GIỜ inject `ShuttleUpDbContext`. Chỉ inject các `Repository`. Chứa logic nghiệp vụ và map dữ liệu sang DTOs trước khi trả về Controller.
+- **DAL (Repositories)**: Là nơi DUY NHẤT inject `ShuttleUpDbContext` để thao tác DB. Không chứa business logic.
+- **Helpers/Utils**: Các hàm dùng chung (múi giờ, chuỗi, mã hóa...) phải đặt trong các `static class` tại thư mục `Utils` hoặc `Helpers`. Tránh viết logic dùng chung rải rác.
+- **Constants**: Không gõ cứng string/số (hard-code). Phải khai báo trong `Constants` hoặc `Enum`.
+- **DTOs**: Luôn dùng DTO để truyền dữ liệu giữa các lớp, không trả trực tiếp Entity ra ngoài API.
