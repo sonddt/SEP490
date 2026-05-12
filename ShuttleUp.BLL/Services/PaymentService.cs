@@ -42,6 +42,7 @@ public class PaymentService : IPaymentService
 
     public async Task<RefundRequest> RequestRefundAsync(Guid bookingId, Guid userId)
     {
+        await Task.CompletedTask;
         var refund = new RefundRequest
         {
             Id = Guid.NewGuid(),

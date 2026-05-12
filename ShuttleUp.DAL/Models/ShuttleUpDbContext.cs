@@ -1049,10 +1049,8 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasColumnType("datetime")
                 .HasColumnName("created_at");
             entity.Property(e => e.IsRead)
-                .HasDefaultValueSql("'0'")
                 .HasColumnName("is_read");
             entity.Property(e => e.IsDeleted)
-                .HasDefaultValueSql("'0'")
                 .HasColumnName("is_deleted");
             entity.Property(e => e.MetadataJson)
                 .HasColumnType("text")
@@ -1311,7 +1309,7 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.UsageLimit).HasColumnName("usage_limit");
             entity.Property(e => e.UsedCount).HasDefaultValueSql("0").HasColumnName("used_count");
             entity.Property(e => e.IsActive).HasDefaultValueSql("true").HasColumnName("is_active");
-            entity.Property(e => e.OneUsePerUser).HasDefaultValueSql("true").HasColumnName("one_use_per_user");
+            entity.Property(e => e.OneUsePerUser).HasColumnName("one_use_per_user");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP").HasColumnType("datetime").HasColumnName("created_at");
 
             entity.HasOne(d => d.Venue).WithMany(p => p.VenueCoupons)

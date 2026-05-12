@@ -43,6 +43,7 @@ public class MatchingService : IMatchingService
 
     public async Task<MatchingJoinRequest> JoinRequestAsync(Guid postId, Guid userId)
     {
+        await Task.CompletedTask;
         var request = new MatchingJoinRequest
         {
             Id = Guid.NewGuid(),
