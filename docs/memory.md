@@ -724,3 +724,21 @@ Kết bạn & quan hệ xã hội (Player):
 3. **Tối ưu UI/UX (Admin & Ghép kèo)**:
    - Thêm tính năng click vào Avatar/Tên người chơi để chuyển hướng vào trang cá nhân trong danh sách "Duyệt Đơn Xin Tham Gia" (`MatchingJoinRequests.jsx`).
    - Xóa bỏ cột thống kê "Tăng trưởng" ra khỏi Bảng Doanh thu theo sân và tính năng Xuất file Excel (`AdminRevenueStats.jsx`) để tinh giản dữ liệu cho Admin.
+
+---
+
+## 9 tháng 5, 2026 (Kiểm tra Kiến trúc Hệ thống & Lên kế hoạch Refactor 3 lớp)
+
+1. **Kiểm tra Kiến trúc Hệ thống (System Architectural Audit)**:
+   - Tiến hành rà soát chi tiết 21 Controllers, 10 Services, 12 Repositories để đối chiếu với tiêu chuẩn 3 lớp (Controller -> Service -> Repository).
+   - **Phát hiện nghiêm trọng**: Khoảng 86% Controllers vi phạm kiến trúc, inject thẳng `ShuttleUpDbContext`. Các Controller trọng yếu như `BookingsController` (2083 dòng), `ManagerVenuesController` (2012 dòng), `MatchingController` (1607 dòng) chứa toàn bộ logic nghiệp vụ (Fat Controller) và thao tác trực tiếp với Database.
+   - Các Service tầng BLL (`BookingService`, `MatchingService`...) đã được viết chuẩn nhưng bị bỏ xó, không có Controller nào gọi đến. Duy nhất `AuthController` tuân thủ hoàn hảo.
+
+2. **Kế hoạch Refactor Hệ thống (Triệt để)**:
+   - Phân chia công việc thành 3 luồng: Hưng (Luồng Booking - 3 file), Việt Anh (Luồng Admin/Manager - 7 file), An (Luồng Social/Public - 10 file).
+   - **Bổ sung các chốt chặn kỹ thuật (Quy tắc thép)**:
+     - Áp dụng **Transaction/Unit of Work** ở tầng Service khi thao tác nhiều bảng (đặc biệt luồng Booking của Hưng).
+     - **Chống God Class**: Chia nhỏ các Service khổng lồ thành các Service chuyên biệt (VD: `BookingCreationService`, `BookingValidationService`).
+     - **Không rò rỉ HTTP**: Tầng Service xử lý logic ném ra Exception (`throw Exception`), Controller tự `try-catch` để map ra HTTP Status (400, 404, 403). Tuyệt đối Service không trả về Object chứa HTTP Code.
+     - **Phân định Helper/Service**: Code tính toán thuần túy (như tính tiền, xếp lịch) phải để ở thư mục `Helpers` (không inject DB). Service đóng vai trò gọi Helper lấy kết quả rồi ghi xuống Repository.
+     - **Cross-Domain Safety**: Các luồng khác nhau không được chọc chéo Repository. Ví dụ: An (Matching) muốn biết thông tin Booking phải gọi `IBookingService` của Hưng, không được gọi thẳng `BookingRepository`.
