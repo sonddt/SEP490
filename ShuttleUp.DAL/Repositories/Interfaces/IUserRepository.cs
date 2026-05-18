@@ -16,4 +16,6 @@ public interface IUserRepository : IRepository<User>
     Task<List<User>> GetUsersPagedAsync(string? search, string? role, string? status, int skip, int take);
     Task<int> CountUsersAsync(string? search, string? role, string? status);
     Task<List<User>> GetRecentUsersAsync(int count);
+    Task<IEnumerable<User>> GetByIdsAsync(IEnumerable<Guid> ids);
+    Task<User?> GetProfileWithDetailsAsync(Guid userId);
 }

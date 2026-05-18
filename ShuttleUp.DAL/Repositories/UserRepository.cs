@@ -67,4 +67,13 @@ public class UserRepository : Repository<User>, IUserRepository
 
     public async Task<List<User>> GetRecentUsersAsync(int count)
         => await _dbSet.Include(u => u.Roles).OrderByDescending(u => u.CreatedAt).Take(count).ToListAsync();
+
+    public async Task<IEnumerable<User>> GetByIdsAsync(IEnumerable<Guid> ids)
+        => await _dbSet.Include(u => u.AvatarFile).Where(u => ids.Contains(u.Id)).ToListAsync();
+
+    public async Task<User?> GetProfileWithDetailsAsync(Guid userId)
+        => await _dbSet.AsNoTracking()
+            .Include(u => u.Roles)
+            .Include(u => u.AvatarFile)
+            .FirstOrDefaultAsync(u => u.Id == userId);
 }

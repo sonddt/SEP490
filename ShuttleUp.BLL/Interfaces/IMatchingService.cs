@@ -1,17 +1,37 @@
-using ShuttleUp.DAL.Models;
+using ShuttleUp.BLL.DTOs.Matching;
 
 namespace ShuttleUp.BLL.Interfaces;
 
 public interface IMatchingService
 {
-    Task<MatchingPost?> GetByIdAsync(Guid id);
-    Task<IEnumerable<MatchingPost>> GetOpenPostsAsync();
-    Task<IEnumerable<MatchingPost>> GetByCreatorAsync(Guid creatorUserId);
-    Task CreateAsync(MatchingPost post);
-    Task UpdateAsync(MatchingPost post);
-    Task CloseAsync(Guid postId);
-    Task<MatchingJoinRequest> JoinRequestAsync(Guid postId, Guid userId);
-    Task ApproveJoinRequestAsync(Guid joinRequestId);
-    Task RejectJoinRequestAsync(Guid joinRequestId);
-    Task<IEnumerable<MatchingJoinRequest>> GetJoinRequestsByPostAsync(Guid postId);
+    Task<MatchingPagedResultDto<MatchingPostCardDto>> GetOpenPostsAsync(
+        string? skillLevel, string? province, DateOnly? playDate, 
+        string? sort, string? q, int page, int pageSize, Guid? currentUserId,
+        CancellationToken ct = default);
+
+    Task<IEnumerable<MatchingPostCardDto>> GetMyPostsAsync(Guid userId, CancellationToken ct = default);
+    
+    Task<IEnumerable<MatchingPostCardDto>> GetJoinedPostsAsync(Guid userId, CancellationToken ct = default);
+
+    Task<MatchingPostDetailDto?> GetPostDetailAsync(Guid postId, Guid? currentUserId, CancellationToken ct = default);
+
+    Task<Guid> CreatePostAsync(Guid userId, CreateMatchingPostDto dto, CancellationToken ct = default);
+
+    Task UpdatePostAsync(Guid postId, Guid userId, UpdateMatchingPostDto dto, CancellationToken ct = default);
+
+    Task ClosePostAsync(Guid postId, Guid userId, CancellationToken ct = default);
+
+    Task<string> ReopenPostAsync(Guid postId, Guid userId, CancellationToken ct = default);
+
+    Task<Guid> JoinPostAsync(Guid postId, Guid userId, string? message, CancellationToken ct = default);
+
+    Task CancelJoinRequestAsync(Guid postId, Guid userId, CancellationToken ct = default);
+
+    Task AcceptJoinRequestAsync(Guid requestId, Guid adminId, CancellationToken ct = default);
+
+    Task RejectJoinRequestAsync(Guid requestId, Guid adminId, string? reason, CancellationToken ct = default);
+
+    Task<string> RemoveMemberAsync(Guid memberId, Guid currentUserId, CancellationToken ct = default);
+
+    Task<IEnumerable<UpcomingBookingDto>> GetUpcomingBookingsAsync(Guid userId, CancellationToken ct = default);
 }

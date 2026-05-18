@@ -41,6 +41,31 @@ public class ViolationReportRepository : Repository<ViolationReport>, IViolation
         return (total, items);
     }
 
+    public async Task<(int total, List<ViolationReport> items)> GetMyReportsPagedAsync(Guid reporterId, int skip, int take)
+    {
+        var query = _dbSet.AsNoTracking()
+            .Include(r => r.Files)
+            .Where(r => r.ReporterUserId == reporterId);
+
+        var total = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(r => r.CreatedAt)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync();
+
+        return (total, items);
+    }
+
+    public async Task<bool> HasPendingReportAsync(Guid reporterId, string targetType, Guid targetId)
+    {
+        return await _dbSet.AsNoTracking()
+            .AnyAsync(r => r.ReporterUserId == reporterId
+                        && r.TargetType == targetType
+                        && r.TargetId == targetId
+                        && r.Status == "PENDING");
+    }
+
     public async Task AddLogAsync(ViolationReportLog log)
     {
         _context.ViolationReportLogs.Add(log);

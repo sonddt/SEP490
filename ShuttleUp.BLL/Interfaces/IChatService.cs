@@ -9,4 +9,5 @@ public interface IChatService
     Task<IEnumerable<MessageResponseDto>> GetMessagesAsync(Guid roomId, Guid userId, int page = 1);
     Task<MessageResponseDto> SaveMessageAsync(Guid roomId, Guid senderId, SendMessageRequestDto request);
     Task<bool> IsMemberAsync(Guid roomId, Guid userId);
+    Task<ShuttleUp.BLL.DTOs.Profile.ManagerDocumentDto> UploadChatImageAsync(Guid roomId, Guid userId, Microsoft.AspNetCore.Http.IFormFile file, System.Threading.CancellationToken ct = default);
 }

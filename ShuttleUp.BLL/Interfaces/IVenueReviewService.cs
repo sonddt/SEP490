@@ -14,4 +14,6 @@ public interface IVenueReviewService
 
     /// <summary>Chủ sân phản hồi đánh giá (đã xác minh venue từ controller).</summary>
     Task<ReviewResponseDto> SetOwnerReplyAsync(Guid reviewId, string? replyText);
+
+    Task<ShuttleUp.BLL.DTOs.Profile.ManagerDocumentDto> UploadReviewImageAsync(Guid venueId, Guid userId, Microsoft.AspNetCore.Http.IFormFile file, System.Threading.CancellationToken ct = default);
 }

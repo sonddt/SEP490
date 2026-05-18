@@ -36,6 +36,14 @@ public interface IVenueService
     Task<object> CreateCouponAsync(Guid venueId, Guid managerId, CouponUpsertDto dto);
     Task<object> UpdateCouponAsync(Guid venueId, Guid couponId, Guid managerId, CouponUpsertDto dto);
     Task DeleteCouponAsync(Guid venueId, Guid couponId, Guid managerId);
+
+    // ── Public Browsing ──
+    Task<VenuePublicDetailsDto?> GetPublicVenueDetailsAsync(Guid id, int currentDayOfWeek, CancellationToken ct = default);
+    Task<IEnumerable<VenueMapItemDto>> GetMapVenuesAsync(string? search, decimal? minPrice, decimal? maxPrice, string? amenities, bool? cancelAllowed, CancellationToken ct = default);
+    Task<IEnumerable<VenueCardDto>> GetApprovedVenuesPublicAsync(string? sortBy, string? sortDir, CancellationToken ct = default);
+    Task<IEnumerable<VenuePublicCourtDto>> GetVenueCourtsPublicAsync(Guid venueId, CancellationToken ct = default);
+    Task<object> GetVenueAvailabilityAsync(Guid venueId, string dateString, Guid? currentUserGuid, CancellationToken ct = default);
+    Task<VenueCheckoutSettingsPublicDto?> GetCheckoutSettingsPublicAsync(Guid venueId, decimal? amount, string? addInfo, CancellationToken ct = default);
 }
 
 public class FileUploadInfo

@@ -6,6 +6,7 @@ public interface IFeaturedPostRepository : IRepository<FeaturedPost>
 {
     Task<List<FeaturedPost>> GetByAuthorAsync(Guid authorUserId, string authorRole);
     Task<List<FeaturedPost>> GetAllOrderedAsync();
+    Task<List<FeaturedPost>> GetPublishedOrderedAsync(DateTime now);
     Task<bool> VenueExistsAsync(Guid venueId);
     Task<bool> VenueOwnedByAsync(Guid venueId, Guid managerId);
 }

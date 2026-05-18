@@ -29,6 +29,19 @@ public class FeaturedPostRepository : Repository<FeaturedPost>, IFeaturedPostRep
             .ToListAsync();
     }
 
+    public async Task<List<FeaturedPost>> GetPublishedOrderedAsync(DateTime now)
+    {
+        return await _dbSet
+            .AsNoTracking()
+            .Include(p => p.Venue)
+            .Where(p => p.IsPublished
+                        && (p.DisplayFrom == null || p.DisplayFrom <= now)
+                        && (p.DisplayUntil == null || p.DisplayUntil >= now))
+            .OrderByDescending(p => p.CreatedAt)
+            .ThenByDescending(p => p.Id)
+            .ToListAsync();
+    }
+
     public async Task<bool> VenueExistsAsync(Guid venueId)
     {
         return await _context.Venues.AnyAsync(v => v.Id == venueId);

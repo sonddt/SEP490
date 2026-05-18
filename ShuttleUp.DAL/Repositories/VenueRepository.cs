@@ -88,4 +88,91 @@ public class VenueRepository : Repository<Venue>, IVenueRepository
 
     public async Task<List<Venue>> GetActiveWithBookingStatsAsync(DateTime? rangeStart, DateTime? rangeEnd, DateTime startOfMonthUtc, DateTime startOfPrevMonthUtc, DateTime endOfPrevMonthUtc)
         => await _dbSet.Where(v => v.IsActive == true).Include(v => v.Bookings).Include(v => v.OwnerUser).ToListAsync();
+
+    // ── Public Browsing ──
+    public async Task<Venue?> GetPublicVenueDetailsAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _dbSet.AsNoTracking()
+            .Include(v => v.Files)
+            .Include(v => v.OwnerUser).ThenInclude(u => u!.AvatarFile)
+            .Include(v => v.Courts).ThenInclude(c => c.CourtPrices)
+            .Include(v => v.VenueReviews)
+            .Include(v => v.VenueOpenHours)
+            .FirstOrDefaultAsync(v => v.Id == id && v.IsActive == true, ct);
+    }
+
+    public IQueryable<Venue> GetPublicMapVenuesQueryable()
+    {
+        return _dbSet.AsNoTracking()
+            .Where(v => v.IsActive == true && v.Lat.HasValue && v.Lng.HasValue)
+            .Include(v => v.Courts).ThenInclude(c => c.CourtPrices);
+    }
+
+    public IQueryable<Venue> GetPublicApprovedVenuesQueryable()
+    {
+        return _dbSet.AsNoTracking()
+            .Where(v => v.IsActive == true)
+            .Include(v => v.OwnerUser).ThenInclude(u => u!.AvatarFile)
+            .Include(v => v.Files)
+            .Include(v => v.VenueReviews)
+            .Include(v => v.Courts).ThenInclude(c => c.CourtPrices);
+    }
+
+    public async Task<List<Court>> GetPublicVenueCourtsAsync(Guid venueId, CancellationToken ct = default)
+    {
+        return await _context.Courts.AsNoTracking()
+            .Include(c => c.CourtPrices)
+            .Include(c => c.CourtOpenHours)
+            .Where(c => c.VenueId == venueId && c.IsActive == true && c.Status == "ACTIVE")
+            .OrderBy(c => c.Name)
+            .ToListAsync(ct);
+    }
+
+    public async Task<List<BookingItem>> GetPublicBookedItemsAsync(Guid venueId, DateTime start, DateTime end, Guid? userId, DateTime now, CancellationToken ct = default)
+    {
+        var q = _context.BookingItems.AsNoTracking()
+            .Where(bi => bi.Court != null && bi.Court.VenueId == venueId
+                                          && bi.StartTime < end && bi.EndTime > start
+                                          && bi.Booking != null && bi.Booking.Status != "CANCELLED");
+
+        if (userId != null)
+        {
+            var me = userId.Value;
+            q = q.Where(bi =>
+                bi.Booking!.Status != "HOLDING" ||
+                (bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now && bi.Booking.UserId != me)
+            );
+        }
+        else 
+        {
+            q = q.Where(bi => 
+                bi.Booking!.Status != "HOLDING" || 
+                (bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now)
+            );
+        }
+
+        return await q.ToListAsync(ct);
+    }
+
+    public async Task<List<CourtBlock>> GetPublicCourtBlocksAsync(Guid venueId, DateTime start, DateTime end, CancellationToken ct = default)
+    {
+        return await _context.CourtBlocks.AsNoTracking()
+            .Where(b => b.Court != null && b.Court.VenueId == venueId
+                                        && b.StartTime < end && b.EndTime > start)
+            .ToListAsync(ct);
+    }
+
+    public async Task<List<CourtOpenHour>> GetPublicOpenHoursAsync(Guid venueId, int dayOfWeek, CancellationToken ct = default)
+    {
+        var courtIds = await _context.Courts.AsNoTracking()
+            .Where(c => c.VenueId == venueId && c.IsActive == true && c.Status == "ACTIVE")
+            .Select(c => c.Id)
+            .ToListAsync(ct);
+
+        if (!courtIds.Any()) return new List<CourtOpenHour>();
+
+        return await _context.CourtOpenHours.AsNoTracking()
+            .Where(o => o.CourtId != null && courtIds.Contains(o.CourtId.Value) && o.DayOfWeek == dayOfWeek)
+            .ToListAsync(ct);
+    }
 }

@@ -1,7 +1,7 @@
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using ShuttleUp.DAL.Models;
+using ShuttleUp.BLL.Interfaces;
 
 namespace ShuttleUp.Backend.Controllers;
 
@@ -13,47 +13,21 @@ namespace ShuttleUp.Backend.Controllers;
 [AllowAnonymous]
 public class FeaturedPostsController : ControllerBase
 {
-    private readonly ShuttleUpDbContext _db;
+    private readonly IFeaturedPostService _featuredPostService;
 
-    public FeaturedPostsController(ShuttleUpDbContext db)
+    public FeaturedPostsController(IFeaturedPostService featuredPostService)
     {
-        _db = db;
+        _featuredPostService = featuredPostService;
     }
 
     /// <summary>
     /// Bài đã xuất bản và nằm trong khung thời gian hiển thị.
-    /// Dùng giờ cục bộ để so khớp kiểu DATETIME của MySQL (không offset).
     /// Thứ tự: bài tạo mới nhất lên trước (created_at giảm dần).
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetPublished()
     {
-        var now = DateTime.Now;
-
-        var items = await _db.FeaturedPosts
-            .AsNoTracking()
-            .Where(p => p.IsPublished
-                        && (p.DisplayFrom == null || p.DisplayFrom <= now)
-                        && (p.DisplayUntil == null || p.DisplayUntil >= now))
-            .OrderByDescending(p => p.CreatedAt)
-            .ThenByDescending(p => p.Id)
-            .Select(p => new
-            {
-                p.Id,
-                p.Title,
-                p.Excerpt,
-                p.Body,
-                p.CoverImageUrl,
-                p.LinkUrl,
-                p.DisplayFrom,
-                p.DisplayUntil,
-                p.AuthorRole,
-                p.VenueId,
-                VenueName = p.Venue != null ? p.Venue.Name : (string?)null,
-                p.CreatedAt
-            })
-            .ToListAsync();
-
+        var items = await _featuredPostService.GetPublishedAsync();
         return Ok(items);
     }
 }

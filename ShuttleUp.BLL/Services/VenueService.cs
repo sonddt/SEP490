@@ -294,4 +294,272 @@ public class VenueService : IVenueService
         var result = await _cloudinary.UploadAsync(uploadParams);
         return result?.SecureUrl?.ToString() ?? throw new InvalidOperationException("Cloudinary upload failed.");
     }
+
+    // ── Public Browsing ──
+    private static List<string>? ParseJsonArray(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try { return JsonSerializer.Deserialize<List<string>>(json); } catch { return null; }
+    }
+
+    public async Task<VenuePublicDetailsDto?> GetPublicVenueDetailsAsync(Guid id, int currentDayOfWeek, CancellationToken ct = default)
+    {
+        var raw = await _venueRepo.GetPublicVenueDetailsAsync(id, ct);
+        if (raw == null) return null;
+
+        var minPrice = raw.Courts.SelectMany(c => c.CourtPrices).Min(cp => (decimal?)cp.Price);
+        var maxPrice = raw.Courts.SelectMany(c => c.CourtPrices).Max(cp => (decimal?)cp.Price);
+        var rating = raw.VenueReviews.Any() ? raw.VenueReviews.Average(r => (double?)r.Stars) ?? 0.0 : 0.0;
+        
+        var thumbnailUrl = raw.Files.Where(f => f.FileName != null && f.FileName.Contains("mac_dinh")).Select(f => f.FileUrl).FirstOrDefault() 
+                           ?? raw.Files.OrderByDescending(f => f.CreatedAt).Select(f => f.FileUrl).FirstOrDefault();
+
+        var todayOpenHours = raw.VenueOpenHours
+            .Where(o => o.DayOfWeek == currentDayOfWeek)
+            .Select(o => new { o.OpenTime, o.CloseTime })
+            .FirstOrDefault();
+
+        return new VenuePublicDetailsDto
+        {
+            Id = raw.Id,
+            Name = raw.Name,
+            Address = raw.Address,
+            Lat = raw.Lat,
+            Lng = raw.Lng,
+            WeeklyDiscountPercent = raw.WeeklyDiscountPercent,
+            MonthlyDiscountPercent = raw.MonthlyDiscountPercent,
+            Description = raw.Description,
+            Includes = ParseJsonArray(raw.Includes),
+            Rules = ParseJsonArray(raw.Rules),
+            Amenities = ParseJsonArray(raw.Amenities),
+            SlotDuration = raw.SlotDuration,
+            CancelAllowed = raw.CancelAllowed,
+            ThumbnailUrl = thumbnailUrl,
+            TodayOpenHours = todayOpenHours,
+            OwnerUserId = raw.OwnerUserId,
+            OwnerName = raw.OwnerUser?.FullName ?? raw.OwnerUser?.Email,
+            OwnerEmail = raw.OwnerUser?.Email,
+            OwnerAvatarUrl = raw.OwnerUser?.AvatarFile?.FileUrl,
+            OwnerPhone = raw.OwnerUser?.PhoneNumber,
+            MinPrice = minPrice,
+            MaxPrice = maxPrice,
+            Rating = rating,
+            ReviewCount = raw.VenueReviews.Count,
+            ImageUrls = raw.Files.OrderByDescending(f => f.CreatedAt).Select(f => f.FileUrl!).ToList()
+        };
+    }
+
+    public async Task<IEnumerable<VenueMapItemDto>> GetMapVenuesAsync(string? search, decimal? minPrice, decimal? maxPrice, string? amenities, bool? cancelAllowed, CancellationToken ct = default)
+    {
+        var query = _venueRepo.GetPublicMapVenuesQueryable();
+
+        if (cancelAllowed.HasValue)
+            query = query.Where(v => v.CancelAllowed == cancelAllowed.Value);
+
+        var rawList = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(query, ct);
+        var filteredList = rawList.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            try {
+                filteredList = filteredList.Where(v => 
+                    ShuttleUp.DAL.Helpers.SearchNormalize.FoldedContains(v.Name, search) || 
+                    ShuttleUp.DAL.Helpers.SearchNormalize.FoldedContains(v.Address, search)
+                );
+            } catch {
+                var q = search.Trim().ToLowerInvariant();
+                filteredList = filteredList.Where(v => 
+                    (v.Name != null && v.Name.ToLowerInvariant().Contains(q)) || 
+                    (v.Address != null && v.Address.ToLowerInvariant().Contains(q))
+                );
+            }
+        }
+
+        var mapItems = filteredList.Select(v => new VenueMapItemDto
+        {
+            Id = v.Id,
+            Lat = v.Lat,
+            Lng = v.Lng,
+            Name = v.Name,
+            MinPrice = v.Courts.SelectMany(c => c.CourtPrices).Min(cp => (decimal?)cp.Price)
+        }).ToList();
+
+        if (minPrice.HasValue) mapItems = mapItems.Where(v => v.MinPrice.HasValue && v.MinPrice.Value >= minPrice.Value).ToList();
+        if (maxPrice.HasValue) mapItems = mapItems.Where(v => v.MinPrice.HasValue && v.MinPrice.Value <= maxPrice.Value).ToList();
+
+        if (!string.IsNullOrWhiteSpace(amenities))
+        {
+            var required = amenities.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(a => a.Trim().ToLowerInvariant()).ToList();
+            if (required.Any())
+            {
+                var dict = rawList.ToDictionary(v => v.Id, v => v.Amenities);
+                mapItems = mapItems.Where(item => 
+                {
+                    var amJson = dict[item.Id];
+                    if (string.IsNullOrWhiteSpace(amJson)) return false;
+                    var venueAmenities = ParseJsonArray(amJson)?.Select(a => a.Trim().ToLowerInvariant()).ToList() ?? new List<string>();
+                    return required.All(req => venueAmenities.Contains(req));
+                }).ToList();
+            }
+        }
+
+        return mapItems;
+    }
+
+    public async Task<IEnumerable<VenueCardDto>> GetApprovedVenuesPublicAsync(string? sortBy, string? sortDir, CancellationToken ct = default)
+    {
+        var q = _venueRepo.GetPublicApprovedVenuesQueryable();
+        var rawList = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(q, ct);
+
+        var projected = rawList.Select(v => new VenueCardDto
+        {
+            Id = v.Id,
+            Name = v.Name,
+            Address = v.Address,
+            Lat = v.Lat,
+            Lng = v.Lng,
+            CreatedAt = v.CreatedAt,
+            OwnerUserId = v.OwnerUserId,
+            OwnerName = string.IsNullOrWhiteSpace(v.OwnerUser?.FullName) ? v.OwnerUser?.Email : v.OwnerUser?.FullName,
+            OwnerAvatarUrl = v.OwnerUser?.AvatarFile?.FileUrl,
+            ThumbnailUrl = v.Files.Where(f => f.FileName != null && f.FileName.Contains("mac_dinh")).Select(f => f.FileUrl).FirstOrDefault() ?? v.Files.OrderByDescending(f => f.CreatedAt).Select(f => f.FileUrl).FirstOrDefault(),
+            Amenities = ParseJsonArray(v.Amenities),
+            Rating = v.VenueReviews.Any() ? v.VenueReviews.Average(r => (double?)r.Stars) ?? 0.0 : 0.0,
+            ReviewCount = v.VenueReviews.Count,
+            MinPrice = v.Courts.SelectMany(c => c.CourtPrices).Min(cp => (decimal?)cp.Price),
+            MaxPrice = v.Courts.SelectMany(c => c.CourtPrices).Max(cp => (decimal?)cp.Price)
+        }).ToList();
+
+        sortBy = string.IsNullOrWhiteSpace(sortBy) ? "price" : sortBy.Trim().ToLowerInvariant();
+        sortDir = string.IsNullOrWhiteSpace(sortDir) ? "asc" : sortDir.Trim().ToLowerInvariant();
+
+        if (sortBy == "price")
+        {
+            return sortDir == "desc"
+                ? projected.OrderByDescending(v => v.MinPrice.HasValue).ThenByDescending(v => v.MinPrice).ToList()
+                : projected.OrderByDescending(v => v.MinPrice.HasValue).ThenBy(v => v.MinPrice).ToList();
+        }
+        else
+        {
+            return sortDir == "desc"
+                ? projected.OrderByDescending(v => v.Name).ToList()
+                : projected.OrderBy(v => v.Name).ToList();
+        }
+    }
+
+    public async Task<IEnumerable<VenuePublicCourtDto>> GetVenueCourtsPublicAsync(Guid venueId, CancellationToken ct = default)
+    {
+        var courts = await _venueRepo.GetPublicVenueCourtsAsync(venueId, ct);
+        return courts.Select(c => new VenuePublicCourtDto
+        {
+            Id = c.Id,
+            Name = c.Name,
+            GroupName = c.GroupName,
+            Prices = c.CourtPrices.OrderBy(p => p.StartTime).Select(p => new VenuePublicCourtPriceDto
+            {
+                StartTime = p.StartTime.GetValueOrDefault(),
+                EndTime = p.EndTime.GetValueOrDefault(),
+                Price = p.Price.GetValueOrDefault(),
+                IsWeekend = p.IsWeekend.GetValueOrDefault()
+            }).ToList(),
+            OpenHours = c.CourtOpenHours.OrderBy(o => o.DayOfWeek).Select(o => new VenuePublicCourtOpenHourDto
+            {
+                DayOfWeek = o.DayOfWeek.GetValueOrDefault(),
+                Enabled = o.OpenTime.HasValue && o.CloseTime.HasValue,
+                OpenTime = o.OpenTime,
+                CloseTime = o.CloseTime
+            }).ToList()
+        });
+    }
+
+    public async Task<object> GetVenueAvailabilityAsync(Guid venueId, string dateString, Guid? currentUserGuid, CancellationToken ct = default)
+    {
+        if (!DateOnly.TryParse(dateString, out var day))
+            throw new ArgumentException("Tham số date phải là YYYY-MM-DD.");
+
+        var venue = await _venueRepo.GetByIdAsync(venueId);
+        if (venue == null || venue.IsActive == false) throw new KeyNotFoundException();
+
+        var dayStart = day.ToDateTime(TimeOnly.MinValue);
+        var dayEnd = dayStart.AddDays(1);
+        var now = DateTime.UtcNow;
+
+        var booked = await _venueRepo.GetPublicBookedItemsAsync(venueId, dayStart, dayEnd, currentUserGuid, now, ct);
+        var blocked = await _venueRepo.GetPublicCourtBlocksAsync(venueId, dayStart, dayEnd, ct);
+        var courts = await _venueRepo.GetPublicVenueCourtsAsync(venueId, ct);
+
+        var intervalsByCourt = courts.ToDictionary(c => c.Id, _ => new List<object>());
+
+        foreach (var row in booked)
+        {
+            if (intervalsByCourt.TryGetValue(row.CourtId!.Value, out var list))
+                list.Add(new { start = row.StartTime, end = row.EndTime, kind = "booked" });
+        }
+
+        foreach (var row in blocked)
+        {
+            if (intervalsByCourt.TryGetValue(row.CourtId!.Value, out var list))
+                list.Add(new { start = row.StartTime, end = row.EndTime, kind = "blocked", reasonCode = row.ReasonCode, reasonDetail = row.ReasonDetail });
+        }
+
+        var dayOfWeek = (int)day.DayOfWeek;
+        var openHoursForDay = await _venueRepo.GetPublicOpenHoursAsync(venueId, dayOfWeek, ct);
+        var configuredCourtIds = openHoursForDay.Select(o => o.CourtId!.Value).Distinct().ToHashSet();
+
+        foreach (var cid in courts.Select(c => c.Id))
+        {
+            if (!configuredCourtIds.Contains(cid) || !intervalsByCourt.TryGetValue(cid, out var list))
+                continue;
+
+            var record = openHoursForDay.FirstOrDefault(o => o.CourtId == cid);
+            if (record == null || !record.OpenTime.HasValue || !record.CloseTime.HasValue)
+            {
+                list.Add(new { start = dayStart, end = dayEnd, kind = "closed" });
+                continue;
+            }
+
+            var openDt = day.ToDateTime(record.OpenTime.Value);
+            var closeDt = day.ToDateTime(record.CloseTime.Value);
+
+            if (openDt > dayStart)
+                list.Add(new { start = dayStart, end = openDt, kind = "closed" });
+
+            var slotMins = venue.SlotDuration > 0 ? venue.SlotDuration : 30;
+            var afterCloseSlotStart = closeDt.AddMinutes(slotMins);
+            if (afterCloseSlotStart < dayEnd)
+                list.Add(new { start = afterCloseSlotStart, end = dayEnd, kind = "closed" });
+        }
+
+        return intervalsByCourt.Select(kv => new { courtId = kv.Key, intervals = kv.Value });
+    }
+
+    public async Task<VenueCheckoutSettingsPublicDto?> GetCheckoutSettingsPublicAsync(Guid venueId, decimal? amount, string? addInfo, CancellationToken ct = default)
+    {
+        var v = await _venueRepo.GetByIdAsync(venueId);
+        if (v == null || v.IsActive == false) return null;
+
+        var bin = VietQrHelper.ResolveBin(v.PaymentBankBin, v.PaymentBankName);
+        var vietQrUrl = VietQrHelper.BuildQrImageUrl(bin, v.PaymentAccountNumber, amount ?? 0m, string.IsNullOrWhiteSpace(addInfo) ? null : addInfo.Trim());
+
+        return new VenueCheckoutSettingsPublicDto
+        {
+            VenueId = v.Id,
+            VenueName = v.Name,
+            BankName = v.PaymentBankName,
+            BankBin = bin,
+            AccountNumber = v.PaymentAccountNumber,
+            AccountHolder = v.PaymentAccountHolder,
+            TransferNoteTemplate = v.PaymentTransferNoteTemplate ?? "[SĐT] - [Tên sân] - [Ngày]",
+            PaymentNote = v.PaymentNote,
+            VenueRules = v.VenueRules,
+            VietQrImageUrl = vietQrUrl,
+            Cancellation = new VenueCancellationPolicyPublicDto
+            {
+                AllowCancel = v.CancelAllowed,
+                CancelBeforeMinutes = v.CancelBeforeMinutes,
+                RefundType = v.RefundType ?? "NONE",
+                RefundPercent = v.RefundPercent
+            }
+        };
+    }
 }

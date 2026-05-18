@@ -7,6 +7,8 @@ public interface IViolationReportRepository : IRepository<ViolationReport>
     Task<ViolationReport?> GetWithReporterAsync(Guid id);
     Task<ViolationReport?> GetDetailAsync(Guid id);
     Task<(int total, List<ViolationReport> items)> GetReportsPagedAsync(string? targetType, string? status, string? search, bool overdueRefund, int skip, int take);
+    Task<(int total, List<ViolationReport> items)> GetMyReportsPagedAsync(Guid reporterId, int skip, int take);
+    Task<bool> HasPendingReportAsync(Guid reporterId, string targetType, Guid targetId);
     Task AddLogAsync(ViolationReportLog log);
     Task<List<ViolationReportLog>> GetLogsAsync(Guid reportId);
 

@@ -1,9 +1,10 @@
+using System;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using ShuttleUp.BLL.DTOs.Chat;
 using ShuttleUp.BLL.Interfaces;
-using ShuttleUp.DAL.Models;
-using DalFile = ShuttleUp.DAL.Models.File;
 
 namespace ShuttleUp.Backend.Controllers;
 
@@ -13,14 +14,10 @@ namespace ShuttleUp.Backend.Controllers;
 public class ChatController : ControllerBase
 {
     private readonly IChatService _chatService;
-    private readonly IFileService _fileService;
-    private readonly ShuttleUpDbContext _db;
 
-    public ChatController(IChatService chatService, IFileService fileService, ShuttleUpDbContext db)
+    public ChatController(IChatService chatService)
     {
         _chatService = chatService;
-        _fileService = fileService;
-        _db = db;
     }
 
     private Guid CurrentUserId =>
@@ -65,38 +62,22 @@ public class ChatController : ControllerBase
     [RequestSizeLimit(8_000_000)]
     public async Task<IActionResult> UploadChatImage(Guid roomId, IFormFile file)
     {
-        if (!await _chatService.IsMemberAsync(roomId, CurrentUserId))
-            return Forbid();
-
-        if (file == null || file.Length <= 0)
-            return BadRequest(new { message = "Vui lòng chọn ảnh." });
-        if (file.ContentType == null || !file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-            return BadRequest(new { message = "Chỉ được đính kèm file ảnh." });
-
-        string secureUrl;
         try
         {
-            var upload = await _fileService.UploadChatImageAsync(file, roomId, CurrentUserId, HttpContext.RequestAborted);
-            secureUrl = upload.SecureUrl;
+            var result = await _chatService.UploadChatImageAsync(roomId, CurrentUserId, file, HttpContext.RequestAborted);
+            return Ok(new { fileId = result.Id, url = result.Url });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
             return StatusCode(500, new { message = "Tải ảnh lên thất bại: " + ex.Message });
         }
-
-        var fileRow = new DalFile
-        {
-            Id = Guid.NewGuid(),
-            FileUrl = secureUrl,
-            FileName = file.FileName,
-            MimeType = file.ContentType,
-            FileSize = (int?)file.Length,
-            UploadedByUserId = CurrentUserId,
-            CreatedAt = DateTime.UtcNow
-        };
-        _db.Files.Add(fileRow);
-        await _db.SaveChangesAsync();
-
-        return Ok(new { fileId = fileRow.Id, url = secureUrl });
     }
 }

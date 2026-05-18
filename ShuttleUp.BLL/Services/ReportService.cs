@@ -8,10 +8,29 @@ public class ReportService : IReportService
 {
     private const int RefundSlaDays = 7;
     private readonly IViolationReportRepository _reportRepo;
+    private readonly IUserRepository _userRepo;
+    private readonly IVenueRepository _venueRepo;
+    private readonly IMatchingRepository _matchingRepo;
+    private readonly IBookingRepository _bookingRepo;
+    private readonly IFileRepository _fileRepo;
+    private readonly IFileService _fileService;
 
-    public ReportService(IViolationReportRepository reportRepo)
+    public ReportService(
+        IViolationReportRepository reportRepo,
+        IUserRepository userRepo,
+        IVenueRepository venueRepo,
+        IMatchingRepository matchingRepo,
+        IBookingRepository bookingRepo,
+        IFileRepository fileRepo,
+        IFileService fileService)
     {
         _reportRepo = reportRepo;
+        _userRepo = userRepo;
+        _venueRepo = venueRepo;
+        _matchingRepo = matchingRepo;
+        _bookingRepo = bookingRepo;
+        _fileRepo = fileRepo;
+        _fileService = fileService;
     }
 
     public async Task<object> GetReportsPagedAsync(string? targetType, string? status, string? search, bool overdueRefund, int page, int pageSize)
@@ -129,5 +148,128 @@ public class ReportService : IReportService
         if (report.TargetId == null || report.TargetId == Guid.Empty) return;
         if (action == "REMOVE_POST" && report.TargetType == "MATCHING_POST")
             await _reportRepo.DeactivateMatchingPostAsync(report.TargetId.Value);
+    }
+
+    public async Task<ShuttleUp.BLL.DTOs.Report.MyReportsPagedResultDto> GetMyReportsAsync(Guid userId, int page, int pageSize)
+    {
+        var (totalItems, rawItems) = await _reportRepo.GetMyReportsPagedAsync(userId, (page - 1) * pageSize, pageSize);
+        var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+
+        var items = rawItems.Select(r => new ShuttleUp.BLL.DTOs.Report.MyReportItemDto
+        {
+            Id = r.Id,
+            TargetType = r.TargetType,
+            TargetId = r.TargetId,
+            Reason = r.Reason,
+            Description = r.Description,
+            Status = r.Status,
+            AdminAction = r.AdminAction,
+            AdminNote = r.AdminNote,
+            CreatedAt = r.CreatedAt,
+            DecisionAt = r.DecisionAt,
+            RefundDeadlineAt = r.RefundDeadlineAt,
+            FileUrls = (r.Files ?? (ICollection<DAL.Models.File>)new List<DAL.Models.File>()).Select(f => f.FileUrl).ToList(),
+        }).ToList();
+
+        return new ShuttleUp.BLL.DTOs.Report.MyReportsPagedResultDto
+        {
+            TotalItems = totalItems,
+            TotalPages = totalPages,
+            Page = page,
+            PageSize = pageSize,
+            Items = items
+        };
+    }
+
+    public async Task<Guid> CreateReportAsync(Guid userId, ShuttleUp.BLL.DTOs.Report.CreateReportRequestDto dto)
+    {
+        var targetType = (dto.TargetType ?? "").Trim().ToUpperInvariant();
+        if (targetType is not ("USER" or "VENUE" or "MATCHING_POST" or "BOOKING"))
+            throw new ArgumentException("Loại report không hợp lệ.");
+
+        if (dto.TargetId == Guid.Empty)
+            throw new ArgumentException("Thiếu đối tượng cần report.");
+
+        var reason = (dto.Reason ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(reason) || reason.Length > 100)
+            throw new ArgumentException("Vui lòng chọn lý do report hợp lệ.");
+
+        var desc = (dto.Description ?? "").Trim();
+        if (desc.Length > 3000)
+            throw new ArgumentException("Mô tả tối đa 3000 ký tự.");
+
+        if (targetType == "USER" && dto.TargetId == userId)
+            throw new InvalidOperationException("Bạn không thể tự báo cáo chính mình.");
+
+        if (await _reportRepo.HasPendingReportAsync(userId, targetType, dto.TargetId))
+            throw new InvalidOperationException("Bạn đã gửi report cho đối tượng này rồi. Vui lòng chờ xử lý nhé.");
+
+        var fileIds = dto.FileIds?.Where(id => id != Guid.Empty).Distinct().ToList() ?? new List<Guid>();
+
+        if (targetType == "BOOKING" && fileIds.Count == 0)
+            throw new ArgumentException("Khiếu nại giao dịch cần đính kèm ít nhất 1 ảnh.");
+
+        switch (targetType)
+        {
+            case "USER":
+                if (await _userRepo.GetByIdAsync(dto.TargetId) == null)
+                    throw new KeyNotFoundException("Không tìm thấy người dùng này.");
+                break;
+            case "VENUE":
+                if (await _venueRepo.GetByIdAsync(dto.TargetId) == null)
+                    throw new KeyNotFoundException("Không tìm thấy cụm sân này.");
+                break;
+            case "MATCHING_POST":
+                if (await _matchingRepo.GetByIdAsync(dto.TargetId) == null)
+                    throw new KeyNotFoundException("Không tìm thấy bài đăng này.");
+                break;
+            case "BOOKING":
+                var booking = await _bookingRepo.GetBookingWithVenueAsync(dto.TargetId);
+                if (booking == null)
+                    throw new KeyNotFoundException("Không tìm thấy booking này.");
+                if (booking.UserId != userId && booking.Venue?.OwnerUserId != userId)
+                    throw new UnauthorizedAccessException("Bạn không có quyền khiếu nại giao dịch này.");
+                break;
+        }
+
+        var files = fileIds.Count == 0 ? new List<DAL.Models.File>() : await _fileRepo.GetByIdsAsync(fileIds);
+        if (fileIds.Count > 0 && files.Count != fileIds.Count)
+            throw new ArgumentException("Có ảnh đính kèm không tồn tại hoặc đã bị xóa.");
+
+        var report = new ViolationReport
+        {
+            Id = Guid.NewGuid(),
+            ReporterUserId = userId,
+            TargetType = targetType,
+            TargetId = dto.TargetId,
+            Reason = reason,
+            Description = string.IsNullOrWhiteSpace(desc) ? null : desc,
+            Status = "PENDING",
+            CreatedAt = DateTime.UtcNow,
+            Files = files
+        };
+
+        await _reportRepo.AddAsync(report);
+
+        return report.Id;
+    }
+
+    public async Task<ShuttleUp.BLL.DTOs.Profile.ManagerDocumentDto> UploadReportImageAsync(Guid userId, Microsoft.AspNetCore.Http.IFormFile file, Guid reportId, System.Threading.CancellationToken cancellationToken = default)
+    {
+        var upload = await _fileService.UploadReportAttachmentAsync(file, reportId == Guid.Empty ? Guid.NewGuid() : reportId, userId, cancellationToken);
+        var secureUrl = upload.SecureUrl;
+
+        var fileRow = new DAL.Models.File
+        {
+            Id = Guid.NewGuid(),
+            FileUrl = secureUrl,
+            FileName = file.FileName,
+            MimeType = file.ContentType,
+            FileSize = (int?)file.Length,
+            UploadedByUserId = userId,
+            CreatedAt = DateTime.UtcNow
+        };
+        await _fileRepo.AddFileAsync(fileRow);
+        return new ShuttleUp.BLL.DTOs.Profile.ManagerDocumentDto { Id = fileRow.Id, Url = fileRow.FileUrl, MimeType = fileRow.MimeType };
     }
 }

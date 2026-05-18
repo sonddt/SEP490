@@ -25,4 +25,13 @@ public interface IVenueRepository : IRepository<Venue>
     // Stats
     Task<int> CountActiveAsync();
     Task<List<Venue>> GetActiveWithBookingStatsAsync(DateTime? rangeStart, DateTime? rangeEnd, DateTime startOfMonthUtc, DateTime startOfPrevMonthUtc, DateTime endOfPrevMonthUtc);
+
+    // ── Public Browsing ──
+    Task<Venue?> GetPublicVenueDetailsAsync(Guid id, CancellationToken ct = default);
+    IQueryable<Venue> GetPublicMapVenuesQueryable();
+    IQueryable<Venue> GetPublicApprovedVenuesQueryable();
+    Task<List<Court>> GetPublicVenueCourtsAsync(Guid venueId, CancellationToken ct = default);
+    Task<List<BookingItem>> GetPublicBookedItemsAsync(Guid venueId, DateTime start, DateTime end, Guid? userId, DateTime now, CancellationToken ct = default);
+    Task<List<CourtBlock>> GetPublicCourtBlocksAsync(Guid venueId, DateTime start, DateTime end, CancellationToken ct = default);
+    Task<List<CourtOpenHour>> GetPublicOpenHoursAsync(Guid venueId, int dayOfWeek, CancellationToken ct = default);
 }

@@ -26,6 +26,13 @@ public class FeaturedPostService : IFeaturedPostService
         return posts.Select(p => MapToDto(p)).ToList();
     }
 
+    public async Task<List<FeaturedPostDto>> GetPublishedAsync()
+    {
+        var now = DateTime.Now; // Đồng nhất timezone với controller cũ (so sánh db datetime không dùng offset)
+        var posts = await _repo.GetPublishedOrderedAsync(now);
+        return posts.Select(p => MapToDto(p)).ToList();
+    }
+
     public async Task<FeaturedPostDto> CreateAsync(Guid authorUserId, string authorRole, FeaturedPostUpsertDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Title))

@@ -2,9 +2,8 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace ShuttleUp.Backend.Utils;
+namespace ShuttleUp.DAL.Helpers;
 
-/// <summary>Đồng bộ logic với ShuttleUp.Frontend/src/utils/searchNormalize.js (bỏ dấu, gộp space, thường).</summary>
 public static class SearchNormalize
 {
     private static readonly Regex AdminPrefixes = new(@"\b(thanh pho|tinh|quan|huyen|thi xa|phuong|xa|tp|tx|q|p|h)\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -29,8 +28,6 @@ public static class SearchNormalize
     public static string Fold(string? s)
     {
         if (string.IsNullOrEmpty(s)) return "";
-        
-        // 1. Lowercase and Remove Accents (NFD -> loop -> NFC)
         var normalized = s.Normalize(NormalizationForm.FormD);
         var sb = new StringBuilder();
         foreach (var c in normalized)
@@ -39,21 +36,12 @@ public static class SearchNormalize
                 sb.Append(c);
         }
         var str = sb.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant();
-
-        // 2. Replace punctuation with space
         str = Punctuation.Replace(str, " ");
-
-        // 3. Strip administrative prefixes
         str = AdminPrefixes.Replace(str, " ");
-
-        // 4. Apply City Aliases
         foreach (var kvp in CityAliases)
         {
-            // \b replacement in C#
             str = Regex.Replace(str, $@"\b{kvp.Key}\b", kvp.Value, RegexOptions.IgnoreCase);
         }
-
-        // 5. Collapse whitespace and trim
         return Whitespace.Replace(str, " ").Trim();
     }
 
@@ -61,11 +49,8 @@ public static class SearchNormalize
     {
         var foldedQuery = Fold(rawQuery);
         if (string.IsNullOrEmpty(foldedQuery)) return true;
-        
         var target = Fold(haystack);
         var tokens = foldedQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        
-        // Kiểm tra xem tất cả các từ trong từ khóa có xuất hiện trong chuỗi mục tiêu không
         return tokens.All(t => target.Contains(t, StringComparison.Ordinal));
     }
 }

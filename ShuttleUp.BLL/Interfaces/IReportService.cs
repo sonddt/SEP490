@@ -13,6 +13,11 @@ public interface IReportService
     // Resolve owner user for notifications
     Task<Guid?> ResolveTargetOwnerAsync(string? targetType, Guid targetId);
     Task<(Guid? venueOwnerId, string? venueName)?> GetBookingVenueInfoAsync(Guid bookingId);
+
+    // End-User operations
+    Task<ShuttleUp.BLL.DTOs.Report.MyReportsPagedResultDto> GetMyReportsAsync(Guid userId, int page, int pageSize);
+    Task<Guid> CreateReportAsync(Guid userId, ShuttleUp.BLL.DTOs.Report.CreateReportRequestDto dto);
+    Task<ShuttleUp.BLL.DTOs.Profile.ManagerDocumentDto> UploadReportImageAsync(Guid userId, Microsoft.AspNetCore.Http.IFormFile file, Guid reportId, System.Threading.CancellationToken cancellationToken = default);
 }
 
 /// <summary>

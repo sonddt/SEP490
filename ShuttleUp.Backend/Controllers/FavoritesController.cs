@@ -1,9 +1,10 @@
+using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using ShuttleUp.DAL.Models;
+using ShuttleUp.BLL.Interfaces;
 
 namespace ShuttleUp.Backend.Controllers;
 
@@ -12,11 +13,11 @@ namespace ShuttleUp.Backend.Controllers;
 [Authorize]
 public class FavoritesController : ControllerBase
 {
-    private readonly ShuttleUpDbContext _dbContext;
+    private readonly IFavoriteService _favoriteService;
 
-    public FavoritesController(ShuttleUpDbContext dbContext)
+    public FavoritesController(IFavoriteService favoriteService)
     {
-        _dbContext = dbContext;
+        _favoriteService = favoriteService;
     }
 
     private bool TryGetCurrentUserId(out Guid userId)
@@ -37,25 +38,7 @@ public class FavoritesController : ControllerBase
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized(new { message = "Không xác định được người dùng." });
 
-        var favorites = await (from f in _dbContext.FavoriteVenues
-                                join v in _dbContext.Venues on f.VenueId equals v.Id
-                                where f.UserId == userId && v.IsActive == true
-                                select new
-                                {
-                                    v.Id,
-                                    v.Name,
-                                    v.Address,
-                                    v.Lat,
-                                    v.Lng,
-                                    // min/max của tất cả court_prices (weekday & weekend)
-                                    MinPrice = v.Courts
-                                        .SelectMany(c => c.CourtPrices)
-                                        .Min(cp => (decimal?)cp.Price),
-                                    MaxPrice = v.Courts
-                                        .SelectMany(c => c.CourtPrices)
-                                        .Max(cp => (decimal?)cp.Price)
-                                }).ToListAsync();
-
+        var favorites = await _favoriteService.GetMyFavoritesAsync(userId);
         return Ok(favorites);
     }
 
@@ -68,23 +51,19 @@ public class FavoritesController : ControllerBase
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized(new { message = "Không xác định được người dùng." });
 
-        var venue = await _dbContext.Venues.FirstOrDefaultAsync(v => v.Id == venueId && v.IsActive == true);
-        if (venue == null)
-            return NotFound(new { message = "Venue không tồn tại hoặc không hoạt động." });
-
-        var exists = await _dbContext.FavoriteVenues.AnyAsync(f => f.UserId == userId && f.VenueId == venueId);
-        if (exists)
-            return Ok(new { message = "Đã có trong danh sách yêu thích." });
-
-        _dbContext.FavoriteVenues.Add(new FavoriteVenue
+        try
         {
-            UserId = userId,
-            VenueId = venueId,
-            CreatedAt = DateTime.UtcNow
-        });
-        await _dbContext.SaveChangesAsync();
-
-        return Ok(new { message = "Đã thêm vào yêu thích." });
+            await _favoriteService.AddFavoriteAsync(userId, venueId);
+            return Ok(new { message = "Đã thêm vào yêu thích." });
+        }
+        catch (System.Collections.Generic.KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Ok(new { message = ex.Message }); // Theo logic cũ
+        }
     }
 
     /// <summary>
@@ -96,14 +75,14 @@ public class FavoritesController : ControllerBase
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized(new { message = "Không xác định được người dùng." });
 
-        var fav = await _dbContext.FavoriteVenues.FirstOrDefaultAsync(f => f.UserId == userId && f.VenueId == venueId);
-        if (fav == null)
-            return Ok(new { message = "Không có trong danh sách yêu thích." });
-
-        _dbContext.FavoriteVenues.Remove(fav);
-        await _dbContext.SaveChangesAsync();
-
-        return Ok(new { message = "Đã xoá khỏi yêu thích." });
+        try
+        {
+            await _favoriteService.RemoveFavoriteAsync(userId, venueId);
+            return Ok(new { message = "Đã xoá khỏi yêu thích." });
+        }
+        catch (System.Collections.Generic.KeyNotFoundException ex)
+        {
+            return Ok(new { message = ex.Message }); // Theo logic cũ
+        }
     }
 }
-

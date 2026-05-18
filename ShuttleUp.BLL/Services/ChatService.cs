@@ -8,10 +8,14 @@ namespace ShuttleUp.BLL.Services;
 public class ChatService : IChatService
 {
     private readonly IChatRepository _chatRepo;
+    private readonly IFileRepository _fileRepo;
+    private readonly IFileService _fileService;
 
-    public ChatService(IChatRepository chatRepo)
+    public ChatService(IChatRepository chatRepo, IFileRepository fileRepo, IFileService fileService)
     {
         _chatRepo = chatRepo;
+        _fileRepo = fileRepo;
+        _fileService = fileService;
     }
 
     public async Task<IEnumerable<RoomResponseDto>> GetMyRoomsAsync(Guid userId)
@@ -101,4 +105,32 @@ public class ChatService : IChatService
         FileUrl      = m.Files.FirstOrDefault()?.FileUrl,
         CreatedAt    = m.CreatedAt ?? DateTime.UtcNow,
     };
+
+    public async Task<ShuttleUp.BLL.DTOs.Profile.ManagerDocumentDto> UploadChatImageAsync(Guid roomId, Guid userId, Microsoft.AspNetCore.Http.IFormFile file, System.Threading.CancellationToken ct = default)
+    {
+        if (!await _chatRepo.IsMemberAsync(roomId, userId))
+            throw new UnauthorizedAccessException("Bạn không phải thành viên của room này.");
+
+        if (file == null || file.Length <= 0)
+            throw new ArgumentException("Vui lòng chọn ảnh.");
+        if (file.ContentType == null || !file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Chỉ được đính kèm file ảnh.");
+
+        var upload = await _fileService.UploadChatImageAsync(file, roomId, userId, ct);
+        var secureUrl = upload.SecureUrl;
+
+        var fileRow = new ShuttleUp.DAL.Models.File
+        {
+            Id = Guid.NewGuid(),
+            FileUrl = secureUrl,
+            FileName = file.FileName,
+            MimeType = file.ContentType,
+            FileSize = (int?)file.Length,
+            UploadedByUserId = userId,
+            CreatedAt = DateTime.UtcNow
+        };
+        await _fileRepo.AddFileAsync(fileRow);
+        
+        return new ShuttleUp.BLL.DTOs.Profile.ManagerDocumentDto { Id = fileRow.Id, Url = fileRow.FileUrl, MimeType = fileRow.MimeType };
+    }
 }

@@ -9,13 +9,28 @@ public class VenueReviewService : IVenueReviewService
 {
     private readonly IVenueReviewRepository _reviewRepository;
     private readonly IBookingRepository _bookingRepository;
+    private readonly IVenueRepository _venueRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly IFileRepository _fileRepository;
+    private readonly IFileService _fileService;
+    private readonly INotificationDispatchService _notify;
 
     public VenueReviewService(
         IVenueReviewRepository reviewRepository,
-        IBookingRepository bookingRepository)
+        IBookingRepository bookingRepository,
+        IVenueRepository venueRepository,
+        IUserRepository userRepository,
+        IFileRepository fileRepository,
+        IFileService fileService,
+        INotificationDispatchService notify)
     {
         _reviewRepository = reviewRepository;
         _bookingRepository = bookingRepository;
+        _venueRepository = venueRepository;
+        _userRepository = userRepository;
+        _fileRepository = fileRepository;
+        _fileService = fileService;
+        _notify = notify;
     }
 
     public async Task<VenueRatingSummaryDto> GetVenueReviewsAsync(Guid venueId)
@@ -134,7 +149,33 @@ public class VenueReviewService : IVenueReviewService
         await _reviewRepository.AddReviewWithFilesAsync(review, request.FileIds);
 
         var saved = await _reviewRepository.GetByIdWithIncludesAsync(review.Id);
-        return MapToDto(saved!);
+        var result = MapToDto(saved!);
+
+        // Gửi thông báo cho chủ sân
+        try
+        {
+            var venue = await _venueRepository.GetByIdAsync(venueId);
+            if (venue?.OwnerUserId != null && venue.OwnerUserId != userId)
+            {
+                var reviewer = await _userRepository.GetByIdAsync(userId);
+                var name = reviewer?.FullName ?? "Người chơi";
+                await _notify.NotifyUserAsync(
+                    venue.OwnerUserId.Value,
+                    "VENUE_REVIEW_NEW", // Hoặc NotificationTypes.VenueReviewNew
+                    "Có đánh giá mới tại sân",
+                    $"{name} vừa đánh giá {result.Stars} sao.",
+                    new
+                    {
+                        deepLink = $"/manager/venues/{venueId}/courts",
+                        venueId,
+                        reviewId = result.Id,
+                    },
+                    sendEmail: false);
+            }
+        }
+        catch { /* Bỏ qua nếu lỗi notify để tránh ngắt luồng chính */ }
+
+        return result;
     }
 
     public async Task<ReviewResponseDto> UpdateReviewAsync(
@@ -194,6 +235,66 @@ public class VenueReviewService : IVenueReviewService
             FileIds = r.Files?.Select(f => f.Id).ToList() ?? [],
             OwnerReply = r.OwnerReply,
             OwnerReplyAt = r.OwnerReplyAt,
+        };
+    }
+
+    public async Task<ShuttleUp.BLL.DTOs.Profile.ManagerDocumentDto> UploadReviewImageAsync(Guid venueId, Guid userId, Microsoft.AspNetCore.Http.IFormFile file, System.Threading.CancellationToken ct = default)
+    {
+        var venue = await _venueRepository.GetByIdAsync(venueId);
+        if (venue == null || venue.IsActive == false)
+            throw new KeyNotFoundException("Không tìm thấy sân.");
+
+        if (file == null || file.Length <= 0)
+            throw new ArgumentException("Vui lòng chọn ảnh.");
+
+        // Validate max bytes (3MB)
+        if (file.Length > 3_000_000)
+            throw new ArgumentException("Ảnh tối đa 3 MB.");
+
+        if (file.ContentType == null || !file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Chỉ được đính kèm file ảnh.");
+
+        // Magic number validation
+        await using (var stream = file.OpenReadStream())
+        {
+            // Đọc header của stream để kiểm tra ảnh hợp lệ
+            var buffer = new byte[8];
+            var bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, ct);
+            if (bytesRead >= 4)
+            {
+                // Kiểm tra JPEG hoặc PNG (FF D8 FF hoặc 89 50 4E 47)
+                var isJpeg = buffer[0] == 0xFF && buffer[1] == 0xD8 && buffer[2] == 0xFF;
+                var isPng = buffer[0] == 0x89 && buffer[1] == 0x50 && buffer[2] == 0x4E && buffer[3] == 0x47;
+                var isGif = buffer[0] == 0x47 && buffer[1] == 0x49 && buffer[2] == 0x46 && buffer[3] == 0x38;
+                if (!isJpeg && !isPng && !isGif)
+                    throw new ArgumentException("Ảnh không đúng định dạng (hệ thống chỉ nhận JPEG, PNG, GIF).");
+            }
+            else
+            {
+                throw new ArgumentException("Ảnh không hợp lệ.");
+            }
+        }
+
+        var upload = await _fileService.UploadVenueReviewImageAsync(file, venueId, userId, ct);
+        var secureUrl = upload.SecureUrl;
+
+        var fileRow = new ShuttleUp.DAL.Models.File
+        {
+            Id = Guid.NewGuid(),
+            FileUrl = secureUrl,
+            FileName = file.FileName,
+            MimeType = file.ContentType,
+            FileSize = (int?)file.Length,
+            UploadedByUserId = userId,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _fileRepository.AddFileAsync(fileRow);
+        return new ShuttleUp.BLL.DTOs.Profile.ManagerDocumentDto
+        {
+            Id = fileRow.Id,
+            Url = fileRow.FileUrl,
+            MimeType = fileRow.MimeType
         };
     }
 }

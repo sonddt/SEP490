@@ -37,13 +37,17 @@ namespace ShuttleUp.Backend
             builder.Services.AddScoped<ICourtRepository, CourtRepository>();
             builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
             builder.Services.AddScoped<IMatchingRepository, MatchingRepository>();
+            builder.Services.AddScoped<IMatchingCommentRepository, MatchingCommentRepository>();
             builder.Services.AddScoped<IManagerProfileRepository, ManagerProfileRepository>();
             builder.Services.AddScoped<IManagerProfileRequestRepository, ManagerProfileRequestRepository>();
             builder.Services.AddScoped<ICourtBlockRepository, CourtBlockRepository>();
             builder.Services.AddScoped<IFileRepository, FileRepository>();
             builder.Services.AddScoped<IVenueCouponRepository, VenueCouponRepository>();
+            builder.Services.AddScoped<ISocialRepository, SocialRepository>();
             builder.Services.AddScoped<IViolationReportRepository, ViolationReportRepository>();
             builder.Services.AddScoped<IFeaturedPostRepository, FeaturedPostRepository>();
+            builder.Services.AddScoped<IUserNotificationRepository, UserNotificationRepository>();
+            builder.Services.AddScoped<IFavoriteVenueRepository, FavoriteVenueRepository>();
 
             // ── BLL — Services ────────────────────────────────────────────────────
             builder.Services.AddScoped<IEmailService, EmailService>();
@@ -62,6 +66,7 @@ namespace ShuttleUp.Backend
             builder.Services.AddScoped<ICourtService, CourtService>();
             builder.Services.AddScoped<IPaymentService, PaymentService>();
             builder.Services.AddScoped<IMatchingService, MatchingService>();
+            builder.Services.AddScoped<IMatchingCommentService, MatchingCommentService>();
             builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("Cloudinary"));
             builder.Services.AddSingleton(sp =>
             {
@@ -107,6 +112,8 @@ namespace ShuttleUp.Backend
             builder.Services.AddScoped<ISignalRNotifier, NotificationHubNotifier>();
             builder.Services.AddScoped<IMatchingPostLifecycleService, MatchingPostLifecycleService>();
             builder.Services.AddScoped<IMatchingPostActivityService, MatchingPostActivityService>();
+            builder.Services.AddScoped<ISocialService, SocialService>();
+builder.Services.AddScoped<IProfileService, ProfileService>();
             builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
             builder.Services.AddScoped<IBanService, BanService>();
             builder.Services.AddSingleton<IBannedUserCache, BannedUserCache>();
@@ -118,6 +125,8 @@ namespace ShuttleUp.Backend
             builder.Services.AddScoped<IReportService, ReportService>();
             builder.Services.AddScoped<IAdminService, AdminService>();
             builder.Services.AddScoped<IBankLookupService, BankLookupService>();
+            builder.Services.AddScoped<IUserNotificationService, UserNotificationService>();
+            builder.Services.AddScoped<IFavoriteService, FavoriteService>();
             builder.Services.AddHttpClient("VietQR");
 
             // ── JWT Authentication ────────────────────────────────────────────────

@@ -1,10 +1,10 @@
-using System.Globalization;
+using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using ShuttleUp.DAL.Models;
+using ShuttleUp.BLL.Interfaces;
 
 namespace ShuttleUp.Backend.Controllers;
 
@@ -13,11 +13,11 @@ namespace ShuttleUp.Backend.Controllers;
 [Authorize]
 public class NotificationsController : ControllerBase
 {
-    private readonly ShuttleUpDbContext _dbContext;
+    private readonly IUserNotificationService _notificationService;
 
-    public NotificationsController(ShuttleUpDbContext dbContext)
+    public NotificationsController(IUserNotificationService notificationService)
     {
-        _dbContext = dbContext;
+        _notificationService = notificationService;
     }
 
     private bool TryGetCurrentUserId(out Guid userId)
@@ -34,43 +34,21 @@ public class NotificationsController : ControllerBase
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized();
 
-        var count = await _dbContext.UserNotifications
-            .AsNoTracking()
-            .CountAsync(n => n.UserId == userId && !n.IsRead && !n.IsDeleted);
-
+        var count = await _notificationService.GetUnreadCountAsync(userId);
         return Ok(new { count });
     }
 
-    /// <summary>Danh sách thông báo. Phân trang: gửi <paramref name="before"/> = nextBefore của lần trước (ISO 8601).</summary>
+    /// <summary>Danh sách thông báo. Phân trang: gửi before = nextBefore của lần trước (ISO 8601).</summary>
     [HttpGet]
     public async Task<IActionResult> GetMine([FromQuery] int take = 50, [FromQuery] string? before = null)
     {
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized();
 
-        take = Math.Clamp(take, 1, 100);
-
-        DateTime? beforeUtc = null;
-        if (!string.IsNullOrWhiteSpace(before)
-            && DateTime.TryParse(before, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsed))
+        var result = await _notificationService.GetNotificationsPagedAsync(userId, take, before);
+        return Ok(new
         {
-            beforeUtc = parsed.Kind == DateTimeKind.Unspecified
-                ? DateTime.SpecifyKind(parsed, DateTimeKind.Utc)
-                : parsed.ToUniversalTime();
-        }
-
-        var q = _dbContext.UserNotifications
-            .AsNoTracking()
-            .Where(n => n.UserId == userId && !n.IsDeleted);
-
-        if (beforeUtc.HasValue)
-            q = q.Where(n => n.CreatedAt < beforeUtc.Value);
-
-        var rows = await q
-            .OrderByDescending(n => n.CreatedAt)
-            .ThenByDescending(n => n.Id)
-            .Take(take + 1)
-            .Select(n => new
+            items = result.Items.Select(n => new
             {
                 n.Id,
                 n.Type,
@@ -78,22 +56,10 @@ public class NotificationsController : ControllerBase
                 n.Body,
                 n.MetadataJson,
                 isRead = n.IsRead,
-                n.CreatedAt,
-            })
-            .ToListAsync();
-
-        var hasMore = rows.Count > take;
-        var page = hasMore ? rows.Take(take).ToList() : rows;
-
-        DateTime? nextBefore = page.Count > 0 ? page[^1].CreatedAt : null;
-
-        return Ok(new
-        {
-            items = page,
-            hasMore,
-            nextBefore = nextBefore.HasValue
-                ? nextBefore.Value.ToUniversalTime().ToString("o", CultureInfo.InvariantCulture)
-                : null,
+                n.CreatedAt
+            }),
+            result.HasMore,
+            result.NextBefore
         });
     }
 
@@ -103,13 +69,11 @@ public class NotificationsController : ControllerBase
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized();
 
-        var n = await _dbContext.UserNotifications.FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId && !x.IsDeleted);
-        if (n == null)
+        var success = await _notificationService.MarkReadAsync(id, userId);
+        if (!success)
             return NotFound();
 
-        n.IsRead = true;
-        await _dbContext.SaveChangesAsync();
-        return Ok(new { n.Id, isRead = true });
+        return Ok(new { Id = id, isRead = true });
     }
 
     [HttpPatch("read-all")]
@@ -118,10 +82,7 @@ public class NotificationsController : ControllerBase
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized();
 
-        await _dbContext.UserNotifications
-            .Where(x => x.UserId == userId && !x.IsRead && !x.IsDeleted)
-            .ExecuteUpdateAsync(s => s.SetProperty(x => x.IsRead, true));
-
+        await _notificationService.MarkAllReadAsync(userId);
         return Ok(new { message = "Đã đánh dấu đã đọc." });
     }
 
@@ -132,12 +93,10 @@ public class NotificationsController : ControllerBase
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized();
 
-        var n = await _dbContext.UserNotifications.FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId && !x.IsDeleted);
-        if (n == null)
+        var success = await _notificationService.SoftDeleteAsync(id, userId);
+        if (!success)
             return NotFound();
 
-        n.IsDeleted = true;
-        await _dbContext.SaveChangesAsync();
-        return Ok(new { n.Id, deleted = true });
+        return Ok(new { Id = id, deleted = true });
     }
 }

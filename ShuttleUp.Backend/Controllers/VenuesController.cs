@@ -1,8 +1,8 @@
-using System.Text.Json;
+using System;
+using System.Security.Claims;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using ShuttleUp.Backend;
-using ShuttleUp.DAL.Models;
+using ShuttleUp.BLL.Interfaces;
 
 namespace ShuttleUp.Backend.Controllers;
 
@@ -14,11 +14,11 @@ namespace ShuttleUp.Backend.Controllers;
 [Route("api/venues")]
 public class VenuesController : ControllerBase
 {
-    private readonly ShuttleUpDbContext _dbContext;
+    private readonly IVenueService _venueService;
 
-    public VenuesController(ShuttleUpDbContext dbContext)
+    public VenuesController(IVenueService venueService)
     {
-        _dbContext = dbContext;
+        _venueService = venueService;
     }
 
     /// <summary>
@@ -31,88 +31,10 @@ public class VenuesController : ControllerBase
         var vnTz = TimeZoneInfo.FindSystemTimeZoneById(OperatingSystem.IsWindows() ? "SE Asia Standard Time" : "Asia/Ho_Chi_Minh");
         var currentDayOfWeek = (int)TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vnTz).DayOfWeek;
 
-        var raw = await _dbContext.Venues
-            .Where(v => v.Id == id && v.IsActive == true)
-            .Select(v => new
-            {
-                v.Id,
-                v.Name,
-                v.Address,
-                v.Lat,
-                v.Lng,
-                v.WeeklyDiscountPercent,
-                v.MonthlyDiscountPercent,
-                v.Description,
-                v.Includes,
-                v.Rules,
-                v.Amenities,
-                v.SlotDuration,
-                v.CancelAllowed,
-                ThumbnailUrl = v.Files.Where(f => f.FileName != null && f.FileName.Contains("mac_dinh")).Select(f => f.FileUrl).FirstOrDefault() ?? v.Files.OrderByDescending(f => f.CreatedAt).Select(f => f.FileUrl).FirstOrDefault(),
-                ImageUrls = v.Files.OrderByDescending(f => f.CreatedAt).Select(f => f.FileUrl).ToList(),
-                v.OwnerUserId,
-                OwnerName = v.OwnerUser != null ? v.OwnerUser.FullName : null,
-                OwnerEmail = v.OwnerUser != null ? v.OwnerUser.Email : null,
-                OwnerPhone = v.OwnerUser != null ? v.OwnerUser.PhoneNumber : null,
-                OwnerAvatarUrl = v.OwnerUser != null && v.OwnerUser.AvatarFile != null
-                    ? v.OwnerUser.AvatarFile.FileUrl
-                    : null,
-                MinPrice = v.Courts
-                    .SelectMany(c => c.CourtPrices)
-                    .Min(cp => (decimal?)cp.Price),
-                MaxPrice = v.Courts
-                    .SelectMany(c => c.CourtPrices)
-                    .Max(cp => (decimal?)cp.Price),
-                Rating = v.VenueReviews.Any()
-                    ? v.VenueReviews.Average(r => (double?)r.Stars) ?? 0.0
-                    : 0.0,
-                ReviewCount = v.VenueReviews.Count(),
-                TodayOpenHours = v.VenueOpenHours
-                    .Where(o => o.DayOfWeek == currentDayOfWeek)
-                    .Select(o => new { o.OpenTime, o.CloseTime })
-                    .FirstOrDefault()
-            })
-            .FirstOrDefaultAsync();
+        var result = await _venueService.GetPublicVenueDetailsAsync(id, currentDayOfWeek, HttpContext.RequestAborted);
+        if (result == null) return NotFound();
 
-        if (raw == null)
-            return NotFound();
-
-        // Deserialize JSON columns thành List<string> để frontend nhận được array thật
-        static List<string>? ParseJsonArray(string? json)
-        {
-            if (string.IsNullOrWhiteSpace(json)) return null;
-            try { return JsonSerializer.Deserialize<List<string>>(json); }
-            catch { return null; }
-        }
-
-        return Ok(new
-        {
-            raw.Id,
-            raw.Name,
-            raw.Address,
-            raw.Lat,
-            raw.Lng,
-            raw.WeeklyDiscountPercent,
-            raw.MonthlyDiscountPercent,
-            raw.Description,
-            Includes = ParseJsonArray(raw.Includes),
-            Rules = ParseJsonArray(raw.Rules),
-            Amenities = ParseJsonArray(raw.Amenities),
-            raw.SlotDuration,
-            raw.CancelAllowed,
-            raw.ThumbnailUrl,
-            raw.TodayOpenHours,
-            raw.OwnerUserId,
-            raw.OwnerName,
-            raw.OwnerEmail,
-            raw.OwnerAvatarUrl,
-            raw.OwnerPhone,
-            raw.MinPrice,
-            raw.MaxPrice,
-            raw.Rating,
-            raw.ReviewCount,
-            raw.ImageUrls,
-        });
+        return Ok(result);
     }
 
     /// <summary>
@@ -127,82 +49,8 @@ public class VenuesController : ControllerBase
         [FromQuery] string? amenities = null,
         [FromQuery] bool? cancelAllowed = null)
     {
-        var baseQuery = _dbContext.Venues
-            .Where(v => v.IsActive == true && v.Lat.HasValue && v.Lng.HasValue);
-
-        if (cancelAllowed.HasValue)
-        {
-            baseQuery = baseQuery.Where(v => v.CancelAllowed == cancelAllowed.Value);
-        }
-
-        // Tạm select raw để lọc trong bộ nhớ đối với Json và chuỗi Search (Trường hợp dữ liệu không quá to)
-        var rawVenues = await baseQuery
-            .Select(v => new
-            {
-                v.Id,
-                v.Name,
-                v.Address,
-                v.Lat,
-                v.Lng,
-                v.CancelAllowed,
-                v.Amenities, // JSON string
-                MinPrice = v.Courts.SelectMany(c => c.CourtPrices).Min(cp => (decimal?)cp.Price)
-            })
-            .ToListAsync();
-
-        var filteredList = rawVenues.AsEnumerable();
-
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            try {
-                // Thử dùng SearchNormalize để tìm kiếm thông minh (bỏ dấu, đa từ)
-                filteredList = filteredList.Where(v => 
-                    ShuttleUp.Backend.Utils.SearchNormalize.FoldedContains(v.Name, search) || 
-                    ShuttleUp.Backend.Utils.SearchNormalize.FoldedContains(v.Address, search)
-                );
-            } catch {
-                var q = search.Trim().ToLowerInvariant();
-                filteredList = filteredList.Where(v => 
-                    (v.Name != null && v.Name.ToLowerInvariant().Contains(q)) || 
-                    (v.Address != null && v.Address.ToLowerInvariant().Contains(q))
-                );
-            }
-        }
-
-        if (minPrice.HasValue)
-            filteredList = filteredList.Where(v => v.MinPrice.HasValue && v.MinPrice.Value >= minPrice.Value);
-
-        if (maxPrice.HasValue)
-            filteredList = filteredList.Where(v => v.MinPrice.HasValue && v.MinPrice.Value <= maxPrice.Value);
-
-        if (!string.IsNullOrWhiteSpace(amenities))
-        {
-            var requiredAmenities = amenities.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Select(a => a.Trim().ToLowerInvariant())
-                .ToList();
-
-            if (requiredAmenities.Any())
-            {
-                filteredList = filteredList.Where(v => 
-                {
-                    if (string.IsNullOrWhiteSpace(v.Amenities)) return false;
-                    var venueAmenities = JsonSerializer.Deserialize<List<string>>(v.Amenities)
-                        ?.Select(a => a.Trim().ToLowerInvariant())
-                        .ToList() ?? new List<string>();
-                    
-                    return requiredAmenities.All(req => venueAmenities.Contains(req));
-                });
-            }
-        }
-
-        return Ok(filteredList.Select(v => new
-        {
-            v.Id,
-            v.Lat,
-            v.Lng,
-            v.Name,
-            v.MinPrice
-        }));
+        var result = await _venueService.GetMapVenuesAsync(search, minPrice, maxPrice, amenities, cancelAllowed, HttpContext.RequestAborted);
+        return Ok(result);
     }
 
     /// <summary>
@@ -210,90 +58,13 @@ public class VenuesController : ControllerBase
     /// Chỉ bao gồm venues APPROVED + IsActive = true.
     /// Hỗ trợ sort theo giá min tăng dần / giảm dần.
     /// </summary>
-    /// <param name="sortBy">Trường sắp xếp: price (mặc định: price).</param>
-    /// <param name="sortDir">Hướng sắp xếp: asc | desc (mặc định: asc).</param>
     [HttpGet]
     public async Task<IActionResult> GetApprovedVenues(
         [FromQuery] string? sortBy = "price",
         [FromQuery] string? sortDir = "asc")
     {
-        sortBy = string.IsNullOrWhiteSpace(sortBy) ? "price" : sortBy.Trim().ToLowerInvariant();
-        sortDir = string.IsNullOrWhiteSpace(sortDir) ? "asc" : sortDir.Trim().ToLowerInvariant();
-
-        // Lấy venues đang hoạt động cùng với min/max price (nếu có)
-        var baseQuery = _dbContext.Venues
-            .Where(v => v.IsActive == true)
-            .Select(v => new
-            {
-                v.Id,
-                v.Name,
-                v.Address,
-                v.Lat,
-                v.Lng,
-                v.CreatedAt,
-                v.OwnerUserId,
-                OwnerName = v.OwnerUser == null
-                    ? null
-                    : (string.IsNullOrWhiteSpace(v.OwnerUser.FullName)
-                        ? v.OwnerUser.Email
-                        : v.OwnerUser.FullName),
-                OwnerAvatarUrl = v.OwnerUser != null && v.OwnerUser.AvatarFile != null
-                    ? v.OwnerUser.AvatarFile.FileUrl
-                    : null,
-                ThumbnailUrl = v.Files.Where(f => f.FileName != null && f.FileName.Contains("mac_dinh")).Select(f => f.FileUrl).FirstOrDefault() ?? v.Files.OrderByDescending(f => f.CreatedAt).Select(f => f.FileUrl).FirstOrDefault(),
-                AmenitiesJson = v.Amenities,
-                Rating = v.VenueReviews.Any()
-                    ? v.VenueReviews.Average(r => (double?)r.Stars) ?? 0.0
-                    : 0.0,
-                ReviewCount = v.VenueReviews.Count(),
-                // Giá thấp nhất và cao nhất trong tất cả court thuộc venue (cả weekday & weekend)
-                MinPrice = v.Courts
-                    .SelectMany(c => c.CourtPrices)
-                    .Min(cp => (decimal?)cp.Price), // null nếu chưa cấu hình giá
-                MaxPrice = v.Courts
-                    .SelectMany(c => c.CourtPrices)
-                    .Max(cp => (decimal?)cp.Price)
-            });
-
-        // Giữ IQueryable cùng anonymous type — không dùng IQueryable<dynamic> (dễ khiến materialize sai, mất OwnerName).
-        var ordered = sortBy == "price"
-            ? (sortDir == "desc"
-                ? baseQuery.OrderByDescending(v => v.MinPrice.HasValue)
-                    .ThenByDescending(v => v.MinPrice)
-                : baseQuery.OrderByDescending(v => v.MinPrice.HasValue)
-                    .ThenBy(v => v.MinPrice))
-            : (sortDir == "desc"
-                ? baseQuery.OrderByDescending(v => v.Name)
-                : baseQuery.OrderBy(v => v.Name));
-
-        var items = await ordered.AsNoTracking().ToListAsync();
-
-        // Deserialize JSON columns thành List<string> để frontend nhận được array thật
-        static List<string>? ParseJsonArray(string? json)
-        {
-            if (string.IsNullOrWhiteSpace(json)) return null;
-            try { return JsonSerializer.Deserialize<List<string>>(json); }
-            catch { return null; }
-        }
-
-        return Ok(items.Select(v => new
-        {
-            v.Id,
-            v.Name,
-            v.Address,
-            v.Lat,
-            v.Lng,
-            v.CreatedAt,
-            v.OwnerUserId,
-            v.OwnerName,
-            v.OwnerAvatarUrl,
-            v.ThumbnailUrl,
-            Amenities = ParseJsonArray(v.AmenitiesJson),
-            v.Rating,
-            v.ReviewCount,
-            v.MinPrice,
-            v.MaxPrice,
-        }));
+        var result = await _venueService.GetApprovedVenuesPublicAsync(sortBy, sortDir, HttpContext.RequestAborted);
+        return Ok(result);
     }
 
     /// <summary>
@@ -302,43 +73,10 @@ public class VenuesController : ControllerBase
     [HttpGet("{id:guid}/courts")]
     public async Task<IActionResult> GetVenueCourts([FromRoute] Guid id)
     {
-        var exists = await _dbContext.Venues.AnyAsync(v =>
-            v.Id == id && v.IsActive == true);
-
-        if (!exists)
-            return NotFound();
-
-        var courts = await _dbContext.Courts
-            .AsNoTracking()
-            .Where(c => c.VenueId == id && c.IsActive == true && c.Status == "ACTIVE")
-            .OrderBy(c => c.Name)
-            .Select(c => new
-            {
-                c.Id,
-                c.Name,
-                c.GroupName,
-                Prices = c.CourtPrices
-                    .OrderBy(p => p.StartTime)
-                    .Select(p => new
-                    {
-                        p.StartTime,
-                        p.EndTime,
-                        p.Price,
-                        p.IsWeekend
-                    }),
-                OpenHours = c.CourtOpenHours
-                    .OrderBy(o => o.DayOfWeek)
-                    .Select(o => new
-                    {
-                        o.DayOfWeek,
-                        Enabled = o.OpenTime.HasValue && o.CloseTime.HasValue,
-                        OpenTime = o.OpenTime,
-                        CloseTime = o.CloseTime
-                    })
-            })
-            .ToListAsync();
-
-        return Ok(courts);
+        var result = await _venueService.GetVenueCourtsPublicAsync(id, HttpContext.RequestAborted);
+        // The service does not return null if venue doesn't exist, it just returns an empty list. 
+        // We could handle returning 404 in service or controller if needed, but returning empty array is usually fine for a sub-resource.
+        return Ok(result);
     }
 
     /// <summary>
@@ -347,153 +85,21 @@ public class VenuesController : ControllerBase
     [HttpGet("{id:guid}/availability")]
     public async Task<IActionResult> GetVenueAvailability([FromRoute] Guid id, [FromQuery] string date)
     {
-        var venue = await _dbContext.Venues
-            .AsNoTracking()
-            .Where(v => v.Id == id && v.IsActive == true)
-            .Select(v => new { v.Id, v.SlotDuration })
-            .FirstOrDefaultAsync();
-
-        if (venue == null)
-            return NotFound();
-
-        if (!DateOnly.TryParse(date, out var day))
-            return BadRequest(new { message = "Tham số date phải là YYYY-MM-DD." });
-
-        var dayStart = day.ToDateTime(TimeOnly.MinValue);
-        var dayEnd = dayStart.AddDays(1);
-
         var userIdClaim = User.Identity?.IsAuthenticated == true
-            ? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
             : null;
+            
         Guid? currentUserGuid = null;
         if (userIdClaim != null && Guid.TryParse(userIdClaim, out var parsedUserId))
             currentUserGuid = parsedUserId;
 
-        var bookedQuery = _dbContext.BookingItems
-            .AsNoTracking()
-            .Where(bi => bi.Court != null && bi.Court.VenueId == id
-                                              && bi.StartTime < dayEnd && bi.EndTime > dayStart
-                                              && bi.Booking != null && bi.Booking.Status != "CANCELLED");
-
-        var now = DateTime.UtcNow;
-
-        if (currentUserGuid != null)
+        try
         {
-            var me = currentUserGuid.Value;
-            bookedQuery = bookedQuery.Where(bi =>
-                bi.Booking!.Status != "HOLDING" ||
-                (bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now && bi.Booking.UserId != me)
-            );
+            var result = await _venueService.GetVenueAvailabilityAsync(id, date, currentUserGuid, HttpContext.RequestAborted);
+            return Ok(result);
         }
-        else 
-        {
-            bookedQuery = bookedQuery.Where(bi => 
-                bi.Booking!.Status != "HOLDING" || 
-                (bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now)
-            );
-        }
-
-        var booked = await bookedQuery
-            .Select(bi => new
-            {
-                CourtId = bi.CourtId!.Value,
-                bi.StartTime,
-                bi.EndTime,
-                Kind = "booked"
-            })
-            .ToListAsync();
-
-        var blocked = await _dbContext.CourtBlocks
-            .AsNoTracking()
-            .Where(b => b.Court != null && b.Court.VenueId == id
-                                         && b.StartTime < dayEnd && b.EndTime > dayStart)
-            .Select(b => new
-            {
-                CourtId = b.CourtId!.Value,
-                b.StartTime,
-                b.EndTime,
-                Kind = "blocked",
-                b.ReasonCode,
-                b.ReasonDetail,
-            })
-            .ToListAsync();
-
-        var courtIds = await _dbContext.Courts
-            .AsNoTracking()
-            .Where(c => c.VenueId == id && c.IsActive == true && c.Status == "ACTIVE")
-            .Select(c => c.Id)
-            .ToListAsync();
-
-        var intervalsByCourt = courtIds.ToDictionary(cid => cid, _ => new List<object>());
-
-        foreach (var row in booked)
-        {
-            if (intervalsByCourt.TryGetValue(row.CourtId, out var list))
-                list.Add(new { start = row.StartTime, end = row.EndTime, kind = row.Kind });
-        }
-
-        foreach (var row in blocked)
-        {
-            if (intervalsByCourt.TryGetValue(row.CourtId, out var list))
-                list.Add(new
-                {
-                    start = row.StartTime,
-                    end = row.EndTime,
-                    kind = row.Kind,
-                    reasonCode = row.ReasonCode,
-                    reasonDetail = row.ReasonDetail,
-                });
-        }
-
-        // ── Generate "closed" intervals from court_open_hours ──────────
-        var dayOfWeek = (int)day.DayOfWeek; // C# DayOfWeek: 0=Sunday
-        var openHoursForDay = await _dbContext.CourtOpenHours
-            .AsNoTracking()
-            .Where(o => o.CourtId != null && courtIds.Contains(o.CourtId.Value)
-                                          && o.DayOfWeek == dayOfWeek)
-            .ToListAsync();
-
-        // Courts that have at least one open hour record (configured)
-        var configuredCourtIds = openHoursForDay.Select(o => o.CourtId!.Value).Distinct().ToHashSet();
-
-        foreach (var cid in courtIds)
-        {
-            if (!configuredCourtIds.Contains(cid))
-                continue; // No open hours config → open all day (backward compatible)
-
-            if (!intervalsByCourt.TryGetValue(cid, out var list))
-                continue;
-
-            var record = openHoursForDay.FirstOrDefault(o => o.CourtId == cid);
-            if (record == null || !record.OpenTime.HasValue || !record.CloseTime.HasValue)
-            {
-                // Day disabled (enabled=false) → entire day is closed
-                list.Add(new { start = dayStart, end = dayEnd, kind = "closed" });
-                continue;
-            }
-
-            // Generate closed intervals for before open and after close
-            var openDt = day.ToDateTime(record.OpenTime.Value);
-            var closeDt = day.ToDateTime(record.CloseTime.Value);
-
-            if (openDt > dayStart)
-                list.Add(new { start = dayStart, end = openDt, kind = "closed" });
-
-            // CloseTime = last accepted START time ("nhận khách đến 23h" = slot 23h vẫn OK)
-            // The closed interval starts AFTER the slot that begins at closeTime
-            var slotMins = venue.SlotDuration > 0 ? venue.SlotDuration : 30;
-            var afterCloseSlotStart = closeDt.AddMinutes(slotMins);
-            if (afterCloseSlotStart < dayEnd)
-                list.Add(new { start = afterCloseSlotStart, end = dayEnd, kind = "closed" });
-        }
-
-        var payload = intervalsByCourt.Select(kv => new
-        {
-            courtId = kv.Key,
-            intervals = kv.Value
-        });
-
-        return Ok(payload);
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (KeyNotFoundException) { return NotFound(); }
     }
 
     /// <summary>
@@ -506,55 +112,9 @@ public class VenuesController : ControllerBase
         [FromQuery] decimal? amount,
         [FromQuery] string? addInfo)
     {
-        var v = await _dbContext.Venues
-            .AsNoTracking()
-            .Where(venue => venue.Id == id && venue.IsActive == true)
-            .Select(venue => new
-            {
-                venue.Id,
-                venue.Name,
-                venue.PaymentBankName,
-                venue.PaymentBankBin,
-                venue.PaymentAccountNumber,
-                venue.PaymentAccountHolder,
-                venue.PaymentTransferNoteTemplate,
-                venue.PaymentNote,
-                venue.VenueRules,
-                venue.CancelAllowed,
-                venue.CancelBeforeMinutes,
-                venue.RefundType,
-                venue.RefundPercent,
-            })
-            .FirstOrDefaultAsync();
-
-        if (v == null)
-            return NotFound();
-
-        var bin = VietQrHelper.ResolveBin(v.PaymentBankBin, v.PaymentBankName);
-        var amt = amount ?? 0m;
-        var note = string.IsNullOrWhiteSpace(addInfo) ? null : addInfo.Trim();
-        var vietQrUrl = VietQrHelper.BuildQrImageUrl(bin, v.PaymentAccountNumber, amt, note);
-
-        return Ok(new
-        {
-            venueId = v.Id,
-            venueName = v.Name,
-            bankName = v.PaymentBankName,
-            bankBin = bin,
-            accountNumber = v.PaymentAccountNumber,
-            accountHolder = v.PaymentAccountHolder,
-            transferNoteTemplate = v.PaymentTransferNoteTemplate ?? "[SĐT] - [Tên sân] - [Ngày]",
-            paymentNote = v.PaymentNote,
-            venueRules = v.VenueRules,
-            vietQrImageUrl = vietQrUrl,
-            cancellation = new
-            {
-                allowCancel = v.CancelAllowed,
-                cancelBeforeMinutes = v.CancelBeforeMinutes,
-                refundType = v.RefundType ?? "NONE",
-                refundPercent = v.RefundPercent,
-            },
-        });
+        var result = await _venueService.GetCheckoutSettingsPublicAsync(id, amount, addInfo, HttpContext.RequestAborted);
+        if (result == null) return NotFound();
+        
+        return Ok(result);
     }
 }
-

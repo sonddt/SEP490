@@ -8,6 +8,7 @@ public interface IBookingRepository : IRepository<Booking>
     Task<IEnumerable<Booking>> GetByVenueAsync(Guid venueId);
     Task<IEnumerable<Booking>> GetByStatusAsync(string status);
     Task<List<Booking>> GetConfirmedByUserAndVenueAsync(Guid userId, Guid venueId);
+    Task<Booking?> GetBookingWithVenueAsync(Guid id);
 
     // ── Expanded: Stats ──
     Task<int> CountByVenueIdsAsync(List<Guid> venueIds, DateTime? since = null);

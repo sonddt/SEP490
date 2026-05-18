@@ -12,4 +12,7 @@ public interface IFeaturedPostService
 
     // ── Admin (xem tất cả) ──
     Task<List<FeaturedPostDto>> GetAllAsync();
+
+    // ── Public ──
+    Task<List<FeaturedPostDto>> GetPublishedAsync();
 }
