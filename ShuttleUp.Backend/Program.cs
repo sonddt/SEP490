@@ -119,6 +119,8 @@ builder.Services.AddScoped<IProfileService, ProfileService>();
             builder.Services.AddSingleton<IBannedUserCache, BannedUserCache>();
 
             // ── New services (3-layer refactor) ──
+            builder.Services.AddScoped<IBookingValidationService, BookingValidationService>();
+            builder.Services.AddScoped<IBookingCreationService, BookingCreationService>();
             builder.Services.AddScoped<IFeaturedPostService, FeaturedPostService>();
             builder.Services.AddScoped<IManagerStatsService, ManagerStatsService>();
             builder.Services.AddScoped<IManagerProfileService, ManagerProfileService>();
@@ -127,6 +129,8 @@ builder.Services.AddScoped<IProfileService, ProfileService>();
             builder.Services.AddScoped<IBankLookupService, BankLookupService>();
             builder.Services.AddScoped<IUserNotificationService, UserNotificationService>();
             builder.Services.AddScoped<IFavoriteService, FavoriteService>();
+            builder.Services.AddScoped<IManagerBookingService, ManagerBookingService>();
+            builder.Services.AddScoped<IRefundService, RefundService>();
             builder.Services.AddHttpClient("VietQR");
 
             // ── JWT Authentication ────────────────────────────────────────────────

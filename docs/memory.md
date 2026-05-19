@@ -700,3 +700,21 @@ Kết bạn & quan hệ xã hội (Player):
    - Cấu hình và đăng ký DI (Dependency Injection) đầy đủ cho các lớp Repositories và Services mới tại `Program.cs`.
 3. **Mục tiêu tiếp theo**:
    - Đã lập bản đánh giá và Implementation Plan (Phase 2) cho 13 Controllers còn lại của dự án (như `BookingsController`, `MatchingController`, v.v...) để dứt điểm triệt để "Lỗ hổng Refactor nửa mùa".
+
+---
+
+## 19 tháng 5, 2026 (Hoàn thành Refactor Kiến trúc 3 lớp - Luồng Booking của Hưng)
+
+1. **Chuẩn hóa Kiến trúc (Controller -> Service -> Repository)**:
+   - Hoàn thành xuất sắc việc di chuyển toàn bộ logic nghiệp vụ (business logic) ra khỏi 3 Controllers cốt lõi của luồng Booking: `BookingsController`, `ManagerBookingsController`, và `ManagerRefundsController`.
+   - Đạt tiêu chuẩn kiến trúc 3 lớp sạch sẽ (`Controller -> Service -> Repository/DbContext`), triệt tiêu hoàn toàn việc tương tác trực tiếp với `ShuttleUpDbContext` từ Controller đối với các tác vụ ghi/thay đổi dữ liệu.
+2. **Triển khai và mở rộng tầng nghiệp vụ BLL Services**:
+   - **`BookingCreationService` & `BookingValidationService`**: Đóng gói toàn bộ logic đặt sân lẻ, dài hạn cơ bản, dài hạn linh hoạt thông minh, kèm cơ chế quản lý giao dịch an toàn (Database Transactions) cùng các quy tắc xác thực slot, trùng lịch.
+   - **`BookingService` (Mở rộng)**: Tích hợp logic xử lý hủy giữ chỗ (`CancelHold`), người dùng hủy đơn (`CancelMyBooking`), cập nhật thông tin hoàn tiền (`UpdateRefundBankInfo`) và nộp chứng từ thanh toán (`SubmitPayment` - bao gồm tối ưu gửi notification/email ngầm tránh block UI).
+   - **`ManagerBookingService`**: Đóng gói nghiệp vụ duyệt/từ chối đơn đặt sân của Manager, tự động sinh yêu cầu hoàn tiền (`RefundRequest`) cho các đơn đã thanh toán.
+   - **`RefundService`**: Đóng gói nghiệp vụ đối soát (`Reconcile`), xác nhận hoàn tất hoàn tiền (`CompleteRefund`), và cập nhật minh chứng hoàn tiền của Manager.
+3. **Cấu hình & Đồng bộ**:
+   - Đăng ký DI (Dependency Injection) đầy đủ cho các Service mới (`IManagerBookingService`, `IRefundService`) tại `Program.cs`.
+   - Giải quyết triệt để lỗi biên dịch bằng cách chuyển đổi dùng chung `CancellationPolicySnapshotDto` thay thế cho snapshot nội bộ.
+   - Biên dịch toàn bộ hệ thống Backend thành công rực rỡ (`dotnet build succeeded` với **0 Errors**).
+

@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using ShuttleUp.BLL.DTOs.Booking;
 using ShuttleUp.DAL.Models;
 
-namespace ShuttleUp.Backend.Helpers;
+namespace ShuttleUp.BLL.Helpers;
 
 /// <summary>Chuẩn hoá slot 30 phút, giá và kiểm tra trùng — dùng chung đặt lẻ và đặt dài hạn.</summary>
 public static class BookingSlotHelper

@@ -3,8 +3,6 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using ShuttleUp.Backend.Constants;
-using ShuttleUp.Backend.Helpers;
 using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.DAL.Models;
 
@@ -16,17 +14,14 @@ namespace ShuttleUp.Backend.Controllers;
 public class ManagerBookingsController : ControllerBase
 {
     private readonly ShuttleUpDbContext _dbContext;
-    private readonly INotificationDispatchService _notify;
-    private readonly IMatchingPostLifecycleService _matchingPostLifecycle;
+    private readonly IManagerBookingService _managerBookingService;
 
     public ManagerBookingsController(
         ShuttleUpDbContext dbContext,
-        INotificationDispatchService notify,
-        IMatchingPostLifecycleService matchingPostLifecycle)
+        IManagerBookingService managerBookingService)
     {
         _dbContext = dbContext;
-        _notify = notify;
-        _matchingPostLifecycle = matchingPostLifecycle;
+        _managerBookingService = managerBookingService;
     }
 
     private bool TryGetCurrentUserId(out Guid userId)
@@ -137,173 +132,29 @@ public class ManagerBookingsController : ControllerBase
         if (dto == null || string.IsNullOrWhiteSpace(dto.Status))
             return BadRequest(new { message = "Thiếu trạng thái." });
 
-        var next = dto.Status.Trim().ToUpperInvariant();
-        if (next is not ("CONFIRMED" or "CANCELLED"))
-            return BadRequest(new { message = "Trạng thái không hợp lệ (CONFIRMED | CANCELLED)." });
-
-        var booking = await _dbContext.Bookings
-            .Include(b => b.Venue)
-            .Include(b => b.BookingItems)
-            .Include(b => b.Payments)
-            .FirstOrDefaultAsync(b => b.Id == id);
-
-        if (booking == null)
-            return NotFound(new { message = "Không tìm thấy đơn đặt." });
-
-        if (booking.Venue?.OwnerUserId != userId)
+        try
+        {
+            var result = await _managerBookingService.PatchStatusAsync(id, userId, dto.Status, dto.Reason, HttpContext.RequestAborted);
+            return Ok(new
+            {
+                bookingId = result.BookingId,
+                bookingCode = result.BookingCode,
+                status = result.Status,
+                reason = result.Reason,
+                managerStatusNote = result.ManagerStatusNote,
+            });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException)
+        {
             return Forbid();
-
-        if (booking.Status == "CANCELLED")
-            return BadRequest(new { message = "Đơn đã bị huỷ." });
-
-        if (next == "CONFIRMED")
-        {
-            if (booking.Status != "PENDING")
-                return BadRequest(new { message = "Chỉ có thể duyệt đơn đang chờ." });
-
-            if (!BookingApprovalRules.HasHttpsPaymentProof(booking.Payments))
-                return BadRequest(new
-                {
-                    message = "Chưa có chứng từ chuyển khoản hợp lệ (URL https). Người chơi cần tải ảnh CK lên trước khi duyệt."
-                });
-
-            booking.Status = "CONFIRMED";
-            booking.ManagerStatusNote = null;
-            foreach (var item in booking.BookingItems)
-                item.Status = "CONFIRMED";
-
-            foreach (var p in booking.Payments.Where(p =>
-                         p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase)))
-            {
-                p.Status = "COMPLETED";
-                p.ConfirmedBy = userId;
-                p.ConfirmedAt = DateTime.UtcNow;
-            }
         }
-        else
+        catch (ArgumentException ex)
         {
-            if (booking.Status != "PENDING" && booking.Status != "CONFIRMED")
-                return BadRequest(new { message = "Không thể huỷ đơn ở trạng thái này." });
-
-            booking.ManagerStatusNote = string.IsNullOrWhiteSpace(dto.Reason)
-                ? null
-                : dto.Reason.Trim();
-
-            var hasConfirmedPayment = booking.Payments.Any(p =>
-                p.Status != null && p.Status.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase));
-            var paidAmount = booking.Payments
-                .Where(p => p.Status != null && p.Status.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase))
-                .Sum(p => p.Amount ?? 0);
-
-            if (hasConfirmedPayment && paidAmount > 0)
-            {
-                booking.Status = "PENDING_REFUND";
-                var refundReq = new RefundRequest
-                {
-                    Id = Guid.NewGuid(),
-                    BookingId = booking.Id,
-                    UserId = booking.UserId,
-                    ReasonCode = "MANAGER_CANCEL",
-                    Status = "PENDING_REFUND",
-                    RequestedAmount = paidAmount,
-                    PaidAmount = paidAmount,
-                    RequestedAt = DateTime.UtcNow,
-                };
-                _dbContext.RefundRequests.Add(refundReq);
-            }
-            else
-            {
-                booking.Status = "CANCELLED";
-            }
-
-            foreach (var item in booking.BookingItems)
-                item.Status = booking.Status == "CANCELLED" ? "CANCELLED" : item.Status;
-
-            foreach (var p in booking.Payments.Where(p =>
-                         p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase)))
-            {
-                p.Status = "CANCELLED";
-            }
+            return BadRequest(new { message = ex.Message });
         }
-
-        if (booking.SeriesId is { } seriesId)
-        {
-            var series = await _dbContext.BookingSeries.FirstOrDefaultAsync(s => s.Id == seriesId);
-            if (series != null)
-                series.Status = next == "CONFIRMED" ? "ACTIVE" : "CANCELLED";
-        }
-
-        await _dbContext.SaveChangesAsync();
-
-        if (next == "CANCELLED")
-            await _matchingPostLifecycle.CancelPostsByBookingAsync(booking, cancelledBy: "chủ sân", HttpContext.RequestAborted);
-
-        var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
-
-        if (booking.UserId is { } playerId)
-        {
-            var venueName = booking.Venue?.Name ?? "sân";
-            var reasonText = string.IsNullOrWhiteSpace(booking.ManagerStatusNote)
-                ? "Đơn đã bị huỷ/từ chối."
-                : booking.ManagerStatusNote;
-
-            var title = next == "CONFIRMED" ? "Đơn đặt sân đã được duyệt" : "Đơn đặt sân đã bị huỷ";
-            var body = next == "CONFIRMED"
-                ? $"Mã #{code} tại {venueName} đã được chủ sân xác nhận."
-                : $"Mã #{code} tại {venueName} đã bị huỷ bởi chủ sân. Lý do: {reasonText}";
-
-            // Build richer HTML email for cancellation with refund instructions
-            string? htmlBody = null;
-            if (next != "CONFIRMED" && booking.Status == "PENDING_REFUND")
-            {
-                htmlBody = $"""
-                    <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
-                      <h2 style="color:#097E52">ShuttleUp</h2>
-                      <p style="font-size:16px;font-weight:600;color:#1e293b">{System.Net.WebUtility.HtmlEncode(title)}</p>
-                      <p style="margin:12px 0;color:#334155">Mã đặt sân: <strong>#{code}</strong> tại <strong>{System.Net.WebUtility.HtmlEncode(venueName)}</strong></p>
-                      <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:12px 16px;margin:12px 0">
-                        <p style="margin:0;color:#ef4444;font-weight:600"><strong>Lý do huỷ:</strong></p>
-                        <p style="margin:4px 0 0;color:#dc2626">{System.Net.WebUtility.HtmlEncode(reasonText)}</p>
-                      </div>
-                      <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:12px 16px;margin:12px 0">
-                        <p style="margin:0;color:#92400e;font-weight:600">💰 Thông báo hoàn tiền</p>
-                        <p style="margin:4px 0 0;color:#92400e">Đơn của bạn đã thanh toán và đủ điều kiện hoàn tiền. Vui lòng đăng nhập vào ShuttleUp và cung cấp thông tin tài khoản ngân hàng nhận tiền hoàn tại mục <strong>Đặt sân của tôi</strong> để chúng tôi xử lý hoàn tiền sớm nhất.</p>
-                      </div>
-                      <p style="color:#94a3b8;font-size:12px">Bạn nhận được email này vì có hoạt động liên quan tài khoản ShuttleUp.</p>
-                    </div>
-                    """;
-            }
-
-            await _notify.NotifyUserAsync(
-                playerId,
-                NotificationTypes.Booking,
-                title,
-                body,
-                new
-                {
-                    bookingId = booking.Id,
-                    status = booking.Status,
-                    entityType = "booking",
-                    deepLink = $"/user/bookings?bookingId={booking.Id}",
-                },
-                sendEmail: true,
-                bookingStatusPayload: new
-                {
-                    bookingId = booking.Id,
-                    status = booking.Status,
-                    title,
-                    body,
-                },
-                htmlBodyOverride: htmlBody);
-        }
-
-        return Ok(new
-        {
-            bookingId = booking.Id,
-            bookingCode = code,
-            booking.Status,
-            reason = dto.Reason,
-            managerStatusNote = booking.ManagerStatusNote
-        });
     }
 }

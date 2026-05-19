@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ShuttleUp.BLL.DTOs.Booking;
 using ShuttleUp.Backend.BookingForms;
+using ShuttleUp.BLL.Helpers;
 using ShuttleUp.Backend.Constants;
 using ShuttleUp.Backend.Helpers;
 using ShuttleUp.DAL.Models;
@@ -30,6 +31,10 @@ public class BookingsController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly IServiceScopeFactory _scopeFactory;
 
+    private readonly IBookingCreationService _bookingCreationService;
+    private readonly IBookingValidationService _bookingValidationService;
+    private readonly IBookingService _bookingService;
+
     public BookingsController(
         ShuttleUpDbContext dbContext,
         IFileService fileService,
@@ -37,7 +42,10 @@ public class BookingsController : ControllerBase
         IMatchingPostLifecycleService matchingPostLifecycle,
         IMemoryCache cache,
         IConfiguration configuration,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        IBookingCreationService bookingCreationService,
+        IBookingValidationService bookingValidationService,
+        IBookingService bookingService)
     {
         _dbContext = dbContext;
         _fileService = fileService;
@@ -46,6 +54,9 @@ public class BookingsController : ControllerBase
         _cache = cache;
         _configuration = configuration;
         _scopeFactory = scopeFactory;
+        _bookingCreationService = bookingCreationService;
+        _bookingValidationService = bookingValidationService;
+        _bookingService = bookingService;
     }
 
     private bool TryGetCurrentUserId(out Guid userId)
@@ -89,159 +100,41 @@ public class BookingsController : ControllerBase
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized(new { message = "Không xác định được người dùng." });
 
-        if (dto.Items == null || dto.Items.Count == 0)
-            return BadRequest(new { message = "Vui lòng chọn ít nhất một khung giờ." });
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
 
-        if (string.IsNullOrWhiteSpace(dto.ContactName))
-            return BadRequest(new { message = "Vui lòng nhập họ tên." });
-
-        if (string.IsNullOrWhiteSpace(dto.ContactPhone))
-            return BadRequest(new { message = "Vui lòng nhập số điện thoại." });
-
-        // ── Update-in-place: if bookingId is provided, update existing HOLDING record ──
-        if (dto.BookingId.HasValue)
-        {
-            return await UpdateHoldingBookingContact(dto.BookingId.Value, userId, dto.ContactName, dto.ContactPhone, dto.Note);
-        }
-
-        var venuePolicy = await _dbContext.Venues
-            .AsNoTracking()
-            .Where(v => v.Id == dto.VenueId && v.IsActive == true)
-            .Select(v => new
-            {
-                v.Id,
-                v.CancelAllowed,
-                v.CancelBeforeMinutes,
-                v.RefundType,
-                v.RefundPercent,
-                v.SlotDuration,
-            })
-            .FirstOrDefaultAsync();
-
-        if (venuePolicy == null)
-            return BadRequest(new { message = "Cơ sở không tồn tại hoặc chưa mở đặt sân." });
-
-        var courtIds = dto.Items.Select(i => i.CourtId).Distinct().ToList();
-
-        var courts = await _dbContext.Courts
-            .Include(c => c.CourtPrices)
-            .Where(c => courtIds.Contains(c.Id) && c.VenueId == dto.VenueId && c.IsActive == true && c.Status == "ACTIVE")
-            .ToListAsync();
-
-        if (courts.Count != courtIds.Count)
-            return BadRequest(new { message = "Một hoặc nhiều sân không thuộc cơ sở này." });
-
-        var courtById = courts.ToDictionary(c => c.Id);
-
-        var (normalizedItems, normErr) = BookingSlotHelper.NormalizeFromCreateItems(dto.Items, courtById, venuePolicy.SlotDuration);
-        if (normErr != null)
-            return BadRequest(new { message = normErr });
-
-        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, HttpContext.RequestAborted, excludeBookingId: dto.BookingId, excludeHoldingUserId: userId);
-        if (conflict == "CONFLICT_BOOKING")
-            return Conflict(new { message = "Một hoặc nhiều khung giờ vừa được người khác đặt. Vui lòng chọn lại." });
-        if (conflict == "CONFLICT_BLOCK")
-            return Conflict(new { message = "Một số khung giờ đang bị khóa bởi chủ sân." });
-
-        var openHoursErr = await BookingSlotHelper.CheckOpenHoursAsync(_dbContext, normalizedItems, HttpContext.RequestAborted);
-        if (openHoursErr == "COURT_CLOSED_DAY")
-            return BadRequest(new { message = "Sân không mở cửa vào ngày này. Vui lòng chọn ngày khác." });
-        if (openHoursErr == "OUTSIDE_OPEN_HOURS")
-            return BadRequest(new { message = "Khung giờ nằm ngoài giờ nhận khách của sân. Vui lòng chọn khung giờ khác." });
-
-        var total = normalizedItems.Sum(x => x.Price);
-
-        // Collect actual booked dates for consecutive-day discount calculation
-        var bookedDates = normalizedItems.Select(x => x.Start).ToList();
-
-        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, _, _) = await CalculateDiscountAsync(dto.VenueId, total, bookedDates, dto.CouponCode, userId);
-        if (errorMsg != null) return BadRequest(new { message = errorMsg });
-
-        var policySnapshot = new CancellationPolicySnapshot
-        {
-            AllowCancel = venuePolicy.CancelAllowed,
-            CancelBeforeMinutes = venuePolicy.CancelBeforeMinutes,
-            RefundType = string.IsNullOrWhiteSpace(venuePolicy.RefundType) ? "NONE" : venuePolicy.RefundType!,
-            RefundPercent = venuePolicy.RefundPercent,
-        };
-
-        var holdExpiry = DateTime.UtcNow.AddMinutes(5);
-
-        var booking = new Booking
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            VenueId = dto.VenueId,
-            Status = "HOLDING",
-            HoldExpiresAt = holdExpiry,
-            TotalAmount = total,
-            DiscountAmount = discountAmount,
-            FinalAmount = finalAmount,
-            CouponId = couponId,
-            ContactName = dto.ContactName.Trim(),
-            ContactPhone = dto.ContactPhone.Trim(),
-            GuestNote = string.IsNullOrWhiteSpace(dto.Note) ? null : dto.Note.Trim(),
-            CancellationPolicySnapshotJson = JsonSerializer.Serialize(policySnapshot),
-            CreatedAt = DateTime.UtcNow
-        };
-
-        foreach (var ni in normalizedItems)
-        {
-            if (!courtById.TryGetValue(ni.CourtId, out var court))
-                continue;
-
-            booking.BookingItems.Add(new BookingItem
-            {
-                Id = Guid.NewGuid(),
-                CourtId = ni.CourtId,
-                StartTime = ni.Start,
-                EndTime = ni.End,
-                FinalPrice = ni.Price,
-                Status = "HOLDING"
-            });
-        }
-
-        await using var trx = await _dbContext.Database.BeginTransactionAsync();
         try
         {
-            if (couponToUpdate != null)
+            if (dto.BookingId.HasValue)
             {
-                couponToUpdate.UsedCount = (couponToUpdate.UsedCount ?? 0) + 1;
-                _dbContext.VenueCoupons.Update(couponToUpdate);
+                var updateResult = await _bookingCreationService.UpdateHoldingBookingContactAsync(
+                    dto.BookingId.Value, userId, dto.ContactName, dto.ContactPhone, dto.Note, HttpContext.RequestAborted);
+                return Ok(updateResult);
             }
-            _dbContext.Bookings.Add(booking);
-            await _dbContext.SaveChangesAsync();
-            await trx.CommitAsync();
+
+            var result = await _bookingCreationService.CreateBookingAsync(userId, dto, HttpContext.RequestAborted);
+            return StatusCode(StatusCodes.Status201Created, result);
         }
-        catch
+        catch (UnauthorizedAccessException ex)
         {
-            await trx.RollbackAsync();
-            throw;
+            return Forbid(ex.Message);
         }
-
-        var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
-
-        var response = new BookingResponseDto
+        catch (KeyNotFoundException ex)
         {
-            BookingId = booking.Id,
-            BookingCode = code,
-            Status = booking.Status,
-            HoldExpiresAt = holdExpiry,
-            TotalAmount = total,
-            FinalAmount = finalAmount,
-            Items = booking.BookingItems.Select(bi => new BookingItemResponseDto
-            {
-                Id = bi.Id,
-                CourtId = bi.CourtId ?? Guid.Empty,
-                CourtName = courtById.GetValueOrDefault(bi.CourtId ?? Guid.Empty)?.Name,
-                StartTime = bi.StartTime ?? default,
-                EndTime = bi.EndTime ?? default,
-                FinalPrice = bi.FinalPrice ?? 0,
-                Status = bi.Status
-            }).ToList()
-        };
-
-        return StatusCode(StatusCodes.Status201Created, response);
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
     }
 
     /// <summary>
@@ -250,71 +143,82 @@ public class BookingsController : ControllerBase
     [HttpPost("long-term/preview")]
     public async Task<IActionResult> PreviewLongTerm([FromBody] LongTermScheduleDto dto)
     {
-        if (!TryGetCurrentUserId(out _))
+        if (!TryGetCurrentUserId(out var currentUserId))
             return Unauthorized(new { message = "Không xác định được người dùng." });
 
-        var built = await BuildLongTermNormalizedAsync(dto, HttpContext.RequestAborted);
-        if (built.Error != null)
-            return built.Error;
-
-        // Smart allocation path
-        if (built.SmartItems != null)
+        try
         {
-            var availableItems = built.SmartItems.Where(x => !x.IsUnavailable).ToList();
-            var total = availableItems.Sum(x => x.Price);
-            var sessionCount = availableItems.Select(x => DateOnly.FromDateTime(x.Start)).Distinct().Count();
-            var primaryCourtName = availableItems.GroupBy(x => x.CourtName).OrderByDescending(g => g.Count()).FirstOrDefault()?.Key ?? "—";
+            var built = await _bookingValidationService.BuildLongTermNormalizedAsync(dto, currentUserId, HttpContext.RequestAborted);
+            
+            if (built.SmartItems != null)
+            {
+                var availableItems = built.SmartItems.Where(x => !x.IsUnavailable).ToList();
+                var total = availableItems.Sum(x => x.Price);
+                var sessionCount = availableItems.Select(x => DateOnly.FromDateTime(x.Start)).Distinct().Count();
+                var primaryCourtName = availableItems.GroupBy(x => x.CourtName).OrderByDescending(g => g.Count()).FirstOrDefault()?.Key ?? "—";
+
+                return Ok(new
+                {
+                    venueId = dto.VenueId,
+                    courtId = (Guid?)null,
+                    courtName = primaryCourtName,
+                    slotCount = availableItems.Count,
+                    unavailableCount = built.SmartItems.Count(x => x.IsUnavailable),
+                    sessionCount,
+                    totalAmount = total,
+                    isFlexible = true,
+                    items = built.SmartItems.Select(x => new
+                    {
+                        courtId = x.CourtId,
+                        courtName = x.CourtName,
+                        startTime = x.Start,
+                        endTime = x.End,
+                        price = x.Price,
+                        isUnavailable = x.IsUnavailable,
+                        isSwitched = x.IsSwitched,
+                        switchReason = x.SwitchReason,
+                    }),
+                });
+            }
+
+            var legacyTotal = built.NormalizedItems.Sum(x => x.Price);
+            var legacySessionCount = built.NormalizedItems.Select(x => DateOnly.FromDateTime(x.Start)).Distinct().Count();
 
             return Ok(new
             {
                 venueId = dto.VenueId,
-                courtId = (Guid?)null,
-                courtName = primaryCourtName,
-                slotCount = availableItems.Count,
-                unavailableCount = built.SmartItems.Count(x => x.IsUnavailable),
-                sessionCount,
-                totalAmount = total,
-                isFlexible = true,
-                items = built.SmartItems.Select(x => new
+                courtId = dto.CourtId,
+                courtName = built.Court?.Name,
+                slotCount = built.NormalizedItems.Count,
+                unavailableCount = 0,
+                sessionCount = legacySessionCount,
+                totalAmount = legacyTotal,
+                isFlexible = false,
+                items = built.NormalizedItems.Select(x => new
                 {
-                    courtId = x.CourtId,
-                    courtName = x.CourtName,
+                    courtId = (Guid?)x.CourtId,
+                    courtName = built.Court?.Name,
                     startTime = x.Start,
                     endTime = x.End,
                     price = x.Price,
-                    isUnavailable = x.IsUnavailable,
-                    isSwitched = x.IsSwitched,
-                    switchReason = x.SwitchReason,
+                    isUnavailable = false,
+                    isSwitched = false,
+                    switchReason = (string?)null,
                 }),
             });
         }
-
-        // Legacy single-court path
-        var legacyTotal = built.NormalizedItems!.Sum(x => x.Price);
-        var legacySessionCount = CountDistinctSessionDays(built.NormalizedItems!);
-
-        return Ok(new
+        catch (InvalidOperationException ex)
         {
-            venueId = dto.VenueId,
-            courtId = dto.CourtId,
-            courtName = built.Court!.Name,
-            slotCount = built.NormalizedItems!.Count,
-            unavailableCount = 0,
-            sessionCount = legacySessionCount,
-            totalAmount = legacyTotal,
-            isFlexible = false,
-            items = built.NormalizedItems!.Select(x => new
-            {
-                courtId = (Guid?)x.CourtId,
-                courtName = built.Court.Name,
-                startTime = x.Start,
-                endTime = x.End,
-                price = x.Price,
-                isUnavailable = false,
-                isSwitched = false,
-                switchReason = (string?)null,
-            }),
-        });
+            return Conflict(new { message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
     }
 
     /// <summary>
@@ -331,202 +235,34 @@ public class BookingsController : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.ContactPhone))
             return BadRequest(new { message = "Vui lòng nhập số điện thoại." });
 
-        // ── Update-in-place: if bookingId is provided, update existing HOLDING record ──
-        if (dto.BookingId.HasValue)
-        {
-            return await UpdateHoldingBookingContact(dto.BookingId.Value, userId, dto.ContactName, dto.ContactPhone, dto.Note);
-        }
-
-        var built = await BuildLongTermNormalizedAsync(dto, HttpContext.RequestAborted);
-        if (built.Error != null)
-            return built.Error;
-
-        var venuePolicy = await _dbContext.Venues
-            .AsNoTracking()
-            .Where(v => v.Id == dto.VenueId && v.IsActive == true)
-            .Select(v => new
-            {
-                v.Id,
-                v.CancelAllowed,
-                v.CancelBeforeMinutes,
-                v.RefundType,
-                v.RefundPercent,
-            })
-            .FirstOrDefaultAsync();
-
-        if (venuePolicy == null)
-            return BadRequest(new { message = "Cơ sở không tồn tại hoặc chưa mở đặt sân." });
-
-        decimal total = 0;
-        DateTime minStart;
-        DateTime maxEnd;
-
-        if (built.SmartItems != null)
-        {
-            var availableItems = built.SmartItems.Where(x => !x.IsUnavailable && x.CourtId.HasValue).ToList();
-            if (availableItems.Count == 0)
-                return BadRequest(new { message = "Không có khung giờ nào khả dụng để đặt." });
-
-            total = availableItems.Sum(x => x.Price);
-            minStart = availableItems.Min(x => x.Start);
-            maxEnd = availableItems.Max(x => x.End);
-        }
-        else
-        {
-            if (built.NormalizedItems == null || built.NormalizedItems.Count == 0)
-                return BadRequest(new { message = "Không có khung giờ hợp lệ." });
-
-            total = built.NormalizedItems.Sum(x => x.Price);
-            minStart = built.NormalizedItems.Min(x => x.Start);
-            maxEnd = built.NormalizedItems.Max(x => x.End);
-        }
-
-        // Collect actual booked dates for consecutive-day discount calculation
-        List<DateTime> bookedDates;
-        if (built.SmartItems != null)
-            bookedDates = built.SmartItems.Where(x => !x.IsUnavailable && x.CourtId.HasValue).Select(x => x.Start).ToList();
-        else
-            bookedDates = built.NormalizedItems!.Select(x => x.Start).ToList();
-
-        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, _, _) = await CalculateDiscountAsync(dto.VenueId, total, bookedDates, dto.CouponCode, userId);
-        if (errorMsg != null) return BadRequest(new { message = errorMsg });
-        var policySnapshot = new CancellationPolicySnapshot
-        {
-            AllowCancel = venuePolicy.CancelAllowed,
-            CancelBeforeMinutes = venuePolicy.CancelBeforeMinutes,
-            RefundType = string.IsNullOrWhiteSpace(venuePolicy.RefundType) ? "NONE" : venuePolicy.RefundType!,
-            RefundPercent = venuePolicy.RefundPercent,
-        };
-
-        var holdExpiry = DateTime.UtcNow.AddMinutes(5);
-
-        var ruleJson = JsonSerializer.Serialize(new
-        {
-            type = "WEEKLY",
-            daysOfWeek = dto.DaysOfWeek,
-            sessionStart = dto.SessionStartTime,
-            sessionEnd = dto.SessionEndTime,
-            courtId = dto.CourtId,
-        });
-
-        var series = new BookingSeries
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            VenueId = dto.VenueId,
-            RecurrenceRuleJson = ruleJson,
-            RangeStartDate = built.RangeStart!.Value,
-            RangeEndDate = built.RangeEnd!.Value,
-            Status = "HOLDING",
-            CreatedAt = DateTime.UtcNow,
-        };
-
-        var booking = new Booking
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            VenueId = dto.VenueId,
-            SeriesId = series.Id,
-            Status = "HOLDING",
-            HoldExpiresAt = holdExpiry,
-            TotalAmount = total,
-            DiscountAmount = discountAmount,
-            FinalAmount = finalAmount,
-            CouponId = couponId,
-            ContactName = dto.ContactName.Trim(),
-            ContactPhone = dto.ContactPhone.Trim(),
-            GuestNote = string.IsNullOrWhiteSpace(dto.Note) ? null : dto.Note.Trim(),
-            CancellationPolicySnapshotJson = JsonSerializer.Serialize(policySnapshot),
-            CreatedAt = DateTime.UtcNow
-        };
-
-        // Smart allocation: filter out unavailable, use SmartItems if present
-        if (built.SmartItems != null)
-        {
-            var availableItems = built.SmartItems.Where(x => !x.IsUnavailable && x.CourtId.HasValue).ToList();
-            foreach (var si in availableItems)
-            {
-                booking.BookingItems.Add(new BookingItem
-                {
-                    Id = Guid.NewGuid(),
-                    CourtId = si.CourtId!.Value,
-                    StartTime = si.Start,
-                    EndTime = si.End,
-                    FinalPrice = si.Price,
-                    Status = "HOLDING"
-                });
-            }
-        }
-        else
-        {
-            foreach (var ni in built.NormalizedItems!)
-            {
-                booking.BookingItems.Add(new BookingItem
-                {
-                    Id = Guid.NewGuid(),
-                    CourtId = ni.CourtId,
-                    StartTime = ni.Start,
-                    EndTime = ni.End,
-                    FinalPrice = ni.Price,
-                    Status = "HOLDING"
-                });
-            }
-        }
-
-        await using var trx = await _dbContext.Database.BeginTransactionAsync();
         try
         {
-            if (couponToUpdate != null)
+            if (dto.BookingId.HasValue)
             {
-                couponToUpdate.UsedCount = (couponToUpdate.UsedCount ?? 0) + 1;
-                _dbContext.VenueCoupons.Update(couponToUpdate);
+                var updateResult = await _bookingCreationService.UpdateHoldingBookingContactAsync(
+                    dto.BookingId.Value, userId, dto.ContactName, dto.ContactPhone, dto.Note, HttpContext.RequestAborted);
+                return Ok(updateResult);
             }
-            _dbContext.BookingSeries.Add(series);
-            _dbContext.Bookings.Add(booking);
-            await _dbContext.SaveChangesAsync();
-            await trx.CommitAsync();
-        }
-        catch
-        {
-            await trx.RollbackAsync();
-            throw;
-        }
 
-        var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
-        
-        Dictionary<Guid, string> courtNames = new();
-        if (built.SmartItems != null)
-        {
-            foreach (var si in built.SmartItems.Where(x => x.CourtId.HasValue))
-            {
-                courtNames[si.CourtId!.Value] = si.CourtName ?? "—";
-            }
+            var result = await _bookingCreationService.CreateLongTermBookingAsync(userId, dto, HttpContext.RequestAborted);
+            return StatusCode(StatusCodes.Status201Created, result);
         }
-        else if (built.Court != null)
+        catch (InvalidOperationException ex)
         {
-            courtNames[built.Court.Id] = built.Court.Name;
+            return Conflict(new { message = ex.Message });
         }
-
-        return StatusCode(StatusCodes.Status201Created, new
+        catch (ArgumentException ex)
         {
-            seriesId = series.Id,
-            bookingId = booking.Id,
-            bookingCode = code,
-            status = booking.Status,
-            holdExpiresAt = holdExpiry,
-            totalAmount = total,
-            finalAmount,
-            items = booking.BookingItems.Select(bi => new BookingItemResponseDto
-            {
-                Id = bi.Id,
-                CourtId = bi.CourtId ?? Guid.Empty,
-                CourtName = courtNames.GetValueOrDefault(bi.CourtId ?? Guid.Empty),
-                StartTime = bi.StartTime ?? default,
-                EndTime = bi.EndTime ?? default,
-                FinalPrice = bi.FinalPrice ?? 0,
-                Status = bi.Status
-            }).ToList(),
-        });
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
     }
 
     /// <summary>
@@ -535,32 +271,44 @@ public class BookingsController : ControllerBase
     [HttpPost("long-term/flexible/preview")]
     public async Task<IActionResult> PreviewLongTermFlexible([FromBody] LongTermFlexibleScheduleDto dto)
     {
-        if (!TryGetCurrentUserId(out _))
+        if (!TryGetCurrentUserId(out var currentUserId))
             return Unauthorized(new { message = "Không xác định được người dùng." });
 
-        var built = await BuildFlexibleLongTermAsync(dto, HttpContext.RequestAborted);
-        if (built.Error != null)
-            return built.Error;
-
-        var total = built.NormalizedItems!.Sum(x => x.Price);
-        var courtById = built.CourtById!;
-
-        return Ok(new
+        try
         {
-            venueId = dto.VenueId,
-            slotCount = built.NormalizedItems!.Count,
-            totalAmount = total,
-            rangeStart = built.RangeStart!.Value.ToString("yyyy-MM-dd"),
-            rangeEnd = built.RangeEnd!.Value.ToString("yyyy-MM-dd"),
-            items = built.NormalizedItems.Select(x => new
+            var built = await _bookingValidationService.BuildFlexibleLongTermAsync(dto, currentUserId, HttpContext.RequestAborted);
+            var total = built.NormalizedItems.Sum(x => x.Price);
+            var courtById = built.CourtById;
+
+            return Ok(new
             {
-                courtId = x.CourtId,
-                courtName = courtById.GetValueOrDefault(x.CourtId)?.Name,
-                startTime = x.Start,
-                endTime = x.End,
-                price = x.Price,
-            }),
-        });
+                venueId = dto.VenueId,
+                slotCount = built.NormalizedItems.Count,
+                totalAmount = total,
+                rangeStart = built.RangeStart.ToString("yyyy-MM-dd"),
+                rangeEnd = built.RangeEnd.ToString("yyyy-MM-dd"),
+                items = built.NormalizedItems.Select(x => new
+                {
+                    courtId = x.CourtId,
+                    courtName = courtById.GetValueOrDefault(x.CourtId)?.Name,
+                    startTime = x.Start,
+                    endTime = x.End,
+                    price = x.Price,
+                }),
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
     }
 
     /// <summary>
@@ -577,142 +325,34 @@ public class BookingsController : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.ContactPhone))
             return BadRequest(new { message = "Vui lòng nhập số điện thoại." });
 
-        // ── Update-in-place: if bookingId is provided, update existing HOLDING record ──
-        if (dto.BookingId.HasValue)
-        {
-            return await UpdateHoldingBookingContact(dto.BookingId.Value, userId, dto.ContactName, dto.ContactPhone, dto.Note);
-        }
-
-        var built = await BuildFlexibleLongTermAsync(dto, HttpContext.RequestAborted);
-        if (built.Error != null)
-            return built.Error;
-
-        var venuePolicy = await _dbContext.Venues
-            .AsNoTracking()
-            .Where(v => v.Id == dto.VenueId && v.IsActive == true)
-            .Select(v => new
-            {
-                v.Id,
-                v.CancelAllowed,
-                v.CancelBeforeMinutes,
-                v.RefundType,
-                v.RefundPercent,
-            })
-            .FirstOrDefaultAsync();
-
-        if (venuePolicy == null)
-            return BadRequest(new { message = "Cơ sở không tồn tại hoặc chưa mở đặt sân." });
-
-        var normalizedItems = built.NormalizedItems!;
-        var total = normalizedItems.Sum(x => x.Price);
-
-        // Collect actual booked dates for consecutive-day discount calculation
-        var bookedDates = normalizedItems.Select(x => x.Start).ToList();
-
-        var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, _, _) = await CalculateDiscountAsync(dto.VenueId, total, bookedDates, dto.CouponCode, userId);
-        if (errorMsg != null) return BadRequest(new { message = errorMsg });
-        var policySnapshot = new CancellationPolicySnapshot
-        {
-            AllowCancel = venuePolicy.CancelAllowed,
-            CancelBeforeMinutes = venuePolicy.CancelBeforeMinutes,
-            RefundType = string.IsNullOrWhiteSpace(venuePolicy.RefundType) ? "NONE" : venuePolicy.RefundType!,
-            RefundPercent = venuePolicy.RefundPercent,
-        };
-
-        var holdExpiry = DateTime.UtcNow.AddMinutes(5);
-
-        var ruleJson = JsonSerializer.Serialize(new
-        {
-            type = "FLEXIBLE",
-            itemCount = normalizedItems.Count,
-        });
-
-        var series = new BookingSeries
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            VenueId = dto.VenueId,
-            RecurrenceRuleJson = ruleJson,
-            RangeStartDate = built.RangeStart!.Value,
-            RangeEndDate = built.RangeEnd!.Value,
-            Status = "HOLDING",
-            CreatedAt = DateTime.UtcNow,
-        };
-
-        var booking = new Booking
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            VenueId = dto.VenueId,
-            SeriesId = series.Id,
-            Status = "HOLDING",
-            HoldExpiresAt = holdExpiry,
-            TotalAmount = total,
-            DiscountAmount = discountAmount,
-            FinalAmount = finalAmount,
-            CouponId = couponId,
-            ContactName = dto.ContactName.Trim(),
-            ContactPhone = dto.ContactPhone.Trim(),
-            GuestNote = string.IsNullOrWhiteSpace(dto.Note) ? null : dto.Note.Trim(),
-            CancellationPolicySnapshotJson = JsonSerializer.Serialize(policySnapshot),
-            CreatedAt = DateTime.UtcNow
-        };
-
-        foreach (var ni in normalizedItems)
-        {
-            booking.BookingItems.Add(new BookingItem
-            {
-                Id = Guid.NewGuid(),
-                CourtId = ni.CourtId,
-                StartTime = ni.Start,
-                EndTime = ni.End,
-                FinalPrice = ni.Price,
-                Status = "HOLDING"
-            });
-        }
-
-        await using var trx = await _dbContext.Database.BeginTransactionAsync();
         try
         {
-            if (couponToUpdate != null)
+            if (dto.BookingId.HasValue)
             {
-                couponToUpdate.UsedCount = (couponToUpdate.UsedCount ?? 0) + 1;
-                _dbContext.VenueCoupons.Update(couponToUpdate);
+                var updateResult = await _bookingCreationService.UpdateHoldingBookingContactAsync(
+                    dto.BookingId.Value, userId, dto.ContactName, dto.ContactPhone, dto.Note, HttpContext.RequestAborted);
+                return Ok(updateResult);
             }
-            _dbContext.BookingSeries.Add(series);
-            _dbContext.Bookings.Add(booking);
-            await _dbContext.SaveChangesAsync();
-            await trx.CommitAsync();
-        }
-        catch
-        {
-            await trx.RollbackAsync();
-            throw;
-        }
 
-        var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
-        var courtById = built.CourtById!;
-
-        return StatusCode(StatusCodes.Status201Created, new
+            var result = await _bookingCreationService.CreateLongTermFlexibleBookingAsync(userId, dto, HttpContext.RequestAborted);
+            return StatusCode(StatusCodes.Status201Created, result);
+        }
+        catch (InvalidOperationException ex)
         {
-            seriesId = series.Id,
-            bookingId = booking.Id,
-            bookingCode = code,
-            status = booking.Status,
-            holdExpiresAt = holdExpiry,
-            totalAmount = total,
-            finalAmount,
-            items = booking.BookingItems.Select(bi => new BookingItemResponseDto
-            {
-                Id = bi.Id,
-                CourtId = bi.CourtId ?? Guid.Empty,
-                CourtName = courtById.GetValueOrDefault(bi.CourtId ?? Guid.Empty)?.Name,
-                StartTime = bi.StartTime ?? default,
-                EndTime = bi.EndTime ?? default,
-                FinalPrice = bi.FinalPrice ?? 0,
-                Status = bi.Status
-            }).ToList(),
-        });
+            return Conflict(new { message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
     }
 
     private sealed class FlexibleLongTermBuildResult
@@ -1173,178 +813,40 @@ public class BookingsController : ControllerBase
         });
     }
 
-    public class CancelBookingBody
-    {
-        public string? RefundBankName { get; set; }
-        public string? RefundAccountNumber { get; set; }
-        public string? RefundAccountHolder { get; set; }
-        public string? RefundQrImageUrl { get; set; }
-        public string? PlayerNote { get; set; }
-    }
-
     /// <summary>
     /// Người chơi tự huỷ đơn — tự động tạo refund_request theo nhánh.
     /// </summary>
     [HttpPatch("{id:guid}/cancel")]
-    public async Task<IActionResult> CancelMyBooking([FromRoute] Guid id, [FromBody] CancelBookingBody? body)
+    public async Task<IActionResult> CancelMyBooking([FromRoute] Guid id, [FromBody] CancelBookingBodyDto? body)
     {
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized(new { message = "Không xác định được người dùng." });
 
-        var booking = await _dbContext.Bookings
-            .Include(b => b.BookingItems)
-            .Include(b => b.Payments)
-            .FirstOrDefaultAsync(b => b.Id == id && b.UserId == userId);
-
-        if (booking == null)
-            return NotFound(new { message = "Không tìm thấy đơn đặt." });
-
-        if (booking.Status is "CANCELLED" or "PENDING_RECONCILIATION" or "PENDING_REFUND" or "REFUNDED")
-            return BadRequest(new { message = "Đơn đã bị huỷ hoặc đang xử lý hoàn tiền." });
-
-        if (booking.Status is not ("PENDING" or "CONFIRMED"))
-            return BadRequest(new { message = "Không thể huỷ đơn ở trạng thái này." });
-
-        var policy = ParsePolicyOrDefault(booking.CancellationPolicySnapshotJson);
-        if (!policy.AllowCancel)
-            return BadRequest(new { message = "Theo chính sách cụm sân, bạn không thể tự huỷ đơn này. Vui lòng liên hệ chủ sân." });
-
-        var starts = booking.BookingItems
-            .Where(bi => bi.StartTime != null)
-            .Select(bi => bi.StartTime!.Value)
-            .ToList();
-        if (starts.Count > 0)
+        try
         {
-            var minStartUtc = starts.Select(ToUtcComparable).Min();
-            var deadlineUtc = minStartUtc.AddMinutes(-policy.CancelBeforeMinutes);
-            if (DateTime.UtcNow > deadlineUtc)
+            var result = await _bookingService.CancelMyBookingAsync(id, userId, body, HttpContext.RequestAborted);
+            
+            return Ok(new
             {
-                return BadRequest(new
-                {
-                    message = $"Đã quá thời hạn huỷ (phải huỷ trước giờ đá ít nhất {policy.CancelBeforeMinutes} phút, theo chính sách lúc đặt).",
-                });
-            }
+                message = result.Message,
+                bookingId = id,
+                bookingCode = "SU" + id.ToString("N")[^6..].ToUpperInvariant(),
+                status = result.Status,
+                cancelBranch = result.CancelBranch,
+                refundRequestId = result.RefundRequestId,
+            });
         }
-
-        var (hasProof, paymentConfirmed, paidAmount) = AnalyzePaymentState(booking.Payments);
-        var finalAmount = booking.FinalAmount ?? booking.TotalAmount ?? 0;
-
-        string cancelBranch;
-        string newBookingStatus;
-        string? refundRequestStatus = null;
-
-        if (paymentConfirmed)
+        catch (KeyNotFoundException ex)
         {
-            cancelBranch = "PAID";
-            newBookingStatus = "PENDING_REFUND";
-            refundRequestStatus = "PENDING_REFUND";
+            return NotFound(new { message = ex.Message });
         }
-        else if (hasProof)
+        catch (ArgumentException ex)
         {
-            cancelBranch = "PROOF_UPLOADED";
-            newBookingStatus = "PENDING_RECONCILIATION";
-            refundRequestStatus = "PENDING_RECONCILIATION";
+            return BadRequest(new { message = ex.Message });
         }
-        else
-        {
-            cancelBranch = "NO_PAYMENT";
-            newBookingStatus = "CANCELLED";
-        }
-
-        booking.Status = newBookingStatus;
-        foreach (var item in booking.BookingItems)
-            item.Status = newBookingStatus == "CANCELLED" ? "CANCELLED" : item.Status;
-
-        if (newBookingStatus == "CANCELLED")
-        {
-            foreach (var p in booking.Payments.Where(p =>
-                         p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase)))
-                p.Status = "CANCELLED";
-        }
-
-        if (booking.SeriesId is { } seriesId)
-        {
-            var series = await _dbContext.BookingSeries.FirstOrDefaultAsync(s => s.Id == seriesId);
-            if (series != null)
-                series.Status = newBookingStatus == "CANCELLED" ? "CANCELLED" : "CANCELLING";
-        }
-
-        RefundRequest? refundReq = null;
-        if (refundRequestStatus != null)
-        {
-            decimal refundAmount = 0;
-            if (cancelBranch == "PAID")
-                refundAmount = policy.ComputeRefundAmount(paidAmount);
-
-            refundReq = new RefundRequest
-            {
-                Id = Guid.NewGuid(),
-                BookingId = booking.Id,
-                UserId = userId,
-                ReasonCode = "PLAYER_CANCEL",
-                Status = refundRequestStatus,
-                RequestedAmount = refundAmount,
-                PaidAmount = cancelBranch == "PAID" ? paidAmount : null,
-                RefundBankName = body?.RefundBankName?.Trim(),
-                RefundAccountNumber = body?.RefundAccountNumber?.Trim(),
-                RefundAccountHolder = body?.RefundAccountHolder?.Trim().ToUpperInvariant(),
-                RefundQrImageUrl = body?.RefundQrImageUrl?.Trim(),
-                PlayerNote = body?.PlayerNote?.Trim(),
-                RequestedAt = DateTime.UtcNow,
-            };
-            _dbContext.RefundRequests.Add(refundReq);
-        }
-
-        await _dbContext.SaveChangesAsync();
-
-        await _matchingPostLifecycle.CancelPostsByBookingAsync(booking, cancelledBy: "người chơi", HttpContext.RequestAborted);
-
-        if (booking.VenueId.HasValue)
-        {
-            var ownerId = await _dbContext.Venues
-                .Where(v => v.Id == booking.VenueId)
-                .Select(v => v.OwnerUserId)
-                .FirstOrDefaultAsync();
-            if (ownerId.HasValue)
-            {
-                var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
-                var title = cancelBranch switch
-                {
-                    "PAID" => "Yêu cầu hoàn tiền mới",
-                    "PROOF_UPLOADED" => "Đơn hủy cần đối soát",
-                    _ => "Đơn đặt sân bị hủy",
-                };
-                var notifBody = $"Đơn #{code} đã bị người chơi hủy" + cancelBranch switch
-                {
-                    "PAID" => " — vui lòng xử lý hoàn tiền.",
-                    "PROOF_UPLOADED" => " — có chứng từ CK cần đối soát.",
-                    _ => ".",
-                };
-                await _notify.NotifyUserAsync(
-                    ownerId.Value,
-                    NotificationTypes.RefundRequest,
-                    title, notifBody,
-                    new { bookingId = booking.Id, status = newBookingStatus, entityType = "refund", deepLink = "/manager/refunds" },
-                    sendEmail: false,
-                    cancellationToken: HttpContext.RequestAborted);
-            }
-        }
-
-        return Ok(new
-        {
-            message = cancelBranch switch
-            {
-                "PAID" => "Đã hủy đơn. Yêu cầu hoàn tiền đã được gửi đến chủ sân.",
-                "PROOF_UPLOADED" => "Đã hủy đơn. Vui lòng chờ chủ sân đối soát biên lai trước khi xử lý hoàn tiền.",
-                _ => "Đã huỷ đặt sân thành công.",
-            },
-            bookingId = booking.Id,
-            bookingCode = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant(),
-            status = newBookingStatus,
-            cancelBranch,
-            refundRequestId = refundReq?.Id,
-        });
     }
+
+
 
     /// <summary>
     /// Cancel a HOLDING booking immediately, releasing the courts for others.
@@ -1356,50 +858,28 @@ public class BookingsController : ControllerBase
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized(new { message = "Không xác định được người dùng." });
 
-        var booking = await _dbContext.Bookings
-            .Include(b => b.BookingItems)
-            .FirstOrDefaultAsync(b => b.Id == id);
-
-        if (booking == null)
-            return NotFound(new { message = "Không tìm thấy đơn đặt." });
-
-        // Strict ownership validation
-        if (booking.UserId != userId)
+        try
+        {
+            var result = await _bookingService.CancelHoldAsync(id, userId, HttpContext.RequestAborted);
+            return Ok(new
+            {
+                message = "Đã huỷ giữ chỗ thành công. Các khung giờ đã được giải phóng.",
+                bookingId = result.BookingId,
+                status = result.Status,
+            });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException)
+        {
             return Forbid();
-
-        if (booking.Status != "HOLDING")
-            return BadRequest(new { message = "Chỉ có thể huỷ đơn đang giữ chỗ (HOLDING)." });
-
-        booking.Status = "CANCELLED";
-        booking.HoldExpiresAt = null;
-
-        foreach (var item in booking.BookingItems)
-            item.Status = "CANCELLED";
-
-        // Cancel the series too, if any
-        if (booking.SeriesId is { } seriesId)
-        {
-            var series = await _dbContext.BookingSeries.FirstOrDefaultAsync(s => s.Id == seriesId);
-            if (series != null)
-                series.Status = "CANCELLED";
         }
-
-        // Restore coupon usage if one was applied
-        if (booking.CouponId.HasValue)
+        catch (ArgumentException ex)
         {
-            var coupon = await _dbContext.VenueCoupons.FirstOrDefaultAsync(c => c.Id == booking.CouponId.Value);
-            if (coupon != null && (coupon.UsedCount ?? 0) > 0)
-                coupon.UsedCount = (coupon.UsedCount ?? 0) - 1;
+            return BadRequest(new { message = ex.Message });
         }
-
-        await _dbContext.SaveChangesAsync();
-
-        return Ok(new
-        {
-            message = "Đã huỷ giữ chỗ thành công. Các khung giờ đã được giải phóng.",
-            bookingId = booking.Id,
-            status = booking.Status,
-        });
     }
 
     /// <summary>
@@ -1464,28 +944,20 @@ public class BookingsController : ControllerBase
     /// Player gửi / cập nhật thông tin ngân hàng nhận hoàn tiền.
     /// </summary>
     [HttpPatch("{id:guid}/refund-bank-info")]
-    public async Task<IActionResult> UpdateRefundBankInfo([FromRoute] Guid id, [FromBody] CancelBookingBody body)
+    public async Task<IActionResult> UpdateRefundBankInfo([FromRoute] Guid id, [FromBody] CancelBookingBodyDto body)
     {
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized(new { message = "Không xác định được người dùng." });
 
-        var refund = await _dbContext.RefundRequests
-            .FirstOrDefaultAsync(r => r.BookingId == id && r.UserId == userId
-                                      && r.Status != "COMPLETED" && r.Status != "REJECTED");
-        if (refund == null)
-            return NotFound(new { message = "Không tìm thấy yêu cầu hoàn tiền." });
-
-        if (!string.IsNullOrWhiteSpace(body.RefundBankName))
-            refund.RefundBankName = body.RefundBankName.Trim();
-        if (!string.IsNullOrWhiteSpace(body.RefundAccountNumber))
-            refund.RefundAccountNumber = body.RefundAccountNumber.Trim();
-        if (!string.IsNullOrWhiteSpace(body.RefundAccountHolder))
-            refund.RefundAccountHolder = body.RefundAccountHolder.Trim().ToUpperInvariant();
-        if (!string.IsNullOrWhiteSpace(body.RefundQrImageUrl))
-            refund.RefundQrImageUrl = body.RefundQrImageUrl.Trim();
-
-        await _dbContext.SaveChangesAsync();
-        return Ok(new { message = "Đã cập nhật thông tin nhận hoàn tiền." });
+        try
+        {
+            await _bookingService.UpdateRefundBankInfoAsync(id, userId, body, HttpContext.RequestAborted);
+            return Ok(new { message = "Đã cập nhật thông tin nhận hoàn tiền." });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     /// <summary>
@@ -1609,28 +1081,6 @@ public class BookingsController : ControllerBase
         if (!proofImage.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
             return BadRequest(new { message = "File phải là ảnh." });
 
-        var booking = await _dbContext.Bookings
-            .Include(b => b.Venue)
-                .ThenInclude(v => v!.OwnerUser)
-            .Include(b => b.Payments)
-            .Include(b => b.BookingItems)
-            .FirstOrDefaultAsync(b => b.Id == id && b.UserId == userId);
-
-        if (booking == null)
-            return NotFound(new { message = "Không tìm thấy đơn đặt." });
-
-        if (booking.Status == "CANCELLED")
-            return BadRequest(new { message = "Đơn đã bị huỷ." });
-
-        if (booking.Status is not ("PENDING" or "HOLDING"))
-            return BadRequest(new { message = "Chỉ có thể nộp minh chứng khi đơn đang chờ duyệt hoặc đang giữ chỗ." });
-
-        if (booking.Status == "HOLDING" && booking.HoldExpiresAt != null && booking.HoldExpiresAt <= DateTime.UtcNow)
-            return BadRequest(new { message = "Thời gian giữ chỗ đã hết. Vui lòng đặt lại.", code = "HOLD_EXPIRED" });
-
-        var methodNorm = string.IsNullOrWhiteSpace(form.Method) ? "BANK" : form.Method.Trim().ToUpperInvariant();
-        var methodLabel = methodNorm == "QR" ? "QR" : "BANK_TRANSFER";
-
         string secureUrl;
         try
         {
@@ -1642,168 +1092,19 @@ public class BookingsController : ControllerBase
             return StatusCode(500, new { message = "Cloudinary upload exception: " + ex.Message });
         }
 
-        var existingPending = booking.Payments
-            .Where(p => p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(p => p.CreatedAt)
-            .FirstOrDefault();
-
-        if (existingPending != null
-            && !string.IsNullOrEmpty(existingPending.GatewayReference)
-            && existingPending.GatewayReference.StartsWith("https", StringComparison.OrdinalIgnoreCase))
+        try
         {
-            return BadRequest(new { message = "Đơn đã có minh chứng thanh toán. Không gửi lại." });
+            await _bookingService.SubmitPaymentAsync(id, userId, form.Method, secureUrl, HttpContext.RequestAborted);
+            return Ok(new { message = "Đã gửi minh chứng thanh toán. Vui lòng chờ chủ sân xác nhận." });
         }
-
-        var wasHolding = booking.Status == "HOLDING";
-        if (wasHolding)
+        catch (KeyNotFoundException ex)
         {
-            booking.Status = "PENDING";
-            booking.HoldExpiresAt = null;
-            foreach (var item in booking.BookingItems)
-                item.Status = "PENDING";
-
-            if (booking.SeriesId is { } seriesId)
-            {
-                var series = await _dbContext.BookingSeries.FirstOrDefaultAsync(s => s.Id == seriesId);
-                if (series != null) series.Status = "PENDING";
-            }
+            return NotFound(new { message = ex.Message });
         }
-
-        Payment paymentRow;
-        if (existingPending != null)
+        catch (ArgumentException ex)
         {
-            existingPending.Method = methodLabel;
-            existingPending.GatewayReference = secureUrl;
-            existingPending.Amount = booking.FinalAmount;
-            existingPending.CreatedAt = DateTime.UtcNow;
-            paymentRow = existingPending;
+            return BadRequest(new { message = ex.Message });
         }
-        else
-        {
-            paymentRow = new Payment
-            {
-                Id = Guid.NewGuid(),
-                BookingId = booking.Id,
-                Method = methodLabel,
-                Status = "PENDING",
-                Amount = booking.FinalAmount,
-                GatewayReference = secureUrl,
-                CreatedAt = DateTime.UtcNow
-            };
-            _dbContext.Payments.Add(paymentRow);
-        }
-
-        await _dbContext.SaveChangesAsync();
-
-        var bookingCode = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
-
-        // ── Fire-and-forget: gửi notification + email ở luồng ngầm ──
-        // Không block response — user thấy "Thành công" ngay lập tức.
-        if (booking.Venue?.OwnerUserId is { } mgrId && mgrId != Guid.Empty)
-        {
-            var capturedBookingId = booking.Id;
-            var capturedVenueId = booking.VenueId;
-            var capturedContactName = booking.ContactName;
-            var capturedFinalAmount = booking.FinalAmount;
-            var capturedOwnerName = booking.Venue?.OwnerUser?.FullName ?? "Chủ sân";
-            var capturedVenueName = booking.Venue?.Name ?? "sân";
-            var capturedMgrId = mgrId;
-            var capturedWasHolding = wasHolding;
-            var capturedBookingCode = bookingCode;
-            var capturedFrontUrl = _configuration["App:FrontendUrl"] ?? "http://localhost:5173";
-
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    using var scope = _scopeFactory.CreateScope();
-                    var notify = scope.ServiceProvider.GetRequiredService<INotificationDispatchService>();
-
-                    var notifTitle = capturedWasHolding ? "📢 Có đơn đặt sân mới chờ duyệt" : "Có minh chứng thanh toán mới";
-                    var notifBody = capturedWasHolding
-                        ? $"Mã {capturedBookingCode} — {capturedContactName} — {capturedFinalAmount:N0} VNĐ."
-                        : $"Đơn {capturedBookingCode} vừa có ảnh chứng từ từ người chơi.";
-                    var notifType = capturedWasHolding ? NotificationTypes.BookingNew : NotificationTypes.PaymentProof;
-
-                    string? newBookingHtml = null;
-                    if (capturedWasHolding)
-                    {
-                        var mgrLink = $"{capturedFrontUrl}/manager/bookings";
-                        newBookingHtml = $"""
-                            <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">
-                              <div style="background:linear-gradient(135deg,#059669,#10b981);padding:28px 24px;text-align:center">
-                                <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700">🏸 ShuttleUp</h1>
-                                <p style="margin:6px 0 0;color:#d1fae5;font-size:14px">Đơn đặt sân mới</p>
-                              </div>
-                              <div style="padding:24px">
-                                <p style="color:#334155;font-size:15px;margin:0 0 16px">
-                                  Xin chào <strong>{System.Net.WebUtility.HtmlEncode(capturedOwnerName)}</strong>,
-                                </p>
-                                <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:20px">
-                                  <table style="width:100%;border-collapse:collapse;font-size:14px;color:#334155">
-                                    <tr>
-                                      <td style="padding:6px 0;font-weight:600;width:130px">📋 Mã đơn:</td>
-                                      <td style="padding:6px 0"><strong>{capturedBookingCode}</strong></td>
-                                    </tr>
-                                    <tr>
-                                      <td style="padding:6px 0;font-weight:600">👤 Khách hàng:</td>
-                                      <td style="padding:6px 0">{System.Net.WebUtility.HtmlEncode(capturedContactName ?? "Khách hàng")}</td>
-                                    </tr>
-                                    <tr>
-                                      <td style="padding:6px 0;font-weight:600">📍 Sân:</td>
-                                      <td style="padding:6px 0">{System.Net.WebUtility.HtmlEncode(capturedVenueName)}</td>
-                                    </tr>
-                                    <tr>
-                                      <td style="padding:6px 0;font-weight:600">💰 Tổng tiền:</td>
-                                      <td style="padding:6px 0"><strong>{capturedFinalAmount:N0} VNĐ</strong></td>
-                                    </tr>
-                                  </table>
-                                </div>
-                                <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-bottom:20px">
-                                  <p style="margin:0;color:#92400e;font-size:13px">⏰ Duyệt đơn nhanh trong vòng <strong>60 phút</strong> để duy trì huy hiệu <strong>Elite Owner</strong>!</p>
-                                </div>
-                                <div style="text-align:center;margin:20px 0">
-                                  <a href="{mgrLink}"
-                                     style="display:inline-block;padding:12px 32px;background:#16a34a;color:#ffffff;
-                                            border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">
-                                    Xem và duyệt đơn ngay
-                                  </a>
-                                </div>
-                                <p style="color:#94a3b8;font-size:12px;margin:20px 0 0;text-align:center">
-                                  Bạn nhận được email này vì có đơn đặt sân mới trên ShuttleUp.
-                                </p>
-                              </div>
-                            </div>
-                            """;
-                    }
-
-                    await notify.NotifyUserAsync(
-                        capturedMgrId,
-                        notifType,
-                        notifTitle,
-                        notifBody,
-                        NotificationMetadataBuilder.BookingForManager(capturedBookingId, capturedVenueId),
-                        sendEmail: capturedWasHolding,
-                        htmlBodyOverride: newBookingHtml);
-                }
-                catch
-                {
-                    /* swallow — notification failure must not affect completed payment */
-                }
-            });
-        }
-
-        return Ok(new
-        {
-            paymentId = paymentRow.Id,
-            paymentRow.Status,
-            paymentRow.Method,
-            paymentRow.Amount,
-            proofUrl = secureUrl,
-            bookingId = booking.Id,
-            bookingCode,
-            bookingStatus = booking.Status,
-        });
     }
 
     [HttpPost("preview-discount")]

@@ -3,9 +3,6 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using ShuttleUp.Backend.Constants;
-using ShuttleUp.Backend.Utils;
-using ShuttleUp.BLL.DTOs.Policy;
 using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.DAL.Models;
 
@@ -17,16 +14,16 @@ namespace ShuttleUp.Backend.Controllers;
 public class ManagerRefundsController : ControllerBase
 {
     private readonly ShuttleUpDbContext _dbContext;
-    private readonly INotificationDispatchService _notify;
+    private readonly IRefundService _refundService;
     private readonly IFileService _fileService;
 
     public ManagerRefundsController(
         ShuttleUpDbContext dbContext,
-        INotificationDispatchService notify,
+        IRefundService refundService,
         IFileService fileService)
     {
         _dbContext = dbContext;
-        _notify = notify;
+        _refundService = refundService;
         _fileService = fileService;
     }
 
@@ -121,89 +118,18 @@ public class ManagerRefundsController : ControllerBase
         if (!TryGetCurrentUserId(out var managerId))
             return Unauthorized(new { message = "Không xác định được người dùng." });
 
-        var refund = await _dbContext.RefundRequests
-            .Include(r => r.Booking).ThenInclude(b => b!.Payments)
-            .Include(r => r.Booking).ThenInclude(b => b!.Venue)
-            .FirstOrDefaultAsync(r => r.Id == refundId);
-
-        if (refund?.Booking?.Venue?.OwnerUserId != managerId)
-            return Forbid();
-
-        if (refund.Status != "PENDING_RECONCILIATION")
-            return BadRequest(new { message = "Yêu cầu không ở trạng thái cần đối soát." });
-
-        if (dto.Confirmed)
+        try
         {
-            var paidAmount = refund.Booking!.Payments
-                .Where(p => p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase))
-                .Sum(p => p.Amount ?? 0);
-
-            foreach (var p in refund.Booking.Payments.Where(p =>
-                         p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase)))
-            {
-                p.Status = "COMPLETED";
-                p.ConfirmedBy = managerId;
-                p.ConfirmedAt = DateTime.UtcNow;
-            }
-
-            var policy = ParsePolicyOrDefault(refund.Booking.CancellationPolicySnapshotJson);
-            var refundAmount = policy.ComputeRefundAmount(paidAmount);
-
-            refund.Status = "PENDING_REFUND";
-            refund.PaidAmount = paidAmount;
-            refund.RequestedAmount = refundAmount;
-            refund.Booking.Status = "PENDING_REFUND";
-
-            await _dbContext.SaveChangesAsync();
-
-            if (refund.UserId.HasValue)
-            {
-                var code = "SU" + refund.Booking.Id.ToString("N")[^6..].ToUpperInvariant();
-                await _notify.NotifyUserAsync(
-                    refund.UserId.Value,
-                    NotificationTypes.RefundReconciled,
-                    "Chủ sân đã xác nhận nhận tiền",
-                    $"Đơn #{code}: Chủ sân đã xác nhận nhận được chuyển khoản. Hoàn tiền đang xử lý.",
-                    new { bookingId = refund.BookingId, entityType = "refund", deepLink = "/user/bookings" },
-                    sendEmail: false,
-                    cancellationToken: HttpContext.RequestAborted);
-            }
-
-            return Ok(new { message = "Đã xác nhận nhận tiền. Đơn chuyển sang chờ hoàn tiền.", status = "PENDING_REFUND" });
+            var result = await _refundService.ReconcileAsync(refundId, managerId, dto.Confirmed, dto.Reason, HttpContext.RequestAborted);
+            return Ok(new { message = result.Message, status = result.Status });
         }
-        else
+        catch (UnauthorizedAccessException)
         {
-            if (string.IsNullOrWhiteSpace(dto.Reason))
-                return BadRequest(new { message = "Vui lòng nhập lý do từ chối để người chơi được biết." });
-
-            refund.Status = "REJECTED";
-            refund.RejectionReason = dto.Reason.Trim();
-            refund.ProcessedBy = managerId;
-            refund.ProcessedAt = DateTime.UtcNow;
-            refund.Booking!.Status = "CANCELLED";
-
-            foreach (var item in refund.Booking.BookingItems ?? Enumerable.Empty<BookingItem>())
-                item.Status = "CANCELLED";
-            foreach (var p in refund.Booking.Payments.Where(p =>
-                         p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase)))
-                p.Status = "CANCELLED";
-
-            await _dbContext.SaveChangesAsync();
-
-            if (refund.UserId.HasValue)
-            {
-                var code = "SU" + refund.Booking.Id.ToString("N")[^6..].ToUpperInvariant();
-                await _notify.NotifyUserAsync(
-                    refund.UserId.Value,
-                    NotificationTypes.RefundRejected,
-                    "Yêu cầu hoàn tiền bị từ chối",
-                    $"Đơn #{code}: {refund.RejectionReason}",
-                    new { bookingId = refund.BookingId, entityType = "refund", deepLink = "/user/bookings" },
-                    sendEmail: false,
-                    cancellationToken: HttpContext.RequestAborted);
-            }
-
-            return Ok(new { message = "Đã từ chối. Đơn chuyển sang Đã hủy.", status = "REJECTED" });
+            return Forbid();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
     }
 
@@ -221,47 +147,19 @@ public class ManagerRefundsController : ControllerBase
         if (!TryGetCurrentUserId(out var managerId))
             return Unauthorized(new { message = "Không xác định được người dùng." });
 
-        var refund = await _dbContext.RefundRequests
-            .Include(r => r.Booking).ThenInclude(b => b!.Venue)
-            .FirstOrDefaultAsync(r => r.Id == refundId);
-
-        if (refund?.Booking?.Venue?.OwnerUserId != managerId)
+        try
+        {
+            var result = await _refundService.CompleteRefundAsync(refundId, managerId, dto?.ManagerNote, HttpContext.RequestAborted);
+            return Ok(new { message = result.Message, status = result.Status });
+        }
+        catch (UnauthorizedAccessException)
+        {
             return Forbid();
-
-        if (refund.Status != "PENDING_REFUND")
-            return BadRequest(new { message = "Yêu cầu không ở trạng thái chờ hoàn tiền." });
-
-        if (refund.ManagerEvidenceFileId == null)
-            return BadRequest(new { message = "Oops… Bạn cần tải ảnh biên lai chuyển khoản hoàn tiền trước khi đánh dấu hoàn tất." });
-
-        refund.Status = "COMPLETED";
-        refund.ProcessedBy = managerId;
-        refund.ProcessedAt = DateTime.UtcNow;
-        refund.ManagerNote = dto?.ManagerNote?.Trim();
-        refund.Booking!.Status = "REFUNDED";
-
-        if (refund.Booking.SeriesId is { } sid)
-        {
-            var series = await _dbContext.BookingSeries.FirstOrDefaultAsync(s => s.Id == sid);
-            if (series != null) series.Status = "REFUNDED";
         }
-
-        await _dbContext.SaveChangesAsync();
-
-        if (refund.UserId.HasValue)
+        catch (ArgumentException ex)
         {
-            var code = "SU" + refund.Booking.Id.ToString("N")[^6..].ToUpperInvariant();
-            await _notify.NotifyUserAsync(
-                refund.UserId.Value,
-                NotificationTypes.RefundCompleted,
-                "Hoàn tiền thành công",
-                $"Đơn #{code}: Chủ sân đã chuyển khoản hoàn tiền {(refund.RequestedAmount ?? 0).ToString("N0")} ₫. Vui lòng kiểm tra tài khoản.",
-                new { bookingId = refund.BookingId, entityType = "refund", deepLink = "/user/bookings" },
-                sendEmail: true,
-                cancellationToken: HttpContext.RequestAborted);
+            return BadRequest(new { message = ex.Message });
         }
-
-        return Ok(new { message = "Đã hoàn tất hoàn tiền.", status = "COMPLETED" });
     }
 
     /// <summary>
@@ -281,14 +179,8 @@ public class ManagerRefundsController : ControllerBase
         if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
             return BadRequest(new { message = "File phải là ảnh." });
 
-        var refund = await _dbContext.RefundRequests
-            .Include(r => r.Booking).ThenInclude(b => b!.Venue)
-            .FirstOrDefaultAsync(r => r.Id == refundId);
-
-        if (refund?.Booking?.Venue?.OwnerUserId != managerId)
-            return Forbid();
-
-        var upload = await _fileService.UploadPaymentProofAsync(file, refund.BookingId ?? Guid.Empty, HttpContext.RequestAborted);
+        // Upload file to Cloudinary (stays in Controller since it needs IFormFile from HTTP context)
+        var upload = await _fileService.UploadPaymentProofAsync(file, Guid.Empty, HttpContext.RequestAborted);
 
         var fileEntity = new ShuttleUp.DAL.Models.File
         {
@@ -301,25 +193,16 @@ public class ManagerRefundsController : ControllerBase
             CreatedAt = DateTime.UtcNow
         };
         _dbContext.Set<ShuttleUp.DAL.Models.File>().Add(fileEntity);
-
-        refund.ManagerEvidenceFileId = fileEntity.Id;
         await _dbContext.SaveChangesAsync();
 
-        return Ok(new { message = "Đã tải ảnh bill CK hoàn tiền.", fileUrl = upload.SecureUrl });
-    }
-
-    private static CancellationPolicySnapshot ParsePolicyOrDefault(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json))
-            return new CancellationPolicySnapshot();
         try
         {
-            return System.Text.Json.JsonSerializer.Deserialize<CancellationPolicySnapshot>(json)
-                   ?? new CancellationPolicySnapshot();
+            await _refundService.UploadEvidenceAsync(refundId, managerId, fileEntity.Id, HttpContext.RequestAborted);
+            return Ok(new { message = "Đã tải ảnh bill CK hoàn tiền.", fileUrl = upload.SecureUrl });
         }
-        catch
+        catch (UnauthorizedAccessException)
         {
-            return new CancellationPolicySnapshot();
+            return Forbid();
         }
     }
 }

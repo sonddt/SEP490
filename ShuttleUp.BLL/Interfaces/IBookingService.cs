@@ -1,4 +1,5 @@
 using ShuttleUp.DAL.Models;
+using ShuttleUp.BLL.DTOs.Booking;
 
 namespace ShuttleUp.BLL.Interfaces;
 
@@ -13,4 +14,9 @@ public interface IBookingService
     Task UpdateAsync(Booking booking);
     Task CancelAsync(Guid bookingId);
     Task ConfirmAsync(Guid bookingId);
+
+    Task<BookingResponseDto> CancelHoldAsync(Guid bookingId, Guid userId, CancellationToken ct);
+    Task<(string Message, string Status, string CancelBranch, Guid? RefundRequestId)> CancelMyBookingAsync(Guid bookingId, Guid userId, CancelBookingBodyDto? body, CancellationToken ct);
+    Task UpdateRefundBankInfoAsync(Guid bookingId, Guid userId, CancelBookingBodyDto body, CancellationToken ct);
+    Task SubmitPaymentAsync(Guid bookingId, Guid userId, string method, string secureUrl, CancellationToken ct);
 }
