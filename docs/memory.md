@@ -703,18 +703,16 @@ Kết bạn & quan hệ xã hội (Player):
 
 ---
 
-## 19 tháng 5, 2026 (Hoàn thành Refactor Kiến trúc 3 lớp - Luồng Booking của Hưng)
+## 19 tháng 5, 2026 (Refactor Kiến trúc 3 lớp - Luồng Booking của Hưng — bản nháp đầu)
 
-1. **Chuẩn hóa Kiến trúc (Controller -> Service -> Repository)**:
-   - Hoàn thành xuất sắc việc di chuyển toàn bộ logic nghiệp vụ (business logic) ra khỏi 3 Controllers cốt lõi của luồng Booking: `BookingsController`, `ManagerBookingsController`, và `ManagerRefundsController`.
-   - Đạt tiêu chuẩn kiến trúc 3 lớp sạch sẽ (`Controller -> Service -> Repository/DbContext`), triệt tiêu hoàn toàn việc tương tác trực tiếp với `ShuttleUpDbContext` từ Controller đối với các tác vụ ghi/thay đổi dữ liệu.
-2. **Triển khai và mở rộng tầng nghiệp vụ BLL Services**:
-   - **`BookingCreationService` & `BookingValidationService`**: Đóng gói toàn bộ logic đặt sân lẻ, dài hạn cơ bản, dài hạn linh hoạt thông minh, kèm cơ chế quản lý giao dịch an toàn (Database Transactions) cùng các quy tắc xác thực slot, trùng lịch.
-   - **`BookingService` (Mở rộng)**: Tích hợp logic xử lý hủy giữ chỗ (`CancelHold`), người dùng hủy đơn (`CancelMyBooking`), cập nhật thông tin hoàn tiền (`UpdateRefundBankInfo`) và nộp chứng từ thanh toán (`SubmitPayment` - bao gồm tối ưu gửi notification/email ngầm tránh block UI).
-   - **`ManagerBookingService`**: Đóng gói nghiệp vụ duyệt/từ chối đơn đặt sân của Manager, tự động sinh yêu cầu hoàn tiền (`RefundRequest`) cho các đơn đã thanh toán.
-   - **`RefundService`**: Đóng gói nghiệp vụ đối soát (`Reconcile`), xác nhận hoàn tất hoàn tiền (`CompleteRefund`), và cập nhật minh chứng hoàn tiền của Manager.
-3. **Cấu hình & Đồng bộ**:
-   - Đăng ký DI (Dependency Injection) đầy đủ cho các Service mới (`IManagerBookingService`, `IRefundService`) tại `Program.cs`.
-   - Giải quyết triệt để lỗi biên dịch bằng cách chuyển đổi dùng chung `CancellationPolicySnapshotDto` thay thế cho snapshot nội bộ.
-   - Biên dịch toàn bộ hệ thống Backend thành công rực rỡ (`dotnet build succeeded` với **0 Errors**).
+- Giai đoạn 1: Chuyển POST/PUT/PATCH sang Service; GET và preview vẫn còn `ShuttleUpDbContext` trong Controller.
+
+## 25 tháng 5, 2026 (Hoàn thiện Refactor 3 lớp — Luồng Booking Hưng)
+
+1. **Controller sạch 100%** (`BookingsController`, `ManagerBookingsController`, `ManagerRefundsController`): **không còn** inject `ShuttleUpDbContext`; chỉ `IXxxService` + `IFileService` cho upload.
+2. **Service chỉ qua Repository + UnitOfWork**:
+   - `BookingService`, `BookingCreationService`, `BookingValidationService`, `ManagerBookingService`, `RefundService` — bỏ `ShuttleUpDbContext`; transaction qua `IUnitOfWork.BeginTransactionAsync`.
+   - Mở rộng `IBookingRepository` (query phức tạp, slot conflict/open hours, smart allocation), thêm `IRefundRepository`, `IUnitOfWork`.
+3. **Helper giữ đúng vai trò**: `BookingSlotHelper` / `DiscountHelper` — logic thuần; DB query nằm ở Repository.
+4. **DI**: Đăng ký `IRefundRepository`, `IUnitOfWork` trong `Program.cs`. `dotnet build` **0 Errors**.
 

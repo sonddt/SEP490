@@ -9,8 +9,6 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-
 namespace ShuttleUp.BLL.Services;
 
 public class BookingCreationService : IBookingCreationService
@@ -20,7 +18,7 @@ public class BookingCreationService : IBookingCreationService
     private readonly IVenueCouponRepository _couponRepository;
     private readonly IBookingRepository _bookingRepository;
     private readonly IBookingValidationService _validationService;
-    private readonly ShuttleUpDbContext _dbContext; // ONLY FOR TRANSACTION
+    private readonly IUnitOfWork _unitOfWork;
 
     public BookingCreationService(
         IVenueRepository venueRepository,
@@ -28,19 +26,19 @@ public class BookingCreationService : IBookingCreationService
         IVenueCouponRepository couponRepository,
         IBookingRepository bookingRepository,
         IBookingValidationService validationService,
-        ShuttleUpDbContext dbContext)
+        IUnitOfWork unitOfWork)
     {
         _venueRepository = venueRepository;
         _courtRepository = courtRepository;
         _couponRepository = couponRepository;
         _bookingRepository = bookingRepository;
         _validationService = validationService;
-        _dbContext = dbContext;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BookingResponseDto> UpdateHoldingBookingContactAsync(Guid bookingId, Guid userId, string contactName, string contactPhone, string? note, CancellationToken ct)
     {
-        var booking = await _bookingRepository.GetByIdAsync(bookingId);
+        var booking = await _bookingRepository.GetByIdWithItemsAndCourtsAsync(bookingId, ct);
 
         if (booking == null)
             throw new KeyNotFoundException("Không tìm thấy đơn đặt.");
@@ -97,10 +95,9 @@ public class BookingCreationService : IBookingCreationService
 
         var courtIds = dto.Items.Select(i => i.CourtId).Distinct().ToList();
 
-        var courts = await _dbContext.Courts
-            .Include(c => c.CourtPrices)
-            .Where(c => courtIds.Contains(c.Id) && c.VenueId == dto.VenueId && c.IsActive == true && c.Status == "ACTIVE")
-            .ToListAsync(ct);
+        var courts = (await _courtRepository.GetByVenueWithPricesAndFilesAsync(dto.VenueId))
+            .Where(c => courtIds.Contains(c.Id) && c.IsActive == true && c.Status == "ACTIVE")
+            .ToList();
 
         if (courts.Count != courtIds.Count)
             throw new ArgumentException("Một hoặc nhiều sân không thuộc cơ sở này.");
@@ -129,18 +126,11 @@ public class BookingCreationService : IBookingCreationService
         VenueCoupon? coupon = null;
         if (!string.IsNullOrWhiteSpace(dto.CouponCode))
         {
-            coupon = await _dbContext.VenueCoupons.FirstOrDefaultAsync(c => c.VenueId == dto.VenueId && c.Code == dto.CouponCode.Trim().ToUpperInvariant() && c.IsActive == true, ct);
+            coupon = await _couponRepository.GetActiveByVenueAndCodeAsync(dto.VenueId, dto.CouponCode.Trim().ToUpperInvariant(), ct);
         }
 
-        bool hasUserUsedCoupon = false;
-        if (coupon != null && coupon.OneUsePerUser)
-        {
-             hasUserUsedCoupon = await _dbContext.Bookings.AsNoTracking()
-                    .AnyAsync(b => b.UserId == userId
-                        && b.CouponId == coupon.Id
-                        && b.Status != null
-                        && b.Status != "CANCELLED", ct);
-        }
+        var hasUserUsedCoupon = coupon != null && coupon.OneUsePerUser
+            && await _bookingRepository.HasUserUsedCouponAsync(userId, coupon.Id, ct);
 
         var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, _, _) = DiscountHelper.CalculateDiscount(venue, total, bookedDates, dto.CouponCode, coupon, hasUserUsedCoupon);
         if (errorMsg != null) throw new ArgumentException(errorMsg);
@@ -189,16 +179,16 @@ public class BookingCreationService : IBookingCreationService
             });
         }
 
-        await using var trx = await _dbContext.Database.BeginTransactionAsync(ct);
+        await using var trx = await _unitOfWork.BeginTransactionAsync(ct);
         try
         {
             if (couponToUpdate != null)
             {
                 couponToUpdate.UsedCount = (couponToUpdate.UsedCount ?? 0) + 1;
-                _dbContext.VenueCoupons.Update(couponToUpdate);
+                await _couponRepository.UpdateAsync(couponToUpdate, saveChanges: false);
             }
-            _dbContext.Bookings.Add(booking);
-            await _dbContext.SaveChangesAsync(ct);
+            await _bookingRepository.AddAsync(booking, saveChanges: false);
+            await _unitOfWork.SaveChangesAsync(ct);
             await trx.CommitAsync(ct);
         }
         catch
@@ -271,13 +261,10 @@ public class BookingCreationService : IBookingCreationService
         VenueCoupon? coupon = null;
         if (!string.IsNullOrWhiteSpace(dto.CouponCode))
         {
-            coupon = await _dbContext.VenueCoupons.FirstOrDefaultAsync(c => c.VenueId == dto.VenueId && c.Code == dto.CouponCode.Trim().ToUpperInvariant() && c.IsActive == true, ct);
+            coupon = await _couponRepository.GetActiveByVenueAndCodeAsync(dto.VenueId, dto.CouponCode.Trim().ToUpperInvariant(), ct);
         }
-        bool hasUserUsedCoupon = false;
-        if (coupon != null && coupon.OneUsePerUser)
-        {
-             hasUserUsedCoupon = await _dbContext.Bookings.AsNoTracking().AnyAsync(b => b.UserId == userId && b.CouponId == coupon.Id && b.Status != "CANCELLED", ct);
-        }
+        var hasUserUsedCoupon = coupon != null && coupon.OneUsePerUser
+            && await _bookingRepository.HasUserUsedCouponAsync(userId, coupon.Id, ct);
 
         var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, _, _) = DiscountHelper.CalculateDiscount(venue, total, bookedDates, dto.CouponCode, coupon, hasUserUsedCoupon);
         if (errorMsg != null) throw new ArgumentException(errorMsg);
@@ -364,17 +351,17 @@ public class BookingCreationService : IBookingCreationService
             }
         }
 
-        await using var trx = await _dbContext.Database.BeginTransactionAsync(ct);
+        await using var trx = await _unitOfWork.BeginTransactionAsync(ct);
         try
         {
             if (couponToUpdate != null)
             {
                 couponToUpdate.UsedCount = (couponToUpdate.UsedCount ?? 0) + 1;
-                _dbContext.VenueCoupons.Update(couponToUpdate);
+                await _couponRepository.UpdateAsync(couponToUpdate, saveChanges: false);
             }
-            _dbContext.BookingSeries.Add(series);
-            _dbContext.Bookings.Add(booking);
-            await _dbContext.SaveChangesAsync(ct);
+            await _bookingRepository.AddSeriesAsync(series, saveChanges: false);
+            await _bookingRepository.AddAsync(booking, saveChanges: false);
+            await _unitOfWork.SaveChangesAsync(ct);
             await trx.CommitAsync(ct);
         }
         catch
@@ -432,13 +419,10 @@ public class BookingCreationService : IBookingCreationService
         VenueCoupon? coupon = null;
         if (!string.IsNullOrWhiteSpace(dto.CouponCode))
         {
-            coupon = await _dbContext.VenueCoupons.FirstOrDefaultAsync(c => c.VenueId == dto.VenueId && c.Code == dto.CouponCode.Trim().ToUpperInvariant() && c.IsActive == true, ct);
+            coupon = await _couponRepository.GetActiveByVenueAndCodeAsync(dto.VenueId, dto.CouponCode.Trim().ToUpperInvariant(), ct);
         }
-        bool hasUserUsedCoupon = false;
-        if (coupon != null && coupon.OneUsePerUser)
-        {
-             hasUserUsedCoupon = await _dbContext.Bookings.AsNoTracking().AnyAsync(b => b.UserId == userId && b.CouponId == coupon.Id && b.Status != "CANCELLED", ct);
-        }
+        var hasUserUsedCoupon = coupon != null && coupon.OneUsePerUser
+            && await _bookingRepository.HasUserUsedCouponAsync(userId, coupon.Id, ct);
 
         var (discountAmount, finalAmount, couponId, couponToUpdate, errorMsg, _, _) = DiscountHelper.CalculateDiscount(venue, total, bookedDates, dto.CouponCode, coupon, hasUserUsedCoupon);
         if (errorMsg != null) throw new ArgumentException(errorMsg);
@@ -503,17 +487,17 @@ public class BookingCreationService : IBookingCreationService
             });
         }
 
-        await using var trx = await _dbContext.Database.BeginTransactionAsync(ct);
+        await using var trx = await _unitOfWork.BeginTransactionAsync(ct);
         try
         {
             if (couponToUpdate != null)
             {
                 couponToUpdate.UsedCount = (couponToUpdate.UsedCount ?? 0) + 1;
-                _dbContext.VenueCoupons.Update(couponToUpdate);
+                await _couponRepository.UpdateAsync(couponToUpdate, saveChanges: false);
             }
-            _dbContext.BookingSeries.Add(series);
-            _dbContext.Bookings.Add(booking);
-            await _dbContext.SaveChangesAsync(ct);
+            await _bookingRepository.AddSeriesAsync(series, saveChanges: false);
+            await _bookingRepository.AddAsync(booking, saveChanges: false);
+            await _unitOfWork.SaveChangesAsync(ct);
             await trx.CommitAsync(ct);
         }
         catch

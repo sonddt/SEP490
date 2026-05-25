@@ -4,7 +4,7 @@ using ShuttleUp.DAL.Repositories.Interfaces;
 
 namespace ShuttleUp.DAL.Repositories;
 
-public class BookingRepository : Repository<Booking>, IBookingRepository
+public partial class BookingRepository : Repository<Booking>, IBookingRepository
 {
     public BookingRepository(ShuttleUpDbContext context) : base(context) { }
 

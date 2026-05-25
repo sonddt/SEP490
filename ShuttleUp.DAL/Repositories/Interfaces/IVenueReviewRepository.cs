@@ -21,4 +21,6 @@ public interface IVenueReviewRepository : IRepository<VenueReview>
     Task UpdateReviewContentAndFilesAsync(Guid reviewId, int stars, string? comment, IEnumerable<Guid>? fileIds);
 
     Task UpdateOwnerReplyAsync(Guid reviewId, string? replyText);
+
+    Task<Dictionary<Guid, Guid>> GetReviewIdsByUserBookingsAsync(Guid userId, IEnumerable<Guid> bookingIds, CancellationToken ct = default);
 }

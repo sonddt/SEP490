@@ -20,4 +20,7 @@ public class VenueCouponRepository : Repository<VenueCoupon>, IVenueCouponReposi
 
     public async Task<VenueCoupon?> GetByIdInVenueAsync(Guid couponId, Guid venueId)
         => await _dbSet.FirstOrDefaultAsync(c => c.Id == couponId && c.VenueId == venueId);
+
+    public async Task<VenueCoupon?> GetActiveByVenueAndCodeAsync(Guid venueId, string codeNorm, CancellationToken ct = default)
+        => await _dbSet.FirstOrDefaultAsync(c => c.VenueId == venueId && c.Code == codeNorm && c.IsActive == true, ct);
 }

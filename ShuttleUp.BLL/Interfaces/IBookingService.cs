@@ -19,4 +19,10 @@ public interface IBookingService
     Task<(string Message, string Status, string CancelBranch, Guid? RefundRequestId)> CancelMyBookingAsync(Guid bookingId, Guid userId, CancelBookingBodyDto? body, CancellationToken ct);
     Task UpdateRefundBankInfoAsync(Guid bookingId, Guid userId, CancelBookingBodyDto body, CancellationToken ct);
     Task SubmitPaymentAsync(Guid bookingId, Guid userId, string method, string secureUrl, CancellationToken ct);
+
+    Task<List<MyBookingListItemDto>> GetMyBookingsAsync(Guid userId, CancellationToken ct);
+    Task<CancelPreviewDto> GetCancelPreviewAsync(Guid bookingId, Guid userId, CancellationToken ct);
+    Task<PaymentContextDto> GetPaymentContextAsync(Guid bookingId, Guid userId, CancellationToken ct);
+    Task<PreviewDiscountResultDto> PreviewDiscountAsync(PreviewDiscountDto dto, Guid? userId, CancellationToken ct);
+    Task<RemindOwnerResultDto> RemindOwnerAsync(Guid bookingId, Guid userId, int cooldownMinutes, CancellationToken ct);
 }

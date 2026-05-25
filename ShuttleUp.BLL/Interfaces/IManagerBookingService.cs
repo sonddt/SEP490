@@ -1,3 +1,5 @@
+using ShuttleUp.BLL.DTOs.Booking;
+
 namespace ShuttleUp.BLL.Interfaces;
 
 public interface IManagerBookingService
@@ -6,6 +8,7 @@ public interface IManagerBookingService
     /// Manager duyệt hoặc từ chối đơn đặt sân.
     /// </summary>
     Task<ManagerBookingPatchResult> PatchStatusAsync(Guid bookingId, Guid managerId, string status, string? reason, CancellationToken ct);
+    Task<List<ManagerBookingListItemDto>> GetBookingsAsync(Guid managerId, string? status, CancellationToken ct);
 }
 
 public class ManagerBookingPatchResult

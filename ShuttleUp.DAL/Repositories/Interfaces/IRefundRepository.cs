@@ -1,0 +1,11 @@
+using ShuttleUp.DAL.Models;
+
+namespace ShuttleUp.DAL.Repositories.Interfaces;
+
+public interface IRefundRepository : IRepository<RefundRequest>
+{
+    Task<RefundRequest?> GetByIdForManagerAsync(Guid refundId, CancellationToken ct = default);
+    Task<RefundRequest?> GetActiveByBookingAndUserAsync(Guid bookingId, Guid userId, CancellationToken ct = default);
+    Task<List<RefundRequest>> GetByVenueIdsAsync(List<Guid> venueIds, string? status, CancellationToken ct = default);
+    Task<Dictionary<Guid, RefundRequest>> GetLatestByBookingIdsAsync(IEnumerable<Guid> bookingIds, CancellationToken ct = default);
+}

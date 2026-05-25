@@ -101,4 +101,17 @@ public class VenueReviewRepository : Repository<VenueReview>, IVenueReviewReposi
         r.OwnerReplyAt = trimmed == null ? null : DateTime.UtcNow;
         await _db.SaveChangesAsync();
     }
+
+    public async Task<Dictionary<Guid, Guid>> GetReviewIdsByUserBookingsAsync(Guid userId, IEnumerable<Guid> bookingIds, CancellationToken ct = default)
+    {
+        var ids = bookingIds.ToList();
+        if (ids.Count == 0) return new Dictionary<Guid, Guid>();
+
+        var rows = await _dbSet.AsNoTracking()
+            .Where(vr => vr.UserId == userId && vr.BookingId != null && ids.Contains(vr.BookingId.Value))
+            .Select(vr => new { BookingId = vr.BookingId!.Value, vr.Id })
+            .ToListAsync(ct);
+
+        return rows.ToDictionary(x => x.BookingId, x => x.Id);
+    }
 }

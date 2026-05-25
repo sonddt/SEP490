@@ -1,92 +1,83 @@
 using ShuttleUp.BLL.DTOs.Booking;
 using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.DAL.Models;
-// BookingSlotHelper is in ShuttleUp.BLL.Helpers now
 using ShuttleUp.BLL.Helpers;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
+using ShuttleUp.DAL.Repositories.Interfaces;
 
 namespace ShuttleUp.BLL.Services;
 
 public class BookingValidationService : IBookingValidationService
 {
-    private readonly ShuttleUpDbContext _dbContext;
+    private readonly IBookingRepository _bookingRepository;
+    private readonly IVenueRepository _venueRepository;
+    private readonly ICourtRepository _courtRepository;
 
-    // Inject DbContext temporarily ONLY for BookingSlotHelper complex queries until it gets fully refactored
-    public BookingValidationService(ShuttleUpDbContext dbContext)
+    public BookingValidationService(
+        IBookingRepository bookingRepository,
+        IVenueRepository venueRepository,
+        ICourtRepository courtRepository)
     {
-        _dbContext = dbContext;
+        _bookingRepository = bookingRepository;
+        _venueRepository = venueRepository;
+        _courtRepository = courtRepository;
     }
 
-    public async Task<string?> CheckSlotConflictsAsync(List<Guid> courtIds, List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)> normalizedItems, CancellationToken ct = default, Guid? excludeBookingId = null, Guid? excludeHoldingUserId = null)
-    {
-        return await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, ct, excludeBookingId, excludeHoldingUserId);
-    }
+    public Task<string?> CheckSlotConflictsAsync(
+        List<Guid> courtIds,
+        List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)> normalizedItems,
+        CancellationToken ct = default,
+        Guid? excludeBookingId = null,
+        Guid? excludeHoldingUserId = null)
+        => _bookingRepository.CheckSlotConflictsAsync(courtIds, normalizedItems, ct, excludeBookingId, excludeHoldingUserId);
 
-    public async Task<string?> CheckOpenHoursAsync(List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)> normalizedItems, CancellationToken ct = default)
-    {
-        return await BookingSlotHelper.CheckOpenHoursAsync(_dbContext, normalizedItems, ct);
-    }
+    public Task<string?> CheckOpenHoursAsync(
+        List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)> normalizedItems,
+        CancellationToken ct = default)
+        => _bookingRepository.CheckOpenHoursAsync(normalizedItems, ct);
 
     public async Task<FlexibleLongTermBuildResultDto> BuildFlexibleLongTermAsync(LongTermFlexibleScheduleDto dto, Guid? currentUserId, CancellationToken ct)
     {
         if (dto.Items == null || dto.Items.Count == 0)
             throw new ArgumentException("Vui lòng chọn ít nhất một khung giờ.");
 
-        var venueOk = await _dbContext.Venues
-            .AsNoTracking()
-            .Where(v => v.Id == dto.VenueId && v.IsActive == true)
-            .Select(v => new { v.Id, v.SlotDuration })
-            .FirstOrDefaultAsync(ct);
-
-        if (venueOk == null)
+        var venue = await _venueRepository.GetByIdAsync(dto.VenueId);
+        if (venue == null || venue.IsActive == false)
             throw new ArgumentException("Cơ sở không tồn tại hoặc chưa mở đặt sân.");
 
         var courtIds = dto.Items.Select(i => i.CourtId).Distinct().ToList();
-
-        var courts = await _dbContext.Courts
-            .Include(c => c.CourtPrices)
-            .Where(c => courtIds.Contains(c.Id) && c.VenueId == dto.VenueId && c.IsActive == true && c.Status == "ACTIVE")
-            .ToListAsync(ct);
+        var courts = await _courtRepository.GetByVenueWithPricesAndFilesAsync(dto.VenueId);
+        courts = courts.Where(c => courtIds.Contains(c.Id) && c.IsActive == true && c.Status == "ACTIVE").ToList();
 
         if (courts.Count != courtIds.Count)
             throw new ArgumentException("Một hoặc nhiều sân không thuộc cơ sở này.");
 
         var courtById = courts.ToDictionary(c => c.Id);
-
-        var (normalizedItems, normErr) = BookingSlotHelper.NormalizeFromCreateItems(dto.Items, courtById, venueOk.SlotDuration);
+        var (normalizedItems, normErr) = BookingSlotHelper.NormalizeFromCreateItems(dto.Items, courtById, venue.SlotDuration);
         if (normErr != null)
             throw new ArgumentException(normErr);
 
         if (normalizedItems.Count > BookingSlotHelper.MaxLongTermSlots)
-            throw new ArgumentException($"Vượt quá số khung tối đa ({BookingSlotHelper.MaxLongTermSlots} ô × {venueOk.SlotDuration} phút).");
+            throw new ArgumentException($"Vượt quá số khung tối đa ({BookingSlotHelper.MaxLongTermSlots} ô × {venue.SlotDuration} phút).");
 
-        var conflict = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, ct, excludeBookingId: null, excludeHoldingUserId: currentUserId);
+        var conflict = await _bookingRepository.CheckSlotConflictsAsync(courtIds, normalizedItems, ct, excludeBookingId: null, excludeHoldingUserId: currentUserId);
         if (conflict == "CONFLICT_BOOKING")
             throw new InvalidOperationException("Một hoặc nhiều khung giờ đã có người đặt. Vui lòng đổi lịch.");
         if (conflict == "CONFLICT_BLOCK")
             throw new InvalidOperationException("Một số khung giờ đang bị khóa bởi chủ sân.");
 
-        var openHoursErr = await BookingSlotHelper.CheckOpenHoursAsync(_dbContext, normalizedItems, ct);
+        var openHoursErr = await _bookingRepository.CheckOpenHoursAsync(normalizedItems, ct);
         if (openHoursErr == "COURT_CLOSED_DAY")
             throw new ArgumentException("Sân không mở cửa vào ngày này. Vui lòng chọn ngày khác.");
         if (openHoursErr == "OUTSIDE_OPEN_HOURS")
             throw new ArgumentException("Khung giờ nằm ngoài giờ nhận khách của sân. Vui lòng chọn khung giờ khác.");
 
         var dates = normalizedItems.Select(x => DateOnly.FromDateTime(x.Start));
-        var rangeStart = dates.Min();
-        var rangeEnd = dates.Max();
-
         return new FlexibleLongTermBuildResultDto
         {
             NormalizedItems = normalizedItems,
             CourtById = courtById,
-            RangeStart = rangeStart,
-            RangeEnd = rangeEnd,
+            RangeStart = dates.Min(),
+            RangeEnd = dates.Max(),
         };
     }
 
@@ -100,24 +91,16 @@ public class BookingValidationService : IBookingValidationService
         if (dayErr != null)
             throw new ArgumentException(dayErr);
 
-        var venueInfo = await _dbContext.Venues
-            .AsNoTracking()
-            .Where(v => v.Id == dto.VenueId && v.IsActive == true)
-            .Select(v => new { v.Id, v.SlotDuration })
-            .FirstOrDefaultAsync(ct);
-
-        if (venueInfo == null)
+        var venue = await _venueRepository.GetByIdAsync(dto.VenueId);
+        if (venue == null || venue.IsActive == false)
             throw new ArgumentException("Cơ sở không tồn tại hoặc chưa mở đặt sân.");
 
         bool useSmartAllocation = !dto.CourtId.HasValue || dto.AutoSwitchCourt;
 
-        // ── SMART ALLOCATION PATH ──
         if (useSmartAllocation)
         {
-            var allCourts = await _dbContext.Courts
-                .Include(c => c.CourtPrices)
-                .Where(c => c.VenueId == dto.VenueId && c.IsActive == true && c.Status == "ACTIVE")
-                .ToListAsync(ct);
+            var allCourts = await _courtRepository.GetByVenueWithPricesAndFilesAsync(dto.VenueId);
+            allCourts = allCourts.Where(c => c.IsActive == true && c.Status == "ACTIVE").ToList();
 
             if (allCourts.Count == 0)
                 throw new ArgumentException("Cơ sở chưa có sân nào hoạt động.");
@@ -138,27 +121,27 @@ public class BookingValidationService : IBookingValidationService
                         throw new ArgumentException($"EndTime không hợp lệ cho ngày {ds.DayOfWeek}.");
                     dayTimeMap[(DayOfWeek)ds.DayOfWeek] = (dsStart, dsEnd);
                 }
-                (timeSlots, expandErr) = BookingSlotHelper.ExpandTimeSlotsWithDailySchedules(rs, re, dayTimeMap, BookingSlotHelper.MaxLongTermSlots, venueInfo.SlotDuration);
+                (timeSlots, expandErr) = BookingSlotHelper.ExpandTimeSlotsWithDailySchedules(rs, re, dayTimeMap, BookingSlotHelper.MaxLongTermSlots, venue.SlotDuration);
             }
             else
             {
-                (timeSlots, expandErr) = BookingSlotHelper.ExpandTimeSlots(rs, re, dayFilter, st, et, BookingSlotHelper.MaxLongTermSlots, venueInfo.SlotDuration);
+                (timeSlots, expandErr) = BookingSlotHelper.ExpandTimeSlots(rs, re, dayFilter, st, et, BookingSlotHelper.MaxLongTermSlots, venue.SlotDuration);
             }
 
             if (expandErr != null)
                 throw new ArgumentException(expandErr);
 
             var pricePreference = string.IsNullOrWhiteSpace(dto.PricePreference) ? "BEST" : dto.PricePreference.Trim().ToUpperInvariant();
+            var (smartRows, smartErr) = await _bookingRepository.AllocateFlexibleLongTermAsync(
+                allCourts, timeSlots, dto.CourtId, pricePreference, ct);
 
-            var (smartItems, smartErr) = await BookingSlotHelper.AllocateFlexibleLongTerm(
-                _dbContext, allCourts, timeSlots, dto.CourtId, pricePreference, ct);
-
-            if (smartErr != null && smartItems.All(x => x.IsUnavailable))
+            if (smartErr != null && smartRows.All(x => x.IsUnavailable))
                 throw new InvalidOperationException(smartErr);
 
             return new LongTermBuildResultDto
             {
-                SmartItems = smartItems,
+                SmartItems = smartRows.Select(r => new SmartAllocationItemDto(
+                    r.CourtId, r.CourtName, r.Start, r.End, r.Price, r.IsUnavailable, r.IsSwitched, r.SwitchReason)).ToList(),
                 RangeStart = rs,
                 RangeEnd = re,
                 SessionStart = st,
@@ -166,13 +149,12 @@ public class BookingValidationService : IBookingValidationService
             };
         }
 
-        // ── LEGACY SINGLE-COURT PATH ──
-        var court = await _dbContext.Courts
-            .Include(c => c.CourtPrices)
-            .FirstOrDefaultAsync(c => c.Id == dto.CourtId!.Value && c.VenueId == dto.VenueId && c.IsActive == true && c.Status == "ACTIVE", ct);
-
-        if (court == null)
+        var court = await _courtRepository.GetInVenueAsync(dto.VenueId, dto.CourtId!.Value);
+        if (court == null || court.IsActive != true || court.Status != "ACTIVE")
             throw new ArgumentException("Sân không thuộc cơ sở hoặc không hoạt động.");
+
+        var prices = await _courtRepository.GetCourtPricesAsync(court.Id);
+        court.CourtPrices = prices;
 
         List<(Guid CourtId, DateTime Start, DateTime End, decimal Price)> normalizedItems;
         string? legacyExpandErr;
@@ -191,25 +173,25 @@ public class BookingValidationService : IBookingValidationService
                 dayTimeMap[(DayOfWeek)ds.DayOfWeek] = (dsStart, dsEnd);
             }
             (normalizedItems, legacyExpandErr) = BookingSlotHelper.ExpandWeeklyLongTermWithDailySchedules(
-                dto.CourtId!.Value, court, rs, re, dayTimeMap, BookingSlotHelper.MaxLongTermSlots, venueInfo.SlotDuration);
+                dto.CourtId!.Value, court, rs, re, dayTimeMap, BookingSlotHelper.MaxLongTermSlots, venue.SlotDuration);
         }
         else
         {
             (normalizedItems, legacyExpandErr) = BookingSlotHelper.ExpandWeeklyLongTerm(
-                dto.CourtId!.Value, court, rs, re, dayFilter, st, et, BookingSlotHelper.MaxLongTermSlots, venueInfo.SlotDuration);
+                dto.CourtId!.Value, court, rs, re, dayFilter, st, et, BookingSlotHelper.MaxLongTermSlots, venue.SlotDuration);
         }
 
         if (legacyExpandErr != null)
             throw new ArgumentException(legacyExpandErr);
 
         var courtIds = new List<Guid> { dto.CourtId!.Value };
-        var conflict2 = await BookingSlotHelper.CheckSlotConflictsAsync(_dbContext, courtIds, normalizedItems, ct, excludeBookingId: null, excludeHoldingUserId: currentUserId);
+        var conflict2 = await _bookingRepository.CheckSlotConflictsAsync(courtIds, normalizedItems, ct, excludeBookingId: null, excludeHoldingUserId: currentUserId);
         if (conflict2 == "CONFLICT_BOOKING")
             throw new InvalidOperationException("Một hoặc nhiều khung giờ đã có người đặt. Vui lòng đổi lịch.");
         if (conflict2 == "CONFLICT_BLOCK")
             throw new InvalidOperationException("Một số khung giờ đang bị khóa bởi chủ sân.");
 
-        var openHoursErr2 = await BookingSlotHelper.CheckOpenHoursAsync(_dbContext, normalizedItems, ct);
+        var openHoursErr2 = await _bookingRepository.CheckOpenHoursAsync(normalizedItems, ct);
         if (openHoursErr2 == "COURT_CLOSED_DAY")
             throw new ArgumentException("Sân không mở cửa vào ngày này. Vui lòng chọn ngày khác.");
         if (openHoursErr2 == "OUTSIDE_OPEN_HOURS")
