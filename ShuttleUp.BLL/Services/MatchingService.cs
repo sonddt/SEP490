@@ -530,11 +530,11 @@ public class MatchingService : IMatchingService
     public async Task<IEnumerable<UpcomingBookingDto>> GetUpcomingBookingsAsync(Guid userId, CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
-        var bookings = await _bookingRepo.GetAllAsync(); // This is inefficient, but following original logic for now
-        // We should really have a better method in bookingRepo
-        
-        var filtered = bookings.Where(b => b.UserId == userId && b.Status == "CONFIRMED" 
-            && b.BookingItems.Any(i => i.StartTime > now))
+        var bookings = await _bookingRepo.GetMyBookingsRawAsync(userId, ct);
+
+        var filtered = bookings
+            .Where(b => b.Status == "CONFIRMED"
+                && b.BookingItems.Any(i => i.StartTime > now))
             .OrderByDescending(b => b.CreatedAt)
             .Take(20);
 
