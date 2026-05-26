@@ -76,4 +76,28 @@ public class UserRepository : Repository<User>, IUserRepository
             .Include(u => u.Roles)
             .Include(u => u.AvatarFile)
             .FirstOrDefaultAsync(u => u.Id == userId);
+
+    public async Task<User?> GetProfileWithDetailsFallbackAsync(Guid userId)
+        => await _dbSet.AsNoTracking()
+            .Include(u => u.Roles)
+            .Include(u => u.AvatarFile)
+            .Select(u => new User
+            {
+                Id = u.Id,
+                Email = u.Email,
+                FullName = u.FullName,
+                PhoneNumber = u.PhoneNumber,
+                Gender = u.Gender,
+                DateOfBirth = u.DateOfBirth,
+                AvatarFile = u.AvatarFile,
+                CreatedAt = u.CreatedAt,
+                Roles = u.Roles
+            })
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+    public async Task<bool> IsPhoneInUseAsync(Guid userId, string phoneNumber)
+        => await _dbSet.AnyAsync(u => u.Id != userId && u.PhoneNumber != null && u.PhoneNumber == phoneNumber);
+
+    public async Task UpdateProfileFallbackAsync(Guid userId, string fullName, string? phoneNumber)
+        => await _context.Database.ExecuteSqlInterpolatedAsync($"UPDATE users SET full_name = {fullName}, phone_number = {phoneNumber} WHERE id = {userId}");
 }

@@ -18,4 +18,7 @@ public interface IUserRepository : IRepository<User>
     Task<List<User>> GetRecentUsersAsync(int count);
     Task<IEnumerable<User>> GetByIdsAsync(IEnumerable<Guid> ids);
     Task<User?> GetProfileWithDetailsAsync(Guid userId);
+    Task<User?> GetProfileWithDetailsFallbackAsync(Guid userId);
+    Task<bool> IsPhoneInUseAsync(Guid userId, string phoneNumber);
+    Task UpdateProfileFallbackAsync(Guid userId, string fullName, string? phoneNumber);
 }

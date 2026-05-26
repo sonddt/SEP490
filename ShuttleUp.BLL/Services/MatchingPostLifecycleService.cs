@@ -1,18 +1,26 @@
 using ShuttleUp.BLL.Constants;
 using ShuttleUp.DAL.Models;
-using Microsoft.EntityFrameworkCore;
 using ShuttleUp.BLL.Interfaces;
+using ShuttleUp.DAL.Repositories.Interfaces;
 
 namespace ShuttleUp.BLL.Services;
 
 public class MatchingPostLifecycleService : IMatchingPostLifecycleService
 {
-    private readonly ShuttleUpDbContext _db;
+    private readonly IMatchingRepository _matchingRepo;
+    private readonly IUserRepository _userRepo;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly INotificationDispatchService _notify;
 
-    public MatchingPostLifecycleService(ShuttleUpDbContext db, INotificationDispatchService notify)
+    public MatchingPostLifecycleService(
+        IMatchingRepository matchingRepo,
+        IUserRepository userRepo,
+        IUnitOfWork unitOfWork,
+        INotificationDispatchService notify)
     {
-        _db = db;
+        _matchingRepo = matchingRepo;
+        _userRepo = userRepo;
+        _unitOfWork = unitOfWork;
         _notify = notify;
     }
 
@@ -28,10 +36,7 @@ public class MatchingPostLifecycleService : IMatchingPostLifecycleService
         if (bookingId == Guid.Empty)
             return;
 
-        var posts = await _db.MatchingPosts
-            .Include(p => p.MatchingMembers)
-            .Where(p => p.BookingId == bookingId && p.Status != "CANCELLED")
-            .ToListAsync(cancellationToken);
+        var posts = (await _matchingRepo.GetPostsByBookingIdAsync(bookingId, cancellationToken)).ToList();
 
         if (posts.Count == 0)
             return;
@@ -43,9 +48,7 @@ public class MatchingPostLifecycleService : IMatchingPostLifecycleService
             post.Status = "CANCELLED";
             post.UpdatedAt = now;
 
-            var pending = await _db.MatchingJoinRequests
-                .Where(r => r.PostId == post.Id && r.Status == "PENDING")
-                .ToListAsync(cancellationToken);
+            var pending = (await _matchingRepo.GetPendingRequestsByPostAsync(post.Id)).ToList();
             foreach (var r in pending)
             {
                 r.Status = "CANCELLED";
@@ -53,7 +56,7 @@ public class MatchingPostLifecycleService : IMatchingPostLifecycleService
             }
         }
 
-        await _db.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Notifications (in-app + SignalR); no email.
         foreach (var post in posts)
@@ -72,10 +75,8 @@ public class MatchingPostLifecycleService : IMatchingPostLifecycleService
             if (recipientIds.Count == 0)
                 continue;
 
-            var hostName = await _db.Users.AsNoTracking()
-                .Where(u => u.Id == post.CreatorUserId)
-                .Select(u => u.FullName)
-                .FirstOrDefaultAsync(cancellationToken) ?? "Chủ bài";
+            var host = await _userRepo.GetByIdAsync(post.CreatorUserId ?? Guid.Empty);
+            var hostName = host?.FullName ?? "Chủ bài";
 
             var bookingCode = "SU" + bookingId.ToString("N")[^6..].ToUpperInvariant();
             var title = "Bài ghép trận đã bị huỷ";

@@ -187,4 +187,42 @@ public class MatchingRepository : Repository<MatchingPost>, IMatchingRepository
     {
         return await _context.MatchingMembers.CountAsync(m => m.PostId == postId);
     }
+
+    public async Task<IEnumerable<MatchingPost>> GetPostsByBookingIdAsync(Guid bookingId, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Include(p => p.MatchingMembers)
+            .Where(p => p.BookingId == bookingId && p.Status != "CANCELLED")
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IEnumerable<MatchingPost>> GetExpiredPostsAsync(DateTime localTime, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Where(p => p.Status == "OPEN" || p.Status == "FULL")
+            .Where(p => !_context.MatchingPostItems.Any(mpi =>
+                mpi.PostId == p.Id
+                && mpi.BookingItem != null
+                && mpi.BookingItem.StartTime != null
+                && mpi.BookingItem.StartTime > localTime))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IEnumerable<MatchingJoinRequest>> GetPendingRequestsForPostsAsync(IEnumerable<Guid> postIds, CancellationToken cancellationToken = default)
+    {
+        return await _context.MatchingJoinRequests
+            .Where(r => r.PostId != null && postIds.Contains(r.PostId.Value) && r.Status == "PENDING")
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<bool> HasFutureBookingItemsAsync(Guid postId, DateTime localTime, CancellationToken cancellationToken = default)
+    {
+        return await _context.MatchingPostItems
+            .AnyAsync(mpi =>
+                mpi.PostId == postId
+                && mpi.BookingItem != null
+                && mpi.BookingItem.StartTime != null
+                && mpi.BookingItem.StartTime > localTime,
+                cancellationToken);
+    }
 }

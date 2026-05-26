@@ -23,4 +23,10 @@ public interface IMatchingRepository : IRepository<MatchingPost>
     Task<MatchingMember?> GetMemberByPostAndUserAsync(Guid postId, Guid userId);
     Task RemoveMemberAsync(MatchingMember member);
     Task<int> CountMembersAsync(Guid postId);
+    
+    // Lifecycle & Activity fallback queries
+    Task<IEnumerable<MatchingPost>> GetPostsByBookingIdAsync(Guid bookingId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<MatchingPost>> GetExpiredPostsAsync(DateTime localTime, CancellationToken cancellationToken = default);
+    Task<IEnumerable<MatchingJoinRequest>> GetPendingRequestsForPostsAsync(IEnumerable<Guid> postIds, CancellationToken cancellationToken = default);
+    Task<bool> HasFutureBookingItemsAsync(Guid postId, DateTime localTime, CancellationToken cancellationToken = default);
 }

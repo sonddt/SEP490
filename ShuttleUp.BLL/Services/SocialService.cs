@@ -17,18 +17,18 @@ public class SocialService : ISocialService
     private readonly ISocialRepository _socialRepo;
     private readonly INotificationDispatchService _notify;
     private readonly IUserRepository _userRepo;
-    private readonly ShuttleUpDbContext _dbContext;
+    private readonly IUnitOfWork _unitOfWork;
 
     public SocialService(
         ISocialRepository socialRepo, 
         INotificationDispatchService notify, 
         IUserRepository userRepo,
-        ShuttleUpDbContext dbContext) // Only injected for transaction management
+        IUnitOfWork unitOfWork)
     {
         _socialRepo = socialRepo;
         _notify = notify;
         _userRepo = userRepo;
-        _dbContext = dbContext;
+        _unitOfWork = unitOfWork;
     }
 
     private static (Guid Low, Guid High) OrderedPair(Guid a, Guid b) =>
@@ -362,7 +362,7 @@ public class SocialService : ISocialService
     private async Task AcceptPendingFriendRequestAndNotifyAsync(Guid accepterUserId, FriendRequest r, CancellationToken ct)
     {
         var (low, high) = OrderedPair(r.FromUserId, r.ToUserId);
-        await using var tx = await _dbContext.Database.BeginTransactionAsync(ct);
+        await using var tx = await _unitOfWork.BeginTransactionAsync(ct);
         try
         {
             r.Status = "ACCEPTED";
@@ -402,7 +402,7 @@ public class SocialService : ISocialService
     private async Task MergeSimultaneousOppositePendingAsync(Guid me, Guid toId, FriendRequest myOutbound, FriendRequest theirInboundToMe, CancellationToken ct)
     {
         var (low, high) = OrderedPair(me, toId);
-        await using var tx = await _dbContext.Database.BeginTransactionAsync(ct);
+        await using var tx = await _unitOfWork.BeginTransactionAsync(ct);
         try
         {
             theirInboundToMe.Status = "ACCEPTED";

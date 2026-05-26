@@ -20,22 +20,19 @@ public class ProfileService : IProfileService
     private readonly IFileRepository _fileRepo;
     private readonly ISocialRepository _socialRepo;
     private readonly IFileService _fileService;
-    private readonly ShuttleUpDbContext _db;
 
     public ProfileService(
         IUserRepository userRepo,
         IManagerProfileRepository managerProfileRepo,
         IFileRepository fileRepo,
         ISocialRepository socialRepo,
-        IFileService fileService,
-        ShuttleUpDbContext db)
+        IFileService fileService)
     {
         _userRepo = userRepo;
         _managerProfileRepo = managerProfileRepo;
         _fileRepo = fileRepo;
         _socialRepo = socialRepo;
         _fileService = fileService;
-        _db = db;
     }
 
     private static bool IsUnknownColumnException(Exception ex)
@@ -58,20 +55,7 @@ public class ProfileService : IProfileService
         catch (Exception ex) when (IsUnknownColumnException(ex))
         {
             // Fallback cho DB cũ
-            user = await _db.Users.AsNoTracking().Include(u => u.Roles).Include(u => u.AvatarFile)
-                .Select(u => new User
-                {
-                    Id = u.Id,
-                    Email = u.Email,
-                    FullName = u.FullName,
-                    PhoneNumber = u.PhoneNumber,
-                    Gender = u.Gender,
-                    DateOfBirth = u.DateOfBirth,
-                    AvatarFile = u.AvatarFile,
-                    CreatedAt = u.CreatedAt,
-                    Roles = u.Roles
-                })
-                .FirstOrDefaultAsync(u => u.Id == userId);
+            user = await _userRepo.GetProfileWithDetailsFallbackAsync(userId);
         }
 
         if (user == null) return null;
@@ -214,7 +198,7 @@ public class ProfileService : IProfileService
         {
             if (!string.IsNullOrWhiteSpace(phone))
             {
-                var phoneInUse = await _db.Users.AnyAsync(u => u.Id != userId && u.PhoneNumber != null && u.PhoneNumber == phone);
+                var phoneInUse = await _userRepo.IsPhoneInUseAsync(userId, phone);
                 if (phoneInUse) throw new InvalidOperationException("Số điện thoại đã được sử dụng.");
             }
         }
@@ -242,7 +226,7 @@ public class ProfileService : IProfileService
         }
         catch (Exception ex) when (IsUnknownColumnException(ex))
         {
-            await _db.Database.ExecuteSqlInterpolatedAsync($"UPDATE users SET full_name = {fullName}, phone_number = {phone} WHERE id = {userId}");
+            await _userRepo.UpdateProfileFallbackAsync(userId, fullName, phone);
             return new { message = "Cập nhật họ tên và số điện thoại thành công. (Một số cột khác trên DB có thể chưa đồng bộ)" };
         }
 
