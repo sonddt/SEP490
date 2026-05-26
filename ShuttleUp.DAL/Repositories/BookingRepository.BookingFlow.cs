@@ -130,4 +130,15 @@ public partial class BookingRepository
         await _context.BookingSeries.AddAsync(series);
         if (saveChanges) await _context.SaveChangesAsync();
     }
+
+    public async Task<int> CountOngoingByOwnerAsync(Guid ownerUserId, CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+        return await _dbSet
+            .Include(b => b.Venue)
+            .Where(b => b.Venue != null && b.Venue.OwnerUserId == ownerUserId)
+            .Where(b => b.Status == "PENDING" || b.Status == "CONFIRMED")
+            .Where(b => b.BookingItems.Any(bi => bi.StartTime > now))
+            .CountAsync(ct);
+    }
 }

@@ -20,6 +20,9 @@ public interface IBookingRepository : IRepository<Booking>
     Task<decimal> SumRevenueByVenueIdsFilteredAsync(List<Guid> venueIds, string[] paidStatuses, string? status, DateTime? sinceUtc, DateTime? untilUtc, string? search);
     Task<List<Booking>> GetByVenueIdsWithCreatedAtAsync(List<Guid> venueIds, string[] paidStatuses, DateTime sinceUtc);
 
+    // ── Ban flow ──
+    Task<int> CountOngoingByOwnerAsync(Guid ownerUserId, CancellationToken ct = default);
+
     // ── Admin stats ──
     Task<int> CountAllAsync(DateTime? since = null);
     Task<decimal> SumAllRevenueAsync(string[] paidStatuses, DateTime? since = null);

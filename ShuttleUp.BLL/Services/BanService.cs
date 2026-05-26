@@ -1,29 +1,38 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.DAL.Models;
+using ShuttleUp.DAL.Repositories.Interfaces;
 
 namespace ShuttleUp.BLL.Services;
 
 public class BanService : IBanService
 {
-    private readonly ShuttleUpDbContext _db;
+    private readonly IUserRepository _userRepo;
+    private readonly IBookingRepository _bookingRepo;
+    private readonly IVenueRepository _venueRepo;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly INotificationDispatchService _notification;
     private readonly IEmailTemplateService _templateService;
     private readonly IBannedUserCache _bannedUserCache;
     private readonly ILogger<BanService> _logger;
 
     public BanService(
-        ShuttleUpDbContext db,
+        IUserRepository userRepo,
+        IBookingRepository bookingRepo,
+        IVenueRepository venueRepo,
+        IUnitOfWork unitOfWork,
         INotificationDispatchService notification,
         IBannedUserCache bannedUserCache,
         IEmailTemplateService templateService,
         ILogger<BanService> logger)
     {
-        _db = db;
+        _userRepo = userRepo;
+        _bookingRepo = bookingRepo;
+        _venueRepo = venueRepo;
+        _unitOfWork = unitOfWork;
         _notification = notification;
         _bannedUserCache = bannedUserCache;
         _templateService = templateService;
@@ -32,9 +41,7 @@ public class BanService : IBanService
 
     public async Task<BanCheckResult> CheckBanScenarioAsync(Guid targetUserId)
     {
-        var user = await _db.Users
-            .Include(u => u.Roles)
-            .FirstOrDefaultAsync(u => u.Id == targetUserId);
+        var user = await _userRepo.GetWithRolesAsync(targetUserId);
 
         if (user == null)
             return new BanCheckResult(BanScenario.Immediate, 0, false, null);
@@ -47,13 +54,7 @@ public class BanService : IBanService
         bool isManager = user.Roles.Any(r => r.Name == "MANAGER");
         if (isManager)
         {
-            var now = DateTime.UtcNow;
-            int ongoingCount = await _db.Bookings
-                .Include(b => b.Venue)
-                .Where(b => b.Venue != null && b.Venue.OwnerUserId == targetUserId)
-                .Where(b => b.Status == "PENDING" || b.Status == "CONFIRMED")
-                .Where(b => b.BookingItems.Any(bi => bi.StartTime > now))
-                .CountAsync();
+            int ongoingCount = await _bookingRepo.CountOngoingByOwnerAsync(targetUserId);
 
             if (ongoingCount > 0)
             {
@@ -66,7 +67,7 @@ public class BanService : IBanService
 
     public async Task ExecuteHardBanAsync(Guid targetUserId, Guid adminId, string reason)
     {
-        var user = await _db.Users.Include(u => u.Roles).FirstOrDefaultAsync(u => u.Id == targetUserId);
+        var user = await _userRepo.GetWithRolesAsync(targetUserId);
         if (user == null) return;
 
         user.IsActive = false;
@@ -78,12 +79,12 @@ public class BanService : IBanService
         bool isManager = user.Roles.Any(r => r.Name == "MANAGER");
         if (isManager)
         {
-            var venues = await _db.Venues.Where(v => v.OwnerUserId == targetUserId).ToListAsync();
+            var venues = (await _venueRepo.GetByOwnerAsync(targetUserId)).ToList();
             foreach (var v in venues) { v.IsActive = false; }
         }
 
         _bannedUserCache.AddBannedUser(targetUserId);
-        await _db.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync();
 
         var placeholders = new Dictionary<string, string>
         {
@@ -107,17 +108,17 @@ public class BanService : IBanService
 
     public async Task ExecuteSoftBanAsync(Guid targetUserId, Guid adminId, string reason)
     {
-        var user = await _db.Users.Include(u => u.Roles).FirstOrDefaultAsync(u => u.Id == targetUserId);
+        var user = await _userRepo.GetWithRolesAsync(targetUserId);
         if (user == null) return;
 
         var expiresAt = DateTime.UtcNow.AddDays(3);
         user.BanType = "SOFT";
         user.SoftBanExpiresAt = expiresAt;
 
-        var venues = await _db.Venues.Where(v => v.OwnerUserId == targetUserId).ToListAsync();
+        var venues = (await _venueRepo.GetByOwnerAsync(targetUserId)).ToList();
         foreach (var v in venues) { v.IsActive = false; }
 
-        await _db.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync();
 
         var placeholders = new Dictionary<string, string>
         {

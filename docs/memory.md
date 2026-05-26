@@ -716,3 +716,18 @@ Kết bạn & quan hệ xã hội (Player):
 3. **Helper giữ đúng vai trò**: `BookingSlotHelper` / `DiscountHelper` — logic thuần; DB query nằm ở Repository.
 4. **DI**: Đăng ký `IRefundRepository`, `IUnitOfWork` trong `Program.cs`. `dotnet build` **0 Errors**.
 
+---
+
+## 26 tháng 5, 2026 (Hoàn thành dứt điểm Refactor Kiến trúc 3 lớp — Dọn dẹp vi phạm còn tồn đọng)
+
+1. **Dọn dẹp triệt để mã nguồn thừa (Helper & Services)**:
+   - **`BookingSlotHelper.cs`**: Loại bỏ hoàn toàn khoảng 375 dòng code cũ không còn sử dụng. Ba phương thức thao tác trực tiếp với Database (`CheckSlotConflictsAsync`, `CheckOpenHoursAsync`, `AllocateFlexibleLongTerm`) và cấu trúc `SmartAllocationItem` cùng directive `Microsoft.EntityFrameworkCore` đã được dọn dẹp sạch sẽ do đã được Hưng chuyển sang Repository ở tầng DAL.
+   - **`BanService.cs`**: Viết lại toàn bộ service để loại bỏ sự phụ thuộc trực tiếp vào `ShuttleUpDbContext`. Thay thế bằng việc inject các Repository (`IUserRepository`, `IBookingRepository`, `IVenueRepository`) và `IUnitOfWork`. Cả 3 logic nghiệp vụ chặn/cấm tài khoản (`CheckBanScenarioAsync`, `ExecuteHardBanAsync`, `ExecuteSoftBanAsync`) hiện tại chỉ tương tác qua tầng DAL.
+   - **`NotificationDispatchService.cs`**: Loại bỏ triệt để `ShuttleUpDbContext` và thay thế bằng `IUserNotificationRepository`, `IUserRepository` và `IUnitOfWork`.
+2. **Mở rộng tầng DAL (Repositories)**:
+   - Thêm phương thức `CountOngoingByOwnerAsync` vào Interface `IBookingRepository` và triển khai đầy đủ tại `BookingRepository.BookingFlow.cs` để phục vụ logic kiểm tra số lượng đơn đặt sân đang diễn ra của một chủ sân tại `BanService.cs`.
+3. **Độ tin cậy & Độ sạch 100%**:
+   - Đã biên dịch kiểm tra thành công với `dotnet build` (0 lỗi, 1 warning không liên quan từ trước).
+   - Kiểm tra bằng lệnh grep xác nhận: **Không còn bất kỳ tham chiếu nào** đến `ShuttleUpDbContext` trong toàn bộ tầng BLL (Services, Helpers) và tầng Controllers (API), đảm bảo dự án tuân thủ nghiêm ngặt mô hình kiến trúc 3 lớp đã đề ra.
+
+

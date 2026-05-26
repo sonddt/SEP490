@@ -1,25 +1,31 @@
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.DAL.Models;
+using ShuttleUp.DAL.Repositories.Interfaces;
 
 namespace ShuttleUp.BLL.Services;
 
 public class NotificationDispatchService : INotificationDispatchService
 {
-    private readonly ShuttleUpDbContext _db;
+    private readonly IUserNotificationRepository _notifRepo;
+    private readonly IUserRepository _userRepo;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ISignalRNotifier _notifier;
     private readonly IEmailService _email;
     private readonly ILogger<NotificationDispatchService> _logger;
 
     public NotificationDispatchService(
-        ShuttleUpDbContext db,
+        IUserNotificationRepository notifRepo,
+        IUserRepository userRepo,
+        IUnitOfWork unitOfWork,
         ISignalRNotifier notifier,
         IEmailService email,
         ILogger<NotificationDispatchService> logger)
     {
-        _db = db;
+        _notifRepo = notifRepo;
+        _userRepo = userRepo;
+        _unitOfWork = unitOfWork;
         _notifier = notifier;
         _email = email;
         _logger = logger;
@@ -50,8 +56,8 @@ public class NotificationDispatchService : INotificationDispatchService
             CreatedAt = DateTime.UtcNow,
         };
 
-        _db.UserNotifications.Add(entity);
-        await _db.SaveChangesAsync(cancellationToken);
+        await _notifRepo.AddAsync(entity, saveChanges: false);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         Guid? bookingIdFromMeta = TryGetBookingId(metaJson);
 
@@ -73,8 +79,7 @@ public class NotificationDispatchService : INotificationDispatchService
         if (!sendEmail)
             return;
 
-        var user = await _db.Users.AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        var user = await _userRepo.GetByIdAsync(userId);
         if (user == null || string.IsNullOrWhiteSpace(user.Email))
             return;
 
