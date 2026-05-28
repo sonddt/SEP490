@@ -65,7 +65,7 @@ export default function MatchingCreate() {
           const found = list.find((b) => b.id === preBookingId);
           if (found) {
             setSelectedBooking(found);
-            setSelectedItemIds(found.items?.map((i) => i.id) || []);
+            setSelectedItemIds(found.items?.map((i) => i.bookingItemId) || []);
           }
         }
       } catch (err) {
@@ -78,7 +78,7 @@ export default function MatchingCreate() {
 
   const handleSelectBooking = (booking) => {
     setSelectedBooking(booking);
-    setSelectedItemIds(booking.items?.map((i) => i.id) || []);
+    setSelectedItemIds(booking.items?.map((i) => i.bookingItemId) || []);
     setStep2Page(1);
     setStep(2);
   };
@@ -90,7 +90,7 @@ export default function MatchingCreate() {
   };
 
   const toggleAllItems = () => {
-    const allIds = selectedBooking?.items?.map((i) => i.id) || [];
+    const allIds = selectedBooking?.items?.map((i) => i.bookingItemId) || [];
     if (selectedItemIds.length === allIds.length) {
       setSelectedItemIds([]);
     } else {
@@ -141,7 +141,7 @@ export default function MatchingCreate() {
     return Number(v).toLocaleString('vi-VN') + 'đ';
   };
 
-  const selectedItems = selectedBooking?.items?.filter((i) => selectedItemIds.includes(i.id)) || [];
+  const selectedItems = selectedBooking?.items?.filter((i) => selectedItemIds.includes(i.bookingItemId)) || [];
   const totalPrice = selectedItems.reduce((sum, i) => sum + (i.price || 0), 0);
   const bookingHasDiscount = Boolean(selectedBooking?.hasDiscount);
 
@@ -243,7 +243,7 @@ export default function MatchingCreate() {
 
                               <div className="matching-booking-items-wrapper">
                                 {b.items?.slice(0, 3).map((item) => (
-                                  <div key={item.id} className="matching-booking-item-preview d-flex justify-content-between align-items-center py-1">
+                                  <div key={item.bookingItemId} className="matching-booking-item-preview d-flex justify-content-between align-items-center py-1">
                                     <span className="fw-medium text-dark"><i className="feather-check-circle text-primary me-2" style={{ fontSize: '14px' }}></i>{item.courtName}</span>
                                     <span className="text-muted small"><i className="feather-clock me-1"></i> {formatTime(item.startTime)} - {formatTime(item.endTime)}</span>
                                   </div>
@@ -311,11 +311,11 @@ export default function MatchingCreate() {
                         return (
                             <>
                                 {visibleItemsStep2.map((item) => {
-                      const isSelected = selectedItemIds.includes(item.id);
+                      const isSelected = selectedItemIds.includes(item.bookingItemId);
                       return (
                         <div 
-                          key={item.id}
-                          onClick={() => toggleItem(item.id)}
+                          key={item.bookingItemId}
+                          onClick={() => toggleItem(item.bookingItemId)}
                           style={{
                             border: isSelected ? '2px solid #097E52' : '1px solid #e9eef4',
                             backgroundColor: isSelected ? 'rgba(9, 126, 82, 0.03)' : '#fff',
@@ -638,7 +638,7 @@ export default function MatchingCreate() {
                                     const dayName = formatDate(item.startTime).split(',')[0];
                                     const dayDate = dateObj.getDate();
                                     return (
-                                        <div key={item.id} style={{ display: 'flex', gap: '16px', marginBottom: '12px', padding: '14px', backgroundColor: '#f8fafc', borderRadius: '14px', border: '1px solid #f1f5f9' }}>
+                                        <div key={item.bookingItemId} style={{ display: 'flex', gap: '16px', marginBottom: '12px', padding: '14px', backgroundColor: '#f8fafc', borderRadius: '14px', border: '1px solid #f1f5f9' }}>
                                             <div style={{ width: '56px', height: '56px', borderRadius: '12px', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', flexShrink: 0 }}>
                                                 <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>{dayName}</span>
                                                 <span style={{ fontSize: '20px', fontWeight: '800', color: '#097E52', lineHeight: '1.1' }}>{dayDate < 10 ? `0${dayDate}` : dayDate}</span>
