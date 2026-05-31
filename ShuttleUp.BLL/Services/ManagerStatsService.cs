@@ -39,7 +39,7 @@ public class ManagerStatsService : IManagerStatsService
         var topVenues = venues.Where(v => venueIds.Contains(v.Id)).Select(v => new
         {
             v.Id, v.Name,
-            monthRev = (v.Bookings ?? (ICollection<DAL.Models.Booking>)new List<DAL.Models.Booking>()).Where(b => PaidStatuses.Contains(b.Status) && b.CreatedAt >= startOfMonthUtc).Sum(b => b.TotalAmount ?? 0),
+            monthRev = (v.Bookings ?? (ICollection<DAL.Models.Booking>)new List<DAL.Models.Booking>()).Where(b => PaidStatuses.Contains(b.Status) && b.CreatedAt >= startOfMonthUtc).Sum(b => b.FinalAmount ?? 0),
             monthCount = (v.Bookings ?? (ICollection<DAL.Models.Booking>)new List<DAL.Models.Booking>()).Count(b => b.CreatedAt >= startOfMonthUtc)
         }).OrderByDescending(v => v.monthRev).Take(5).ToList();
 
@@ -51,7 +51,7 @@ public class ManagerStatsService : IManagerStatsService
             date = b.CreatedAt.HasValue ? TimeZoneHelper.ToVn(b.CreatedAt.Value).ToString("dd/MM/yyyy") : "",
             startTime = b.BookingItems?.OrderBy(bi => bi.StartTime).Select(bi => bi.StartTime).FirstOrDefault(),
             endTime = b.BookingItems?.OrderByDescending(bi => bi.EndTime).Select(bi => bi.EndTime).FirstOrDefault(),
-            amount = b.TotalAmount ?? 0m, b.Status
+            amount = b.FinalAmount ?? 0m, b.Status
         }).ToList();
 
         return new { totalVenues, totalCourts, activeCourts, todayBookings, monthBookings, pendingCount, monthRevenue, totalRevenue, topVenues, recentBookings };
@@ -88,7 +88,8 @@ public class ManagerStatsService : IManagerStatsService
             date = b.CreatedAt.HasValue ? TimeZoneHelper.ToVn(b.CreatedAt.Value).ToString("dd/MM/yyyy") : "", dateIso = b.CreatedAt,
             startTime = b.BookingItems?.OrderBy(bi => bi.StartTime).Select(bi => bi.StartTime).FirstOrDefault(),
             endTime = b.BookingItems?.OrderByDescending(bi => bi.EndTime).Select(bi => bi.EndTime).FirstOrDefault(),
-            amount = b.TotalAmount ?? 0m, status = b.Status
+            amount = b.FinalAmount ?? 0m, status = b.Status,
+            items = (b.BookingItems ?? (ICollection<DAL.Models.BookingItem>)new List<DAL.Models.BookingItem>()).Select(bi => new { courtName = bi.Court?.Name ?? "Sân", price = bi.FinalPrice ?? 0 })
         }).ToList();
 
         return new { totalItems, totalPages, page, pageSize, totalRevInRange, venues = allVenues, items };
@@ -109,7 +110,7 @@ public class ManagerStatsService : IManagerStatsService
         return Enumerable.Range(0, days).Select(i =>
         {
             var vnDay = vnSinceDate.AddDays(i);
-            var rev = raw.Where(b => b.CreatedAt.HasValue && TimeZoneHelper.ToVn(b.CreatedAt.Value).Date == vnDay).Sum(b => b.TotalAmount ?? 0);
+            var rev = raw.Where(b => b.CreatedAt.HasValue && TimeZoneHelper.ToVn(b.CreatedAt.Value).Date == vnDay).Sum(b => b.FinalAmount ?? 0);
             return new { date = vnDay.ToString("dd/MM"), dateIso = vnDay.ToString("yyyy-MM-dd"), revenue = rev };
         }).ToList();
     }
@@ -131,7 +132,7 @@ public class ManagerStatsService : IManagerStatsService
             var monthDate = new DateTime(nowVn.Year, nowVn.Month, 1).AddMonths(-11 + i);
             var monthLabel = monthDate.ToString("MM/yyyy");
             bool InMonth(DateTime? ca) => ca.HasValue && TimeZoneHelper.ToVn(ca.Value) is var vn && vn.Year == monthDate.Year && vn.Month == monthDate.Month;
-            var revenue = bookings12m.Where(b => InMonth(b.CreatedAt)).Sum(b => b.TotalAmount ?? 0);
+            var revenue = bookings12m.Where(b => InMonth(b.CreatedAt)).Sum(b => b.FinalAmount ?? 0);
             var bookingCount = allBookings12m.Where(b => InMonth(b.CreatedAt) && b.Status != "CANCELLED").Count();
             return new { month = monthLabel, revenue, bookingCount };
         }).ToList();
@@ -161,7 +162,7 @@ public class ManagerStatsService : IManagerStatsService
         var revenueByVenue = venues.Where(v => venueIds.Contains(v.Id)).Select(v => new
         {
             venueId = v.Id, venueName = v.Name ?? "N/A",
-            revenue = (v.Bookings ?? (ICollection<DAL.Models.Booking>)new List<DAL.Models.Booking>()).Where(b => PaidStatuses.Contains(b.Status) && b.CreatedAt >= startOfMonthUtc).Sum(b => b.TotalAmount ?? 0),
+            revenue = (v.Bookings ?? (ICollection<DAL.Models.Booking>)new List<DAL.Models.Booking>()).Where(b => PaidStatuses.Contains(b.Status) && b.CreatedAt >= startOfMonthUtc).Sum(b => b.FinalAmount ?? 0),
             bookingCount = (v.Bookings ?? (ICollection<DAL.Models.Booking>)new List<DAL.Models.Booking>()).Count(b => b.Status != "CANCELLED" && b.CreatedAt >= startOfMonthUtc)
         }).OrderByDescending(x => x.revenue).ToList();
 

@@ -7,6 +7,7 @@ public interface IMatchingRepository : IRepository<MatchingPost>
     Task<IEnumerable<MatchingPost>> GetPostsPagedAsync(string? skillLevel, string? province, DateOnly? playDate, string? sort, string? search, int skip, int take);
     Task<int> CountPostsAsync(string? skillLevel, string? province, DateOnly? playDate, string? search);
     Task<MatchingPost?> GetPostDetailAsync(Guid postId);
+    Task<MatchingPost?> GetPostForUpdateAsync(Guid postId);
     Task<IEnumerable<MatchingPost>> GetMyPostsWithIncludesAsync(Guid userId);
     Task<IEnumerable<MatchingPost>> GetJoinedPostsWithIncludesAsync(Guid userId);
     

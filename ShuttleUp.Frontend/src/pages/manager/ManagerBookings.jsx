@@ -52,7 +52,8 @@ function mapManagerBookingFromApi(b) {
   else if (methodRaw.includes('QR')) paymentMethod = 'QR';
   else if (methodRaw.includes('VNPAY')) paymentMethod = 'VNPAY';
 
-  const courtLabel = items.length > 1 ? `${items.length} khung` : (first?.courtName || 'Sân');
+  const uniqueCourts = Array.from(new Set(items.map(i => i.courtName).filter(Boolean)));
+  const courtLabel = uniqueCourts.length > 0 ? uniqueCourts.join(', ') : 'Sân';
 
   const created = b.createdAt ? new Date(b.createdAt) : start;
   const createdAt = `${pad2(created.getDate())}/${pad2(created.getMonth() + 1)}/${created.getFullYear()} ${pad2(created.getHours())}:${pad2(created.getMinutes())}`;
@@ -252,7 +253,8 @@ export default function ManagerBookings() {
             normalizeSearchText(b.court).includes(nq) ||
             normalizeSearchText(b.venue).includes(nq) ||
             normalizeSearchText(String(b.id)).includes(nq) ||
-            (b.bookingCode && normalizeSearchText(b.bookingCode).includes(nq)),
+            (b.bookingCode && normalizeSearchText(b.bookingCode).includes(nq)) ||
+            (b.items && b.items.some(i => i.courtName && normalizeSearchText(i.courtName).includes(nq))),
         );
       }
     }

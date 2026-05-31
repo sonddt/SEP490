@@ -188,7 +188,7 @@ public class AdminService : IAdminService
             date = b.CreatedAt.HasValue ? TimeZoneHelper.ToVn(b.CreatedAt.Value).ToString("dd/MM/yyyy") : "",
             startTime = b.BookingItems?.OrderBy(bi => bi.StartTime).Select(bi => bi.StartTime).FirstOrDefault(),
             endTime = b.BookingItems?.OrderByDescending(bi => bi.EndTime).Select(bi => bi.EndTime).FirstOrDefault(),
-            amount = b.TotalAmount ?? 0m, amountFmt = string.Format("{0:N0} ₫", b.TotalAmount ?? 0), status = b.Status
+            amount = b.FinalAmount ?? 0m, amountFmt = string.Format("{0:N0} ₫", b.FinalAmount ?? 0), status = b.Status
         }).ToList();
 
         return new { summary = new { total = totalItems, confirmed, pending, cancelled }, items = pagedItems, totalItems, totalPages };
@@ -216,9 +216,9 @@ public class AdminService : IAdminService
         var venuesStats = venues.Select(v =>
         {
             var bookings = v.Bookings ?? (ICollection<DAL.Models.Booking>)new List<DAL.Models.Booking>();
-            var revenueRaw = bookings.Where(b => PaidStatuses.Contains(b.Status) && (rangeStart == null || b.CreatedAt >= rangeStart) && (rangeEnd == null || b.CreatedAt < rangeEnd)).Sum(b => b.TotalAmount ?? 0);
-            var thisMonth = bookings.Where(b => PaidStatuses.Contains(b.Status) && b.CreatedAt >= startOfMonthUtc).Sum(b => b.TotalAmount ?? 0);
-            var prevMonth = bookings.Where(b => PaidStatuses.Contains(b.Status) && b.CreatedAt >= startOfPrevMonthUtc && b.CreatedAt < startOfMonthUtc).Sum(b => b.TotalAmount ?? 0);
+            var revenueRaw = bookings.Where(b => PaidStatuses.Contains(b.Status) && (rangeStart == null || b.CreatedAt >= rangeStart) && (rangeEnd == null || b.CreatedAt < rangeEnd)).Sum(b => b.FinalAmount ?? 0);
+            var thisMonth = bookings.Where(b => PaidStatuses.Contains(b.Status) && b.CreatedAt >= startOfMonthUtc).Sum(b => b.FinalAmount ?? 0);
+            var prevMonth = bookings.Where(b => PaidStatuses.Contains(b.Status) && b.CreatedAt >= startOfPrevMonthUtc && b.CreatedAt < startOfMonthUtc).Sum(b => b.FinalAmount ?? 0);
             string growth; if (prevMonth == 0) growth = thisMonth > 0 ? "+100%" : "0%"; else { var pct = (thisMonth - prevMonth) / prevMonth * 100m; growth = (pct >= 0 ? "+" : "") + Math.Round(pct, 1).ToString("0.#") + "%"; }
             return new { id = v.Id, venue = v.Name, owner = v.OwnerUser?.FullName ?? "N/A", totalBookings = bookings.Count(b => PaidStatuses.Contains(b.Status)), revenue = revenueRaw, thisMonthRevenue = thisMonth, prevMonthRevenue = prevMonth, growth };
         }).OrderByDescending(v => v.revenue).ToList();

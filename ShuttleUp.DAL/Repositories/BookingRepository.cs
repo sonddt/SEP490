@@ -35,7 +35,7 @@ public partial class BookingRepository : Repository<Booking>, IBookingRepository
     {
         var q = _dbSet.Where(b => b.VenueId.HasValue && venueIds.Contains(b.VenueId.Value) && paidStatuses.Contains(b.Status));
         if (since.HasValue) q = q.Where(b => b.CreatedAt >= since.Value);
-        return await q.SumAsync(b => b.TotalAmount ?? 0);
+        return await q.SumAsync(b => b.FinalAmount ?? 0);
     }
 
     public async Task<List<Booking>> GetRecentByVenuesAsync(List<Guid> venueIds, int count)
@@ -53,11 +53,11 @@ public partial class BookingRepository : Repository<Booking>, IBookingRepository
         => await BuildVenueQuery(venueIds, status, sinceUtc, untilUtc, search).CountAsync();
 
     public async Task<decimal> SumRevenueByVenueIdsFilteredAsync(List<Guid> venueIds, string[] paidStatuses, string? status, DateTime? sinceUtc, DateTime? untilUtc, string? search)
-        => await BuildVenueQuery(venueIds, status, sinceUtc, untilUtc, search).Where(b => paidStatuses.Contains(b.Status)).SumAsync(b => b.TotalAmount ?? 0);
+        => await BuildVenueQuery(venueIds, status, sinceUtc, untilUtc, search).Where(b => paidStatuses.Contains(b.Status)).SumAsync(b => b.FinalAmount ?? 0);
 
     public async Task<List<Booking>> GetByVenueIdsWithCreatedAtAsync(List<Guid> venueIds, string[] paidStatuses, DateTime sinceUtc)
         => await _dbSet.AsNoTracking().Where(b => b.VenueId.HasValue && venueIds.Contains(b.VenueId.Value) && paidStatuses.Contains(b.Status) && b.CreatedAt >= sinceUtc)
-            .Select(b => new Booking { CreatedAt = b.CreatedAt, TotalAmount = b.TotalAmount, Status = b.Status }).ToListAsync();
+            .Select(b => new Booking { CreatedAt = b.CreatedAt, FinalAmount = b.FinalAmount, Status = b.Status }).ToListAsync();
 
     // Admin stats
     public async Task<int> CountAllAsync(DateTime? since)
@@ -71,7 +71,7 @@ public partial class BookingRepository : Repository<Booking>, IBookingRepository
     {
         var q = _dbSet.Where(b => paidStatuses.Contains(b.Status));
         if (since.HasValue) q = q.Where(b => b.CreatedAt >= since.Value);
-        return await q.SumAsync(b => b.TotalAmount ?? 0);
+        return await q.SumAsync(b => b.FinalAmount ?? 0);
     }
 
     public async Task<List<Booking>> GetAllPagedAsync(string? status, DateTime? sinceUtc, DateTime? untilUtc, string? search, int skip, int take)

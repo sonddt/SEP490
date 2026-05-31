@@ -24,6 +24,32 @@ const fmtVndShort = (v) => {
   return `${n}`;
 };
 
+function formatCourtNames(items, rawCourt) {
+  if (!items || !items.length) return rawCourt;
+  const counts = {};
+  items.forEach(i => { counts[i.courtName] = (counts[i.courtName] || 0) + 1; });
+  const entries = Object.entries(counts);
+  return entries.map(([name, count], index) => (
+    <span key={name}>
+      {name}
+      {count > 1 && <sup style={{ color: '#ef4444', fontSize: '0.85em', fontWeight: 700, marginLeft: 1 }}>*{count}</sup>}
+      {index < entries.length - 1 && ', '}
+    </span>
+  ));
+}
+
+function getGroupedModalItems(items) {
+  if (!items || !items.length) return [];
+  const grouped = {};
+  items.forEach(i => {
+    const key = `${i.courtName}_${i.price}`;
+    if (!grouped[key]) grouped[key] = { name: i.courtName, count: 0, unitPrice: (i.price || 0), totalPrice: 0 };
+    grouped[key].count += 1;
+    grouped[key].totalPrice += (i.price || 0);
+  });
+  return Object.values(grouped);
+}
+
 /* ── Pagination ──────────────────────────────────────────────────────────── */
 function Pagination({ page, totalPages, onChange }) {
   if (totalPages <= 1) return null;
@@ -119,6 +145,7 @@ export default function ManagerEarnings() {
   const [venueFilter, setVenueFilter] = useState('ALL');
   const [page, setPage] = useState(1);
   const itemsPerPage = 8;
+  const [detailModal, setDetailModal] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({ items: [], totalItems: 0, totalPages: 1, venues: [], totalRevInRange: 0, page: 1, pageSize: itemsPerPage });
@@ -525,7 +552,7 @@ export default function ManagerEarnings() {
                             <img className="avatar-img" src={'/assets/img/booking/booking-01.jpg'} alt="" onError={e => { e.target.src = '/assets/img/booking/booking-01.jpg'; }} />
                           </span>
                           <span className="table-head-name flex-grow-1">
-                            <a href="#!" onClick={e => e.preventDefault()}>{tx.court}</a>
+                            <a href="#!" onClick={e => e.preventDefault()}>{formatCourtNames(tx.items, tx.court)}</a>
                             <span><i className="feather-map-pin" style={{ fontSize: 11, marginRight: 3 }} />{tx.venue}</span>
                             <span style={{ color: '#2563eb', fontWeight: 600 }}>{tx.refId}</span>
                           </span>
@@ -552,8 +579,8 @@ export default function ManagerEarnings() {
                       </td>
                       <td className="text-end">
                         <div className="d-flex align-items-center justify-content-end gap-2">
-                          <button type="button" onClick={() => notifyInfo('Tải hoá đơn sẽ được bổ sung sớm.')} className="btn btn-sm btn-light d-inline-flex align-items-center justify-content-center border" style={{ width: 32, height: 32, borderRadius: 8, color: '#0ea5e9' }} title="Tải hoá đơn">
-                            <i className="feather-download" style={{ fontSize: 13 }} />
+                          <button type="button" onClick={() => setDetailModal(tx)} className="btn btn-sm btn-light d-inline-flex align-items-center justify-content-center border" style={{ width: 32, height: 32, borderRadius: 8, color: '#0ea5e9' }} title="Chi tiết doanh thu">
+                            <i className="feather-eye" style={{ fontSize: 13 }} />
                           </button>
                         </div>
                       </td>
@@ -571,6 +598,60 @@ export default function ManagerEarnings() {
           </div>
         )}
       </div>
+
+      {/* Detail Modal */}
+      {detailModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div className="card border-0" style={{ width: '100%', maxWidth: 450, borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,.15)' }}>
+            <div className="card-header bg-white border-0 d-flex justify-content-between align-items-center pt-4 pb-0 px-4">
+              <h5 className="mb-0" style={{ fontWeight: 700, color: '#0f172a' }}>Chi tiết doanh thu đơn hàng</h5>
+              <button type="button" onClick={() => setDetailModal(null)} style={{ border: 'none', background: 'transparent', fontSize: 20, color: '#64748b', cursor: 'pointer' }}><i className="feather-x" /></button>
+            </div>
+            <div className="card-body p-4">
+              <div className="mb-3">
+                <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>MÃ ĐẶT SÂN</div>
+                <div style={{ fontSize: 15, color: '#2563eb', fontWeight: 700 }}>{detailModal.refId}</div>
+              </div>
+              
+              <div style={{ background: '#f8fafc', borderRadius: 12, padding: 16, border: '1px solid #f1f5f9' }}>
+                <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 12 }}>CHI TIẾT CÁC CA ĐẶT</div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 250, overflowY: 'auto', paddingRight: 4 }}>
+                  {detailModal.items?.length > 0 ? getGroupedModalItems(detailModal.items).map((item, idx) => (
+                    <div key={idx} className="d-flex justify-content-between align-items-center">
+                      <div>
+                        <span style={{ fontWeight: 600, color: '#334155' }}>
+                          {item.name}
+                          {item.count > 1 && <sup style={{ color: '#ef4444', fontSize: '0.85em', fontWeight: 700, marginLeft: 1 }}>*{item.count}</sup>}
+                        </span>
+                        {item.count > 1 && (
+                          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: -2 }}>
+                            {fmtVnd(item.unitPrice)} / ca
+                          </div>
+                        )}
+                      </div>
+                      <span style={{ fontWeight: 600, color: '#097E52' }}>{fmtVnd(item.totalPrice)}</span>
+                    </div>
+                  )) : (
+                    <div className="text-muted" style={{ fontSize: 13 }}>Không có chi tiết</div>
+                  )}
+                </div>
+                
+                <div style={{ height: 1, background: '#e2e8f0', margin: '12px 0' }} />
+                
+                <div className="d-flex justify-content-between align-items-center">
+                  <span style={{ fontWeight: 700, color: '#0f172a' }}>Tổng cộng</span>
+                  <span style={{ fontWeight: 800, color: '#ef4444', fontSize: 16 }}>{fmtVnd(detailModal.amount)}</span>
+                </div>
+              </div>
+              
+              <button type="button" className="btn btn-light w-100 mt-4" style={{ fontWeight: 600, borderRadius: 10 }} onClick={() => setDetailModal(null)}>
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

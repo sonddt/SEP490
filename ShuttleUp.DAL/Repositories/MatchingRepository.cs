@@ -102,6 +102,14 @@ public class MatchingRepository : Repository<MatchingPost>, IMatchingRepository
             .FirstOrDefaultAsync(x => x.Id == postId);
     }
 
+    public async Task<MatchingPost?> GetPostForUpdateAsync(Guid postId)
+    {
+        return await _dbSet
+            .Include(x => x.MatchingPostItems).ThenInclude(i => i.BookingItem)
+            .Include(x => x.MatchingMembers)
+            .FirstOrDefaultAsync(x => x.Id == postId);
+    }
+
     public async Task<IEnumerable<MatchingPost>> GetMyPostsWithIncludesAsync(Guid userId)
     {
         return await _dbSet.AsNoTracking()

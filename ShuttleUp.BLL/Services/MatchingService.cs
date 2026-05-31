@@ -147,7 +147,7 @@ public class MatchingService : IMatchingService
 
     public async Task<Guid> CreatePostAsync(Guid userId, CreateMatchingPostDto dto, CancellationToken ct = default)
     {
-        var booking = await _bookingRepo.GetByIdAsync(dto.BookingId);
+        var booking = await _bookingRepo.GetByIdWithItemsAndCourtsAsync(dto.BookingId);
         if (booking == null || booking.UserId != userId)
             throw new KeyNotFoundException("Không tìm thấy đơn đặt sân này.");
 
@@ -166,9 +166,10 @@ public class MatchingService : IMatchingService
         var firstItem = items.First();
         var lastItem = items.Last();
 
+        var postId = Guid.NewGuid();
         var post = new MatchingPost
         {
-            Id = Guid.NewGuid(),
+            Id = postId,
             CreatorUserId = userId,
             BookingId = dto.BookingId,
             Title = dto.Title ?? $"Tìm {dto.RequiredPlayers} người đánh cầu lông",
@@ -191,40 +192,32 @@ public class MatchingService : IMatchingService
             Notes = dto.Notes,
             Status = "OPEN",
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
+            MatchingPostItems = items.Select(item => new MatchingPostItem
+            {
+                Id = Guid.NewGuid(),
+                PostId = postId,
+                BookingItemId = item.Id
+            }).ToList(),
+            MatchingMembers = new List<MatchingMember>
+            {
+                new MatchingMember
+                {
+                    Id = Guid.NewGuid(),
+                    PostId = postId,
+                    UserId = userId,
+                    JoinedAt = DateTime.UtcNow
+                }
+            }
         };
 
         await _matchingRepo.AddAsync(post);
-
-        foreach (var item in items)
-        {
-            // Note: We might need a MatchingPostItem repository if we wanted to be strict, 
-            // but we can also use navigation properties if they were set up.
-            // For now, I'll assume we can use the main repository if it handles related entities or add a method.
-            // Actually, I'll add them via the post's navigation property if available.
-            post.MatchingPostItems.Add(new MatchingPostItem
-            {
-                Id = Guid.NewGuid(),
-                PostId = post.Id,
-                BookingItemId = item.Id
-            });
-        }
-
-        post.MatchingMembers.Add(new MatchingMember
-        {
-            Id = Guid.NewGuid(),
-            PostId = post.Id,
-            UserId = userId,
-            JoinedAt = DateTime.UtcNow
-        });
-
-        await _matchingRepo.UpdateAsync(post); // Save the additions
         return post.Id;
     }
 
     public async Task UpdatePostAsync(Guid postId, Guid userId, UpdateMatchingPostDto dto, CancellationToken ct = default)
     {
-        var post = await _matchingRepo.GetPostDetailAsync(postId); // Using detail to get members and items
+        var post = await _matchingRepo.GetPostForUpdateAsync(postId);
         if (post == null || post.CreatorUserId != userId)
             throw new KeyNotFoundException("Không tìm thấy bài đăng.");
 
@@ -281,7 +274,7 @@ public class MatchingService : IMatchingService
 
     public async Task ClosePostAsync(Guid postId, Guid userId, CancellationToken ct = default)
     {
-        var post = await _matchingRepo.GetPostDetailAsync(postId);
+        var post = await _matchingRepo.GetPostForUpdateAsync(postId);
         if (post == null || post.CreatorUserId != userId)
             throw new KeyNotFoundException("Không tìm thấy bài đăng.");
         
@@ -319,7 +312,7 @@ public class MatchingService : IMatchingService
 
     public async Task<string> ReopenPostAsync(Guid postId, Guid userId, CancellationToken ct = default)
     {
-        var post = await _matchingRepo.GetPostDetailAsync(postId);
+        var post = await _matchingRepo.GetPostForUpdateAsync(postId);
         if (post == null || post.CreatorUserId != userId)
             throw new KeyNotFoundException("Không tìm thấy bài đăng.");
         
