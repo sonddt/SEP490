@@ -7,6 +7,9 @@ const STATUS_MAP = {
   COMPLETED: { label: 'Hoàn thành', cls: 'bg-success' },
   PENDING:   { label: 'Chờ xử lý', cls: 'bg-warning text-dark' },
   CANCELLED: { label: 'Đã huỷ',   cls: 'bg-danger'  },
+  PENDING_REFUND: { label: 'Chờ hoàn tiền', cls: 'bg-warning text-dark' },
+  REFUNDED: { label: 'Đã hoàn tiền', cls: 'bg-info text-white' },
+  APPROVED: { label: 'Đã duyệt', cls: 'bg-primary text-white' },
 };
 
 function fmtTime(dt) {

@@ -196,33 +196,26 @@ public class AdminService : IAdminService
 
     public async Task<object> GetRevenueStatsAsync(string? startDate, string? endDate)
     {
-        var nowVn = TimeZoneHelper.ToVn(DateTime.UtcNow);
-        var startOfDayUtc = TimeZoneHelper.StartOfDayUtc(nowVn);
-        var startOfMonthUtc = TimeZoneHelper.StartOfMonthUtc(nowVn);
-        var startOfPrevMonthUtc = TimeZoneHelper.ToUtc(new DateTime(nowVn.Year, nowVn.Month, 1).AddMonths(-1));
-
         DateTime? rangeStart = null, rangeEnd = null;
         if (!string.IsNullOrWhiteSpace(startDate) && DateTime.TryParseExact(startDate.Trim(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var rs))
             rangeStart = TimeZoneHelper.ToUtc(rs.Date);
         if (!string.IsNullOrWhiteSpace(endDate) && DateTime.TryParseExact(endDate.Trim(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var re))
             rangeEnd = TimeZoneHelper.ToUtc(re.Date.AddDays(1));
 
-        var totalRevenue = await _bookingRepo.SumAllRevenueAsync(PaidStatuses);
-        var monthRevenue = await _bookingRepo.SumAllRevenueAsync(PaidStatuses, startOfMonthUtc);
-        var todayRevenue = await _bookingRepo.SumAllRevenueAsync(PaidStatuses, startOfDayUtc);
         var activeVenuesCount = await _venueRepo.CountActiveAsync();
-
-        var venues = await _venueRepo.GetActiveWithBookingStatsAsync(rangeStart, rangeEnd, startOfMonthUtc, startOfPrevMonthUtc, startOfMonthUtc);
+        var venues = await _venueRepo.GetActiveWithBookingStatsAsync(rangeStart, rangeEnd, DateTime.UtcNow, DateTime.UtcNow, DateTime.UtcNow);
+        
         var venuesStats = venues.Select(v =>
         {
             var bookings = v.Bookings ?? (ICollection<DAL.Models.Booking>)new List<DAL.Models.Booking>();
             var revenueRaw = bookings.Where(b => PaidStatuses.Contains(b.Status) && (rangeStart == null || b.CreatedAt >= rangeStart) && (rangeEnd == null || b.CreatedAt < rangeEnd)).Sum(b => b.FinalAmount ?? 0);
-            var thisMonth = bookings.Where(b => PaidStatuses.Contains(b.Status) && b.CreatedAt >= startOfMonthUtc).Sum(b => b.FinalAmount ?? 0);
-            var prevMonth = bookings.Where(b => PaidStatuses.Contains(b.Status) && b.CreatedAt >= startOfPrevMonthUtc && b.CreatedAt < startOfMonthUtc).Sum(b => b.FinalAmount ?? 0);
-            string growth; if (prevMonth == 0) growth = thisMonth > 0 ? "+100%" : "0%"; else { var pct = (thisMonth - prevMonth) / prevMonth * 100m; growth = (pct >= 0 ? "+" : "") + Math.Round(pct, 1).ToString("0.#") + "%"; }
-            return new { id = v.Id, venue = v.Name, owner = v.OwnerUser?.FullName ?? "N/A", totalBookings = bookings.Count(b => PaidStatuses.Contains(b.Status)), revenue = revenueRaw, thisMonthRevenue = thisMonth, prevMonthRevenue = prevMonth, growth };
+            var filteredBookingsCount = bookings.Count(b => PaidStatuses.Contains(b.Status) && (rangeStart == null || b.CreatedAt >= rangeStart) && (rangeEnd == null || b.CreatedAt < rangeEnd));
+            return new { id = v.Id, venue = v.Name, owner = v.OwnerUser?.FullName ?? "N/A", totalBookings = filteredBookingsCount, revenue = revenueRaw };
         }).OrderByDescending(v => v.revenue).ToList();
 
-        return new { summary = new { totalRevenue = $"{totalRevenue:N0} ₫", monthRevenue = $"{monthRevenue:N0} ₫", todayRevenue = $"{todayRevenue:N0} ₫", activeVenues = activeVenuesCount }, venuesData = venuesStats };
+        var dynamicTotalRevenue = venuesStats.Sum(v => v.revenue);
+        var dynamicTotalBookings = venuesStats.Sum(v => v.totalBookings);
+
+        return new { summary = new { totalRevenue = $"{dynamicTotalRevenue:N0} ₫", totalBookings = dynamicTotalBookings, activeVenues = activeVenuesCount }, venuesData = venuesStats };
     }
 }
