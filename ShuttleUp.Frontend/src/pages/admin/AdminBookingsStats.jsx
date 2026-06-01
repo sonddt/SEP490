@@ -1,6 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import axiosClient from '../../api/axiosClient';
+import ShuttleDateField from '../../components/ui/ShuttleDateField';
+
+/** Group duplicate court names: "Sân 1, Sân 1, Sân 2" → [{name:'Sân 1',count:2},{name:'Sân 2',count:1}] */
+function formatCourtNames(courtStr) {
+  if (!courtStr) return null;
+  const names = courtStr.split(',').map(s => s.trim()).filter(Boolean);
+  const map = new Map();
+  names.forEach(n => map.set(n, (map.get(n) || 0) + 1));
+  return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
+}
 
 const STATUS_MAP = {
   CONFIRMED: { label: 'Xác nhận',  cls: 'bg-success' },
@@ -137,26 +147,28 @@ export default function AdminBookingsStats() {
               <option value="CONFIRMED">Xác nhận</option>
               <option value="PENDING">Chờ xử lý</option>
               <option value="CANCELLED">Đã huỷ</option>
+              <option value="PENDING_REFUND">Chờ hoàn tiền</option>
+              <option value="REFUNDED">Đã hoàn tiền</option>
             </select>
-            <div className="d-flex align-items-center gap-1">
-              <label style={{ fontSize: 13, color: '#64748b', whiteSpace: 'nowrap' }}>Từ ngày</label>
-              <input
-                type="date"
-                className="form-control"
-                style={{ width: 160 }}
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
+            <div className="d-flex align-items-center gap-2">
+              <label style={{ fontSize: 13, color: '#64748b', whiteSpace: 'nowrap', marginBottom: 0 }}>Từ ngày</label>
+              <div style={{ width: 160 }}>
+                <ShuttleDateField
+                  value={startDate}
+                  onChange={setStartDate}
+                  placeholder="dd/mm/yyyy"
+                />
+              </div>
             </div>
-            <div className="d-flex align-items-center gap-1">
-              <label style={{ fontSize: 13, color: '#64748b', whiteSpace: 'nowrap' }}>Đến ngày</label>
-              <input
-                type="date"
-                className="form-control"
-                style={{ width: 160 }}
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
+            <div className="d-flex align-items-center gap-2">
+              <label style={{ fontSize: 13, color: '#64748b', whiteSpace: 'nowrap', marginBottom: 0 }}>Đến ngày</label>
+              <div style={{ width: 160 }}>
+                <ShuttleDateField
+                  value={endDate}
+                  onChange={setEndDate}
+                  placeholder="dd/mm/yyyy"
+                />
+              </div>
             </div>
             <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
               <i className="feather-search" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: 14 }} />
@@ -224,8 +236,20 @@ export default function AdminBookingsStats() {
                     <td title={b.venue} style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {b.venue}
                     </td>
-                    <td title={b.court} style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {b.court}
+                    <td title={b.court} style={{ maxWidth: 220 }}>
+                      {(() => {
+                        const groups = formatCourtNames(b.court);
+                        if (!groups) return 'N/A';
+                        return groups.map((g, i) => (
+                          <span key={i}>
+                            {i > 0 && ', '}
+                            {g.name}
+                            {g.count > 1 && (
+                              <sup style={{ color: '#e53e3e', fontWeight: 700, fontSize: '0.7em', marginLeft: 1 }}>*{g.count}</sup>
+                            )}
+                          </span>
+                        ));
+                      })()}
                     </td>
                     <td>{b.date}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>

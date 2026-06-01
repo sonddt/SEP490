@@ -88,7 +88,7 @@ export default function ShuttleDateField({ value, onChange, placeholder = 'dd/mm
   useLayoutEffect(() => {
     if (!open || !inputRef.current) return;
     const r = inputRef.current.getBoundingClientRect();
-    const w = Math.max(r.width, 280);
+    const w = Math.max(r.width, 320);
     let left = r.left;
     if (left + w > window.innerWidth - 12) left = Math.max(12, window.innerWidth - w - 12);
     let top = r.bottom + 8;

@@ -22,7 +22,7 @@ const NAV_SECTIONS = [
   {
     label: 'Tài chính',
     items: [
-      { to: '/manager/earnings',          icon: 'feather-bar-chart-2',  label: 'Doanh thu' },
+      { to: '/manager/earnings',          icon: 'feather-bar-chart-2',  label: 'Thống kê' },
     ],
   },
   {

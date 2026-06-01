@@ -40,8 +40,10 @@ function mapManagerBookingFromApi(b) {
   const raw = (b.status || '').toUpperCase();
   let uiStatus;
   if (raw === 'PENDING') uiStatus = 'PENDING';
-  else if (raw === 'CANCELLED' || raw === 'REFUNDED') uiStatus = 'CANCELLED';
-  else if (raw === 'PENDING_REFUND') uiStatus = 'CANCELLED';
+  else if (raw === 'CANCELLED') uiStatus = 'CANCELLED';
+  else if (raw === 'PENDING_REFUND') uiStatus = 'PENDING_REFUND';
+  else if (raw === 'REFUNDED') uiStatus = 'REFUNDED';
+  else if (raw === 'COMPLETED') uiStatus = 'COMPLETED';
   else if (raw === 'CONFIRMED') {
     uiStatus = end.getTime() >= Date.now() ? 'UPCOMING' : 'COMPLETED';
   } else uiStatus = 'PENDING';

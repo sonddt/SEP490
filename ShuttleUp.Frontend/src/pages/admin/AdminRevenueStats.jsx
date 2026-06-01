@@ -4,6 +4,8 @@ import * as XLSX from 'xlsx';
 import axiosClient from '../../api/axiosClient';
 import ShuttleDateField from '../../components/ui/ShuttleDateField';
 
+const PAGE_SIZE = 15;
+
 export default function AdminRevenueStats() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -11,6 +13,7 @@ export default function AdminRevenueStats() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [searchText, setSearchText] = useState('');
+  const [page, setPage] = useState(1);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -33,6 +36,9 @@ export default function AdminRevenueStats() {
     fetchStats();
   }, [fetchStats]);
 
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [startDate, endDate, searchText]);
+
   // Client-side text search filter
   const filteredVenues = useMemo(() => {
     if (!data?.venuesData) return [];
@@ -52,6 +58,13 @@ export default function AdminRevenueStats() {
   const dynamicTotalBookings = useMemo(() => {
     return filteredVenues.reduce((sum, v) => sum + (v.totalBookings || 0), 0);
   }, [filteredVenues]);
+
+  // Client-side pagination
+  const totalPages = Math.max(1, Math.ceil(filteredVenues.length / PAGE_SIZE));
+  const displayedVenues = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredVenues.slice(start, start + PAGE_SIZE);
+  }, [filteredVenues, page]);
 
   const handleExport = () => {
     try {
@@ -199,9 +212,9 @@ export default function AdminRevenueStats() {
                   <tr>
                     <td colSpan={5} className="text-center text-muted py-4">Không có dữ liệu.</td>
                   </tr>
-                ) : (filteredVenues.map((v, idx) => (
+                ) : (displayedVenues.map((v, idx) => (
                   <tr key={v.id}>
-                    <td className="text-muted">{idx + 1}</td>
+                    <td className="text-muted">{(page - 1) * PAGE_SIZE + idx + 1}</td>
                     <td><strong>{v.venue}</strong></td>
                     <td>{v.owner}</td>
                     <td>{v.totalBookings.toLocaleString()} lượt</td>
@@ -209,17 +222,25 @@ export default function AdminRevenueStats() {
                   </tr>
                 )))}
               </tbody>
-              {!loading && filteredVenues.length > 0 && (
-                <tfoot>
-                  <tr className="table-light fw-bold">
-                    <td colSpan={3}>Tổng cộng</td>
-                    <td>{dynamicTotalBookings.toLocaleString()} lượt</td>
-                    <td className="text-success">{dynamicTotalRevenue.toLocaleString()} ₫</td>
-                  </tr>
-                </tfoot>
-              )}
             </table>
           </div>
+
+          {/* Pagination */}
+          {!loading && totalPages > 1 && (
+            <div className="d-flex justify-content-between align-items-center mt-3">
+              <span className="text-muted" style={{ fontSize: '0.9rem' }}>
+                Trang {page} / {totalPages}
+              </span>
+              <div className="btn-group">
+                <button className="btn btn-sm btn-outline-secondary" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
+                  <i className="feather-chevron-left" /> Trước
+                </button>
+                <button className="btn btn-sm btn-outline-secondary" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>
+                  Sau <i className="feather-chevron-right" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>

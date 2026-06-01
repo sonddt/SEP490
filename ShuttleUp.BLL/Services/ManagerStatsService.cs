@@ -79,6 +79,10 @@ public class ManagerStatsService : IManagerStatsService
         var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
         var totalRevInRange = await _bookingRepo.SumRevenueByVenueIdsFilteredAsync(targetIds.ToList(), PaidStatuses, status, sinceUtc, untilUtc, search);
 
+        // Overall totals ignoring status (for top cards)
+        var overallTotalItems = await _bookingRepo.CountByVenueIdsFilteredAsync(targetIds.ToList(), null, sinceUtc, untilUtc, search);
+        var overallTotalRev = await _bookingRepo.SumRevenueByVenueIdsFilteredAsync(targetIds.ToList(), PaidStatuses, null, sinceUtc, untilUtc, search);
+
         var bookings = await _bookingRepo.GetByVenueIdsPagedAsync(targetIds.ToList(), status, sinceUtc, untilUtc, search, (page - 1) * pageSize, pageSize);
         var items = bookings.Select(b => new
         {
@@ -92,7 +96,7 @@ public class ManagerStatsService : IManagerStatsService
             items = (b.BookingItems ?? (ICollection<DAL.Models.BookingItem>)new List<DAL.Models.BookingItem>()).Select(bi => new { courtName = bi.Court?.Name ?? "Sân", price = bi.FinalPrice ?? 0 })
         }).ToList();
 
-        return new { totalItems, totalPages, page, pageSize, totalRevInRange, venues = allVenues, items };
+        return new { totalItems, totalPages, page, pageSize, totalRevInRange, overallTotalItems, overallTotalRev, venues = allVenues, items };
     }
 
     public async Task<object> GetDailyChartAsync(Guid managerId, Guid? venueId, int days)
