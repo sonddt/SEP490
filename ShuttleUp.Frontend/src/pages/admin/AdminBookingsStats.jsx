@@ -9,7 +9,7 @@ const STATUS_MAP = {
   CANCELLED: { label: 'Đã huỷ',   cls: 'bg-danger'  },
   PENDING_REFUND: { label: 'Chờ hoàn tiền', cls: 'bg-warning text-dark' },
   REFUNDED: { label: 'Đã hoàn tiền', cls: 'bg-info text-white' },
-  APPROVED: { label: 'Đã duyệt', cls: 'bg-primary text-white' },
+  APPROVED: { label: 'Seed data cũ', cls: 'bg-secondary' },
 };
 
 function fmtTime(dt) {
