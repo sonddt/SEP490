@@ -61,7 +61,9 @@ function mapManagerBookingFromApi(b) {
   const courtLabel = uniqueCourts.length > 0 ? uniqueCourts.join(', ') : 'Sân';
 
   const created = b.createdAt ? new Date(b.createdAt) : start;
-  const createdAt = `${pad2(created.getDate())}/${pad2(created.getMonth() + 1)}/${created.getFullYear()} ${pad2(created.getHours())}:${pad2(created.getMinutes())}`;
+  const createdDateStr = `${pad2(created.getDate())}/${pad2(created.getMonth() + 1)}/${created.getFullYear()}`;
+  const createdTimeStr = `${pad2(created.getHours())}:${pad2(created.getMinutes())}`;
+  const createdAt = `${createdDateStr} ${createdTimeStr}`;
 
   const contact = (b.contactName || '').trim();
   const account = (b.playerName || '').trim();
@@ -97,6 +99,10 @@ function mapManagerBookingFromApi(b) {
     note: b.guestNote || '',
     rejectReason: (b.managerStatusNote || '').trim() || null,
     createdAt,
+    createdDateStr,
+    createdTimeStr,
+    rawCreatedAt: created,
+    rawDate: start,
     items: b.items || [],
   };
 }
@@ -142,7 +148,7 @@ function ProofThumb({ img }) {
   if (!isHttpProofUrl(img)) {
     return (
       <span className="text-muted small d-inline-block" style={{ maxWidth: 200 }}>
-        Môi trường dev — chưa có ảnh CK (Cloudinary)
+        Môi trường dev
       </span>
     );
   }
@@ -171,7 +177,7 @@ export default function ManagerBookings() {
   const [activeTab, setActiveTab] = useState('ALL');
   const [search, setSearch] = useState('');
   const [timeFilter, setTimeFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('newest');
+  const [sortBy, setSortBy] = useState('created_desc');
   const [page, setPage] = useState(1);
   const [detailModal, setDetailModal] = useState(null);
   const [rejectModal, setRejectModal] = useState(null);
@@ -274,8 +280,10 @@ export default function ManagerBookings() {
       }
     }
     list = [...list].sort((a, b) => {
-      if (sortBy === 'newest') return new Date(b.date) - new Date(a.date);
-      if (sortBy === 'oldest') return new Date(a.date) - new Date(b.date);
+      if (sortBy === 'created_desc') return b.rawCreatedAt - a.rawCreatedAt;
+      if (sortBy === 'created_asc') return a.rawCreatedAt - b.rawCreatedAt;
+      if (sortBy === 'play_desc') return b.rawDate - a.rawDate;
+      if (sortBy === 'play_asc') return a.rawDate - b.rawDate;
       if (sortBy === 'amount_high') return b.amount - a.amount;
       if (sortBy === 'amount_low') return a.amount - b.amount;
       return 0;
@@ -426,14 +434,16 @@ export default function ManagerBookings() {
               {search && <button type="button" className="bk-search-clear" onClick={() => setSearch('')}><i className="feather-x" /></button>}
             </div>
             <select className="form-select" value={timeFilter} onChange={e => setTimeFilter(e.target.value)}>
-              <option value="all">Tất cả thời gian</option>
-              <option value="today">Hôm nay</option>
-              <option value="week">Tuần này</option>
-              <option value="month">Tháng này</option>
+              <option value="all">Ngày chơi: Tất cả</option>
+              <option value="today">Ngày chơi: Hôm nay</option>
+              <option value="week">Ngày chơi: Tuần này</option>
+              <option value="month">Ngày chơi: Tháng này</option>
             </select>
             <select className="form-select" value={sortBy} onChange={e => setSortBy(e.target.value)}>
-              <option value="newest">Mới nhất</option>
-              <option value="oldest">Cũ nhất</option>
+              <option value="created_desc">Giờ đặt mới nhất</option>
+              <option value="created_asc">Giờ đặt cũ nhất</option>
+              <option value="play_asc">Giờ chơi gần nhất</option>
+              <option value="play_desc">Giờ chơi xa nhất</option>
               <option value="amount_high">Tiền cao → thấp</option>
               <option value="amount_low">Tiền thấp → cao</option>
             </select>
@@ -445,9 +455,11 @@ export default function ManagerBookings() {
             <table className="table">
               <thead>
                 <tr>
+                  <th>Mã đặt sân</th>
                   <th>Sân</th>
                   <th>Người đặt</th>
-                  <th>Ngày & Giờ</th>
+                  <th>Ngày đặt</th>
+                  <th>Ngày & Giờ chơi</th>
                   <th>Thanh toán</th>
                   <th>Trạng thái</th>
                   <th>Hành động</th>
@@ -476,24 +488,46 @@ export default function ManagerBookings() {
                   const pm = PAYMENT_METHODS[b.paymentMethod] || PAYMENT_METHODS.NONE;
                   return (
                     <tr key={b.id} data-manager-booking-row={b.bookingId || b.id}>
+                      {/* Code */}
+                      <td>
+                        <span
+                          className="badge"
+                          title={`Mã đặt: #${b.bookingCode}`}
+                          style={{
+                            background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+                            color: '#065f46',
+                            border: '1px solid #6ee7b7',
+                            fontFamily: 'monospace, ui-monospace, monospace',
+                            fontSize: 13,
+                            fontWeight: 700,
+                            padding: '6px 10px',
+                            borderRadius: 8,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          #{b.bookingCode}
+                        </span>
+                      </td>
                       {/* Court */}
-                      <td style={{ maxWidth: 180 }}>
-                        <h2 className="table-avatar">
-                          <span className="avatar avatar-sm flex-shrink-0">
-                            <img className="avatar-img" src={b.courtImg} alt="" onError={e => { e.target.src = '/assets/img/booking/booking-01.jpg'; }} />
-                          </span>
-                          <span className="table-head-name flex-grow-1" style={{ maxWidth: 'calc(100% - 40px)' }}>
-                            <a href="#!" onClick={e => { e.preventDefault(); setDetailModal(b); }} style={{ display: 'block', wordBreak: 'break-word', lineHeight: '1.3', marginBottom: '2px' }}>
+                      <td style={{ minWidth: 200 }}>
+                        <div className="d-flex align-items-center gap-3">
+                          <div className="flex-shrink-0" style={{ width: 56, height: 56 }}>
+                            <img className="rounded shadow-sm" src={b.courtImg} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.src = '/assets/img/venues/venues-01.jpg'; }} />
+                          </div>
+                          <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                            <a href="#!" onClick={e => { e.preventDefault(); setDetailModal(b); }} style={{ fontSize: 14, color: '#0f172a', lineHeight: 1.3, display: 'block', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={b.court}>
                               {b.court}
-                              {b.isLongTerm && (
-                                <span className="badge bg-info text-dark ms-1" style={{ fontSize: '0.65rem' }}>Lịch dài hạn</span>
-                              )}
                             </a>
-                            <span style={{ display: 'block', wordBreak: 'break-word', lineHeight: '1.3' }}>
-                              <i className="feather-map-pin" style={{ fontSize: 11, marginRight: 3 }} />{b.venue}
+                            {b.isLongTerm ? (
+                                  <span className="badge" style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, marginTop: 4, display: 'inline-flex', alignItems: 'center', background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)', color: '#fff' }}><i className="feather-calendar me-1" style={{ fontSize: 10 }} />Lịch dài hạn</span>
+                                ) : (
+                                  <span className="badge" style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, marginTop: 4, display: 'inline-flex', alignItems: 'center', background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: '#fff' }}><i className="feather-clock me-1" style={{ fontSize: 10 }} />Lịch đơn</span>
+                                )}
+                            <span style={{ display: 'block', fontSize: 12, marginTop: 4, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={b.venue}>
+                              <i className="feather-map-pin me-1" style={{ fontSize: 10 }} />{b.venue}
                             </span>
-                          </span>
-                        </h2>
+                          </div>
+                        </div>
                       </td>
                       {/* Player */}
                       <td style={{ maxWidth: 180 }}>
@@ -501,22 +535,30 @@ export default function ManagerBookings() {
                           <span className="avatar avatar-sm flex-shrink-0" style={{ borderRadius: '50%' }}>
                             <img className="avatar-img rounded-circle" src={b.playerImg} alt="" onError={e => { e.target.src = '/assets/img/profiles/avatar-01.jpg'; }} />
                           </span>
-                          <span className="table-head-name flex-grow-1" style={{ maxWidth: 'calc(100% - 40px)' }}>
-                            <a href="#!" onClick={e => e.preventDefault()} style={{ display: 'block', wordBreak: 'break-word', lineHeight: '1.3', marginBottom: '2px' }}>
+                          <span className="table-head-name flex-grow-1" style={{ minWidth: 0 }}>
+                            <strong style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: '1.3', marginBottom: '2px', color: '#0f172a' }} title={b.player}>
                               {b.player}
-                            </a>
+                            </strong>
                             {b.playerAccountSub && (
-                              <span className="d-block text-muted" style={{ fontSize: 11, wordBreak: 'break-word', lineHeight: '1.2', marginBottom: '2px' }}>
+                              <span className="d-block text-muted" style={{ fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: '1.2', marginBottom: '2px' }} title={`TK: ${b.playerAccountSub}`}>
                                 TK: {b.playerAccountSub}
                               </span>
                             )}
-                            <span style={{ display: 'block', fontSize: 13 }}>{b.playerPhone}</span>
+                            <span style={{ display: 'block', fontSize: 13, color: '#64748b' }}>{b.playerPhone}</span>
                           </span>
                         </h2>
                       </td>
+                      {/* Booking Date */}
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        <strong style={{ color: '#334155', display: 'block', fontSize: 14 }}>{b.createdDateStr}</strong>
+                        <small className="text-muted" style={{ display: 'flex', alignItems: 'center', marginTop: 4, gap: 4 }}>
+                          <i className="feather-clock" style={{ fontSize: 12 }}></i> {b.createdTimeStr}
+                        </small>
+                      </td>
                       {/* Date & Time */}
-                      <td className="table-date-time">
-                        <h4>{b.dateDisplay}<span>{b.timeStart} – {b.timeEnd}</span></h4>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        <strong style={{ color: '#334155', display: 'block' }}>{b.dateDisplay}</strong>
+                        <small className="text-muted" style={{ display: 'block', marginTop: 4 }}>{b.timeStart} – {b.timeEnd}</small>
                       </td>
                       {/* Payment */}
                       <td>
