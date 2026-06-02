@@ -163,7 +163,7 @@ public class ManagerVenuesController : ControllerBase
         // Kept minimal — file deletion uses a simple pattern via service
         var mid = GetCurrentUserId(); if (mid == Guid.Empty) return Unauthorized();
         if (string.IsNullOrWhiteSpace(fileUrl)) return BadRequest(new { message = "Thiếu fileUrl." });
-        try { await _venueService.DeleteVenueFileAsync(venueId, Guid.Empty, mid); return Ok(new { message = "Đã xóa ảnh." }); }
+        try { await _venueService.DeleteVenueFileAsync(venueId, fileUrl, mid); return Ok(new { message = "Đã xóa ảnh." }); }
         catch (KeyNotFoundException) { return NotFound(new { message = "Không tìm thấy ảnh." }); }
         catch (UnauthorizedAccessException) { return Forbid(); }
     }

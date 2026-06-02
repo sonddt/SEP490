@@ -232,10 +232,18 @@ export default function ManagerVenueList() {
   const handleFilterChange = (e) => { setFilterStatus(e.target.value); setPage(1); };
   const handleSortChange   = (v) => { setSort(v); setPage(1); };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteModal) return;
-    setVenues((prev) => prev.filter((v) => v.id !== deleteModal.id));
+    try {
+      setActionMessage({ type: '', text: '' });
+      await axiosClient.delete(`/manager/venues/${deleteModal.id}`);
+      setVenues((prev) => prev.filter((v) => v.id !== deleteModal.id));
+      setActionMessage({ type: 'success', text: `Đã xóa cụm sân "${deleteModal.name}" thành công!` });
+    } catch (e) {
+      setActionMessage({ type: 'danger', text: e.response?.data?.message || 'Lỗi khi xóa cụm sân.' });
+    }
     setDeleteModal(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handlePublish = async (venue) => {

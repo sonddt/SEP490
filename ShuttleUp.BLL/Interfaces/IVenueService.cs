@@ -25,7 +25,7 @@ public interface IVenueService
 
     // ── Venue Files ──
     Task<object> UploadVenueFilesAsync(Guid venueId, Guid managerId, List<FileUploadInfo> files);
-    Task DeleteVenueFileAsync(Guid venueId, Guid fileId, Guid managerId);
+    Task DeleteVenueFileAsync(Guid venueId, string fileUrl, Guid managerId);
 
     // ── Checkout Settings ──
     Task<object?> GetCheckoutSettingsAsync(Guid venueId, Guid managerId, decimal? amount, string? addInfo);

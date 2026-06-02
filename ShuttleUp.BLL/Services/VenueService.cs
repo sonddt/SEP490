@@ -160,11 +160,11 @@ public class VenueService : IVenueService
         return new { imageUrls = uploadedUrls };
     }
 
-    public async Task DeleteVenueFileAsync(Guid venueId, Guid fileId, Guid managerId)
+    public async Task DeleteVenueFileAsync(Guid venueId, string fileUrl, Guid managerId)
     {
         var venue = await _venueRepo.GetByIdWithFilesAsync(venueId) ?? throw new KeyNotFoundException("Venue không tồn tại.");
         if (venue.OwnerUserId != managerId) throw new UnauthorizedAccessException();
-        var file = venue.Files.FirstOrDefault(f => f.Id == fileId) ?? throw new KeyNotFoundException("Không tìm thấy file.");
+        var file = venue.Files.FirstOrDefault(f => f.FileUrl == fileUrl) ?? throw new KeyNotFoundException("Không tìm thấy file.");
         venue.Files.Remove(file);
         await _venueRepo.UpdateAsync(venue);
     }
