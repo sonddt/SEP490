@@ -757,3 +757,24 @@ Kết bạn & quan hệ xã hội (Player):
 5. **Cập nhật `rule.md`**: Thêm Quy tắc 6 — Phân định rõ Service vs Helper (Service inject Repository, Helper tuyệt đối KHÔNG inject dependency).
 
 6. `dotnet build` **0 Errors**, 1 warning không liên quan (CS8601 trong ManagerProfileService — tồn tại từ trước).
+
+---
+
+## 3 tháng 6, 2026 (Hoàn thiện Luồng Hủy Sân từ Manager & Tối ưu Giao Diện Booking)
+
+1. **Hoàn thiện luồng hủy đơn (Manager Cancel Flow)**:
+   - Khi chủ sân từ chối đơn chờ duyệt (PENDING) đã có bằng chứng thanh toán (PROOF_UPLOADED): Chuyển trạng thái sang `PENDING_RECONCILIATION` (Chờ đối soát) để chủ sân kiểm tra lại tiền trong tài khoản trước khi hoàn. Không còn hoàn tiền trực tiếp 100%.
+   - Khi chủ sân hủy đơn đã xác nhận (CONFIRMED): Chuyển trạng thái sang `PENDING_REFUND` (Chờ hoàn tiền) với yêu cầu hoàn 100% vì lỗi xuất phát từ chủ sân.
+   - Khi chủ sân từ chối đơn chờ duyệt (PENDING) thuộc nhánh PAID: Chuyển sang `PENDING_RECONCILIATION` và lưu lại RequestRefund để tiện theo dõi.
+   - Cập nhật Notification gửi cho người chơi chính xác theo từng trạng thái: "Đơn đặt sân bị huỷ — đang chờ đối soát" hoặc "Đơn đặt sân bị huỷ — đang xử lý hoàn tiền".
+
+2. **Nâng cấp UI/UX Quản lý Hoàn Tiền (ManagerRefunds)**:
+   - Ghi nhận `manager_note` (lý do hủy của chủ sân) vào chi tiết hoàn tiền để theo dõi lịch sử vì sao đơn bị hủy.
+   - Thêm cột tính Phí phạt (Penalty = Số tiền đã thanh toán - Số tiền cần hoàn) màu đỏ nổi bật để chủ sân dễ dàng theo dõi lợi nhuận từ việc phạt hủy đơn sát giờ.
+
+3. **Cải tiến UI/UX Trang Đặt Sân (ManagerBookings & UserBookings)**:
+   - **UserBookings (Player)**: Mở rộng Modal Xem chi tiết lên 900px, nhúng trực tiếp Form nhập Số tài khoản + Upload ảnh QR Code nhận tiền vào chung với modal. Xóa bỏ nút màu xanh thừa thãi ngoài danh sách. Chuẩn hóa tên trạng thái "Chờ xác nhận CK" thành **"Chờ đối soát"** để ngắn gọn và dễ hiểu.
+   - **ManagerBookings (Manager)**: 
+     - Re-layout toàn bộ bảng danh sách: Thêm cột Mã đặt sân (Badge), Ngày đặt, Sắp xếp lại thứ tự cột cho hợp lý.
+     - Tinh chỉnh Responsive: Ứng dụng `text-overflow: ellipsis` chặn vỡ giao diện ở ô Người đặt và Tên Sân. Rút gọn văn bản môi trường dev.
+     - Bộ lọc (Filter & Sort): Bổ sung khả năng sắp xếp (Sort) theo Giờ đặt & Giờ chơi. Sửa text Dropdown thời gian thành "Ngày chơi: ..." để phân biệt rạch ròi với bộ lọc Giờ đặt, giúp chủ sân tra cứu chính xác.
