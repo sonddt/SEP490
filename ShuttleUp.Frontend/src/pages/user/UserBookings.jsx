@@ -158,7 +158,7 @@ const BOOKING_TAB_STYLES = {
 };
 
 const REFUND_STATUS_LABEL = {
-  PENDING_RECONCILIATION: { text: 'Chờ xác nhận CK', color: 'warning' },
+  PENDING_RECONCILIATION: { text: 'Chờ đối soát', color: 'warning' },
   PENDING_REFUND: { text: 'Chờ hoàn tiền', color: 'info' },
   REFUNDED: { text: 'Đã hoàn tiền', color: 'success' },
 };
@@ -719,20 +719,6 @@ export default function UserBookings() {
                                   <i className="feather-flag m-0"></i>
                                 </button>
                               )}
-                              {b.status === 'REFUND' && !b.refundAccountNumber && (
-                                <button
-                                  type="button"
-                                  title="Nhập STK nhận hoàn tiền"
-                                  className="btn btn-sm btn-outline-success d-inline-flex align-items-center justify-content-center shadow-none p-0"
-                                  style={{ width: 34, height: 34, borderRadius: 8, borderWidth: 1.5 }}
-                                  onClick={() => {
-                                    setBankForm({ refundBankName: '', refundAccountNumber: '', refundAccountHolder: '' });
-                                    setShowBankForm(b);
-                                  }}
-                                >
-                                  <i className="feather-credit-card m-0"></i>
-                                </button>
-                              )}
                             </div>
                           </td>
                         </tr>
@@ -748,213 +734,321 @@ export default function UserBookings() {
 
       {/* ── Detail Modal ───────────────────────────────────────────────── */}
       {detailBooking && (
-        <div
-          className="modal fade show d-block"
-          style={{ background: 'rgba(0,0,0,0.5)' }}
-          onClick={() => setDetailBooking(null)}
-        >
-          <div className="modal-dialog modal-lg modal-dialog-centered" onClick={e => e.stopPropagation()}>
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Chi tiết đặt sân</h5>
-                <button type="button" className="btn-close" onClick={() => setDetailBooking(null)} />
+        <div className="bk-modal-overlay" onClick={() => setDetailBooking(null)}>
+          <div className="bk-modal" style={{ maxWidth: 900 }} onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="bk-modal-header" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)', borderBottom: '1px solid #d1fae5' }}>
+              <div className="d-flex align-items-center gap-3">
+                <div className="bk-modal-icon" style={{ background: '#dcfce7', border: '2px solid #86efac', color: '#16a34a' }}>
+                  <i className="feather-file-text" />
+                </div>
+                <div>
+                  <h5 className="bk-modal-title mb-0" style={{ color: '#166534' }}>Chi tiết đặt sân</h5>
+                  <p className="bk-modal-sub mb-0">Mã đặt: <strong style={{ fontFamily: 'monospace' }}>#{detailBooking.code}</strong></p>
+                </div>
               </div>
-              <div className="modal-body p-4">
-                <div className="row g-4">
-                  {/* Left Column */}
-                  <div className="col-md-6">
-                    <div className="d-flex align-items-center gap-3 mb-4">
-                      <img
-                        src={detailBooking.courtImg}
-                        alt=""
-                        style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover' }}
-                        onError={e => { e.target.src = '/assets/img/venues/venues-01.jpg'; }}
-                      />
-                      <div>
-                        <h6 className="mb-1">{detailBooking.court}</h6>
-                        <small className="text-muted">
-                          <i className="feather-map-pin me-1" />{detailBooking.venueAddress}
-                        </small>
-                      </div>
-                    </div>
+              <button type="button" className="bk-modal-close" onClick={() => setDetailBooking(null)}>
+                <i className="feather-x" />
+              </button>
+            </div>
 
-                    <div className="p-3 bg-light border rounded">
-                      <div className="mb-2 d-flex justify-content-between align-items-center">
-                        <small className="text-muted">Mã đặt sân:</small>
-                        <strong style={{ fontFamily: 'monospace' }}>#{detailBooking.code}</strong>
-                      </div>
-                      <div className="mb-2 d-flex justify-content-between align-items-center">
-                        <small className="text-muted">Trạng thái:</small>
-                        <StatusBadge b={detailBooking} />
-                      </div>
-                      <div className="mb-2 d-flex justify-content-between align-items-center">
-                        <small className="text-muted">Tổng tiền:</small>
-                        <strong className="text-success" style={{ fontSize: '15px' }}>{detailBooking.amount.toLocaleString('vi-VN')} ₫</strong>
-                      </div>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <small className="text-muted">Thanh toán:</small>
-                        <div className="text-end">
-                          <strong>{detailBooking.paymentMethod}</strong>
-                          {detailBooking.paymentProofUrl && (
-                            <div className="mt-1">
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-primary py-1 px-2 border-0 shadow-sm"
-                                style={{ fontSize: '11px', borderRadius: '4px' }}
-                                onClick={() => setPreviewImage(detailBooking.paymentProofUrl)}
-                              >
-                                <i className="feather-image text-white me-1"></i>Xem phiếu CK
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+            {/* Body */}
+            <div className="bk-modal-body" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
+              <div className="row g-4">
+                {/* Left Column — Venue Info */}
+                <div className="col-md-6">
+                  <div className="d-flex align-items-center gap-3 mb-3">
+                    <img
+                      src={detailBooking.courtImg}
+                      alt=""
+                      style={{ width: 64, height: 64, borderRadius: 12, objectFit: 'cover', border: '2px solid #e2e8f0' }}
+                      onError={e => { e.target.src = '/assets/img/venues/venues-01.jpg'; }}
+                    />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <h6 className="mb-1" style={{ fontSize: 15, color: '#1e293b' }}>{detailBooking.court}</h6>
+                      <small className="text-muted" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={detailBooking.venueAddress}>
+                        <i className="feather-map-pin me-1" />{detailBooking.venueAddress}
+                      </small>
                     </div>
                   </div>
 
-                  {/* Right Column */}
-                  <div className="col-md-6">
-                    {!detailBooking.isLongTerm ? (
-                      <div className="p-3 bg-light border rounded h-100">
-                        <h6 className="mb-3 text-slate-800"><i className="feather-calendar me-2" style={{ color: '#10b981' }} />Thông tin thời gian</h6>
-                        <div className="mb-3 d-flex flex-column">
-                          <small className="text-muted mb-1">Ngày diễn ra</small>
-                          <strong style={{ fontSize: '14px', color: '#1e293b' }}>{detailBooking.date}</strong>
-                        </div>
-                        <div className="d-flex flex-column">
-                          <small className="text-muted mb-1">Khung giờ</small>
-                          <strong style={{ fontSize: '14px', color: '#1e293b' }}>{detailBooking.time}</strong>
-                        </div>
+                  <div className="d-flex flex-column" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: 16 }}>
+                    <div className="bk-detail-row d-flex justify-content-between align-items-center mb-2">
+                      <span className="text-muted small">Mã đặt sân:</span>
+                      <span className="badge" style={{ background: 'linear-gradient(135deg, #6366f1, #818cf8)', color: '#fff', fontFamily: 'monospace', fontSize: 13 }}>#{detailBooking.code}</span>
+                    </div>
+                    <div className="bk-detail-row d-flex justify-content-between align-items-center mb-2">
+                      <span className="text-muted small">Trạng thái:</span>
+                      <StatusBadge b={detailBooking} />
+                    </div>
+                    <div className="bk-detail-row d-flex justify-content-between align-items-center mb-2">
+                      <span className="text-muted small">Tổng tiền:</span>
+                      <strong style={{ color: '#097E52', fontSize: 16 }}>{detailBooking.amount.toLocaleString('vi-VN')} ₫</strong>
+                    </div>
+                    <div className="bk-detail-row d-flex justify-content-between align-items-center">
+                      <span className="text-muted small">Thanh toán:</span>
+                      <div className="text-end">
+                        <strong style={{ fontSize: 13 }}>{detailBooking.paymentMethod}</strong>
+                        {detailBooking.paymentProofUrl && (
+                          <div className="mt-1">
+                            <button
+                              type="button"
+                              className="btn btn-sm py-1 px-2 border-0 shadow-sm"
+                              style={{ fontSize: 11, borderRadius: 6, background: 'linear-gradient(135deg, #3b82f6, #6366f1)', color: '#fff' }}
+                              onClick={() => setPreviewImage(detailBooking.paymentProofUrl)}
+                            >
+                              <i className="feather-image me-1" />Xem phiếu CK
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <LongTermScheduleDisplay items={detailBooking.items} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column — Schedule */}
+                <div className="col-md-6">
+                  {!detailBooking.isLongTerm ? (
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: 16, height: '100%' }}>
+                      <h6 className="mb-3" style={{ color: '#1e293b', fontSize: 14 }}>
+                        <i className="feather-calendar me-2" style={{ color: '#10b981' }} />Thông tin thời gian
+                      </h6>
+                      <div className="mb-3">
+                        <small className="text-muted d-block mb-1">Ngày diễn ra</small>
+                        <strong style={{ fontSize: 14, color: '#1e293b' }}>{detailBooking.date}</strong>
+                      </div>
+                      <div>
+                        <small className="text-muted d-block mb-1">Khung giờ</small>
+                        <strong style={{ fontSize: 14, color: '#1e293b' }}>{detailBooking.time}</strong>
+                      </div>
+                    </div>
+                  ) : (
+                    <LongTermScheduleDisplay items={detailBooking.items} />
+                  )}
+                </div>
+              </div>
+
+              {/* Manager rejection note */}
+              {(detailBooking.status === 'CANCELLED' || detailBooking.status === 'REFUND') && detailBooking.managerStatusNote && (
+                <div className="mt-3 p-3 rounded" style={{ background: '#fef2f2', border: '1px solid #fca5a5' }}>
+                  <small className="text-danger d-block fw-semibold mb-1">
+                    <i className="feather-alert-circle me-1" />Ghi chú từ sân
+                  </small>
+                  <p className="mb-0 small text-danger">{detailBooking.managerStatusNote}</p>
+                </div>
+              )}
+
+              {/* Refund Info Section */}
+              {detailBooking.status === 'REFUND' && (
+                <div className="mt-3">
+                  <div className="p-3 rounded" style={{ background: 'linear-gradient(135deg, #f0fdf4, #ecfdf5)', border: '1px solid #bbf7d0', borderRadius: 12 }}>
+                    <div className="d-flex align-items-center mb-3">
+                      <i className="feather-refresh-cw me-2" style={{ color: '#16a34a', fontSize: 18 }} />
+                      <h6 className="mb-0 fw-bold" style={{ color: '#166534', fontSize: 15 }}>Thông tin hoàn tiền</h6>
+                    </div>
+
+                    <div className="row g-3">
+                      <div className="col-md-6">
+                        <div className="mb-2 d-flex justify-content-between align-items-center">
+                          <span className="text-muted small">Trạng thái:</span>
+                          <span className={`badge ${
+                            detailBooking.refundStatus === 'PENDING_RECONCILIATION' ? 'bg-warning text-dark' :
+                            detailBooking.refundStatus === 'PENDING_REFUND' ? 'bg-info' :
+                            detailBooking.refundStatus === 'COMPLETED' ? 'bg-success' :
+                            detailBooking.refundStatus === 'REJECTED' ? 'bg-danger' : 'bg-secondary'
+                          }`}>
+                            {detailBooking.refundStatus === 'PENDING_RECONCILIATION' ? 'Chờ đối soát' :
+                             detailBooking.refundStatus === 'PENDING_REFUND' ? 'Chờ hoàn tiền' :
+                             detailBooking.refundStatus === 'COMPLETED' ? 'Đã hoàn tiền' :
+                             detailBooking.refundStatus === 'REJECTED' ? 'Từ chối' : detailBooking.refundStatus}
+                          </span>
+                        </div>
+                        <div className="mb-2 d-flex justify-content-between align-items-center">
+                          <span className="text-muted small">
+                            {detailBooking.refundStatus === 'COMPLETED' ? 'Số tiền đã hoàn:' : 'Số tiền cần hoàn:'}
+                          </span>
+                          <strong style={{ color: '#097E52', fontSize: 17 }}>
+                            {detailBooking.refundAmount != null ? `${Number(detailBooking.refundAmount).toLocaleString('vi-VN')} ₫` : '—'}
+                          </strong>
+                        </div>
+
+                        {(detailBooking.refundBankName || detailBooking.refundAccountNumber) && (
+                          <div className="mt-2 p-3 rounded" style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: 10 }}>
+                            <strong className="d-block text-success small mb-1">
+                              <i className="feather-credit-card me-1" />Tài khoản nhận:
+                            </strong>
+                            <div className="small text-dark">
+                              <strong>{detailBooking.refundBankName}</strong><br />
+                              STK: <strong>{detailBooking.refundAccountNumber}</strong><br />
+                              Chủ TK: <strong>{detailBooking.refundAccountHolder}</strong>
+                            </div>
+                          </div>
+                        )}
+                        {!detailBooking.refundAccountNumber && (
+                          <div className="mt-3 p-3 rounded" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10 }}>
+                            <strong className="d-block text-dark small mb-2">
+                              <i className="feather-credit-card me-1" />Nhập STK nhận hoàn tiền:
+                            </strong>
+                            <div className="mb-2">
+                              <BankPicker
+                                banks={vietqrBanks}
+                                value={bankForm.refundBankName}
+                                onSelect={(shortName) => setBankForm(p => ({ ...p, refundBankName: shortName }))}
+                                loading={banksLoading}
+                              />
+                            </div>
+                            <div className="mb-2">
+                              <input type="text" className="form-control" placeholder="Số tài khoản" value={bankForm.refundAccountNumber}
+                                onChange={e => setBankForm(p => ({ ...p, refundAccountNumber: e.target.value }))}
+                                style={{ borderRadius: 8, fontSize: 13, padding: '6px 12px' }}
+                              />
+                            </div>
+                            <div className="mb-2">
+                              <input type="text" className="form-control text-uppercase" placeholder="Chủ tài khoản (VD: NGUYEN VAN A)" value={bankForm.refundAccountHolder}
+                                onChange={e => setBankForm(p => ({ ...p, refundAccountHolder: e.target.value.toUpperCase() }))}
+                                style={{ borderRadius: 8, fontSize: 13, padding: '6px 12px' }}
+                              />
+                            </div>
+                            <button type="button" className="btn btn-sm w-100 d-flex align-items-center justify-content-center gap-2 mt-2"
+                              style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', borderRadius: 8, border: 'none', fontWeight: 600 }}
+                              disabled={bankSubmitting}
+                              onClick={async () => {
+                                if (!bankForm.refundBankName || !bankForm.refundAccountNumber || !bankForm.refundAccountHolder) {
+                                  showToast('Vui lòng điền đầy đủ thông tin ngân hàng.', true);
+                                  return;
+                                }
+                                setBankSubmitting(true);
+                                try {
+                                  let qrUrl = qrUploadedUrl;
+                                  if (qrFile && !qrUrl) {
+                                    qrUrl = await handleQrUpload();
+                                  }
+                                  const body = { ...bankForm, refundQrImageUrl: qrUrl || undefined };
+                                  await updateRefundBankInfo(detailBooking.id, body);
+                                  showToast('Đã lưu thông tin nhận hoàn tiền.');
+                                  setDetailBooking(p => ({ ...p, refundBankName: bankForm.refundBankName, refundAccountNumber: bankForm.refundAccountNumber, refundAccountHolder: bankForm.refundAccountHolder, refundQrImageUrl: qrUrl }));
+                                  setQrFile(null); setQrPreview(null); setQrUploadedUrl(null);
+                                  await loadBookings();
+                                } catch (e) {
+                                  showToast(e?.response?.data?.message || 'Cập nhật thất bại.', true);
+                                } finally {
+                                  setBankSubmitting(false);
+                                }
+                              }}>
+                              {bankSubmitting ? <><span className="spinner-border spinner-border-sm" />Đang lưu...</> : <><i className="feather-save" />Lưu STK</>}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="col-md-6">
+                        {detailBooking.refundManagerEvidenceUrl ? (
+                          <div>
+                            <span className="text-muted small d-block mb-2">Ảnh bill hoàn (chủ sân tải lên):</span>
+                            <div
+                              style={{
+                                position: 'relative', cursor: 'pointer', borderRadius: 10,
+                                overflow: 'hidden', border: '2px solid #16a34a', background: '#fff'
+                              }}
+                              onClick={() => setPreviewImage(detailBooking.refundManagerEvidenceUrl)}
+                            >
+                              <img
+                                src={detailBooking.refundManagerEvidenceUrl}
+                                alt="Refund Evidence"
+                                style={{ width: '100%', maxHeight: 150, objectFit: 'contain', display: 'block', padding: 4 }}
+                              />
+                              <div
+                                style={{
+                                  position: 'absolute', inset: 0,
+                                  background: 'linear-gradient(transparent 50%, rgba(0,0,0,.5))',
+                                  display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+                                  padding: 8,
+                                }}
+                              >
+                                <span style={{ color: '#fff', fontSize: 12, fontWeight: 600 }}><i className="feather-maximize-2 me-1" />Nhấn để phóng to</span>
+                              </div>
+                            </div>
+                          </div>
+                        ) : !detailBooking.refundAccountNumber ? (
+                          <div className="h-100 mt-3 p-3 rounded" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10 }}>
+                            <strong className="d-block text-dark small mb-2">
+                              <i className="feather-upload-cloud me-1" />Ảnh mã QR nhận tiền <span className="text-muted fw-normal">(tùy chọn)</span>:
+                            </strong>
+                            {!qrPreview ? (
+                              <div className="ub-qr-upload-zone" style={{ padding: '16px 12px' }}
+                                onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('ub-qr-upload-zone--active'); }}
+                                onDragLeave={e => e.currentTarget.classList.remove('ub-qr-upload-zone--active')}
+                                onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove('ub-qr-upload-zone--active'); handleQrFile(e.dataTransfer.files?.[0]); }}>
+                                <i className="feather-upload-cloud ub-qr-upload-zone__icon" style={{ fontSize: 24 }} />
+                                <div className="ub-qr-upload-zone__label" style={{ fontSize: 12 }}>Kéo thả hoặc nhấn để chọn ảnh QR</div>
+                                <div className="ub-qr-upload-zone__hint" style={{ fontSize: 11 }}>Hỗ trợ JPG, PNG, WEBP — tối đa 10MB</div>
+                                <input type="file" accept="image/*" onChange={e => handleQrFile(e.target.files?.[0])} />
+                              </div>
+                            ) : (
+                              <div className="text-center">
+                                <div className="ub-qr-preview">
+                                  <img src={qrPreview} alt="QR preview" className="ub-qr-preview__img" style={{ maxHeight: 150 }} />
+                                  <button type="button" className="ub-qr-preview__remove" title="Xóa ảnh"
+                                    onClick={() => { setQrFile(null); setQrPreview(null); setQrUploadedUrl(null); }}>
+                                    <i className="feather-x" />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : detailBooking.refundQrImageUrl ? (
+                          <div>
+                            <span className="text-muted small d-block mb-2">Ảnh QR nhận tiền của bạn:</span>
+                            <div
+                              style={{
+                                position: 'relative', cursor: 'pointer', borderRadius: 10,
+                                overflow: 'hidden', border: '2px solid #3b82f6', background: '#fff'
+                              }}
+                              onClick={() => setPreviewImage(detailBooking.refundQrImageUrl)}
+                            >
+                              <img
+                                src={detailBooking.refundQrImageUrl}
+                                alt="Refund QR"
+                                style={{ width: '100%', maxHeight: 150, objectFit: 'contain', display: 'block', padding: 4 }}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="h-100 d-flex flex-column align-items-center justify-content-center text-center p-3 rounded" style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 10, minHeight: 100 }}>
+                            <i className="feather-image mb-2" style={{ fontSize: 24, color: '#cbd5e1' }} />
+                            <span className="small" style={{ color: '#94a3b8' }}>Chưa có ảnh bill hoàn</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {detailBooking.refundRejectionReason && (
+                      <div className="mt-3 p-3 rounded" style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10 }}>
+                        <small className="text-danger d-block fw-semibold mb-1">
+                          <i className="feather-alert-circle me-1" />Lý do từ chối hoàn tiền
+                        </small>
+                        <p className="mb-0 small text-danger">{detailBooking.refundRejectionReason}</p>
+                      </div>
                     )}
                   </div>
                 </div>
-                {detailBooking.status === 'CANCELLED' && detailBooking.managerStatusNote && (
-                  <div className="col-12 mt-2">
-                    <div
-                      className="p-3 rounded"
-                      style={{ background: '#fef2f2', border: '1px solid #fca5a5' }}
-                    >
-                      <small className="text-danger d-block fw-semibold mb-1">
-                        <i className="feather-alert-circle me-1" />
-                        Ghi chú từ sân
-                      </small>
-                      <p className="mb-0 small text-danger">{detailBooking.managerStatusNote}</p>
-                    </div>
-                  </div>
-                )}
+              )}
+            </div>
 
-                {detailBooking.status === 'REFUND' && (
-                  <div className="col-12 mt-3">
-                    <div className="p-4 rounded" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-                      <div className="d-flex align-items-center mb-3">
-                        <i className="feather-refresh-cw me-2" style={{ color: '#16a34a', fontSize: '18px' }} />
-                        <h6 className="mb-0 fw-bold" style={{ color: '#166534', fontSize: '15px' }}>Thông tin hoàn tiền</h6>
-                      </div>
-                      
-                      <div className="row g-3">
-                        <div className="col-md-6">
-                          <div className="mb-2">
-                            <span className="text-muted small">Trạng thái: </span>
-                            <strong className="text-dark">
-                              {detailBooking.refundStatus === 'PENDING_RECONCILIATION' ? 'Chờ đối soát' : 
-                               detailBooking.refundStatus === 'PENDING_REFUND' ? 'Chờ hoàn tiền' : 
-                               detailBooking.refundStatus === 'REFUNDED' ? 'Đã hoàn tiền' : 
-                               detailBooking.refundStatus === 'REJECTED' ? 'Từ chối' : detailBooking.refundStatus}
-                            </strong>
-                          </div>
-                          <div className="mb-2">
-                            <span className="text-muted small">
-                              {detailBooking.refundStatus === 'COMPLETED' ? 'Số tiền đã hoàn: ' : 'Số tiền cần hoàn: '}
-                            </span>
-                            <strong style={{ color: '#097E52', fontSize: '18px' }}>{detailBooking.refundAmount != null ? `${Number(detailBooking.refundAmount).toLocaleString('vi-VN')} ₫` : '—'}</strong>
-                          </div>
-                          
-                          {(detailBooking.refundBankName || detailBooking.refundAccountNumber) && (
-                            <div className="mb-0 mt-3 p-3 rounded" style={{ background: '#dcfce7', border: '1px solid #86efac' }}>
-                              <strong className="d-block text-success small mb-1">Tài khoản nhận:</strong>
-                              <div className="small text-dark">
-                                <strong>{detailBooking.refundBankName}</strong><br />
-                                STK: <strong>{detailBooking.refundAccountNumber}</strong><br />
-                                Chủ TK: <strong>{detailBooking.refundAccountHolder}</strong>
-                              </div>
-                            </div>
-                          )}
-                          {!detailBooking.refundAccountNumber && (
-                            <div className="mt-3">
-                              <button type="button" className="btn btn-success btn-sm w-100"
-                                onClick={() => { setDetailBooking(null); setBankForm({ refundBankName: '', refundAccountNumber: '', refundAccountHolder: '' }); setShowBankForm(detailBooking); }}>
-                                <i className="feather-credit-card me-1" />Nhập STK nhận hoàn tiền
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="col-md-6">
-                          {detailBooking.refundManagerEvidenceUrl ? (
-                            <div>
-                              <span className="text-muted small d-block mb-2">Ảnh bill hoàn (chủ sân tải lên):</span>
-                              <div
-                                style={{
-                                  position: 'relative', cursor: 'pointer', borderRadius: 8,
-                                  overflow: 'hidden', border: '2px solid #16a34a', background: '#fff'
-                                }}
-                                onClick={() => setPreviewImage(detailBooking.refundManagerEvidenceUrl)}
-                              >
-                                <img
-                                  src={detailBooking.refundManagerEvidenceUrl}
-                                  alt="Refund Evidence"
-                                  style={{ width: '100%', maxHeight: 150, objectFit: 'contain', display: 'block', padding: 4 }}
-                                />
-                                <div
-                                  style={{
-                                    position: 'absolute', inset: 0,
-                                    background: 'linear-gradient(transparent 50%, rgba(0,0,0,.5))',
-                                    display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-                                    padding: 8,
-                                  }}
-                                >
-                                  <span style={{ color: '#fff', fontSize: 12, fontWeight: 600 }}><i className="feather-maximize-2 me-1" />Nhấn để phóng to</span>
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="h-100 d-flex flex-column align-items-center justify-content-center text-center p-3 rounded" style={{ background: '#f8fafc', border: '1px dashed #cbd5e1' }}>
-                              <i className="feather-image text-slate-300 mb-2" style={{ fontSize: '24px' }}></i>
-                              <span className="text-slate-400 small">Chưa có ảnh bill hoàn</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {detailBooking.refundRejectionReason && (
-                        <div className="mt-3 p-3 rounded" style={{ background: '#fef2f2', border: '1px solid #fca5a5' }}>
-                          <small className="text-danger d-block fw-semibold mb-1">
-                            <i className="feather-alert-circle me-1" />Lý do từ chối đối soát/hoàn tiền
-                          </small>
-                          <p className="mb-0 small text-danger">{detailBooking.refundRejectionReason}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="modal-footer">
-                {detailBooking && canUserCancel(detailBooking) && (
-                  <button
-                    type="button"
-                    className="btn btn-outline-danger me-auto"
-                    onClick={() => { setDetailBooking(null); openCancelPreview(detailBooking); }}
-                  >
-                    <i className="feather-x-circle me-1" />Huỷ sân
-                  </button>
-                )}
-                <button type="button" className="btn btn-outline-secondary" onClick={() => setDetailBooking(null)}>
-                  Đóng
+            {/* Footer */}
+            <div className="bk-modal-footer">
+              {detailBooking && canUserCancel(detailBooking) && (
+                <button
+                  type="button"
+                  className="btn btn-outline-danger btn-sm me-auto d-flex align-items-center gap-1"
+                  onClick={() => { setDetailBooking(null); openCancelPreview(detailBooking); }}
+                >
+                  <i className="feather-x-circle" />Huỷ sân
                 </button>
-              </div>
+              )}
+              <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setDetailBooking(null)}>
+                Đóng
+              </button>
             </div>
           </div>
         </div>
@@ -1153,15 +1247,17 @@ export default function UserBookings() {
                           </div>
                           <div className="mb-2">
                             <label className="form-label small fw-semibold mb-1">Số tài khoản <span className="text-danger">*</span></label>
-                            <input type="text" className="form-control form-control-sm" placeholder="0123456789"
+                            <input type="text" className="form-control" placeholder="0123456789"
                               value={bankForm.refundAccountNumber}
-                              onChange={e => setBankForm(p => ({ ...p, refundAccountNumber: e.target.value }))} />
+                              onChange={e => setBankForm(p => ({ ...p, refundAccountNumber: e.target.value }))}
+                              style={{ borderRadius: 10 }} />
                           </div>
                           <div>
                             <label className="form-label small fw-semibold mb-1">Chủ tài khoản <span className="text-danger">*</span></label>
-                            <input type="text" className="form-control form-control-sm text-uppercase" placeholder="NGUYEN VAN A"
+                            <input type="text" className="form-control text-uppercase" placeholder="NGUYEN VAN A"
                               value={bankForm.refundAccountHolder}
-                              onChange={e => setBankForm(p => ({ ...p, refundAccountHolder: e.target.value.toUpperCase() }))} />
+                              onChange={e => setBankForm(p => ({ ...p, refundAccountHolder: e.target.value.toUpperCase() }))}
+                              style={{ borderRadius: 10 }} />
                           </div>
                         </div>
 
@@ -1208,42 +1304,63 @@ export default function UserBookings() {
       {/* ── Bank Info Modal (for existing refund requests) ────────────── */}
       {
         showBankForm && (
-          <div className="modal fade show d-block" style={{ background: 'rgba(0,0,0,0.5)' }}
-            onClick={() => setShowBankForm(null)}>
-            <div className="modal-dialog modal-dialog-centered modal-sm" onClick={e => e.stopPropagation()}>
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title"><i className="feather-credit-card me-2" />Thông tin nhận hoàn tiền</h5>
-                  <button type="button" className="btn-close" onClick={() => setShowBankForm(null)} />
-                </div>
-                <div className="modal-body">
-                  <p className="text-muted small mb-3">Nhập thông tin tài khoản để chủ sân chuyển khoản hoàn tiền cho bạn.</p>
-                  <div className="mb-2">
-                    <label className="form-label small fw-semibold">Ngân hàng</label>
-                    <BankPicker 
-                      banks={vietqrBanks} 
-                      value={bankForm.refundBankName} 
-                      onSelect={(shortName) => setBankForm(p => ({ ...p, refundBankName: shortName }))} 
-                      loading={banksLoading} 
-                    />
-                  </div>
-                  <div className="mb-2">
-                    <label className="form-label small fw-semibold">Số tài khoản</label>
-                    <input type="text" className="form-control form-control-sm" value={bankForm.refundAccountNumber}
-                      onChange={e => setBankForm(p => ({ ...p, refundAccountNumber: e.target.value }))} />
+          <div className="bk-modal-overlay" onClick={() => setShowBankForm(null)}>
+            <div className="bk-modal bk-modal--sm" onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className="bk-modal-header" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)', borderBottom: '1px solid #d1fae5' }}>
+                <div className="d-flex align-items-center gap-3">
+                  <div className="bk-modal-icon" style={{ background: '#dcfce7', border: '2px solid #86efac', color: '#16a34a' }}>
+                    <i className="feather-credit-card" />
                   </div>
                   <div>
-                    <label className="form-label small fw-semibold">Chủ tài khoản</label>
-                    <input type="text" className="form-control form-control-sm text-uppercase" value={bankForm.refundAccountHolder}
-                      onChange={e => setBankForm(p => ({ ...p, refundAccountHolder: e.target.value.toUpperCase() }))} />
+                    <h5 className="bk-modal-title mb-0" style={{ color: '#166534' }}>Thông tin nhận hoàn tiền</h5>
+                    <p className="bk-modal-sub mb-0">Nhập thông tin tài khoản để chủ sân chuyển khoản hoàn tiền cho bạn.</p>
                   </div>
                 </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setShowBankForm(null)}>Hủy</button>
-                  <button type="button" className="btn btn-primary btn-sm" disabled={bankSubmitting} onClick={submitBankInfo}>
-                    {bankSubmitting ? 'Đang gửi…' : 'Lưu'}
-                  </button>
+                <button type="button" className="bk-modal-close" onClick={() => setShowBankForm(null)}>
+                  <i className="feather-x" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="bk-modal-body">
+                <div className="mb-3">
+                  <label className="form-label small fw-semibold">Ngân hàng</label>
+                  <BankPicker
+                    banks={vietqrBanks}
+                    value={bankForm.refundBankName}
+                    onSelect={(shortName) => setBankForm(p => ({ ...p, refundBankName: shortName }))}
+                    loading={banksLoading}
+                  />
                 </div>
+                <div className="mb-3">
+                  <label className="form-label small fw-semibold">Số tài khoản</label>
+                  <input type="text" className="form-control" placeholder="Nhập số tài khoản" value={bankForm.refundAccountNumber}
+                    onChange={e => setBankForm(p => ({ ...p, refundAccountNumber: e.target.value }))}
+                    style={{ borderRadius: 10 }}
+                  />
+                </div>
+                <div>
+                  <label className="form-label small fw-semibold">Chủ tài khoản</label>
+                  <input type="text" className="form-control text-uppercase" placeholder="VD: NGUYEN VAN A" value={bankForm.refundAccountHolder}
+                    onChange={e => setBankForm(p => ({ ...p, refundAccountHolder: e.target.value.toUpperCase() }))}
+                    style={{ borderRadius: 10 }}
+                  />
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="bk-modal-footer">
+                <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setShowBankForm(null)}>Hủy</button>
+                <button type="button" className="btn btn-sm d-flex align-items-center gap-2"
+                  style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600 }}
+                  disabled={bankSubmitting} onClick={submitBankInfo}>
+                  {bankSubmitting ? (
+                    <><span className="spinner-border spinner-border-sm" />Đang gửi…</>
+                  ) : (
+                    <><i className="feather-save" />Lưu</>
+                  )}
+                </button>
               </div>
             </div>
           </div>

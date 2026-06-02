@@ -123,6 +123,7 @@ public class ManagerBookingService : IManagerBookingService
 
             if (hasConfirmedPayment && paidAmount > 0)
             {
+                // Case 4: Manager cancels a CONFIRMED booking with confirmed payments
                 booking.Status = "PENDING_REFUND";
                 await _refundRepository.AddAsync(new RefundRequest
                 {
@@ -133,6 +134,28 @@ public class ManagerBookingService : IManagerBookingService
                     Status = "PENDING_REFUND",
                     RequestedAmount = paidAmount,
                     PaidAmount = paidAmount,
+                    PlayerNote = reason?.Trim(),
+                    RequestedAt = DateTime.UtcNow,
+                }, saveChanges: false);
+            }
+            else if (booking.Status == "PENDING" && HasHttpsPaymentProof(booking.Payments))
+            {
+                // Case 3: Manager rejects PENDING booking but player uploaded payment proof
+                // → route through reconciliation so manager can verify the transfer
+                var proofAmount = booking.Payments
+                    .Where(p => p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase))
+                    .Sum(p => p.Amount ?? 0);
+
+                booking.Status = "PENDING_RECONCILIATION";
+                await _refundRepository.AddAsync(new RefundRequest
+                {
+                    Id = Guid.NewGuid(),
+                    BookingId = booking.Id,
+                    UserId = booking.UserId,
+                    ReasonCode = "MANAGER_REJECT",
+                    Status = "PENDING_RECONCILIATION",
+                    RequestedAmount = proofAmount > 0 ? proofAmount : (booking.FinalAmount ?? booking.TotalAmount),
+                    PlayerNote = reason?.Trim(),
                     RequestedAt = DateTime.UtcNow,
                 }, saveChanges: false);
             }
@@ -145,14 +168,14 @@ public class ManagerBookingService : IManagerBookingService
                 item.Status = booking.Status == "CANCELLED" ? "CANCELLED" : item.Status;
             foreach (var p in booking.Payments.Where(p =>
                          p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase)))
-                p.Status = "CANCELLED";
+                p.Status = booking.Status == "CANCELLED" ? "CANCELLED" : p.Status;
         }
 
         if (booking.SeriesId is { } seriesId)
         {
             var series = await _bookingRepository.GetSeriesByIdAsync(seriesId, ct);
             if (series != null)
-                series.Status = next == "CONFIRMED" ? "ACTIVE" : "CANCELLED";
+                series.Status = next == "CONFIRMED" ? "ACTIVE" : (booking.Status == "CANCELLED" ? "CANCELLED" : "CANCELLING");
         }
 
         await _bookingRepository.UpdateAsync(booking, saveChanges: false);
@@ -169,10 +192,28 @@ public class ManagerBookingService : IManagerBookingService
             var reasonText = string.IsNullOrWhiteSpace(booking.ManagerStatusNote)
                 ? "Đơn đã bị huỷ/từ chối."
                 : booking.ManagerStatusNote;
-            var title = next == "CONFIRMED" ? "Đơn đặt sân đã được duyệt" : "Đơn đặt sân đã bị huỷ";
-            var body = next == "CONFIRMED"
-                ? $"Mã #{code} tại {venueName} đã được chủ sân xác nhận."
-                : $"Mã #{code} tại {venueName} đã bị huỷ bởi chủ sân. Lý do: {reasonText}";
+
+            string title, body;
+            if (next == "CONFIRMED")
+            {
+                title = "Đơn đặt sân đã được duyệt";
+                body = $"Mã #{code} tại {venueName} đã được chủ sân xác nhận.";
+            }
+            else if (booking.Status == "PENDING_RECONCILIATION")
+            {
+                title = "Đơn đặt sân bị huỷ — đang chờ đối soát";
+                body = $"Mã #{code} tại {venueName} đã bị huỷ (Lý do: {reasonText}). Chủ sân đang đối soát giao dịch để hoàn tiền cho bạn.";
+            }
+            else if (booking.Status == "PENDING_REFUND")
+            {
+                title = "Đơn đặt sân bị huỷ — đang xử lý hoàn tiền";
+                body = $"Mã #{code} tại {venueName} đã bị huỷ (Lý do: {reasonText}). Chủ sân đang xử lý yêu cầu hoàn tiền của bạn.";
+            }
+            else
+            {
+                title = "Đơn đặt sân đã bị huỷ";
+                body = $"Mã #{code} tại {venueName} đã bị huỷ bởi chủ sân. Lý do: {reasonText}";
+            }
 
             await _notify.NotifyUserAsync(playerId, NotificationTypes.Booking, title, body,
                 new { bookingId = booking.Id, status = booking.Status, entityType = "booking", deepLink = $"/user/bookings?bookingId={booking.Id}" },

@@ -6,6 +6,8 @@ const QUICK_REASONS = [
   'Sân đang bảo trì trong ngày này',
   'Cụm sân tạm thời đóng cửa',
   'Số lượng khách vượt quá giới hạn',
+  'Đơn chuyển khoản không hợp lệ',
+  'Chưa nhận được tiền chuyển khoản',
   'Lý do khác',
 ];
 

@@ -384,6 +384,9 @@ export default function ManagerRefunds() {
                     </h6>
                     <InfoRow label="Tổng đơn" value={<strong style={{ fontSize: '16px' }}>{Number(detail.finalAmount || 0).toLocaleString('vi-VN')} ₫</strong>} />
                     <InfoRow label="Đã thu (CK)" value={<strong style={{ fontSize: '16px' }}>{detail.paidAmount != null ? `${Number(detail.paidAmount).toLocaleString('vi-VN')} ₫` : '—'}</strong>} />
+                    {detail.paidAmount != null && detail.requestedAmount != null && detail.paidAmount > detail.requestedAmount && (
+                      <InfoRow label="Phí hủy / Khấu trừ" value={<strong style={{ color: '#ef4444', fontSize: '16px' }}>-{(detail.paidAmount - detail.requestedAmount).toLocaleString('vi-VN')} ₫</strong>} />
+                    )}
                     <InfoRow label="Cần hoàn tiền" value={
                       <strong style={{ color: '#097E52', fontSize: '18px' }}>
                         {Number(detail.requestedAmount || 0).toLocaleString('vi-VN')} ₫
@@ -402,7 +405,7 @@ export default function ManagerRefunds() {
                   {detail.playerNote && (
                     <div className="bk-detail-section mt-3">
                       <h6 className="bk-detail-section-title">
-                        <i className="feather-message-square me-1" style={{ color: '#64748b' }} />Ghi chú của khách
+                        <i className="feather-message-square me-1" style={{ color: '#64748b' }} />Lý do / Ghi chú hủy sân
                       </h6>
                       <p className="mb-0" style={{ fontSize: 13, color: '#64748b', fontStyle: 'italic' }}>
                         "{detail.playerNote}"
@@ -563,26 +566,85 @@ export default function ManagerRefunds() {
 
       {/* ── Reject Reason Modal (portal) ────────────────────────────────── */}
       {showReject && createPortal(
-        <div className="modal fade show d-block" style={{ background: 'rgba(0,0,0,0.5)', zIndex: 1200 }}
+        <div className="bk-modal-overlay" style={{ zIndex: 1200 }}
           onClick={() => setShowReject(null)}>
-          <div className="modal-dialog modal-dialog-centered modal-sm" onClick={e => e.stopPropagation()}>
-            <div className="modal-content" style={{ borderRadius: 14 }}>
-              <div className="modal-header">
-                <h5 className="modal-title"><i className="feather-x-circle me-2 text-danger" />Lý do từ chối</h5>
-                <button type="button" className="btn-close" onClick={() => setShowReject(null)} />
+          <div className="bk-modal bk-modal--sm" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="bk-modal-header bk-modal-header--danger">
+              <div className="d-flex align-items-center gap-3">
+                <div className="bk-modal-icon bk-modal-icon--danger">
+                  <i className="feather-x-circle" />
+                </div>
+                <div>
+                  <h5 className="bk-modal-title mb-0">Từ chối hoàn tiền</h5>
+                  <p className="bk-modal-sub mb-0">Xác nhận không hoàn tiền cho đơn này</p>
+                </div>
               </div>
-              <div className="modal-body">
-                <p className="small text-muted mb-2">Người chơi sẽ nhận được lý do này trong thông báo.</p>
-                <textarea className={`form-control ${rejectError ? 'is-invalid' : ''}`} rows={3} placeholder="VD: Không nhận được chuyển khoản nào…"
-                  value={rejectReason} onChange={e => { setRejectReason(e.target.value); setRejectError(''); }} />
+              <button type="button" className="bk-modal-close" onClick={() => setShowReject(null)}>
+                <i className="feather-x" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="bk-modal-body">
+              <div className="alert alert-warning d-flex align-items-start gap-2 mb-3" style={{ fontSize: 13, borderRadius: 10 }}>
+                <i className="feather-alert-triangle" style={{ marginTop: 2, flexShrink: 0 }} />
+                <div>
+                  <strong>Lưu ý:</strong> Khi từ chối, đơn sẽ chuyển thành <strong>Đã hủy</strong> và người chơi sẽ <strong>không được hoàn tiền</strong>. Lý do từ chối sẽ được gửi đến người chơi.
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-semibold mb-2" style={{ fontSize: 13 }}>
+                  Chọn lý do nhanh
+                </label>
+                <div className="bk-quick-reasons">
+                  {['Đơn chuyển khoản không hợp lệ / Bill giả', 'Chưa nhận được tiền chuyển khoản', 'Thông tin chuyển khoản sai', 'Lý do khác'].map(r => (
+                    <button key={r} type="button"
+                      className={`bk-quick-reason${rejectReason === r ? ' active' : ''}`}
+                      onClick={() => { setRejectReason(r); setRejectError(''); }}>
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="form-label fw-semibold mb-1" style={{ fontSize: 13 }}>
+                  {rejectReason === 'Lý do khác' ? (
+                    <>Nhập lý do <span className="text-danger">*</span></>
+                  ) : (
+                    <>Ghi chú thêm <span className="text-muted fw-normal">(tuỳ chọn)</span></>
+                  )}
+                </label>
+                <textarea
+                  className={`form-control ${rejectError ? 'is-invalid' : ''}`}
+                  rows={3}
+                  placeholder="VD: Không nhận được chuyển khoản nào…"
+                  value={rejectReason === 'Lý do khác' ? '' : rejectReason}
+                  onChange={e => { setRejectReason(e.target.value); setRejectError(''); }}
+                  style={{ fontSize: 13, resize: 'vertical' }}
+                />
                 {rejectError && <div className="invalid-feedback d-block">{rejectError}</div>}
+                <small className="text-muted d-block mt-1" style={{ fontSize: 11 }}>
+                  Lý do này sẽ được gửi đến người chơi qua thông báo
+                </small>
               </div>
-              <div className="modal-footer">
-                <button className="btn btn-outline-secondary btn-sm" onClick={() => setShowReject(null)}>Hủy</button>
-                <button className="btn btn-danger btn-sm" disabled={submitting} onClick={handleReconcileReject}>
-                  {submitting ? '…' : 'Xác nhận từ chối'}
-                </button>
-              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bk-modal-footer">
+              <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setShowReject(null)}>
+                Huỷ bỏ
+              </button>
+              <button type="button" className="btn btn-danger btn-sm d-flex align-items-center gap-2"
+                disabled={submitting || !rejectReason.trim()} onClick={handleReconcileReject}>
+                {submitting ? (
+                  <><span className="spinner-border spinner-border-sm" />Đang xử lý…</>
+                ) : (
+                  <><i className="feather-x-circle" />Xác nhận từ chối</>
+                )}
+              </button>
             </div>
           </div>
         </div>,
