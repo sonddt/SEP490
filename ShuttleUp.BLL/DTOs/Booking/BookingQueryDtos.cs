@@ -14,6 +14,7 @@ public class MyBookingListItemDto
     public string? VenueName { get; set; }
     public string? VenueAddress { get; set; }
     public Guid? VenueId { get; set; }
+    public string? VenueImageUrl { get; set; }
     public string? LastPaymentMethod { get; set; }
     public string? PaymentProofUrl { get; set; }
     public bool HasValidPaymentProof { get; set; }
@@ -25,6 +26,8 @@ public class MyBookingListItemDto
     public string? RefundAccountNumber { get; set; }
     public string? RefundAccountHolder { get; set; }
     public string? RefundQrImageUrl { get; set; }
+    public string? RefundManagerEvidenceUrl { get; set; }
+    public string? RefundRejectionReason { get; set; }
     public Guid? VenueReviewId { get; set; }
     public DateTime ReviewWindowEndsAt { get; set; }
     public bool CanReview { get; set; }
@@ -166,6 +169,12 @@ public class ManagerRefundListItemDto
     public string BookingCode { get; set; } = null!;
     public string? BookingStatus { get; set; }
     public string? VenueName { get; set; }
+    public string? CourtName { get; set; }
+    public DateTime? BookingDate { get; set; }
+    public DateTime? BookingTime { get; set; }
+    public bool IsLongTerm { get; set; }
+    public List<ManagerRefundBookingItemDto>? BookingItems { get; set; }
+    public string? PaymentMethod { get; set; }
     public string? PlayerName { get; set; }
     public string? PlayerPhone { get; set; }
     public string? RefundStatus { get; set; }

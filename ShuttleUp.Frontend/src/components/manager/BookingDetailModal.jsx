@@ -132,8 +132,8 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
       : '#94a3b8';
 
   return createPortal(
-    <div className="bk-modal-overlay" onClick={onClose}>
-      <div className="bk-modal bk-modal--lg" style={{ maxWidth: '850px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
+    <div className="bk-modal-overlay" onClick={onClose} style={{ zIndex: 1050 }}>
+      <div className="bk-modal bk-modal--lg" style={{ maxWidth: '1140px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
 
         {/* Header */}
         <div className="bk-modal-header">
@@ -191,9 +191,11 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
 
               {/* Payment Info */}
               <div className="bk-detail-section mt-3">
-                <h6 className="bk-detail-section-title">Thanh toán</h6>
+                <h6 className="bk-detail-section-title">
+                  <i className="feather-dollar-sign me-1" style={{ color: '#10b981' }} />Thanh toán
+                </h6>
                 <InfoRow label="Số tiền" value={
-                  <strong style={{ color: '#097E52', fontSize: '15px' }}>
+                  <strong style={{ color: '#097E52', fontSize: '18px' }}>
                     {booking.amount.toLocaleString('vi-VN')} ₫
                   </strong>
                 } />
@@ -215,17 +217,40 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
             {/* Right: booking details */}
             <div className="col-md-6">
               {!booking.isLongTerm ? (
-                <div className="bk-detail-section mb-3">
-                  <h6 className="bk-detail-section-title">Thông tin lịch đặt</h6>
-                  <InfoRow label="Ngày" value={booking.dateDisplay} />
-                  <InfoRow label="Giờ" value={`${booking.timeStart} – ${booking.timeEnd}`} />
+                <div className="bk-schedule-wrapper mt-2 mb-3">
+                  <div className="p-3 rounded" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                    <div className="d-flex align-items-center mb-3">
+                      <i className="feather-calendar me-2" style={{ color: '#10b981', fontSize: '18px' }} />
+                      <span className="fw-semibold" style={{ color: '#0f172a', fontSize: '14px' }}>Thông tin lịch đặt</span>
+                    </div>
+                    <div className="row g-2">
+                      <div className="col-6">
+                        <div className="d-flex align-items-center text-muted mb-1" style={{ fontSize: '12px' }}>
+                          <i className="feather-calendar me-1" />Ngày chơi
+                        </div>
+                        <div className="fw-semibold text-dark" style={{ fontSize: '14px' }}>
+                          {booking.dateDisplay}
+                        </div>
+                      </div>
+                      <div className="col-6">
+                        <div className="d-flex align-items-center text-muted mb-1" style={{ fontSize: '12px' }}>
+                          <i className="feather-clock me-1" />Giờ chơi
+                        </div>
+                        <div className="fw-semibold text-dark" style={{ fontSize: '14px' }}>
+                          {`${booking.timeStart} – ${booking.timeEnd}`}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <LongTermScheduleDisplay items={booking.items} />
               )}
 
               <div className="bk-detail-section">
-                <h6 className="bk-detail-section-title">Thông tin bổ sung</h6>
+                <h6 className="bk-detail-section-title">
+                  <i className="feather-info me-1" style={{ color: '#3b82f6' }} />Thông tin bổ sung
+                </h6>
                 <InfoRow label="Số khách" value={`${booking.guests} người`} />
                 <InfoRow
                   label="Trạng thái"
@@ -240,7 +265,9 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
 
               {booking.note && (
                 <div className="bk-detail-section mt-3">
-                  <h6 className="bk-detail-section-title">Ghi chú của khách</h6>
+                  <h6 className="bk-detail-section-title">
+                    <i className="feather-message-square me-1" style={{ color: '#64748b' }} />Ghi chú của khách
+                  </h6>
                   <p className="mb-0" style={{ fontSize: 13, color: '#64748b', fontStyle: 'italic' }}>
                     "{booking.note}"
                   </p>

@@ -19,6 +19,8 @@ const TABS = [
   { key: 'CANCELLED', label: 'Đã huỷ / Từ chối', icon: 'feather-x-circle' },
 ];
 
+const CANCELLED_GROUP = new Set(['CANCELLED', 'PENDING_REFUND', 'PENDING_RECONCILIATION', 'REFUNDED']);
+
 const WEEKDAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
 function pad2(n) {
@@ -39,14 +41,15 @@ function mapManagerBookingFromApi(b) {
 
   const raw = (b.status || '').toUpperCase();
   let uiStatus;
-  if (raw === 'PENDING') uiStatus = 'PENDING';
+  if (raw === 'PENDING' || raw === 'HOLDING') uiStatus = 'PENDING';
   else if (raw === 'CANCELLED') uiStatus = 'CANCELLED';
   else if (raw === 'PENDING_REFUND') uiStatus = 'PENDING_REFUND';
+  else if (raw === 'PENDING_RECONCILIATION') uiStatus = 'PENDING_RECONCILIATION';
   else if (raw === 'REFUNDED') uiStatus = 'REFUNDED';
   else if (raw === 'COMPLETED') uiStatus = 'COMPLETED';
   else if (raw === 'CONFIRMED') {
     uiStatus = end.getTime() >= Date.now() ? 'UPCOMING' : 'COMPLETED';
-  } else uiStatus = 'PENDING';
+  } else uiStatus = raw || 'PENDING';
 
   const methodRaw = (b.paymentMethod || '').toUpperCase();
   let paymentMethod = 'NONE';
@@ -235,13 +238,23 @@ export default function ManagerBookings() {
   useEffect(() => { setPage(1); }, [activeTab, search, timeFilter, sortBy]);
 
   const counts = useMemo(() => {
-    const c = bookings.reduce((a, b) => { a[b.status] = (a[b.status] || 0) + 1; return a; }, {});
+    const c = {};
+    let cancelledTab = 0;
+    bookings.forEach(b => {
+      c[b.status] = (c[b.status] || 0) + 1;
+      if (CANCELLED_GROUP.has(b.status)) cancelledTab++;
+    });
+    c['CANCELLED'] = cancelledTab;
     c['ALL'] = bookings.length;
     return c;
   }, [bookings]);
 
   const processed = useMemo(() => {
-    let list = bookings.filter(b => activeTab === 'ALL' || b.status === activeTab);
+    let list = bookings.filter(b => {
+      if (activeTab === 'ALL') return true;
+      if (activeTab === 'CANCELLED') return CANCELLED_GROUP.has(b.status);
+      return b.status === activeTab;
+    });
     if (timeFilter === 'today') list = list.filter(b => isToday(new Date(b.date)));
     if (timeFilter === 'week') list = list.filter(b => isThisWeek(new Date(b.date)));
     if (timeFilter === 'month') list = list.filter(b => isThisMonth(new Date(b.date)));
@@ -523,16 +536,6 @@ export default function ManagerBookings() {
                         <span className="badge" style={{ background: st.bg, color: st.color }}>
                           <i className={st.icon} />{st.label}
                         </span>
-                        {b.rawStatus === 'PENDING_REFUND' && (
-                          <span className="badge bg-warning text-dark d-block mt-1" style={{ fontSize: 10 }}>
-                            <i className="feather-dollar-sign" style={{ fontSize: 10 }} /> Chờ hoàn tiền
-                          </span>
-                        )}
-                        {b.rawStatus === 'REFUNDED' && (
-                          <span className="badge bg-info text-white d-block mt-1" style={{ fontSize: 10 }}>
-                            <i className="feather-check-circle" style={{ fontSize: 10 }} /> Đã hoàn tiền
-                          </span>
-                        )}
                       </td>
                       {/* Actions */}
                       <td>
@@ -557,6 +560,11 @@ export default function ManagerBookings() {
                           )}
                           {b.rawStatus === 'PENDING_REFUND' && (
                             <Link to="/manager/refunds" title="Xử lý hoàn tiền" className="btn btn-sm btn-outline-warning d-inline-flex align-items-center justify-content-center" style={{ width: 32, height: 32, padding: 0 }}>
+                              <i className="feather-dollar-sign" />
+                            </Link>
+                          )}
+                          {b.rawStatus === 'PENDING_RECONCILIATION' && (
+                            <Link to="/manager/refunds" title="Đối soát & hoàn tiền" className="btn btn-sm btn-outline-warning d-inline-flex align-items-center justify-content-center" style={{ width: 32, height: 32, padding: 0 }}>
                               <i className="feather-dollar-sign" />
                             </Link>
                           )}

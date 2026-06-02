@@ -195,6 +195,8 @@ public class BookingService : IBookingService
             decimal refundAmount = 0;
             if (cancelBranch == "PAID")
                 refundAmount = policy.ComputeRefundAmount(paidAmount);
+            else if (cancelBranch == "PROOF_UPLOADED")
+                refundAmount = SumPendingPaymentAmount(booking.Payments);
 
             refundReq = new RefundRequest
             {
@@ -204,7 +206,7 @@ public class BookingService : IBookingService
                 ReasonCode = "PLAYER_CANCEL",
                 Status = refundRequestStatus,
                 RequestedAmount = refundAmount,
-                PaidAmount = cancelBranch == "PAID" ? paidAmount : null,
+                PaidAmount = cancelBranch == "PAID" ? paidAmount : (cancelBranch == "PROOF_UPLOADED" ? refundAmount : null),
                 RefundBankName = body?.RefundBankName?.Trim(),
                 RefundAccountNumber = body?.RefundAccountNumber?.Trim(),
                 RefundAccountHolder = body?.RefundAccountHolder?.Trim().ToUpperInvariant(),
@@ -384,6 +386,8 @@ public class BookingService : IBookingService
                 VenueName = b.Venue?.Name,
                 VenueAddress = b.Venue?.Address,
                 VenueId = b.VenueId,
+                VenueImageUrl = b.Venue?.Files?.Where(f => f.FileName != null && f.FileName.Contains("mac_dinh")).Select(f => f.FileUrl).FirstOrDefault()
+                               ?? b.Venue?.Files?.OrderByDescending(f => f.CreatedAt).Select(f => f.FileUrl).FirstOrDefault(),
                 LastPaymentMethod = b.Payments.OrderByDescending(p => p.CreatedAt).Select(p => p.Method).FirstOrDefault(),
                 PaymentProofUrl = b.Payments
                     .OrderByDescending(p => p.CreatedAt)
@@ -408,6 +412,8 @@ public class BookingService : IBookingService
                 RefundAccountNumber = refund?.RefundAccountNumber,
                 RefundAccountHolder = refund?.RefundAccountHolder,
                 RefundQrImageUrl = refund?.RefundQrImageUrl,
+                RefundManagerEvidenceUrl = refund?.ManagerEvidenceFile?.FileUrl,
+                RefundRejectionReason = refund?.RejectionReason,
                 VenueReviewId = venueReviewId,
                 ReviewWindowEndsAt = windowEnd,
                 CanReview = isConfirmed && inWindow && venueReviewId == null,
@@ -446,9 +452,9 @@ public class BookingService : IBookingService
             }
             else if (cancelBranch == "PROOF_UPLOADED")
             {
-                refundAmount = policy.ComputeRefundAmount(pendingPaymentAmount);
-                penaltyAmount = pendingPaymentAmount - refundAmount;
-                refundEstimateNote = "Số tiền hoàn là ước tính sau khi chủ sân xác nhận đã nhận đủ chuyển khoản (đối soát).";
+                refundAmount = pendingPaymentAmount;
+                penaltyAmount = 0;
+                refundEstimateNote = "Chủ sân chưa xác nhận sân → hoàn 100% số tiền đã chuyển.";
             }
         }
 

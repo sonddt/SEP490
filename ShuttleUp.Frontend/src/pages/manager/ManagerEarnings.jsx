@@ -606,59 +606,173 @@ export default function ManagerEarnings() {
         </div>
       </div>
 
-      {/* Detail Modal */}
-      {detailModal && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div className="card border-0" style={{ width: '100%', maxWidth: 450, borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,.15)' }}>
-            <div className="card-header bg-white border-0 d-flex justify-content-between align-items-center pt-4 pb-0 px-4">
-              <h5 className="mb-0" style={{ fontWeight: 700, color: '#0f172a' }}>Chi tiết doanh thu đơn hàng</h5>
-              <button type="button" onClick={() => setDetailModal(null)} style={{ border: 'none', background: 'transparent', fontSize: 20, color: '#64748b', cursor: 'pointer' }}><i className="feather-x" /></button>
-            </div>
-            <div className="card-body p-4">
-              <div className="mb-3">
-                <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>MÃ ĐẶT SÂN</div>
-                <div style={{ fontSize: 15, color: '#2563eb', fontWeight: 700 }}>{detailModal.refId}</div>
+      {/* Detail Modal — Styled like BookingDetailModal */}
+      {detailModal && (() => {
+        const tx = detailModal;
+        const st = STATUS_MAP[tx.status] || STATUS_MAP.PENDING;
+        const fmtTime = (dt) => {
+          if (!dt) return '';
+          return new Date(dt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+        };
+        const fmtDate = (dt) => {
+          if (!dt) return '';
+          const d = new Date(dt);
+          const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+          return `${days[d.getDay()]}, ${d.toLocaleDateString('vi-VN')}`;
+        };
+        return (
+          <div className="bk-modal-overlay" onClick={() => setDetailModal(null)}>
+            <div className="bk-modal bk-modal--lg" style={{ maxWidth: 850, width: '95%' }} onClick={e => e.stopPropagation()}>
+
+              {/* Header */}
+              <div className="bk-modal-header">
+                <div className="d-flex align-items-center gap-3">
+                  <div className="bk-modal-icon"><i className="feather-file-text" /></div>
+                  <div>
+                    <h5 className="bk-modal-title mb-0">Chi tiết doanh thu</h5>
+                    <p className="bk-modal-sub mb-0">Mã đặt sân: <strong>{tx.refId}</strong></p>
+                  </div>
+                </div>
+                <button type="button" className="bk-modal-close" onClick={() => setDetailModal(null)}>
+                  <i className="feather-x" />
+                </button>
               </div>
-              
-              <div style={{ background: '#f8fafc', borderRadius: 12, padding: 16, border: '1px solid #f1f5f9' }}>
-                <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 12 }}>CHI TIẾT CÁC CA ĐẶT</div>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 250, overflowY: 'auto', paddingRight: 4 }}>
-                  {detailModal.items?.length > 0 ? getGroupedModalItems(detailModal.items).map((item, idx) => (
-                    <div key={idx} className="d-flex justify-content-between align-items-center">
-                      <div>
-                        <span style={{ fontWeight: 600, color: '#334155' }}>
-                          {item.name}
-                          {item.count > 1 && <sup style={{ color: '#ef4444', fontSize: '0.85em', fontWeight: 700, marginLeft: 1 }}>*{item.count}</sup>}
-                        </span>
-                        {item.count > 1 && (
-                          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: -2 }}>
-                            {fmtVnd(item.unitPrice)} / ca
-                          </div>
-                        )}
+
+              {/* Body */}
+              <div className="bk-modal-body">
+                <div className="row g-4">
+
+                  {/* Left: Court + Player + Payment */}
+                  <div className="col-md-6">
+                    {/* Court card */}
+                    <div className="bk-detail-card mb-3">
+                      <div className="bk-detail-card__img-wrap">
+                        <img src="/assets/img/booking/booking-01.jpg" alt="" className="bk-detail-card__img" />
                       </div>
-                      <span style={{ fontWeight: 600, color: '#097E52' }}>{fmtVnd(item.totalPrice)}</span>
+                      <div className="bk-detail-card__body">
+                        <div className="bk-detail-card__title">{formatCourtNames(tx.items, tx.court)}</div>
+                        <div className="bk-detail-card__sub">
+                          <i className="feather-map-pin" /> {tx.venue}
+                        </div>
+                      </div>
                     </div>
-                  )) : (
-                    <div className="text-muted" style={{ fontSize: 13 }}>Không có chi tiết</div>
-                  )}
-                </div>
-                
-                <div style={{ height: 1, background: '#e2e8f0', margin: '12px 0' }} />
-                
-                <div className="d-flex justify-content-between align-items-center">
-                  <span style={{ fontWeight: 700, color: '#0f172a' }}>Tổng cộng</span>
-                  <span style={{ fontWeight: 800, color: '#ef4444', fontSize: 16 }}>{fmtVnd(detailModal.amount)}</span>
+
+                    {/* Player card */}
+                    <div className="bk-detail-card mb-3">
+                      <img src="/assets/img/profiles/avatar-01.jpg" alt="" className="bk-detail-card__avatar rounded-circle" />
+                      <div className="bk-detail-card__body">
+                        <div className="bk-detail-card__title">{tx.player}</div>
+                      </div>
+                    </div>
+
+                    {/* Payment Info */}
+                    <div className="bk-detail-section">
+                      <h6 className="bk-detail-section-title">Thanh toán</h6>
+                      <div className="bk-detail-row">
+                        <span className="bk-detail-label">Tổng đơn</span>
+                        <span className="bk-detail-value">
+                          <strong style={{ color: '#097E52', fontSize: 15 }}>{fmtVnd(tx.amount)}</strong>
+                        </span>
+                      </div>
+                      {tx.items?.length > 0 && (
+                        <div style={{ marginTop: 8 }}>
+                          {getGroupedModalItems(tx.items).map((item, idx) => (
+                            <div key={idx} className="d-flex justify-content-between" style={{ fontSize: 13, color: '#64748b', padding: '2px 0' }}>
+                              <span>
+                                {item.name}
+                                {item.count > 1 && <sup style={{ color: '#ef4444', fontWeight: 700, marginLeft: 1 }}>×{item.count}</sup>}
+                              </span>
+                              <span>{fmtVnd(item.totalPrice)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right: Schedule + Status + Refund Info */}
+                  <div className="col-md-6">
+                    {/* Schedule */}
+                    <div className="bk-detail-section mb-3">
+                      <h6 className="bk-detail-section-title">Thông tin lịch đặt</h6>
+                      <div className="bk-detail-row">
+                        <span className="bk-detail-label">Ngày</span>
+                        <span className="bk-detail-value">{tx.date}</span>
+                      </div>
+                      <div className="bk-detail-row">
+                        <span className="bk-detail-label">Giờ</span>
+                        <span className="bk-detail-value">
+                          {tx.startTime ? `${fmtTime(tx.startTime)} – ${fmtTime(tx.endTime)}` : '—'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Status */}
+                    <div className="bk-detail-section mb-3">
+                      <h6 className="bk-detail-section-title">Trạng thái</h6>
+                      <div className="bk-detail-row">
+                        <span className="bk-detail-label">Đơn hàng</span>
+                        <span className="bk-detail-value">
+                          <span className={`badge ${st.badge}`} style={{ fontSize: 12 }}>
+                            <i className={st.icon} /> {st.label}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Refund Info — chỉ hiện khi đơn REFUNDED hoặc PENDING_REFUND */}
+                    {(tx.status === 'REFUNDED' || tx.status === 'PENDING_REFUND') && (
+                      <div className="bk-detail-section mb-3" style={{ background: tx.status === 'REFUNDED' ? '#f0f9ff' : '#fffbeb', border: `1px solid ${tx.status === 'REFUNDED' ? '#bae6fd' : '#fcd34d'}`, borderRadius: 10, padding: '14px 16px' }}>
+                        <h6 className="bk-detail-section-title" style={{ color: tx.status === 'REFUNDED' ? '#0284c7' : '#d97706' }}>
+                          <i className={`feather-${tx.status === 'REFUNDED' ? 'check-circle' : 'clock'} me-1`} />
+                          {tx.status === 'REFUNDED' ? 'Thông tin hoàn tiền' : 'Đang chờ hoàn tiền'}
+                        </h6>
+                        <div className="bk-detail-row">
+                          <span className="bk-detail-label">Khách đã thanh toán</span>
+                          <span className="bk-detail-value" style={{ fontWeight: 700 }}>{fmtVnd(tx.paidAmount || tx.amount)}</span>
+                        </div>
+                        <div className="bk-detail-row">
+                          <span className="bk-detail-label">Đã hoàn lại cho khách</span>
+                          <span className="bk-detail-value" style={{ fontWeight: 700, color: '#ef4444' }}>
+                            – {fmtVnd(tx.refundedAmount || 0)}
+                          </span>
+                        </div>
+                        <div style={{ height: 1, background: '#e2e8f0', margin: '8px 0' }} />
+                        <div className="bk-detail-row">
+                          <span className="bk-detail-label" style={{ fontWeight: 700, color: '#0f172a' }}>Bạn giữ lại (phí phạt)</span>
+                          <span className="bk-detail-value" style={{ fontWeight: 800, color: '#097E52', fontSize: 15 }}>
+                            {fmtVnd(tx.penaltyAmount || 0)}
+                          </span>
+                        </div>
+                        <div style={{ marginTop: 8, fontSize: 11, color: '#94a3b8', fontStyle: 'italic' }}>
+                          * Áp dụng theo chính sách hoàn tiền đã được cấu hình cho sân.
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Guest note */}
+                    {tx.note && (
+                      <div className="bk-detail-section">
+                        <h6 className="bk-detail-section-title">Ghi chú của khách</h6>
+                        <p className="mb-0" style={{ fontSize: 13, color: '#64748b', fontStyle: 'italic' }}>
+                          "{tx.note}"
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-              
-              <button type="button" className="btn btn-light w-100 mt-4" style={{ fontWeight: 600, borderRadius: 10 }} onClick={() => setDetailModal(null)}>
-                Đóng
-              </button>
+
+              {/* Footer */}
+              <div className="bk-modal-footer">
+                <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setDetailModal(null)}>
+                  Đóng
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </>
   );
 }

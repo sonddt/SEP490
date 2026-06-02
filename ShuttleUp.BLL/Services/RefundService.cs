@@ -53,10 +53,9 @@ public class RefundService : IRefundService
                 p.ConfirmedAt = DateTime.UtcNow;
             }
 
-            var policy = ParsePolicyOrDefault(refund.Booking.CancellationPolicySnapshotJson);
             refund.Status = "PENDING_REFUND";
             refund.PaidAmount = paidAmount;
-            refund.RequestedAmount = policy.ComputeRefundAmount(paidAmount);
+            refund.RequestedAmount = paidAmount;
             refund.Booking.Status = "PENDING_REFUND";
 
             await _refundRepository.UpdateAsync(refund, saveChanges: false);
@@ -179,6 +178,17 @@ public class RefundService : IRefundService
                 BookingCode = code,
                 BookingStatus = b.Status,
                 VenueName = b.Venue?.Name,
+                CourtName = string.Join(", ", b.BookingItems.Select(bi => bi.Court?.Name).Where(n => !string.IsNullOrEmpty(n)).Distinct()),
+                BookingDate = b.BookingItems.OrderBy(bi => bi.StartTime).FirstOrDefault()?.StartTime,
+                BookingTime = b.BookingItems.OrderBy(bi => bi.StartTime).FirstOrDefault()?.StartTime,
+                IsLongTerm = b.SeriesId != null,
+                BookingItems = b.BookingItems.Select(bi => new ManagerRefundBookingItemDto
+                {
+                    CourtName = bi.Court != null ? bi.Court.Name : null,
+                    StartTime = bi.StartTime,
+                    EndTime = bi.EndTime
+                }).ToList(),
+                PaymentMethod = lastPay?.Method,
                 PlayerName = r.User?.FullName,
                 PlayerPhone = b.ContactPhone ?? r.User?.PhoneNumber,
                 RefundStatus = r.Status,

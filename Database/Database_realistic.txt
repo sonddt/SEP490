@@ -2632,6 +2632,28 @@ INSERT INTO payments (id,booking_id,method,status,amount,gateway_reference,creat
 ('3687a701-1111-1111-1111-111111111111','36811111-1111-1111-1111-111111111111','BANK_TRANSFER','COMPLETED',80000,'VNP_368R0001','2026-05-04 09:30:00'),
 ('3687a702-2222-2222-2222-222222222222','36822222-2222-2222-2222-222222222222','BANK_TRANSFER','COMPLETED',80000,'VNP_368R0002','2026-05-05 09:30:00');
 
+-- =============================================
+-- TEST DATA: Đơn hoàn tiền 1 phần (Penalty test)
+-- Booking 200k đã thanh toán → huỷ → hoàn 100k (50%) → chủ sân giữ 100k (penalty)
+-- Dùng để verify doanh thu penalty hiển thị đúng trên Dashboard Manager & Admin
+-- =============================================
+-- Booking: REFUNDED (đã hoàn tiền xong)
+INSERT INTO bookings (id,user_id,venue_id,status,total_amount,discount_amount,final_amount,contact_name,contact_phone,guest_note,cancellation_policy_snapshot_json,created_at) VALUES
+('aaaa0001-0000-0000-0000-aaa100000001','c0000000-0000-0000-0000-000000000035','d468bb18-9f37-4e76-a7e1-9922f0a47922','REFUNDED',200000,0,200000,'Tô Bá Bình','0969577288','Test penalty revenue','{"allowCancel":true,"cancelBeforeMinutes":120,"refundType":"PERCENT","refundPercent":50}',NOW()-INTERVAL 10 DAY);
+
+-- BookingItem cho booking trên
+INSERT INTO booking_items (id,booking_id,court_id,start_time,end_time,final_price,status) VALUES
+('aaaa0002-0000-0000-0000-aaa100000001','aaaa0001-0000-0000-0000-aaa100000001','a117fb15-89ef-42b9-8075-c1653051db77',NOW()-INTERVAL 10 DAY+INTERVAL 18 HOUR,NOW()-INTERVAL 10 DAY+INTERVAL 19 HOUR,200000,'REFUNDED');
+
+-- Payment COMPLETED (chủ sân đã xác nhận nhận 200k)
+INSERT INTO payments (id,booking_id,method,status,amount,gateway_reference,confirmed_by,confirmed_at,created_at) VALUES
+('aaaa0003-0000-0000-0000-aaa100000001','aaaa0001-0000-0000-0000-aaa100000001','BANK_TRANSFER','COMPLETED',200000,'VNP_PENALTY_TEST01','b0000000-0000-0000-0000-000000000011',NOW()-INTERVAL 9 DAY,NOW()-INTERVAL 10 DAY);
+
+-- RefundRequest COMPLETED: paid 200k, hoàn 100k → penalty giữ lại 100k
+INSERT INTO refund_requests (id,booking_id,user_id,reason_code,status,requested_amount,paid_amount,refund_bank_name,refund_account_number,refund_account_holder,player_note,processed_by,processed_at,requested_at) VALUES
+('aaaa0004-0000-0000-0000-aaa100000001','aaaa0001-0000-0000-0000-aaa100000001','c0000000-0000-0000-0000-000000000035','PLAYER_CANCEL','COMPLETED',100000,200000,'Vietcombank','0123456789','TO BA BINH','Tôi có việc bận đột xuất','b0000000-0000-0000-0000-000000000011',NOW()-INTERVAL 8 DAY,NOW()-INTERVAL 9 DAY);
+
+
 INSERT INTO venue_reviews (id,venue_id,user_id,booking_id,stars,comment,owner_reply,owner_reply_at,created_at) VALUES
 ('39424b68-f2db-4cc2-84d9-5cb00188b1ea','2f991cc4-7eec-45e9-9ca9-c33a858a75a7','c0000000-0000-0000-0000-000000000001','a6b35615-180c-4594-8f9c-f130016ef846',5,'Parking hơi chật cuối tuần.','Cảm ơn bạn, chúc bạn chơi vui!',NOW()-INTERVAL 3 DAY,NOW()-INTERVAL 6 DAY),
 ('9128a1ce-75dd-472a-b943-e52aa3bca321','9a3443f6-0671-4878-ae78-5912f0a7755e','c0000000-0000-0000-0000-000000000010','7dc188a4-5feb-4154-9692-a473cbdeeb09',4,'Chỗ để xe rộng, sân thoáng mát.',NULL,NULL,NOW()-INTERVAL 9 DAY),

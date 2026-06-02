@@ -1,6 +1,95 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { getManagerRefunds, reconcileRefund, completeRefund, uploadRefundEvidence } from '../../api/managerRefundsApi';
+import LongTermScheduleDisplay from '../../components/common/LongTermScheduleDisplay';
+
+function InfoRow({ label, value, valueClass = '' }) {
+  return (
+    <div className="bk-detail-row">
+      <span className="bk-detail-label">{label}</span>
+      <span className={`bk-detail-value ${valueClass}`}>{value}</span>
+    </div>
+  );
+}
+
+function ImageLightboxSection({ title, icon, src, alt, borderStyle }) {
+  const [showFull, setShowFull] = useState(false);
+  if (!src) return null;
+
+  return (
+    <div className="bk-detail-section mt-3">
+      <h6 className="bk-detail-section-title">
+        {icon && <i className={`${icon} me-1`} />}
+        {title}
+      </h6>
+      <div
+        style={{
+          position: 'relative', cursor: 'pointer', borderRadius: 8,
+          overflow: 'hidden', border: borderStyle || '1px solid #e2e8f0', background: '#f8fafc'
+        }}
+        onClick={() => setShowFull(true)}
+      >
+        <img
+          src={src}
+          alt={alt}
+          style={{ width: '100%', maxHeight: 200, objectFit: 'contain', display: 'block' }}
+          onError={(e) => { e.target.parentElement.style.display = 'none'; }}
+        />
+        <div
+          style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(transparent 50%, rgba(0,0,0,.4))',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            padding: 10,
+          }}
+        >
+          <span style={{ color: '#fff', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <i className="feather-maximize-2" style={{ fontSize: 14 }} />
+            Nhấn để phóng to
+          </span>
+        </div>
+      </div>
+
+      {showFull && createPortal(
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,.7)', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20,
+          }}
+          onClick={() => setShowFull(false)}
+        >
+          <img
+            src={src}
+            alt={alt}
+            style={{
+              maxWidth: '90vw', maxHeight: '85vh', borderRadius: 12,
+              boxShadow: '0 20px 60px rgba(0,0,0,.4)', objectFit: 'contain',
+              background: '#fff',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            type="button"
+            onClick={() => setShowFull(false)}
+            style={{
+              position: 'absolute', top: 16, right: 16,
+              width: 40, height: 40, borderRadius: '50%',
+              background: 'rgba(255,255,255,.9)', border: 'none',
+              fontSize: 20, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#1e293b',
+            }}
+          >
+            <i className="feather-x" />
+          </button>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
 
 const STATUS_TABS = [
   { key: '',                       label: 'Tất cả',       color: 'secondary' },
@@ -239,145 +328,233 @@ export default function ManagerRefunds() {
 
       {/* ── Detail / Action Modal (portal) ─────────────────────────────── */}
       {detail && createPortal(
-        <div className="modal fade show d-block" style={{ background: 'rgba(0,0,0,0.5)', zIndex: 1100 }}
-          onClick={() => setDetail(null)}>
-          <div className="modal-dialog modal-dialog-centered modal-lg" onClick={e => e.stopPropagation()}>
-            <div className="modal-content" style={{ borderRadius: 14 }}>
-              <div className="modal-header">
-                <h5 className="modal-title">Chi tiết hoàn tiền — #{detail.bookingCode}</h5>
-                <button type="button" className="btn-close" onClick={() => setDetail(null)} />
+        <div className="bk-modal-overlay" onClick={() => setDetail(null)} style={{ zIndex: 1100 }}>
+          <div className="bk-modal bk-modal--lg" style={{ maxWidth: '1140px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="bk-modal-header">
+              <div className="d-flex align-items-center gap-3">
+                <div className="bk-modal-icon">
+                  <i className="feather-dollar-sign" />
+                </div>
+                <div>
+                  <h5 className="bk-modal-title mb-0">Chi tiết hoàn tiền</h5>
+                  <p className="bk-modal-sub mb-0">Mã đặt sân: <strong>{detail.bookingCode}</strong></p>
+                </div>
               </div>
-              <div className="modal-body">
-                <div className="row g-3 mb-3">
-                  <div className="col-md-6">
-                    <small className="text-muted d-block">Sân</small>
-                    <strong>{detail.venueName}</strong>
+              <button type="button" className="bk-modal-close" onClick={() => setDetail(null)}>
+                <i className="feather-x" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="bk-modal-body">
+              <div className="row g-4">
+                {/* Left: Court + Player + Proof */}
+                <div className="col-md-6">
+                  {/* Court card */}
+                  <div className="bk-detail-card mb-3">
+                    <div className="bk-detail-card__img-wrap" style={{ background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <img src="/assets/img/booking/booking-01.jpg" alt="" className="bk-detail-card__img" onError={(e) => { e.target.style.display = 'none'; }} />
+                    </div>
+                    <div className="bk-detail-card__body">
+                      <div className="bk-detail-card__title">{detail.courtName || detail.venueName}</div>
+                      <div className="bk-detail-card__sub">
+                        <i className="feather-map-pin" />
+                        {detail.venueName}
+                      </div>
+                    </div>
                   </div>
-                  <div className="col-md-6">
-                    <small className="text-muted d-block">Trạng thái</small>
-                    {badge(detail.refundStatus)}
+
+                  {/* Player card */}
+                  <div className="bk-detail-card mb-3">
+                    <img src="/assets/img/profiles/avatar-01.jpg" alt="" className="bk-detail-card__avatar rounded-circle" />
+                    <div className="bk-detail-card__body">
+                      <div className="bk-detail-card__title">{detail.playerName}</div>
+                      <div className="bk-detail-card__sub">
+                        <i className="feather-phone" />
+                        {detail.playerPhone}
+                      </div>
+                    </div>
                   </div>
-                  <div className="col-md-4">
-                    <small className="text-muted d-block">Người chơi</small>
-                    <strong>{detail.playerName}</strong>
-                    <div className="small text-muted">{detail.playerPhone}</div>
+
+                  {/* Financial Info */}
+                  <div className="bk-detail-section mt-3">
+                    <h6 className="bk-detail-section-title">
+                      <i className="feather-dollar-sign me-1" style={{ color: '#10b981' }} />Thanh toán & Hoàn tiền
+                    </h6>
+                    <InfoRow label="Tổng đơn" value={<strong style={{ fontSize: '16px' }}>{Number(detail.finalAmount || 0).toLocaleString('vi-VN')} ₫</strong>} />
+                    <InfoRow label="Đã thu (CK)" value={<strong style={{ fontSize: '16px' }}>{detail.paidAmount != null ? `${Number(detail.paidAmount).toLocaleString('vi-VN')} ₫` : '—'}</strong>} />
+                    <InfoRow label="Cần hoàn tiền" value={
+                      <strong style={{ color: '#097E52', fontSize: '18px' }}>
+                        {Number(detail.requestedAmount || 0).toLocaleString('vi-VN')} ₫
+                      </strong>
+                    } />
                   </div>
-                  <div className="col-md-4">
-                    <small className="text-muted d-block">Tổng đơn / Đã thu</small>
-                    <strong>{Number(detail.finalAmount || 0).toLocaleString('vi-VN')} ₫</strong>
-                    {detail.paidAmount != null && <span className="ms-1 text-muted">/ {Number(detail.paidAmount).toLocaleString('vi-VN')} ₫</span>}
-                  </div>
-                  <div className="col-md-4">
-                    <small className="text-muted d-block">Số tiền hoàn</small>
-                    <strong className="text-success">{Number(detail.requestedAmount || 0).toLocaleString('vi-VN')} ₫</strong>
-                  </div>
+
+                  {/* Payment proof image */}
+                  <ImageLightboxSection
+                    title="Ảnh chứng từ (người chơi nộp)"
+                    icon="feather-image"
+                    src={detail.paymentProofUrl}
+                    alt="CK proof"
+                  />
+
+                  {detail.playerNote && (
+                    <div className="bk-detail-section mt-3">
+                      <h6 className="bk-detail-section-title">
+                        <i className="feather-message-square me-1" style={{ color: '#64748b' }} />Ghi chú của khách
+                      </h6>
+                      <p className="mb-0" style={{ fontSize: 13, color: '#64748b', fontStyle: 'italic' }}>
+                        "{detail.playerNote}"
+                      </p>
+                    </div>
+                  )}
                 </div>
 
-                {detail.paymentProofUrl && (
-                  <div className="mb-3">
-                    <small className="text-muted d-block mb-1">Chứng từ CK từ người chơi</small>
-                    <img src={detail.paymentProofUrl} alt="CK proof" style={{ maxHeight: 200, borderRadius: 8, border: '1px solid #e2e8f0' }}
-                      onError={e => { e.target.style.display = 'none'; }} />
+                {/* Right: Booking Details & Actions */}
+                <div className="col-md-6">
+                  {!detail.isLongTerm ? (
+                    <div className="bk-schedule-wrapper mt-2 mb-3">
+                      <div className="p-3 rounded" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                        <div className="d-flex align-items-center mb-3">
+                          <i className="feather-calendar me-2" style={{ color: '#10b981', fontSize: '18px' }} />
+                          <span className="fw-semibold" style={{ color: '#0f172a', fontSize: '14px' }}>Thông tin lịch đặt</span>
+                        </div>
+                        <div className="row g-2">
+                          <div className="col-6">
+                            <div className="d-flex align-items-center text-muted mb-1" style={{ fontSize: '12px' }}>
+                              <i className="feather-calendar me-1" />Ngày chơi
+                            </div>
+                            <div className="fw-semibold text-dark" style={{ fontSize: '14px' }}>
+                              {detail.bookingDate ? new Date(detail.bookingDate).toLocaleDateString('vi-VN') : '—'}
+                            </div>
+                          </div>
+                          <div className="col-6">
+                            <div className="d-flex align-items-center text-muted mb-1" style={{ fontSize: '12px' }}>
+                              <i className="feather-clock me-1" />Giờ chơi
+                            </div>
+                            <div className="fw-semibold text-dark" style={{ fontSize: '14px' }}>
+                              {detail.bookingTime ? new Date(detail.bookingTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <LongTermScheduleDisplay items={detail.bookingItems || []} />
+                  )}
+
+                  <div className="bk-detail-section mt-3 mb-3">
+                    <h6 className="bk-detail-section-title">
+                      <i className="feather-info me-1" style={{ color: '#3b82f6' }} />Thông tin bổ sung
+                    </h6>
+                    <InfoRow
+                      label="Trạng thái"
+                      value={badge(detail.refundStatus)}
+                    />
+                    <InfoRow label="Ngày yêu cầu" value={detail.requestedAt ? new Date(detail.requestedAt).toLocaleString('vi-VN') : '—'} />
                   </div>
-                )}
 
-                {detail.refundQrImageUrl && (
-                  <div className="mb-3">
-                    <small className="text-muted d-block mb-1">📱 Mã QR nhận hoàn tiền (từ người chơi)</small>
-                    <a href={detail.refundQrImageUrl} target="_blank" rel="noopener noreferrer" title="Nhấn để phóng to hoặc quét">
-                      <img src={detail.refundQrImageUrl} alt="Refund QR" style={{ maxHeight: 200, borderRadius: 8, border: '2px solid #10b981', cursor: 'pointer', background: '#fff', padding: 4 }}
-                        onError={e => { e.target.parentElement.style.display = 'none'; }} />
-                    </a>
-                    <div className="small text-muted mt-1"><i className="feather-info me-1" />Nhấn vào ảnh để mở/phóng to mã QR</div>
-                  </div>
-                )}
+                  {(detail.refundBankName || detail.refundAccountNumber) && (
+                    <div className="bk-detail-section mt-3" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 14px' }}>
+                      <h6 className="bk-detail-section-title" style={{ color: '#166534' }}>
+                        <i className="feather-credit-card me-1" />Thông tin nhận hoàn
+                      </h6>
+                      <p className="mb-0 small" style={{ color: '#166534' }}>
+                        NH: <strong>{detail.refundBankName || '—'}</strong><br/>
+                        STK: <strong>{detail.refundAccountNumber || '—'}</strong><br/>
+                        Chủ TK: <strong>{detail.refundAccountHolder || '—'}</strong>
+                      </p>
+                    </div>
+                  )}
 
-                {(detail.refundBankName || detail.refundAccountNumber) && (
-                  <div className="p-3 rounded mb-3" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-                    <small className="fw-semibold d-block mb-1" style={{ color: '#166534' }}>
-                      <i className="feather-credit-card me-1" />Thông tin nhận hoàn (từ người chơi)
-                    </small>
-                    <div className="small">NH: <strong>{detail.refundBankName || '—'}</strong> | STK: <strong>{detail.refundAccountNumber || '—'}</strong> | Chủ TK: <strong>{detail.refundAccountHolder || '—'}</strong></div>
-                  </div>
-                )}
+                  {/* QR Image */}
+                  <ImageLightboxSection
+                    title="Ảnh mã QR nhận hoàn tiền"
+                    src={detail.refundQrImageUrl}
+                    alt="Refund QR"
+                    borderStyle="2px solid #10b981"
+                  />
 
-                {detail.playerNote && (
-                  <div className="mb-3">
-                    <small className="text-muted d-block">Ghi chú từ người chơi</small>
-                    <p className="small mb-0">{detail.playerNote}</p>
-                  </div>
-                )}
+                  {detail.rejectionReason && (
+                    <div className="bk-detail-section mt-3" style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '10px 14px' }}>
+                      <h6 className="bk-detail-section-title" style={{ color: '#ef4444' }}>
+                        <i className="feather-alert-circle me-1" />Lý do từ chối
+                      </h6>
+                      <p className="mb-0" style={{ fontSize: 13, color: '#ef4444' }}>
+                        {detail.rejectionReason}
+                      </p>
+                    </div>
+                  )}
 
-                {detail.rejectionReason && (
-                  <div className="alert alert-danger small mb-3">
-                    <i className="feather-x-circle me-1" />Lý do từ chối: {detail.rejectionReason}
-                  </div>
-                )}
+                  <ImageLightboxSection
+                    title="Bill CK hoàn tiền (của bạn)"
+                    src={detail.managerEvidenceUrl}
+                    alt="Evidence"
+                  />
 
-                {detail.managerEvidenceUrl && (
-                  <div className="mb-3">
-                    <small className="text-muted d-block mb-1">Bill CK hoàn tiền (Manager)</small>
-                    <img src={detail.managerEvidenceUrl} alt="Evidence" style={{ maxHeight: 200, borderRadius: 8, border: '1px solid #e2e8f0' }} />
-                  </div>
-                )}
+                  {/* ── Reconciliation ──────────────────────────────────────── */}
+                  {detail.refundStatus === 'PENDING_RECONCILIATION' && (
+                    <div className="bk-detail-section mt-4" style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: 8, padding: '16px' }}>
+                      <h6 className="mb-2" style={{ color: '#92400e' }}><i className="feather-alert-circle me-1" />Đối soát chuyển khoản</h6>
+                      <div className="alert alert-warning small mb-3 p-2" style={{ background: '#fffbeb', border: 'none', borderLeft: '3px solid #d97706', borderRadius: 0 }}>
+                        <i className="feather-info me-1" />Người chơi đã hủy khi bạn <strong>chưa xác nhận</strong> thanh toán. 
+                        Nếu bạn xác nhận đã nhận tiền, hệ thống sẽ yêu cầu bạn hoàn lại <strong>100%</strong> số tiền này.
+                      </div>
+                      <p className="small text-muted mb-3">Kiểm tra xem bạn đã nhận được khoản chuyển khoản từ người chơi chưa. Nếu đã nhận, bấm &quot;Đã nhận tiền&quot;. Nếu không, bấm &quot;Từ chối&quot;.</p>
+                      <div className="d-flex gap-2">
+                        <button className="btn btn-success btn-sm" disabled={submitting} onClick={() => handleReconcileConfirm(detail)}>
+                          {submitting ? '…' : <><i className="feather-check me-1" />Đã nhận tiền</>}
+                        </button>
+                        <button className="btn btn-outline-danger btn-sm" onClick={() => { setShowReject(detail); setRejectReason(''); setRejectError(''); }}>
+                          <i className="feather-x me-1" />Từ chối (chưa nhận tiền)
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
-                <hr />
+                  {/* ── Complete refund ─────────────────────────────────────── */}
+                  {detail.refundStatus === 'PENDING_REFUND' && (
+                    <div className="bk-detail-section mt-4" style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '16px' }}>
+                      <h6 className="mb-2" style={{ color: '#1e40af' }}><i className="feather-dollar-sign me-1" />Hoàn tiền cho người chơi</h6>
+                      <p className="small text-muted mb-3">
+                        Chuyển khoản <strong className="text-success">{Number(detail.requestedAmount || 0).toLocaleString('vi-VN')} ₫</strong> vào
+                        {detail.refundBankName ? ` ${detail.refundBankName} — ${detail.refundAccountNumber} (${detail.refundAccountHolder})` : ' tài khoản người chơi đã cung cấp'}.
+                        Tải ảnh bill CK hoàn tiền, sau đó bấm &quot;Đã chuyển khoản hoàn tiền&quot;.
+                      </p>
 
-                {/* ── Reconciliation ──────────────────────────────────────── */}
-                {detail.refundStatus === 'PENDING_RECONCILIATION' && (
-                  <div className="p-3 rounded" style={{ background: '#fefce8', border: '1px solid #fde68a' }}>
-                    <h6 className="mb-2" style={{ color: '#92400e' }}><i className="feather-alert-circle me-1" />Đối soát chuyển khoản</h6>
-                    <p className="small text-muted mb-3">Kiểm tra xem bạn đã nhận được khoản chuyển khoản từ người chơi chưa. Nếu đã nhận, bấm &quot;Đã nhận tiền&quot;. Nếu không, bấm &quot;Từ chối&quot;.</p>
-                    <div className="d-flex gap-2">
-                      <button className="btn btn-success btn-sm" disabled={submitting} onClick={() => handleReconcileConfirm(detail)}>
-                        {submitting ? '…' : <><i className="feather-check me-1" />Đã nhận tiền</>}
+                      {/* Evidence upload */}
+                      <div className="mb-3">
+                        <label className="form-label small fw-semibold">Ảnh bill CK hoàn <span className="text-danger">*</span></label>
+                        {evidenceUploaded ? (
+                          <div className="small text-success"><i className="feather-check-circle me-1" />Ảnh bill đã được tải lên thành công.</div>
+                        ) : (
+                          <>
+                            <input type="file" accept="image/*" className="form-control form-control-sm"
+                              onChange={e => { setEvidenceFile(e.target.files?.[0] || null); setEvidenceUploaded(false); }} />
+                            {uploading && <div className="small text-info mt-1"><span className="spinner-border spinner-border-sm me-1" />Đang tải ảnh lên…</div>}
+                            {!hasEvidence && <div className="small text-danger mt-1">Oops… Cần có ảnh bill trước khi hoàn tất.</div>}
+                          </>
+                        )}
+                      </div>
+
+                      <div className="mb-3">
+                        <label className="form-label small fw-semibold">Ghi chú (tùy chọn)</label>
+                        <input type="text" className="form-control form-control-sm" placeholder="VD: Đã CK lúc 14:30"
+                          value={managerNote} onChange={e => setManagerNote(e.target.value)} />
+                      </div>
+                      <button className="btn btn-primary btn-sm" disabled={submitting || !hasEvidence} onClick={() => handleComplete(detail)}>
+                        {submitting ? 'Đang xử lý…' : <><i className="feather-check-circle me-1" />Đã chuyển khoản hoàn tiền</>}
                       </button>
-                      <button className="btn btn-outline-danger btn-sm" onClick={() => { setShowReject(detail); setRejectReason(''); setRejectError(''); }}>
-                        <i className="feather-x me-1" />Từ chối
-                      </button>
                     </div>
-                  </div>
-                )}
-
-                {/* ── Complete refund ─────────────────────────────────────── */}
-                {detail.refundStatus === 'PENDING_REFUND' && (
-                  <div className="p-3 rounded" style={{ background: '#eff6ff', border: '1px solid #bfdbfe' }}>
-                    <h6 className="mb-2" style={{ color: '#1e40af' }}><i className="feather-dollar-sign me-1" />Hoàn tiền cho người chơi</h6>
-                    <p className="small text-muted mb-3">
-                      Chuyển khoản <strong className="text-success">{Number(detail.requestedAmount || 0).toLocaleString('vi-VN')} ₫</strong> vào
-                      {detail.refundBankName ? ` ${detail.refundBankName} — ${detail.refundAccountNumber} (${detail.refundAccountHolder})` : ' tài khoản người chơi đã cung cấp'}.
-                      Tải ảnh bill CK hoàn tiền, sau đó bấm &quot;Đã chuyển khoản hoàn tiền&quot;.
-                    </p>
-
-                    {/* Evidence upload */}
-                    <div className="mb-3">
-                      <label className="form-label small fw-semibold">Ảnh bill CK hoàn <span className="text-danger">*</span></label>
-                      {evidenceUploaded ? (
-                        <div className="small text-success"><i className="feather-check-circle me-1" />Ảnh bill đã được tải lên thành công.</div>
-                      ) : (
-                        <>
-                          <input type="file" accept="image/*" className="form-control form-control-sm"
-                            onChange={e => { setEvidenceFile(e.target.files?.[0] || null); setEvidenceUploaded(false); }} />
-                          {uploading && <div className="small text-info mt-1"><span className="spinner-border spinner-border-sm me-1" />Đang tải ảnh lên…</div>}
-                          {!hasEvidence && <div className="small text-danger mt-1">Oops… Cần có ảnh bill trước khi hoàn tất.</div>}
-                        </>
-                      )}
-                    </div>
-
-                    <div className="mb-3">
-                      <label className="form-label small fw-semibold">Ghi chú (tùy chọn)</label>
-                      <input type="text" className="form-control form-control-sm" placeholder="VD: Đã CK lúc 14:30"
-                        value={managerNote} onChange={e => setManagerNote(e.target.value)} />
-                    </div>
-                    <button className="btn btn-primary btn-sm" disabled={submitting || !hasEvidence} onClick={() => handleComplete(detail)}>
-                      {submitting ? 'Đang xử lý…' : <><i className="feather-check-circle me-1" />Đã chuyển khoản hoàn tiền</>}
-                    </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-outline-secondary" onClick={() => setDetail(null)}>Đóng</button>
-              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bk-modal-footer">
+              <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setDetail(null)}>Đóng</button>
             </div>
           </div>
         </div>,

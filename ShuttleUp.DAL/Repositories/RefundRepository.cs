@@ -48,6 +48,7 @@ public class RefundRepository : Repository<RefundRequest>, IRefundRepository
         if (ids.Count == 0) return new Dictionary<Guid, RefundRequest>();
 
         var list = await _dbSet.AsNoTracking()
+            .Include(r => r.ManagerEvidenceFile)
             .Where(r => r.BookingId != null && ids.Contains(r.BookingId.Value))
             .OrderByDescending(r => r.RequestedAt)
             .ToListAsync(ct);
@@ -56,5 +57,38 @@ public class RefundRepository : Repository<RefundRequest>, IRefundRepository
             .Where(r => r.BookingId.HasValue)
             .GroupBy(r => r.BookingId!.Value)
             .ToDictionary(g => g.Key, g => g.First());
+    }
+
+    // ── Penalty revenue (tiền phạt giữ lại = PaidAmount − RequestedAmount) ──
+
+    public async Task<decimal> SumPenaltyByVenueIdsAsync(List<Guid> venueIds, DateTime? sinceUtc = null, CancellationToken ct = default)
+    {
+        var q = _dbSet.AsNoTracking()
+            .Where(r => r.Status == "COMPLETED"
+                && r.Booking != null && r.Booking.VenueId != null
+                && venueIds.Contains(r.Booking.VenueId.Value)
+                && r.PaidAmount != null && r.RequestedAmount != null
+                && r.PaidAmount > r.RequestedAmount);
+
+        if (sinceUtc.HasValue)
+            q = q.Where(r => r.Booking!.CreatedAt >= sinceUtc.Value);
+
+        return await q.SumAsync(r => (r.PaidAmount ?? 0) - (r.RequestedAmount ?? 0), ct);
+    }
+
+    public async Task<decimal> SumAllPenaltyAsync(DateTime? sinceUtc = null, DateTime? untilUtc = null, CancellationToken ct = default)
+    {
+        var q = _dbSet.AsNoTracking()
+            .Where(r => r.Status == "COMPLETED"
+                && r.Booking != null
+                && r.PaidAmount != null && r.RequestedAmount != null
+                && r.PaidAmount > r.RequestedAmount);
+
+        if (sinceUtc.HasValue)
+            q = q.Where(r => r.Booking!.CreatedAt >= sinceUtc.Value);
+        if (untilUtc.HasValue)
+            q = q.Where(r => r.Booking!.CreatedAt < untilUtc.Value);
+
+        return await q.SumAsync(r => (r.PaidAmount ?? 0) - (r.RequestedAmount ?? 0), ct);
     }
 }

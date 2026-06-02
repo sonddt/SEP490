@@ -11,6 +11,7 @@ public class AdminService : IAdminService
     private readonly IUserRepository _userRepo;
     private readonly IVenueRepository _venueRepo;
     private readonly IBookingRepository _bookingRepo;
+    private readonly IRefundRepository _refundRepo;
     private readonly IManagerProfileRequestRepository _requestRepo;
     private readonly IManagerProfileRepository _profileRepo;
     private readonly IRoleRepository _roleRepo;
@@ -19,9 +20,10 @@ public class AdminService : IAdminService
     private static readonly string[] PaidStatuses = ["CONFIRMED", "COMPLETED"];
 
     public AdminService(IUserRepository userRepo, IVenueRepository venueRepo, IBookingRepository bookingRepo,
-        IManagerProfileRequestRepository requestRepo, IManagerProfileRepository profileRepo, IRoleRepository roleRepo, IFileRepository fileRepo)
+        IRefundRepository refundRepo, IManagerProfileRequestRepository requestRepo, IManagerProfileRepository profileRepo,
+        IRoleRepository roleRepo, IFileRepository fileRepo)
     {
-        _userRepo = userRepo; _venueRepo = venueRepo; _bookingRepo = bookingRepo;
+        _userRepo = userRepo; _venueRepo = venueRepo; _bookingRepo = bookingRepo; _refundRepo = refundRepo;
         _requestRepo = requestRepo; _profileRepo = profileRepo; _roleRepo = roleRepo; _fileRepo = fileRepo;
     }
 
@@ -203,6 +205,7 @@ public class AdminService : IAdminService
             rangeEnd = TimeZoneHelper.ToUtc(re.Date.AddDays(1));
 
         var activeVenuesCount = await _venueRepo.CountActiveAsync();
+        var penaltyRevenue = await _refundRepo.SumAllPenaltyAsync(rangeStart, rangeEnd);
         var venues = await _venueRepo.GetActiveWithBookingStatsAsync(rangeStart, rangeEnd, DateTime.UtcNow, DateTime.UtcNow, DateTime.UtcNow);
         
         var venuesStats = venues.Select(v =>
@@ -213,9 +216,9 @@ public class AdminService : IAdminService
             return new { id = v.Id, venue = v.Name, owner = v.OwnerUser?.FullName ?? "N/A", totalBookings = filteredBookingsCount, revenue = revenueRaw };
         }).OrderByDescending(v => v.revenue).ToList();
 
-        var dynamicTotalRevenue = venuesStats.Sum(v => v.revenue);
+        var dynamicTotalRevenue = venuesStats.Sum(v => v.revenue) + penaltyRevenue;
         var dynamicTotalBookings = venuesStats.Sum(v => v.totalBookings);
 
-        return new { summary = new { totalRevenue = $"{dynamicTotalRevenue:N0} ₫", totalBookings = dynamicTotalBookings, activeVenues = activeVenuesCount }, venuesData = venuesStats };
+        return new { summary = new { totalRevenue = $"{dynamicTotalRevenue:N0} ₫", totalBookings = dynamicTotalBookings, activeVenues = activeVenuesCount, penaltyRevenue }, venuesData = venuesStats };
     }
 }

@@ -31,3 +31,16 @@
 - **Helpers/Utils**: Các hàm dùng chung (múi giờ, chuỗi, mã hóa...) phải đặt trong các `static class` tại thư mục `Utils` hoặc `Helpers`. Tránh viết logic dùng chung rải rác.
 - **Constants**: Không gõ cứng string/số (hard-code). Phải khai báo trong `Constants` hoặc `Enum`.
 - **DTOs**: Luôn dùng DTO để truyền dữ liệu giữa các lớp, không trả trực tiếp Entity ra ngoài API.
+
+## Quy tắc 6: Phân định rõ ràng Service và Helper
+- **Service** (thư mục `Services`):
+  - Chứa business logic, có thao tác với database thông qua Repository.
+  - Được inject `IXxxRepository` và các `IXxxService` khác.
+  - Kết nối các luồng với nhau (validate → xử lý → lưu DB → notify).
+- **Helper/Utils** (thư mục `Helpers` hoặc `Utils`):
+  - Chỉ chứa **logic tính toán thuần túy**, thao tác dữ liệu độc lập.
+  - **Tuyệt đối KHÔNG inject Repository, Service, hay DbContext** vào Helper.
+  - Ví dụ: `BookingSlotHelper`, `TimeZoneHelper`, `DiscountHelper`, chuẩn hóa chuỗi...
+  - Nếu ở Controller đang có hàm tính toán độc lập thì chuyển ra Helper, không nhét hết vào Service.
+- Mỗi Controller action chỉ nên: **validate input → gọi Service → trả response**.
+- Tham khảo `AuthController` → `AuthService` → `UserRepository` làm mẫu chuẩn.

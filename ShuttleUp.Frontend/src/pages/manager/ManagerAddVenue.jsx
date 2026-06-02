@@ -419,6 +419,36 @@ export default function ManagerAddVenue() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (activeTab === 'POLICIES' && venueId) {
+      // Chỉ lưu Policies
+      try {
+        setSubmitting(true);
+        const policyErrors = validatePolicy();
+        if (Object.keys(policyErrors).length > 0) {
+          setPolicyFieldErrors(policyErrors);
+          setErrorMsg('Oops… Bạn kiểm tra lại phần Chính sách & Quy định giúp mình nhé!');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        }
+
+        setErrorMsg('');
+        setPolicyFieldErrors({});
+        await putVenueCheckoutSettings(venueId, buildPutBody(policyForm));
+        setSavedPolicyForm(policyForm);
+        notifySuccess('Cập nhật chính sách thành công!');
+      } catch (err) {
+        console.error('Submit policies failed', err);
+        setErrorMsg('Rất tiếc! Đã xảy ra sự cố khi lưu Chính sách. Bạn thử lại nha!');
+        notifyError('Lưu thất bại. Vui lòng kiểm tra lại.');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Tab GENERAL hoặc tạo mới
     try {
       const assembledAddr = assembleAddress();
       const errors = {};
@@ -475,22 +505,6 @@ export default function ManagerAddVenue() {
           fd.append('isThumbnail', 'false');
           await uploadVenueFiles(id, fd);
         }
-
-        const policyErrors = validatePolicy();
-        if (Object.keys(policyErrors).length > 0) {
-          setPolicyFieldErrors(policyErrors);
-          setSearchParams((prev) => {
-            const next = new URLSearchParams(prev);
-            next.set('tab', 'policies');
-            return next;
-          }, { replace: true });
-          setErrorMsg('Oops… Bạn kiểm tra lại phần Chính sách & Quy định giúp mình nhé!');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-          return;
-        }
-
-        await putVenueCheckoutSettings(id, buildPutBody(policyForm));
-        setSavedPolicyForm(policyForm);
       }
 
       navigate('/manager/venues');
@@ -1076,7 +1090,7 @@ export default function ManagerAddVenue() {
                       {policyForm.cancelAllowed ? (
                         <>
                           <div className="mb-3">
-                            <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 8 }}>Phải huỷ trước giờ đá ít nhất</label>
+                            <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 8 }}>Phải huỷ trước giờ chơi ít nhất</label>
                             <div className="d-flex flex-wrap gap-2 mb-2">
                               {CANCEL_PRESETS.map((m) => (
                                 <button

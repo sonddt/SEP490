@@ -13,6 +13,10 @@ namespace ShuttleUp.BLL.Services;
 
 public class BookingCreationService : IBookingCreationService
 {
+    private static readonly JsonSerializerOptions _camelCaseOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
     private readonly IVenueRepository _venueRepository;
     private readonly ICourtRepository _courtRepository;
     private readonly IVenueCouponRepository _couponRepository;
@@ -159,7 +163,7 @@ public class BookingCreationService : IBookingCreationService
             ContactName = dto.ContactName.Trim(),
             ContactPhone = dto.ContactPhone.Trim(),
             GuestNote = string.IsNullOrWhiteSpace(dto.Note) ? null : dto.Note.Trim(),
-            CancellationPolicySnapshotJson = JsonSerializer.Serialize(policySnapshot),
+            CancellationPolicySnapshotJson = JsonSerializer.Serialize(policySnapshot, _camelCaseOptions),
             CreatedAt = DateTime.UtcNow
         };
 
@@ -315,7 +319,7 @@ public class BookingCreationService : IBookingCreationService
             ContactName = dto.ContactName.Trim(),
             ContactPhone = dto.ContactPhone.Trim(),
             GuestNote = string.IsNullOrWhiteSpace(dto.Note) ? null : dto.Note.Trim(),
-            CancellationPolicySnapshotJson = JsonSerializer.Serialize(policySnapshot),
+            CancellationPolicySnapshotJson = JsonSerializer.Serialize(policySnapshot, _camelCaseOptions),
             CreatedAt = DateTime.UtcNow
         };
 
@@ -470,7 +474,7 @@ public class BookingCreationService : IBookingCreationService
             ContactName = dto.ContactName.Trim(),
             ContactPhone = dto.ContactPhone.Trim(),
             GuestNote = string.IsNullOrWhiteSpace(dto.Note) ? null : dto.Note.Trim(),
-            CancellationPolicySnapshotJson = JsonSerializer.Serialize(policySnapshot),
+            CancellationPolicySnapshotJson = JsonSerializer.Serialize(policySnapshot, _camelCaseOptions),
             CreatedAt = DateTime.UtcNow
         };
 

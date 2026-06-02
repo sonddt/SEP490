@@ -8021,11 +8021,11 @@ p,
   table-layout: fixed;
 }
 
-/* Fixed column widths to prevent address overflow */
+/* Fixed column widths — order: Mã đặt | Chi tiết sân | Lịch chơi | Thanh toán | Trạng thái | Đánh giá | Thao tác */
 .user-profile-shell .user-bookings-table.table th:nth-child(1),
-.user-profile-shell .user-bookings-table.table td:nth-child(1) { width: 26%; }
+.user-profile-shell .user-bookings-table.table td:nth-child(1) { width: 9%; }
 .user-profile-shell .user-bookings-table.table th:nth-child(2),
-.user-profile-shell .user-bookings-table.table td:nth-child(2) { width: 9%; }
+.user-profile-shell .user-bookings-table.table td:nth-child(2) { width: 26%; }
 .user-profile-shell .user-bookings-table.table th:nth-child(3),
 .user-profile-shell .user-bookings-table.table td:nth-child(3) { width: 11%; }
 .user-profile-shell .user-bookings-table.table th:nth-child(4),
@@ -8041,11 +8041,14 @@ p,
   font-size: clamp(0.75rem, 0.25vw + 0.65rem, 0.9375rem);
   padding: clamp(0.55rem, 0.5vw + 0.35rem, 0.85rem) clamp(0.45rem, 0.45vw + 0.25rem, 0.75rem);
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .user-profile-shell .user-bookings-table.table tbody td {
   padding: clamp(0.55rem, 0.55vw + 0.35rem, 1rem) clamp(0.45rem, 0.45vw + 0.28rem, 0.85rem);
   vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Truncate venue name + address in first column */

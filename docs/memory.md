@@ -83,6 +83,11 @@ Kết bạn & quan hệ xã hội (Player):
    - Nâng cấp `matching_posts`: thêm `title`, `play_date`, `play_start/end_time`, `venue_id`, `court_name`, `price_per_slot`.
    - Bảng trung gian `matching_post_items`: liên kết bài đăng với các `booking_items` cụ thể.
    - Mở rộng `matching_join_requests` (`message`, `reject_reason`) và `matching_members` (`joined_at`).
+   - **Table Designs**: For UserBookings, apply `white-space: nowrap`, `overflow: hidden`, `text-overflow: ellipsis` on table cells to ensure responsiveness. Keep "Mã đặt" column width small, use vibrant gradient badges for Booking codes and type (Cố định/Lịch đơn), and truncate long address strings with tooltips (`title` attribute).
+
+### Backend / Architecture
+- **Venue Images**: The representative image for a venue is determined by finding a `File` where `FileName` contains `"mac_dinh"`, falling back to the most recently uploaded image (`OrderByDescending(f => f.CreatedAt)`). Ensure this logic is consistent across `/venues`, Manager views, and `BookingService`.
+- **Status Constants**: Maintain exact casing and text matching in JS when rendering badges (`Chờ xác nhận CK`, `Đã hủy`, etc).
 2. **Backend Architecture**:
    - `MatchingController.cs`: triển khai 15 API endpoints quản lý toàn bộ vòng đời bài đăng.
    - Logic nghiệp vụ:
@@ -730,4 +735,25 @@ Kết bạn & quan hệ xã hội (Player):
    - Đã biên dịch kiểm tra thành công với `dotnet build` (0 lỗi, 1 warning không liên quan từ trước).
    - Kiểm tra bằng lệnh grep xác nhận: **Không còn bất kỳ tham chiếu nào** đến `ShuttleUpDbContext` trong toàn bộ tầng BLL (Services, Helpers) và tầng Controllers (API), đảm bảo dự án tuân thủ nghiêm ngặt mô hình kiến trúc 3 lớp đã đề ra.
 
+---
 
+## 2 tháng 6, 2026 (Khắc phục lỗ hổng doanh thu Penalty — Revenue Audit)
+
+1. **Phát hiện lỗ hổng nghiêm trọng**: Khi khách hàng huỷ đơn và được hoàn tiền **một phần** (ví dụ 50%), khoản tiền phạt (Penalty = PaidAmount − RequestedAmount) mà chủ sân giữ lại bị **bốc hơi khỏi thống kê doanh thu** vì đơn chuyển sang trạng thái REFUNDED/PENDING_REFUND/CANCELLED, không nằm trong `PaidStatuses = ["CONFIRMED", "COMPLETED"]`.
+
+2. **Sửa DAL**:
+   - `IRefundRepository`: Thêm `SumPenaltyByVenueIdsAsync` (theo venue, cho Manager) và `SumAllPenaltyAsync` (toàn hệ thống, cho Admin).
+   - `RefundRepository`: Implement 2 hàm trên, query trên `refund_requests` WHERE `Status = "COMPLETED"` AND `PaidAmount > RequestedAmount`, lọc theo `Booking.CreatedAt` (theo yêu cầu user: tính penalty vào ngày tạo Booking gốc).
+
+3. **Sửa BLL (tuân thủ kiến trúc 3 lớp)**:
+   - `ManagerStatsService`: Inject thêm `IRefundRepository`. Cộng penalty vào `monthRevenue`, `totalRevenue`, `totalRevInRange`, `overallTotalRev`. Trả thêm trường `penaltyRevenue` riêng biệt để FE hiển thị rõ nguồn thu.
+   - `AdminService`: Inject thêm `IRefundRepository`. Cộng penalty vào `dynamicTotalRevenue`. Trả thêm `penaltyRevenue` trong summary.
+
+4. **Thêm test data** vào `Database_realistic.txt`:
+   - 1 booking REFUNDED (200.000đ, đã thanh toán → huỷ → hoàn 100.000đ = 50%)
+   - 1 booking_item, 1 payment COMPLETED (200.000đ), 1 refund_request COMPLETED (paid: 200k, requested: 100k → penalty 100k)
+   - Giúp verify doanh thu penalty **100.000đ** hiển thị đúng trên Dashboard.
+
+5. **Cập nhật `rule.md`**: Thêm Quy tắc 6 — Phân định rõ Service vs Helper (Service inject Repository, Helper tuyệt đối KHÔNG inject dependency).
+
+6. `dotnet build` **0 Errors**, 1 warning không liên quan (CS8601 trong ManagerProfileService — tồn tại từ trước).

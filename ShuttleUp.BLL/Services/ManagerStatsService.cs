@@ -9,12 +9,13 @@ public class ManagerStatsService : IManagerStatsService
     private readonly IVenueRepository _venueRepo;
     private readonly IBookingRepository _bookingRepo;
     private readonly ICourtRepository _courtRepo;
+    private readonly IRefundRepository _refundRepo;
 
     private static readonly string[] PaidStatuses = ["CONFIRMED", "COMPLETED"];
 
-    public ManagerStatsService(IVenueRepository venueRepo, IBookingRepository bookingRepo, ICourtRepository courtRepo)
+    public ManagerStatsService(IVenueRepository venueRepo, IBookingRepository bookingRepo, ICourtRepository courtRepo, IRefundRepository refundRepo)
     {
-        _venueRepo = venueRepo; _bookingRepo = bookingRepo; _courtRepo = courtRepo;
+        _venueRepo = venueRepo; _bookingRepo = bookingRepo; _courtRepo = courtRepo; _refundRepo = refundRepo;
     }
 
     public async Task<object> GetOverviewAsync(Guid managerId)
@@ -34,6 +35,8 @@ public class ManagerStatsService : IManagerStatsService
         var pendingCount = await _bookingRepo.CountByStatusInVenuesAsync(venueIds, "PENDING");
         var monthRevenue = await _bookingRepo.SumRevenueByVenueIdsAsync(venueIds, PaidStatuses, startOfMonthUtc);
         var totalRevenue = await _bookingRepo.SumRevenueByVenueIdsAsync(venueIds, PaidStatuses);
+        var monthPenalty = await _refundRepo.SumPenaltyByVenueIdsAsync(venueIds, startOfMonthUtc);
+        var totalPenalty = await _refundRepo.SumPenaltyByVenueIdsAsync(venueIds);
 
         var venues = await _venueRepo.GetActiveWithBookingStatsAsync(null, null, startOfMonthUtc, default, default);
         var topVenues = venues.Where(v => venueIds.Contains(v.Id)).Select(v => new
@@ -54,7 +57,7 @@ public class ManagerStatsService : IManagerStatsService
             amount = b.FinalAmount ?? 0m, b.Status
         }).ToList();
 
-        return new { totalVenues, totalCourts, activeCourts, todayBookings, monthBookings, pendingCount, monthRevenue, totalRevenue, topVenues, recentBookings };
+        return new { totalVenues, totalCourts, activeCourts, todayBookings, monthBookings, pendingCount, monthRevenue = monthRevenue + monthPenalty, totalRevenue = totalRevenue + totalPenalty, penaltyRevenue = new { month = monthPenalty, total = totalPenalty }, topVenues, recentBookings };
     }
 
     public async Task<object> GetEarningsPagedAsync(Guid managerId, Guid? venueId, string? startDate, string? endDate, string? status, string? search, int page, int pageSize)
@@ -78,25 +81,44 @@ public class ManagerStatsService : IManagerStatsService
         var totalItems = await _bookingRepo.CountByVenueIdsFilteredAsync(targetIds.ToList(), status, sinceUtc, untilUtc, search);
         var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
         var totalRevInRange = await _bookingRepo.SumRevenueByVenueIdsFilteredAsync(targetIds.ToList(), PaidStatuses, status, sinceUtc, untilUtc, search);
+        var penaltyInRange = await _refundRepo.SumPenaltyByVenueIdsAsync(targetIds.ToList(), sinceUtc);
 
         // Overall totals ignoring status (for top cards)
         var overallTotalItems = await _bookingRepo.CountByVenueIdsFilteredAsync(targetIds.ToList(), null, sinceUtc, untilUtc, search);
         var overallTotalRev = await _bookingRepo.SumRevenueByVenueIdsFilteredAsync(targetIds.ToList(), PaidStatuses, null, sinceUtc, untilUtc, search);
+        var overallPenalty = await _refundRepo.SumPenaltyByVenueIdsAsync(targetIds.ToList());
 
         var bookings = await _bookingRepo.GetByVenueIdsPagedAsync(targetIds.ToList(), status, sinceUtc, untilUtc, search, (page - 1) * pageSize, pageSize);
-        var items = bookings.Select(b => new
+
+        // Batch-fetch refund info cho các booking REFUNDED/PENDING_REFUND trên trang hiện tại
+        var refundStatuses = new[] { "REFUNDED", "PENDING_REFUND" };
+        var refundBookingIds = bookings.Where(b => refundStatuses.Contains(b.Status)).Select(b => b.Id).ToList();
+        var refundMap = refundBookingIds.Any()
+            ? await _refundRepo.GetLatestByBookingIdsAsync(refundBookingIds)
+            : new Dictionary<Guid, DAL.Models.RefundRequest>();
+
+        var items = bookings.Select(b =>
         {
-            id = b.Id, refId = "BK" + b.Id.ToString().Substring(0, 6).ToUpper(),
-            player = b.User?.FullName ?? "N/A", venue = b.Venue?.Name ?? "N/A", venueId = b.VenueId,
-            court = string.Join(", ", (b.BookingItems ?? (ICollection<DAL.Models.BookingItem>)new List<DAL.Models.BookingItem>()).Select(bi => bi.Court?.Name ?? "")),
-            date = b.CreatedAt.HasValue ? TimeZoneHelper.ToVn(b.CreatedAt.Value).ToString("dd/MM/yyyy") : "", dateIso = b.CreatedAt,
-            startTime = b.BookingItems?.OrderBy(bi => bi.StartTime).Select(bi => bi.StartTime).FirstOrDefault(),
-            endTime = b.BookingItems?.OrderByDescending(bi => bi.EndTime).Select(bi => bi.EndTime).FirstOrDefault(),
-            amount = b.FinalAmount ?? 0m, status = b.Status,
-            items = (b.BookingItems ?? (ICollection<DAL.Models.BookingItem>)new List<DAL.Models.BookingItem>()).Select(bi => new { courtName = bi.Court?.Name ?? "Sân", price = bi.FinalPrice ?? 0 })
+            refundMap.TryGetValue(b.Id, out var refund);
+            return new
+            {
+                id = b.Id, refId = "BK" + b.Id.ToString().Substring(0, 6).ToUpper(),
+                player = b.User?.FullName ?? "N/A", venue = b.Venue?.Name ?? "N/A", venueId = b.VenueId,
+                court = string.Join(", ", (b.BookingItems ?? (ICollection<DAL.Models.BookingItem>)new List<DAL.Models.BookingItem>()).Select(bi => bi.Court?.Name ?? "")),
+                date = b.CreatedAt.HasValue ? TimeZoneHelper.ToVn(b.CreatedAt.Value).ToString("dd/MM/yyyy") : "", dateIso = b.CreatedAt,
+                startTime = b.BookingItems?.OrderBy(bi => bi.StartTime).Select(bi => bi.StartTime).FirstOrDefault(),
+                endTime = b.BookingItems?.OrderByDescending(bi => bi.EndTime).Select(bi => bi.EndTime).FirstOrDefault(),
+                amount = b.FinalAmount ?? 0m, status = b.Status, note = b.GuestNote,
+                // Refund details: refundedAmount = tiền hoàn lại cho khách, paidAmount = tiền khách đã trả, penaltyAmount = tiền manager giữ lại
+                refundedAmount = refund?.RequestedAmount ?? 0m,
+                paidAmount = refund?.PaidAmount ?? 0m,
+                penaltyAmount = refund != null ? (refund.PaidAmount ?? 0m) - (refund.RequestedAmount ?? 0m) : 0m,
+                refundStatus = refund?.Status,
+                items = (b.BookingItems ?? (ICollection<DAL.Models.BookingItem>)new List<DAL.Models.BookingItem>()).Select(bi => new { courtName = bi.Court?.Name ?? "Sân", price = bi.FinalPrice ?? 0 })
+            };
         }).ToList();
 
-        return new { totalItems, totalPages, page, pageSize, totalRevInRange, overallTotalItems, overallTotalRev, venues = allVenues, items };
+        return new { totalItems, totalPages, page, pageSize, totalRevInRange = totalRevInRange + penaltyInRange, penaltyRevenue = penaltyInRange, overallTotalItems, overallTotalRev = overallTotalRev + overallPenalty, overallPenalty, venues = allVenues, items };
     }
 
     public async Task<object> GetDailyChartAsync(Guid managerId, Guid? venueId, int days)

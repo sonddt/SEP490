@@ -63,7 +63,7 @@ public partial class BookingRepository
     public async Task<List<Booking>> GetMyBookingsRawAsync(Guid userId, CancellationToken ct = default)
         => await _dbSet
             .AsNoTracking()
-            .Include(b => b.Venue)
+            .Include(b => b.Venue).ThenInclude(v => v!.Files)
             .Include(b => b.Payments)
             .Include(b => b.BookingItems).ThenInclude(bi => bi.Court)
             .Where(b => b.UserId == userId)
