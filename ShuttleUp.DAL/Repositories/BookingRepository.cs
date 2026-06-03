@@ -15,7 +15,11 @@ public partial class BookingRepository : Repository<Booking>, IBookingRepository
     public async Task<IEnumerable<Booking>> GetByStatusAsync(string status)
         => await _dbSet.Where(b => b.Status == status).ToListAsync();
     public async Task<List<Booking>> GetConfirmedByUserAndVenueAsync(Guid userId, Guid venueId)
-        => await _dbSet.Where(b => b.UserId == userId && b.VenueId == venueId && (b.Status == "PAID" || b.Status == "COMPLETED" || b.Status == "REVIEWED" || b.Status == "RATED")).ToListAsync();
+        => await _dbSet
+            .Include(b => b.BookingItems).ThenInclude(bi => bi.Court)
+            .Include(b => b.Venue)
+            .Where(b => b.UserId == userId && b.VenueId == venueId && (b.Status == "CONFIRMED" || b.Status == "COMPLETED"))
+            .ToListAsync();
 
     public async Task<Booking?> GetBookingWithVenueAsync(Guid id)
         => await _dbSet.AsNoTracking().Include(b => b.Venue).FirstOrDefaultAsync(b => b.Id == id);

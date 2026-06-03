@@ -29,6 +29,9 @@ public partial class Booking
 
     public DateTime? CreatedAt { get; set; }
 
+    /// <summary>UTC timestamp khi đơn đặt sân tự động chuyển sang COMPLETED (giờ chơi đã kết thúc).</summary>
+    public DateTime? CompletedAt { get; set; }
+
     /// <summary>Liên hệ tại thời điểm đặt (có thể khác hồ sơ tài khoản).</summary>
     public string? ContactName { get; set; }
 

@@ -252,6 +252,7 @@ CREATE TABLE venues (
     payment_note VARCHAR(1000) NULL COMMENT 'Ghi chú hướng dẫn thanh toán cho người chơi',
     cancel_allowed TINYINT(1) NOT NULL DEFAULT 1,
     cancel_before_minutes INT NOT NULL DEFAULT 120,
+    venue_rules TEXT NULL COMMENT 'Quy định chung tại sân (free-text, manager nhập)',
     slot_duration INT NOT NULL DEFAULT 60,
     refund_type VARCHAR(20) NOT NULL DEFAULT 'NONE' COMMENT 'NONE|PERCENT|FULL',
     refund_percent DECIMAL(5,2) NULL,
@@ -392,6 +393,7 @@ CREATE TABLE bookings (
     manager_status_note VARCHAR(1000) NULL,
     cancellation_policy_snapshot_json TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    completed_at DATETIME NULL COMMENT 'UTC timestamp khi đơn tự động chuyển sang COMPLETED',
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (venue_id) REFERENCES venues(id),
     FOREIGN KEY (series_id) REFERENCES booking_series(id) ON DELETE SET NULL,
@@ -3520,110 +3522,11 @@ INSERT IGNORE INTO matching_post_comments (id, post_id, user_id, content, create
 UPDATE matching_post_comments SET parent_comment_id = 'df000002-0000-0000-0000-000000000001' WHERE id = 'df000003-0000-0000-0000-000000000001';
 
 -- ======================================================================
--- MIGRATION: refund_requests mở rộng (hoàn tiền thủ công)
--- ======================================================================
-
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'reason_code');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN reason_code VARCHAR(50) NOT NULL DEFAULT ''PLAYER_CANCEL''', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'requested_amount');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN requested_amount DECIMAL(15,2) NULL', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'paid_amount');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN paid_amount DECIMAL(15,2) NULL', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'refund_bank_name');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN refund_bank_name VARCHAR(100) NULL', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'refund_account_number');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN refund_account_number VARCHAR(50) NULL', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'refund_account_holder');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN refund_account_holder VARCHAR(255) NULL', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'player_note');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN player_note TEXT NULL', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'rejection_reason');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN rejection_reason TEXT NULL', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'manager_note');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN manager_note TEXT NULL', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'manager_evidence_file_id');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN manager_evidence_file_id CHAR(36) NULL', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'player_received_file_id');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN player_received_file_id CHAR(36) NULL', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'refund_requests' AND column_name = 'refund_qr_image_url');
-SET @sql := IF(@col = 0, 'ALTER TABLE refund_requests ADD COLUMN refund_qr_image_url VARCHAR(2048) NULL COMMENT ''Ảnh mã QR nhận hoàn tiền (Cloudinary URL)'' AFTER refund_account_holder', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venue_coupons' AND column_name = 'one_use_per_user');
-SET @sql := IF(@col = 0, 'ALTER TABLE venue_coupons ADD COLUMN one_use_per_user TINYINT(1) NOT NULL DEFAULT 1 COMMENT ''TRUE: mỗi user chỉ dùng mã 1 lần (đơn không huỷ)''', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
 -- featured_posts: bỏ sort_order (thứ tự chỉ theo created_at trong API)
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'featured_posts' AND column_name = 'sort_order');
-SET @sql := IF(@col > 0, 'ALTER TABLE featured_posts DROP COLUMN sort_order', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
 -- venues: venue_rules — quy định chi tiết dạng text tự do (chủ sân nhập trên trang chính sách)
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'venue_rules');
-SET @sql := IF(@col = 0, 'ALTER TABLE venues ADD COLUMN venue_rules TEXT NULL COMMENT ''Quy định chung tại sân (free-text, manager nhập)''', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
 -- court_blocks: lý do khóa sân + audit
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'court_blocks' AND column_name = 'reason_code');
-SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN reason_code VARCHAR(30) NULL COMMENT ''MAINTENANCE|WEATHER|OTHER''', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'court_blocks' AND column_name = 'reason_detail');
-SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN reason_detail VARCHAR(500) NULL', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'court_blocks' AND column_name = 'internal_note');
-SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN internal_note VARCHAR(500) NULL', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'court_blocks' AND column_name = 'created_at');
-SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'court_blocks' AND column_name = 'updated_at');
-SET @sql := IF(@col = 0, 'ALTER TABLE court_blocks ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
 -- venue_reviews: phản hồi chủ sân
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venue_reviews' AND column_name = 'owner_reply');
-SET @sql := IF(@col = 0, 'ALTER TABLE venue_reviews ADD COLUMN owner_reply TEXT NULL COMMENT ''Phản hồi của chủ sân (manager)''', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venue_reviews' AND column_name = 'owner_reply_at');
-SET @sql := IF(@col = 0, 'ALTER TABLE venue_reviews ADD COLUMN owner_reply_at DATETIME NULL', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
 -- bookings: hold_expires_at — server-side soft-lock (HOLDING status, 5 min TTL)
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'bookings' AND column_name = 'hold_expires_at');
-SET @sql := IF(@col = 0, 'ALTER TABLE bookings ADD COLUMN hold_expires_at DATETIME NULL COMMENT ''UTC deadline for HOLDING status'' AFTER status', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- ======================================================================
--- Kiểm tra kết quả
--- ======================================================================
-
 SELECT 'Users'    AS entity, COUNT(*) AS total FROM users      UNION ALL
 SELECT 'Venues',              COUNT(*)          FROM venues     UNION ALL
 SELECT 'Courts',              COUNT(*)          FROM courts     UNION ALL
@@ -3632,19 +3535,7 @@ SELECT 'VenueFiles',          COUNT(*)          FROM venue_files UNION ALL
 SELECT 'FeaturedPosts',       COUNT(*)          FROM featured_posts UNION ALL
 SELECT 'Reviews',             COUNT(*)          FROM venue_reviews;
 
-SET @col_sd := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'slot_duration');
-SET @sql_sd := IF(@col_sd = 0, 'ALTER TABLE venues ADD COLUMN slot_duration INT NOT NULL DEFAULT 60', 'DO 0');
-PREPARE stmt_sd FROM @sql_sd; EXECUTE stmt_sd; DEALLOCATE PREPARE stmt_sd;
-
 -- users: ban logic
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'ban_type');
-SET @sql := IF(@col = 0, 'ALTER TABLE users ADD COLUMN ban_type VARCHAR(10) NULL DEFAULT NULL AFTER blocked_reason', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'soft_ban_expires_at');
-SET @sql := IF(@col = 0, 'ALTER TABLE users ADD COLUMN soft_ban_expires_at DATETIME NULL DEFAULT NULL AFTER ban_type', 'DO 0');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
 SET FOREIGN_KEY_CHECKS = 1;
 
 

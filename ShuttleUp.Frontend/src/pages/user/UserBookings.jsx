@@ -24,7 +24,9 @@ function mapUserBookingTabStatus(apiStatus, items) {
   if (apiStatus === 'PENDING_RECONCILIATION' || apiStatus === 'PENDING_REFUND') return 'REFUND';
   if (apiStatus === 'REFUNDED') return 'REFUND';
   if (apiStatus === 'PENDING') return 'PENDING';
+  if (apiStatus === 'COMPLETED') return 'COMPLETED';
   if (apiStatus === 'CONFIRMED') {
+    // Client-side fallback: nếu BG service chưa chuyển sang COMPLETED
     const ends = (items || []).map((i) => new Date(i.endTime).getTime()).filter(Number.isFinite);
     if (ends.length === 0) return 'UPCOMING';
     const maxEnd = Math.max(...ends);

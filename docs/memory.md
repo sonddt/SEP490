@@ -778,3 +778,71 @@ Kết bạn & quan hệ xã hội (Player):
      - Re-layout toàn bộ bảng danh sách: Thêm cột Mã đặt sân (Badge), Ngày đặt, Sắp xếp lại thứ tự cột cho hợp lý.
      - Tinh chỉnh Responsive: Ứng dụng `text-overflow: ellipsis` chặn vỡ giao diện ở ô Người đặt và Tên Sân. Rút gọn văn bản môi trường dev.
      - Bộ lọc (Filter & Sort): Bổ sung khả năng sắp xếp (Sort) theo Giờ đặt & Giờ chơi. Sửa text Dropdown thời gian thành "Ngày chơi: ..." để phân biệt rạch ròi với bộ lọc Giờ đặt, giúp chủ sân tra cứu chính xác.
+
+
+---
+
+
+## 3 tháng 6, 2026 (Auto-Complete Booking & Chuẩn hóa Trạng thái)
+
+### A. Background Service tự động chuyển CONFIRMED → COMPLETED
+
+1. **Database Schema (`Database.txt` + `Database_realistic.txt`)**:
+   - Thêm cột `completed_at DATETIME NULL` vào bảng `bookings` — lưu UTC timestamp khi đơn tự động chuyển sang COMPLETED.
+   - Migration có điều kiện (ALTER IF NOT EXISTS) cho DB đang chạy.
+
+2. **DAL Model & EF Mapping**:
+   - `Booking.cs`: Thêm property `CompletedAt` (nullable DateTime).
+   - `ShuttleUpDbContext.cs`: EF mapping `HasColumnName("completed_at")`.
+
+3. **BookingCompletionService** (`BackgroundService` mới):
+   - Chạy mỗi **5 phút**, quét booking `CONFIRMED` mà **tất cả booking_items đã kết thúc** (`end_time ≤ UTC now`).
+   - Chuyển `booking.Status = "COMPLETED"`, set `booking.CompletedAt = now`, chuyển từng `booking_item.Status = "COMPLETED"`.
+   - Kiểm tra series: nếu tất cả bookings trong series đều COMPLETED/CANCELLED/REFUNDED → `series.Status = "COMPLETED"`.
+   - Đăng ký trong `Program.cs` cùng các BackgroundService khác.
+
+4. **Ý nghĩa trạng thái sau thay đổi**:
+   - `CONFIRMED` = Đã thanh toán, **chưa tới giờ chơi** hoặc **đang chơi** → có thể hủy/hoàn tiền.
+   - `COMPLETED` = Giờ chơi đã diễn ra và kết thúc → **không thể hủy**, chỉ có thể khiếu nại.
+
+### B. Chặn hủy đơn COMPLETED
+
+- **`BookingService.CancelMyBookingAsync`**: Thêm `COMPLETED` vào danh sách trạng thái không cho hủy.
+- **`ManagerBookingService.PatchStatusAsync`**: Chặn Manager hủy đơn đã COMPLETED, chỉ cho hủy PENDING hoặc CONFIRMED.
+
+### C. Đánh giá sân — chỉ COMPLETED + window 3 ngày từ CompletedAt
+
+- **`VenueReviewService.CreateReviewAsync`**: Chỉ cho phép đánh giá khi `booking.Status == "COMPLETED"` (trước đây là CONFIRMED).
+- **`VenueReviewService.ThrowIfOutsideReviewWindow`**: Đổi review window từ `CreatedAt + 3 ngày` → `CompletedAt + 3 ngày`. Nếu chưa có CompletedAt → chưa cho đánh giá.
+- **`BookingService.GetMyBookingsAsync`**: `CanReview` và `CanEditReview` dựa trên `isCompleted && CompletedAt + 3 ngày`.
+- **`BookingQueryDtos.cs`**: `ReviewWindowEndsAt` đổi sang `DateTime?` (nullable).
+
+### D. Fix BookingRepository
+
+- **`GetConfirmedByUserAndVenueAsync`**: Fix query sai (trước đây query `PAID/REVIEWED/RATED` — không tồn tại trong hệ thống). Đổi sang query `CONFIRMED || COMPLETED`, thêm Include BookingItems + Court + Venue.
+
+### E. Frontend
+
+- **`UserBookings.jsx`**: Thêm xử lý `apiStatus === 'COMPLETED'` trả về trực tiếp từ backend. Giữ client-side fallback cho CONFIRMED chưa được BG service chuyển.
+- **`ManagerBookings.jsx`**: Đã tương thích sẵn (line 49 đã có xử lý `COMPLETED`).
+
+### F. Logic doanh thu — Không thay đổi
+
+- `PaidStatuses = ["CONFIRMED", "COMPLETED"]` trong `ManagerStatsService` và `AdminService` vẫn đúng, cộng cả 2 trạng thái.
+
+### G. Cập nhật Database & Chuẩn hóa Timezone (Chiều 3 tháng 6, 2026)
+
+1. **Database Refactor**:
+   - Chỉnh sửa Database_realistic.txt thành bản chuẩn nhất. Gom toàn bộ các lệnh ALTER TABLE ở cuối file trực tiếp vào CREATE TABLE.
+   - Giúp việc import database sạch sẽ, chỉ cần chạy script một lần duy nhất.
+
+2. **Chuẩn hóa Timezone (Lỗi 10h thành 4h chiều)**:
+   - Sửa dứt điểm lỗi Frontend parse thời gian trả về bị lệch thành Local Time (cộng thêm 7 tiếng) do Backend serialize CreatedAt dưới dạng Unspecified.
+   - Áp dụng ValueConverter toàn cục trong ShuttleUpDbContext.cs để tự động gán DateTimeKind.Utc cho tất cả các timestamp kết thúc bằng At (CreatedAt, CompletedAt, HoldExpiresAt, v.v.).
+   - Khi đó, JSON trả về sẽ kèm hậu tố Z (ví dụ: 2026-06-03T03:00:00Z), Frontend sẽ tự parse đúng thành giờ Việt Nam.
+   - StartTime và EndTime vẫn giữ nguyên Unspecified để không bị dịch chuyển múi giờ.
+
+3. **Sửa lỗi Background Service chạy sai giờ (Delay 7 tiếng)**:
+   - Phát hiện BUG logic nghiêm trọng trong `BookingCompletionService` và `UpcomingBookingReminderService` khi so sánh `StartTime`/`EndTime` (vốn lưu theo giờ Local Việt Nam) với `DateTime.UtcNow` (chậm hơn VN 7 tiếng).
+   - Lỗi này khiến toàn bộ email nhắc nhở ra sân và tiến trình hoàn thành Booking tự động bị gửi trễ 7 tiếng (đá lúc 18h thì 1h sáng hôm sau mới có tác dụng).
+   - Đã xử lý bằng cách khai báo `var vnTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");` và dùng `TimeZoneInfo.ConvertTimeFromUtc(nowUtc, vnTimeZone)` để chuyển đổi `UtcNow` về giờ Việt Nam chuẩn xác trước khi đưa vào hàm so sánh `Where()` của EF Core.

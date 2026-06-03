@@ -110,8 +110,8 @@ public class ManagerBookingService : IManagerBookingService
         }
         else
         {
-            if (booking.Status != "PENDING" && booking.Status != "CONFIRMED")
-                throw new ArgumentException("Không thể huỷ đơn ở trạng thái này.");
+            if (booking.Status is not ("PENDING" or "CONFIRMED"))
+                throw new ArgumentException("Không thể huỷ đơn ở trạng thái này. Đơn đã hoàn thành hoặc đã xử lý.");
 
             booking.ManagerStatusNote = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
 

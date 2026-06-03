@@ -392,6 +392,7 @@ CREATE TABLE bookings (
     manager_status_note VARCHAR(1000) NULL,
     cancellation_policy_snapshot_json TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    completed_at DATETIME NULL COMMENT 'UTC timestamp khi đơn tự động chuyển sang COMPLETED (giờ chơi đã kết thúc)',
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (venue_id) REFERENCES venues(id),
     FOREIGN KEY (series_id) REFERENCES booking_series(id) ON DELETE SET NULL,
@@ -1628,6 +1629,11 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'soft_ban_expires_at');
 SET @sql := IF(@col = 0, 'ALTER TABLE users ADD COLUMN soft_ban_expires_at DATETIME NULL DEFAULT NULL AFTER ban_type', 'DO 0');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- bookings: completed_at — UTC timestamp khi booking tự động chuyển sang COMPLETED
+SET @col := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'bookings' AND column_name = 'completed_at');
+SET @sql := IF(@col = 0, 'ALTER TABLE bookings ADD COLUMN completed_at DATETIME NULL COMMENT ''UTC timestamp khi đơn tự động chuyển sang COMPLETED'' AFTER created_at', 'DO 0');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET FOREIGN_KEY_CHECKS = 1;

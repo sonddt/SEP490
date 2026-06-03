@@ -139,6 +139,9 @@ public partial class ShuttleUpDbContext : DbContext
             entity.Property(e => e.HoldExpiresAt)
                 .HasColumnType("datetime")
                 .HasColumnName("hold_expires_at");
+            entity.Property(e => e.CompletedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("completed_at");
             entity.Property(e => e.TotalAmount)
                 .HasPrecision(15, 2)
                 .HasColumnName("total_amount");
@@ -1695,6 +1698,32 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasForeignKey(d => d.AdminUserId)
                 .HasConstraintName("violation_report_logs_ibfk_2");
         });
+
+        var utcConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(
+            v => v,
+            v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+
+        var utcNullableConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime?, DateTime?>(
+            v => v,
+            v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
+
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                if (property.Name.EndsWith("At"))
+                {
+                    if (property.ClrType == typeof(DateTime))
+                    {
+                        property.SetValueConverter(utcConverter);
+                    }
+                    else if (property.ClrType == typeof(DateTime?))
+                    {
+                        property.SetValueConverter(utcNullableConverter);
+                    }
+                }
+            }
+        }
 
         OnModelCreatingPartial(modelBuilder);
     }

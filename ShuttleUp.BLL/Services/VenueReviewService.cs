@@ -54,9 +54,9 @@ public class VenueReviewService : IVenueReviewService
 
         foreach (var b in bookings)
         {
-            var created = b.CreatedAt ?? now;
-            var windowEnd = created.AddDays(3);
-            var inWindow = now <= windowEnd;
+            var completedAt = b.CompletedAt;
+            var windowEnd = completedAt.HasValue ? completedAt.Value.AddDays(3) : (DateTime?)null;
+            var inWindow = completedAt.HasValue && now <= windowEnd!.Value;
             var existing = await _reviewRepository.GetByBookingAndUserAsync(b.Id, userId);
 
             var items = (b.BookingItems ?? [])
@@ -81,7 +81,7 @@ public class VenueReviewService : IVenueReviewService
             var end = last?.EndTime;
             var dateLabel = start.HasValue
                 ? start.Value.ToString("dd/MM/yyyy")
-                : created.ToString("dd/MM/yyyy");
+                : (b.CreatedAt ?? now).ToString("dd/MM/yyyy");
             var timeLabel = start.HasValue && end.HasValue
                 ? $"{start.Value:HH:mm} – {end.Value:HH:mm}"
                 : "";
@@ -91,7 +91,7 @@ public class VenueReviewService : IVenueReviewService
             list.Add(new EligibleBookingReviewDto
             {
                 BookingId = b.Id,
-                CreatedAt = created,
+                CreatedAt = b.CreatedAt ?? now,
                 ReviewWindowOpen = inWindow,
                 ExistingReviewId = existing?.Id,
                 CanSubmitNew = inWindow && existing == null,
@@ -119,9 +119,9 @@ public class VenueReviewService : IVenueReviewService
             throw new InvalidOperationException("Bạn không có quyền đánh giá cho đặt sân này.");
         }
 
-        if (!string.Equals(booking.Status, "CONFIRMED", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(booking.Status, "COMPLETED", StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException("Chỉ có thể đánh giá khi lịch đặt đã được xác nhận (CONFIRMED).");
+            throw new InvalidOperationException("Chỉ có thể đánh giá khi lịch đặt đã hoàn thành (COMPLETED).");
         }
 
         ThrowIfOutsideReviewWindow(booking);
@@ -213,10 +213,14 @@ public class VenueReviewService : IVenueReviewService
 
     private static void ThrowIfOutsideReviewWindow(Booking booking)
     {
-        var createdAt = booking.CreatedAt ?? DateTime.UtcNow;
-        if (DateTime.UtcNow > createdAt.AddDays(3))
+        var completedAt = booking.CompletedAt;
+        if (!completedAt.HasValue)
         {
-            throw new InvalidOperationException("Bạn chỉ có thể đánh giá hoặc sửa đánh giá trong vòng 3 ngày sau khi đặt sân.");
+            throw new InvalidOperationException("Đơn đặt sân chưa hoàn thành, bạn chưa thể đánh giá.");
+        }
+        if (DateTime.UtcNow > completedAt.Value.AddDays(3))
+        {
+            throw new InvalidOperationException("Bạn chỉ có thể đánh giá hoặc sửa đánh giá trong vòng 3 ngày sau khi hoàn thành lịch chơi.");
         }
     }
 

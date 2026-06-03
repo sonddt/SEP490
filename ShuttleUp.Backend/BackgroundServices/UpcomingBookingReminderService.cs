@@ -59,8 +59,12 @@ public sealed class UpcomingBookingReminderService : BackgroundService
     private async Task SendUpcomingRemindersAsync(CancellationToken ct)
     {
         var upcomingHours = _configuration.GetValue("ReminderSettings:UpcomingHours", 2);
-        var now = DateTime.UtcNow;
-        var horizon = now.AddHours(upcomingHours);
+        var nowUtc = DateTime.UtcNow;
+        var vnTimeZone = TimeZoneInfo.FindSystemTimeZoneById(OperatingSystem.IsWindows()
+            ? "SE Asia Standard Time"
+            : "Asia/Ho_Chi_Minh");
+        var nowVn = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, vnTimeZone);
+        var horizonVn = nowVn.AddHours(upcomingHours);
 
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ShuttleUpDbContext>();
@@ -77,8 +81,8 @@ public sealed class UpcomingBookingReminderService : BackgroundService
                 bi.Booking != null
                 && bi.Booking.Status == "CONFIRMED"
                 && bi.StartTime != null
-                && bi.StartTime > now
-                && bi.StartTime <= horizon
+                && bi.StartTime > nowVn
+                && bi.StartTime <= horizonVn
                 && !bi.IsUpcomingReminderSent)
             .ToListAsync(ct);
 

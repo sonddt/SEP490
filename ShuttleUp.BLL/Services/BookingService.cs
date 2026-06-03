@@ -132,8 +132,8 @@ public class BookingService : IBookingService
         if (booking == null)
             throw new KeyNotFoundException("Không tìm thấy đơn đặt.");
 
-        if (booking.Status is "CANCELLED" or "PENDING_RECONCILIATION" or "PENDING_REFUND" or "REFUNDED")
-            throw new ArgumentException("Đơn đã bị huỷ hoặc đang xử lý hoàn tiền.");
+        if (booking.Status is "CANCELLED" or "COMPLETED" or "PENDING_RECONCILIATION" or "PENDING_REFUND" or "REFUNDED")
+            throw new ArgumentException("Đơn đã bị huỷ, đã hoàn thành, hoặc đang xử lý hoàn tiền.");
         if (booking.Status is not ("PENDING" or "CONFIRMED"))
             throw new ArgumentException("Không thể huỷ đơn ở trạng thái này.");
 
@@ -364,10 +364,11 @@ public class BookingService : IBookingService
         return rows.Select(b =>
         {
             refunds.TryGetValue(b.Id, out var refund);
-            var created = b.CreatedAt ?? nowUtc;
-            var windowEnd = created.AddDays(3);
-            var inWindow = nowUtc <= windowEnd;
-            var isConfirmed = string.Equals(b.Status, "CONFIRMED", StringComparison.OrdinalIgnoreCase);
+            var isCompleted = string.Equals(b.Status, "COMPLETED", StringComparison.OrdinalIgnoreCase);
+            // Review window: 3 ngày kể từ khi đơn chuyển sang COMPLETED
+            var completedAt = b.CompletedAt;
+            var windowEnd = completedAt.HasValue ? completedAt.Value.AddDays(3) : (DateTime?)null;
+            var inWindow = isCompleted && windowEnd.HasValue && nowUtc <= windowEnd.Value;
             var venueReviewId = reviewByBookingId.TryGetValue(b.Id, out var vrId) ? vrId : (Guid?)null;
             var hasProof = b.Payments.Any(p =>
                 p.GatewayReference != null && p.GatewayReference.StartsWith("https", StringComparison.OrdinalIgnoreCase));
@@ -386,8 +387,7 @@ public class BookingService : IBookingService
                 VenueName = b.Venue?.Name,
                 VenueAddress = b.Venue?.Address,
                 VenueId = b.VenueId,
-                VenueImageUrl = b.Venue?.Files?.Where(f => f.FileName != null && f.FileName.Contains("mac_dinh")).Select(f => f.FileUrl).FirstOrDefault()
-                               ?? b.Venue?.Files?.OrderByDescending(f => f.CreatedAt).Select(f => f.FileUrl).FirstOrDefault(),
+                VenueImageUrl = b.Venue?.Files?.OrderBy(f => f.CreatedAt).Select(f => f.FileUrl).FirstOrDefault(),
                 LastPaymentMethod = b.Payments.OrderByDescending(p => p.CreatedAt).Select(p => p.Method).FirstOrDefault(),
                 PaymentProofUrl = b.Payments
                     .OrderByDescending(p => p.CreatedAt)
@@ -416,8 +416,8 @@ public class BookingService : IBookingService
                 RefundRejectionReason = refund?.RejectionReason,
                 VenueReviewId = venueReviewId,
                 ReviewWindowEndsAt = windowEnd,
-                CanReview = isConfirmed && inWindow && venueReviewId == null,
-                CanEditReview = isConfirmed && inWindow && venueReviewId != null,
+                CanReview = isCompleted && inWindow && venueReviewId == null,
+                CanEditReview = isCompleted && inWindow && venueReviewId != null,
             };
         }).ToList();
     }

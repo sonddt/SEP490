@@ -109,6 +109,7 @@ namespace ShuttleUp.Backend
             builder.Services.AddHostedService<ExpiredHoldCleanupService>();
             builder.Services.AddHostedService<UpcomingBookingReminderService>();
             builder.Services.AddHostedService<SoftBanFinalizationService>();
+            builder.Services.AddHostedService<BookingCompletionService>();
             builder.Services.AddMemoryCache();
             builder.Services.AddScoped<INotificationDispatchService, NotificationDispatchService>();
             builder.Services.AddScoped<ISignalRNotifier, NotificationHubNotifier>();

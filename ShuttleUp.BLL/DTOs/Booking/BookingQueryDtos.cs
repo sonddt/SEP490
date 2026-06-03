@@ -29,7 +29,7 @@ public class MyBookingListItemDto
     public string? RefundManagerEvidenceUrl { get; set; }
     public string? RefundRejectionReason { get; set; }
     public Guid? VenueReviewId { get; set; }
-    public DateTime ReviewWindowEndsAt { get; set; }
+    public DateTime? ReviewWindowEndsAt { get; set; }
     public bool CanReview { get; set; }
     public bool CanEditReview { get; set; }
 }
