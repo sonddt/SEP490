@@ -101,7 +101,11 @@ public partial class BookingRepository : Repository<Booking>, IBookingRepository
     private IQueryable<Booking> BuildVenueQuery(List<Guid> venueIds, string? status, DateTime? sinceUtc, DateTime? untilUtc, string? search)
     {
         var q = _dbSet.Where(b => b.VenueId.HasValue && venueIds.Contains(b.VenueId.Value))
-            .Include(b => b.User).Include(b => b.Venue).Include(b => b.BookingItems).ThenInclude(bi => bi.Court).AsNoTracking();
+            .Include(b => b.User).ThenInclude(u => u!.AvatarFile)
+            .Include(b => b.Venue)
+            .Include(b => b.Payments)
+            .Include(b => b.BookingItems).ThenInclude(bi => bi.Court).ThenInclude(c => c!.Files)
+            .AsNoTracking();
         if (!string.IsNullOrWhiteSpace(status) && status != "ALL") q = q.Where(b => b.Status == status.Trim().ToUpperInvariant());
         if (sinceUtc.HasValue) q = q.Where(b => b.CreatedAt.HasValue && b.CreatedAt.Value >= sinceUtc.Value);
         if (untilUtc.HasValue) q = q.Where(b => b.CreatedAt.HasValue && b.CreatedAt.Value < untilUtc.Value);
