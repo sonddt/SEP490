@@ -12,6 +12,9 @@ public interface IViolationReportRepository : IRepository<ViolationReport>
     Task AddLogAsync(ViolationReportLog log);
     Task<List<ViolationReportLog>> GetLogsAsync(Guid reportId);
 
+    Task<int> CountPendingReportsAsync();
+    Task<int> CountPendingComplaintsAsync();
+
     // Target name resolution
     Task<string?> ResolveTargetNameAsync(string? type, Guid? id);
     Task<Dictionary<(string, Guid), string?>> ResolveTargetNamesAsync(List<(string type, Guid id)> targets);

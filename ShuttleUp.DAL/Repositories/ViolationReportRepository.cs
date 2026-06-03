@@ -20,9 +20,21 @@ public class ViolationReportRepository : Repository<ViolationReport>, IViolation
         var query = _dbSet.AsNoTracking().Include(r => r.ReporterUser).Include(r => r.AdminUser).Include(r => r.Files).AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(targetType) && targetType.Trim().ToUpperInvariant() != "ALL")
-            query = query.Where(r => r.TargetType == targetType.Trim().ToUpperInvariant());
+        {
+            var type = targetType.Trim().ToUpperInvariant();
+            if (type == "REPORT_ONLY")
+                query = query.Where(r => r.TargetType != "BOOKING");
+            else
+                query = query.Where(r => r.TargetType == type);
+        }
         if (!string.IsNullOrWhiteSpace(status) && status.Trim().ToUpperInvariant() != "ALL")
-            query = query.Where(r => r.Status == status.Trim().ToUpperInvariant());
+        {
+            var st = status.Trim().ToUpperInvariant();
+            if (st == "PENDING_GROUP")
+                query = query.Where(r => r.Status == "PENDING" || r.Status == "REVIEWING" || r.Status == "REFUND_PENDING");
+            else
+                query = query.Where(r => r.Status == st);
+        }
         if (overdueRefund)
             query = query.Where(r => r.Status == "REFUND_PENDING" && r.RefundDeadlineAt != null && r.RefundDeadlineAt < now);
         if (!string.IsNullOrWhiteSpace(search))
@@ -75,6 +87,12 @@ public class ViolationReportRepository : Repository<ViolationReport>, IViolation
     public async Task<List<ViolationReportLog>> GetLogsAsync(Guid reportId)
         => await _context.ViolationReportLogs.AsNoTracking().Include(l => l.AdminUser)
             .Where(l => l.ReportId == reportId).OrderByDescending(l => l.CreatedAt).ToListAsync();
+
+    public async Task<int> CountPendingReportsAsync()
+        => await _dbSet.CountAsync(r => r.TargetType != "BOOKING" && (r.Status == "PENDING" || r.Status == "REVIEWING" || r.Status == "REFUND_PENDING"));
+
+    public async Task<int> CountPendingComplaintsAsync()
+        => await _dbSet.CountAsync(r => r.TargetType == "BOOKING" && (r.Status == "PENDING" || r.Status == "REVIEWING" || r.Status == "REFUND_PENDING"));
 
     public async Task<string?> ResolveTargetNameAsync(string? targetType, Guid? targetId)
     {

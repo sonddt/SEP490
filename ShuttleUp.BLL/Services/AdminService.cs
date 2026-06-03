@@ -17,24 +17,24 @@ public class AdminService : IAdminService
     private readonly IManagerProfileRepository _profileRepo;
     private readonly IRoleRepository _roleRepo;
     private readonly IFileRepository _fileRepo;
+    private readonly IViolationReportRepository _reportRepo;
 
     private static readonly string[] PaidStatuses = ["CONFIRMED", "COMPLETED"];
 
     public AdminService(IUserRepository userRepo, IVenueRepository venueRepo, IBookingRepository bookingRepo,
         IRefundRepository refundRepo, IManagerProfileRequestRepository requestRepo, IManagerProfileRepository profileRepo,
-        IRoleRepository roleRepo, IFileRepository fileRepo)
+        IRoleRepository roleRepo, IFileRepository fileRepo, IViolationReportRepository reportRepo)
     {
-        _userRepo = userRepo; _venueRepo = venueRepo; _bookingRepo = bookingRepo; _refundRepo = refundRepo;
-        _requestRepo = requestRepo; _profileRepo = profileRepo; _roleRepo = roleRepo; _fileRepo = fileRepo;
+        _userRepo = userRepo; _venueRepo = venueRepo; _bookingRepo = bookingRepo;
+        _refundRepo = refundRepo; _requestRepo = requestRepo; _profileRepo = profileRepo;
+        _roleRepo = roleRepo; _fileRepo = fileRepo; _reportRepo = reportRepo;
     }
 
     public async Task<object> GetDashboardStatsAsync()
     {
         var totalUsers = await _userRepo.CountAllAsync();
-        var activeVenues = await _venueRepo.CountActiveAsync();
-        var todayStart = DateTime.UtcNow.Date;
-        var todayBookings = await _bookingRepo.CountAllAsync(todayStart);
-        var pendingRequests = await _requestRepo.CountPendingAsync();
+        var pendingReports = await _reportRepo.CountPendingReportsAsync();
+        var pendingComplaints = await _reportRepo.CountPendingComplaintsAsync();
 
         var recentUsers = (await _userRepo.GetRecentUsersAsync(5)).Select(u => new
         {
@@ -48,7 +48,7 @@ public class AdminService : IAdminService
             OwnerName = r.User?.FullName, OwnerEmail = r.User?.Email
         }).ToList();
 
-        return new { totalUsers, activeVenues, todayBookings, pendingRequests, recentUsers, pendingVenues };
+        return new { totalUsers, pendingReports, pendingComplaints, recentUsers, pendingVenues };
     }
 
     public async Task<object> GetAccountsPagedAsync(string? search, string? role, string? status, int page, int pageSize)
@@ -237,17 +237,19 @@ public class AdminService : IAdminService
 
         var activeVenuesCount = await _venueRepo.CountActiveAsync();
         var penaltyRevenue = await _refundRepo.SumAllPenaltyAsync(rangeStart, rangeEnd);
+        var venuePenalties = await _refundRepo.GetPenaltyByVenuesAsync(rangeStart, rangeEnd);
         var venues = await _venueRepo.GetActiveWithBookingStatsAsync(rangeStart, rangeEnd, DateTime.UtcNow, DateTime.UtcNow, DateTime.UtcNow);
         
         var venuesStats = venues.Select(v =>
         {
             var bookings = v.Bookings ?? (ICollection<DAL.Models.Booking>)new List<DAL.Models.Booking>();
             var revenueRaw = bookings.Where(b => PaidStatuses.Contains(b.Status) && (rangeStart == null || b.CreatedAt >= rangeStart) && (rangeEnd == null || b.CreatedAt < rangeEnd)).Sum(b => b.FinalAmount ?? 0);
+            var venuePenalty = venuePenalties.TryGetValue(v.Id, out var p) ? p : 0m;
             var filteredBookingsCount = bookings.Count(b => PaidStatuses.Contains(b.Status) && (rangeStart == null || b.CreatedAt >= rangeStart) && (rangeEnd == null || b.CreatedAt < rangeEnd));
-            return new { id = v.Id, venue = v.Name, owner = v.OwnerUser?.FullName ?? "N/A", totalBookings = filteredBookingsCount, revenue = revenueRaw };
+            return new { id = v.Id, venue = v.Name, owner = v.OwnerUser?.FullName ?? "N/A", totalBookings = filteredBookingsCount, revenue = revenueRaw + venuePenalty };
         }).OrderByDescending(v => v.revenue).ToList();
 
-        var dynamicTotalRevenue = venuesStats.Sum(v => v.revenue) + penaltyRevenue;
+        var dynamicTotalRevenue = venuesStats.Sum(v => v.revenue);
         var dynamicTotalBookings = venuesStats.Sum(v => v.totalBookings);
 
         return new { summary = new { totalRevenue = $"{dynamicTotalRevenue:N0} ₫", totalBookings = dynamicTotalBookings, activeVenues = activeVenuesCount, penaltyRevenue }, venuesData = venuesStats };

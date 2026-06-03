@@ -11,6 +11,8 @@ public interface IRefundRepository : IRepository<RefundRequest>
 
     /// <summary>Tổng tiền phạt giữ lại (PaidAmount − RequestedAmount) của các RefundRequest COMPLETED thuộc venueIds, tính theo CreatedAt của Booking gốc.</summary>
     Task<decimal> SumPenaltyByVenueIdsAsync(List<Guid> venueIds, DateTime? sinceUtc = null, CancellationToken ct = default);
+    
+    Task<Dictionary<Guid, decimal>> GetPenaltyByVenuesAsync(DateTime? sinceUtc = null, DateTime? untilUtc = null, CancellationToken ct = default);
 
     /// <summary>Tổng tiền phạt giữ lại trên toàn hệ thống (dành cho Admin).</summary>
     Task<decimal> SumAllPenaltyAsync(DateTime? sinceUtc = null, DateTime? untilUtc = null, CancellationToken ct = default);

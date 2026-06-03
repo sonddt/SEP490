@@ -13,6 +13,7 @@ export default function AdminRevenueStats() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [searchText, setSearchText] = useState('');
+  const [sortMode, setSortMode] = useState('REV_DESC');
   const [page, setPage] = useState(1);
 
   const fetchStats = useCallback(async () => {
@@ -37,7 +38,7 @@ export default function AdminRevenueStats() {
   }, [fetchStats]);
 
   // Reset page when filters change
-  useEffect(() => { setPage(1); }, [startDate, endDate, searchText]);
+  useEffect(() => { setPage(1); }, [startDate, endDate, searchText, sortMode]);
 
   // Client-side text search filter
   const filteredVenues = useMemo(() => {
@@ -59,16 +60,26 @@ export default function AdminRevenueStats() {
     return filteredVenues.reduce((sum, v) => sum + (v.totalBookings || 0), 0);
   }, [filteredVenues]);
 
+  // Client-side sorting
+  const sortedVenues = useMemo(() => {
+    let result = [...filteredVenues];
+    if (sortMode === 'REV_DESC') result.sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
+    else if (sortMode === 'REV_ASC') result.sort((a, b) => (a.revenue || 0) - (b.revenue || 0));
+    else if (sortMode === 'BOOK_DESC') result.sort((a, b) => (b.totalBookings || 0) - (a.totalBookings || 0));
+    else if (sortMode === 'BOOK_ASC') result.sort((a, b) => (a.totalBookings || 0) - (b.totalBookings || 0));
+    return result;
+  }, [filteredVenues, sortMode]);
+
   // Client-side pagination
-  const totalPages = Math.max(1, Math.ceil(filteredVenues.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(sortedVenues.length / PAGE_SIZE));
   const displayedVenues = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
-    return filteredVenues.slice(start, start + PAGE_SIZE);
-  }, [filteredVenues, page]);
+    return sortedVenues.slice(start, start + PAGE_SIZE);
+  }, [sortedVenues, page]);
 
   const handleExport = () => {
     try {
-      const rows = filteredVenues.map((v, idx) => ({
+      const rows = sortedVenues.map((v, idx) => ({
         'STT': idx + 1,
         'Sân': v.venue,
         'Chủ sân': v.owner,
@@ -179,8 +190,18 @@ export default function AdminRevenueStats() {
               )}
             </div>
 
-            {(startDate || endDate || searchText) && (
-              <button className="btn btn-sm btn-outline-secondary" style={{ height: '38px', borderRadius: '8px' }} onClick={() => { setStartDate(''); setEndDate(''); setSearchText(''); }}>
+            {/* Sort Dropdown */}
+            <div style={{ width: 190 }}>
+              <select className="form-select" style={{ height: '38px', borderRadius: '8px' }} value={sortMode} onChange={e => setSortMode(e.target.value)}>
+                <option value="REV_DESC">Doanh thu (Cao - Thấp)</option>
+                <option value="REV_ASC">Doanh thu (Thấp - Cao)</option>
+                <option value="BOOK_DESC">Lượt đặt (Cao - Thấp)</option>
+                <option value="BOOK_ASC">Lượt đặt (Thấp - Cao)</option>
+              </select>
+            </div>
+
+            {(startDate || endDate || searchText || sortMode !== 'REV_DESC') && (
+              <button className="btn btn-sm btn-outline-secondary" style={{ height: '38px', borderRadius: '8px' }} onClick={() => { setStartDate(''); setEndDate(''); setSearchText(''); setSortMode('REV_DESC'); }}>
                 <i className="feather-refresh-cw" style={{ fontSize: 13 }} /> Xóa lọc
               </button>
             )}

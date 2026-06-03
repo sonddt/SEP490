@@ -76,6 +76,25 @@ public class RefundRepository : Repository<RefundRequest>, IRefundRepository
         return await q.SumAsync(r => (r.PaidAmount ?? 0) - (r.RequestedAmount ?? 0), ct);
     }
 
+    public async Task<Dictionary<Guid, decimal>> GetPenaltyByVenuesAsync(DateTime? sinceUtc = null, DateTime? untilUtc = null, CancellationToken ct = default)
+    {
+        var q = _dbSet.AsNoTracking()
+            .Where(r => r.Status == "COMPLETED"
+                && r.Booking != null && r.Booking.VenueId != null
+                && r.PaidAmount != null && r.RequestedAmount != null
+                && r.PaidAmount > r.RequestedAmount);
+
+        if (sinceUtc.HasValue)
+            q = q.Where(r => r.Booking!.CreatedAt >= sinceUtc.Value);
+        if (untilUtc.HasValue)
+            q = q.Where(r => r.Booking!.CreatedAt < untilUtc.Value);
+
+        var data = await q.Select(r => new { r.Booking!.VenueId, Penalty = (r.PaidAmount ?? 0) - (r.RequestedAmount ?? 0) }).ToListAsync(ct);
+        
+        return data.GroupBy(x => x.VenueId!.Value)
+                   .ToDictionary(g => g.Key, g => g.Sum(x => x.Penalty));
+    }
+
     public async Task<decimal> SumAllPenaltyAsync(DateTime? sinceUtc = null, DateTime? untilUtc = null, CancellationToken ct = default)
     {
         var q = _dbSet.AsNoTracking()

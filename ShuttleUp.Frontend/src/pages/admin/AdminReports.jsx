@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
 import { notifyError, notifySuccess } from '../../hooks/useNotification';
 import ReportHistoryModal from './ReportHistoryModal';
 
 const TYPE_OPTIONS = [
   { value: 'ALL', label: 'Tất cả loại' },
+  { value: 'REPORT_ONLY', label: 'Tất cả báo cáo' },
   { value: 'USER', label: 'Người dùng' },
   { value: 'VENUE', label: 'Cụm sân' },
   { value: 'MATCHING_POST', label: 'Bài ghép sân' },
@@ -13,6 +15,7 @@ const TYPE_OPTIONS = [
 
 const STATUS_OPTIONS = [
   { value: 'ALL', label: 'Tất cả trạng thái' },
+  { value: 'PENDING_GROUP', label: 'Chờ xử lý (nhóm)' },
   { value: 'PENDING', label: 'Chờ xử lý' },
   { value: 'REVIEWING', label: 'Đang xem' },
   { value: 'REFUND_PENDING', label: 'Chờ hoàn tiền' },
@@ -59,8 +62,11 @@ const ACTION_OPTIONS = [
 ];
 
 export default function AdminReports() {
-  const [type, setType] = useState('ALL');
-  const [status, setStatus] = useState('PENDING');
+  const location = useLocation();
+  const initParams = new URLSearchParams(location.search);
+
+  const [type, setType] = useState(initParams.get('type') || 'ALL');
+  const [status, setStatus] = useState(initParams.get('status') || 'PENDING');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
 

@@ -14,10 +14,9 @@ function fmtDate(iso) {
 }
 
 const STAT_CONFIG = [
-  { key: 'totalUsers',      label: 'Tổng người dùng',    icon: 'feather-users',       theme: 'indigo' },
-  { key: 'activeVenues',    label: 'Tổng sân hoạt động', icon: 'feather-map-pin',     theme: 'green'  },
-  { key: 'todayBookings',   label: 'Đặt sân hôm nay',    icon: 'feather-calendar',    theme: 'amber'  },
-  { key: 'pendingRequests', label: 'Yêu cầu chờ duyệt', icon: 'feather-alert-circle', theme: 'red'    },
+  { key: 'totalUsers',      label: 'Tổng người dùng',    icon: 'feather-users',       theme: 'indigo', link: '/admin/accounts' },
+  { key: 'pendingReports',  label: 'Báo cáo hiện có',    icon: 'feather-flag',        theme: 'amber', link: '/admin/reports?type=REPORT_ONLY&status=PENDING_GROUP' },
+  { key: 'pendingComplaints', label: 'Khiếu nại hiện có', icon: 'feather-alert-triangle', theme: 'red', link: '/admin/reports?type=BOOKING&status=PENDING_GROUP' },
 ];
 
 export default function AdminDashboard() {
@@ -54,7 +53,7 @@ export default function AdminDashboard() {
       {/* Stats Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 20, marginBottom: 28 }}>
         {loading
-          ? [0,1,2,3].map(i => (
+          ? [0,1,2].map(i => (
               <div key={i} className="adm-stat-card">
                 <div style={{ width: 56, height: 56, borderRadius: 14, background: '#f1f5f9' }} />
                 <div style={{ flex: 1 }}>
@@ -62,17 +61,24 @@ export default function AdminDashboard() {
                 </div>
               </div>
             ))
-          : STAT_CONFIG.map((s) => (
-              <div key={s.key} className={`adm-stat-card adm-stat-card--${s.theme}`}>
-                <div className="adm-stat-card__icon">
-                  <i className={s.icon} />
-                </div>
-                <div>
-                  <div className="adm-stat-card__label">{s.label}</div>
-                  <div className="adm-stat-card__value">{(data?.[s.key] ?? 0).toLocaleString()}</div>
-                </div>
-              </div>
-            ))
+            : STAT_CONFIG.map((s) => {
+                const card = (
+                  <div key={s.key} className={`adm-stat-card adm-stat-card--${s.theme}`}>
+                    <div className="adm-stat-card__icon">
+                      <i className={s.icon} />
+                    </div>
+                    <div>
+                      <div className="adm-stat-card__label">{s.label}</div>
+                      <div className="adm-stat-card__value">{(data?.[s.key] ?? 0).toLocaleString()}</div>
+                    </div>
+                  </div>
+                );
+                return s.link ? (
+                  <Link to={s.link} key={s.key} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    {card}
+                  </Link>
+                ) : card;
+              })
         }
       </div>
 
