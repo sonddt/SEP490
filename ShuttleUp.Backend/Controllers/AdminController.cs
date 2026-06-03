@@ -207,10 +207,11 @@ public class AdminController : ControllerBase
         [FromQuery] string? startDate,
         [FromQuery] string? endDate,
         [FromQuery] string? search,
+        [FromQuery] string? bookingType,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        var result = await _adminService.GetBookingStatsAsync(status, startDate, endDate, search, page, pageSize);
+        var result = await _adminService.GetBookingStatsAsync(status, startDate, endDate, search, bookingType, page, pageSize);
         return Ok(result);
     }
 

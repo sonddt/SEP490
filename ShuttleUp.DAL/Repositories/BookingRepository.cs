@@ -78,17 +78,17 @@ public partial class BookingRepository : Repository<Booking>, IBookingRepository
         return await q.SumAsync(b => b.FinalAmount ?? 0);
     }
 
-    public async Task<List<Booking>> GetAllPagedAsync(string? status, DateTime? sinceUtc, DateTime? untilUtc, string? search, int skip, int take)
+    public async Task<List<Booking>> GetAllPagedAsync(string? status, DateTime? sinceUtc, DateTime? untilUtc, string? search, string? bookingType, int skip, int take)
     {
-        var q = BuildAllQuery(status, sinceUtc, untilUtc, search);
+        var q = BuildAllQuery(status, sinceUtc, untilUtc, search, bookingType);
         return await q.OrderByDescending(b => b.CreatedAt).Skip(skip).Take(take).ToListAsync();
     }
 
-    public async Task<int> CountAllFilteredAsync(string? status, DateTime? sinceUtc, DateTime? untilUtc, string? search)
-        => await BuildAllQuery(status, sinceUtc, untilUtc, search).CountAsync();
+    public async Task<int> CountAllFilteredAsync(string? status, DateTime? sinceUtc, DateTime? untilUtc, string? search, string? bookingType)
+        => await BuildAllQuery(status, sinceUtc, untilUtc, search, bookingType).CountAsync();
 
-    public async Task<int> CountAllByStatusAsync(string targetStatus, string? filterStatus, DateTime? sinceUtc, DateTime? untilUtc, string? search)
-        => await BuildAllQuery(filterStatus, sinceUtc, untilUtc, search).CountAsync(b => b.Status == targetStatus);
+    public async Task<int> CountAllByStatusAsync(string targetStatus, string? filterStatus, DateTime? sinceUtc, DateTime? untilUtc, string? search, string? bookingType)
+        => await BuildAllQuery(filterStatus, sinceUtc, untilUtc, search, bookingType).CountAsync(b => b.Status == targetStatus);
 
     public async Task<List<BookingItem>> GetBookingItemsByVenuesInMonthAsync(List<Guid> venueIds, DateTime sinceUtc)
         => await _context.BookingItems
@@ -113,9 +113,9 @@ public partial class BookingRepository : Repository<Booking>, IBookingRepository
         return q;
     }
 
-    private IQueryable<Booking> BuildAllQuery(string? status, DateTime? sinceUtc, DateTime? untilUtc, string? search)
+    private IQueryable<Booking> BuildAllQuery(string? status, DateTime? sinceUtc, DateTime? untilUtc, string? search, string? bookingType)
     {
-        var q = _dbSet.AsNoTracking().Include(b => b.User).Include(b => b.Venue).Include(b => b.BookingItems).ThenInclude(bi => bi.Court).AsQueryable();
+        var q = _dbSet.AsNoTracking().AsSplitQuery().Include(b => b.Venue).Include(b => b.User)!.ThenInclude(u => u!.AvatarFile).Include(b => b.BookingItems).ThenInclude(bi => bi.Court)!.ThenInclude(c => c!.Files).Include(b => b.Payments).AsQueryable();
         if (!string.IsNullOrWhiteSpace(status) && status != "All") q = q.Where(b => b.Status == status.Trim().ToUpperInvariant());
         if (sinceUtc.HasValue) q = q.Where(b => b.CreatedAt.HasValue && b.CreatedAt.Value >= sinceUtc.Value);
         if (untilUtc.HasValue) q = q.Where(b => b.CreatedAt.HasValue && b.CreatedAt.Value < untilUtc.Value);
@@ -123,6 +123,11 @@ public partial class BookingRepository : Repository<Booking>, IBookingRepository
         {
             var kw = search.Trim();
             q = q.Where(b => (b.User != null && b.User.FullName.Contains(kw)) || (b.Venue != null && b.Venue.Name.Contains(kw)));
+        }
+        if (!string.IsNullOrWhiteSpace(bookingType))
+        {
+            if (bookingType == "LONG_TERM") q = q.Where(b => b.SeriesId != null);
+            else if (bookingType == "SINGLE") q = q.Where(b => b.SeriesId == null);
         }
         return q;
     }

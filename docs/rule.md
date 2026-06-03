@@ -7,24 +7,18 @@
 - Thông tin phải được ghi thật ngắn gọn, rành mạch và có dấu mốc thời gian.
 - Điều này để đảm bảo ngữ cảnh của toàn bộ dự án luôn được bảo lưu vững chắc khi người dùng mở phiên làm việc mới, loại bỏ các nỗ lực đi lại lối mòn hoặc lặp lại công việc đã làm rồi.
 
-## Quy tắc 2: Clean code & Tích cực (UX Copywriting)
-- Mọi message hiển thị ra màn hình cho người dùng cuối (Player, Manager) không được dùng từ gay gắt như "Lỗi", "Thất bại". Luôn dùng ngôn từ hướng dẫn linh hoạt, thân thiện, mang tính hành động (VD: "Oops...", "Bạn vui lòng điền...", "Tuyệt vời...", các số lượng dùng số "3" thay vì chữ "ba").
-- Ưu tiên dùng `Inline Field Validation` (hiển thị fieldErrors đỏ ngay dưới từng ô input) thay cho một alert to tướng trên cùng.
+## Quy tắc 2: `Database_Realistic.txt` là nguồn sự thật duy nhất cho Schema DB
+- Bất kỳ khi nào có thay đổi schema DB (thêm bảng, thêm cột, xóa cột, đổi kiểu dữ liệu...), **BẮT BUỘC** phải cập nhật file `Database_Realistic.txt` ngay lập tức, trong cùng một phiên làm việc.
+- File `Database_Realistic.txt` phải luôn ở trạng thái có thể **copy toàn bộ và chạy một lần duy nhất** để tạo lại toàn bộ database từ đầu (idempotent: DROP IF EXISTS → CREATE → INSERT seed data).
+- Không được tách riêng migration file chỉ cho một tính năng mà bỏ qua chỉnh sửa `Database_Realistic.txt` — cả hai phải đồng bộ.
+- Ghi chú cho Assistant: Sau khi sửa schema C# Entity hay `DbContext`, hãy kiểm tra ngay `Database_Realistic.txt` và cập nhật nếu chưa đồng bộ.
 
-*(Cập nhật thêm khi dự án phát triển...)*
-
-## Quy tắc 3: `Database.txt` là nguồn sự thật duy nhất cho Schema DB
-- Bất kỳ khi nào có thay đổi schema DB (thêm bảng, thêm cột, xóa cột, đổi kiểu dữ liệu...), **BẮT BUỘC** phải cập nhật file `Database.txt` ngay lập tức, trong cùng một phiên làm việc.
-- File `Database.txt` phải luôn ở trạng thái có thể **copy toàn bộ và chạy một lần duy nhất** để tạo lại toàn bộ database từ đầu (idempotent: DROP IF EXISTS → CREATE → INSERT seed data).
-- Không được tách riêng migration file chỉ cho một tính năng mà bỏ qua chỉnh sửa `Database.txt` — cả hai phải đồng bộ.
-- Ghi chú cho Assistant: Sau khi sửa schema C# Entity hay `DbContext`, hãy kiểm tra ngay `Database.txt` và cập nhật nếu chưa đồng bộ.
-
-## Quy tắc 4: Luôn lập kế hoạch (Plan) và đợi phê duyệt
+## Quy tắc 3: Luôn lập kế hoạch (Plan) và đợi phê duyệt
 - Mọi Assistant **BẮT BUỘC** phải trình bày kế hoạch triển khai (Implementation Plan) chi tiết trước khi thực hiện bất kỳ thay đổi nào về mã nguồn.
 - Chỉ được phép bắt đầu viết code sau khi nhận được sự xác nhận/chấp thuận từ phía người dùng.
 - Kế hoạch cần nêu rõ: Mục tiêu, các file sẽ thay đổi, logic xử lý và cách kiểm tra (Verification).
 
-## Quy tắc 5: Tuân thủ mô hình 3 lớp (3-Tier Architecture) & Quản lý Helpers
+## Quy tắc 4: Tuân thủ mô hình 3 lớp (3-Tier Architecture) & Quản lý Helpers
 - **Backend (Controllers)**: KHÔNG BAO GIỜ inject `ShuttleUpDbContext`. Chỉ inject các `Service`. Nhiệm vụ chính là nhận/trả request, validate input sơ bộ.
 - **BLL (Services)**: KHÔNG BAO GIỜ inject `ShuttleUpDbContext`. Chỉ inject các `Repository`. Chứa logic nghiệp vụ và map dữ liệu sang DTOs trước khi trả về Controller.
 - **DAL (Repositories)**: Là nơi DUY NHẤT inject `ShuttleUpDbContext` để thao tác DB. Không chứa business logic.
@@ -32,7 +26,7 @@
 - **Constants**: Không gõ cứng string/số (hard-code). Phải khai báo trong `Constants` hoặc `Enum`.
 - **DTOs**: Luôn dùng DTO để truyền dữ liệu giữa các lớp, không trả trực tiếp Entity ra ngoài API.
 
-## Quy tắc 6: Phân định rõ ràng Service và Helper
+## Quy tắc 5: Phân định rõ ràng Service và Helper
 - **Service** (thư mục `Services`):
   - Chứa business logic, có thao tác với database thông qua Repository.
   - Được inject `IXxxRepository` và các `IXxxService` khác.

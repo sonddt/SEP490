@@ -2,33 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import axiosClient from '../../api/axiosClient';
 import ShuttleDateField from '../../components/ui/ShuttleDateField';
-
-/** Group duplicate court names: "Sân 1, Sân 1, Sân 2" → [{name:'Sân 1',count:2},{name:'Sân 2',count:1}] */
-function formatCourtNames(courtStr) {
-  if (!courtStr) return null;
-  const names = courtStr.split(',').map(s => s.trim()).filter(Boolean);
-  const map = new Map();
-  names.forEach(n => map.set(n, (map.get(n) || 0) + 1));
-  return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
-}
-
-const STATUS_MAP = {
-  CONFIRMED: { label: 'Xác nhận',  cls: 'bg-success' },
-  COMPLETED: { label: 'Hoàn thành', cls: 'bg-success' },
-  PENDING:   { label: 'Chờ xử lý', cls: 'bg-warning text-dark' },
-  CANCELLED: { label: 'Đã huỷ',   cls: 'bg-danger'  },
-  PENDING_REFUND: { label: 'Chờ hoàn tiền', cls: 'bg-warning text-dark' },
-  REFUNDED: { label: 'Đã hoàn tiền', cls: 'bg-info text-white' },
-  APPROVED: { label: 'Seed data cũ', cls: 'bg-secondary' },
-};
-
-function fmtTime(dt) {
-  if (!dt) return '';
-  return new Date(dt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
-}
+import { BOOKING_STATUSES } from '../../data/bookingsMock';
+import { mapManagerBookingFromApi } from '../manager/ManagerBookings';
+import BookingDetailModal from '../../components/manager/BookingDetailModal';
 
 export default function AdminBookingsStats() {
   const [filterStatus, setFilterStatus] = useState('All');
+  const [filterType,   setFilterType]   = useState('All');
   const [startDate,    setStartDate]    = useState('');
   const [endDate,      setEndDate]      = useState('');
   const [searchText,   setSearchText]   = useState('');
@@ -37,51 +17,69 @@ export default function AdminBookingsStats() {
   const [page,    setPage]    = useState(1);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(null);
+  const [detailModal, setDetailModal] = useState(null);
 
   const fetchStats = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const params = new URLSearchParams({ page: page.toString(), pageSize: '15' });
-      if (filterStatus && filterStatus !== 'All') params.append('status', filterStatus);
+      // Nếu lọc là UPCOMING thì backend dùng CONFIRMED (mapManagerBookingFromApi sẽ tự chuyển thành UPCOMING nếu chưa đá)
+      let statusToSent = filterStatus;
+      if (filterStatus === 'UPCOMING') statusToSent = 'CONFIRMED';
+      
+      if (statusToSent && statusToSent !== 'All') params.append('status', statusToSent);
+      if (filterType && filterType !== 'All') params.append('bookingType', filterType);
       if (startDate) params.append('startDate', startDate);
       if (endDate)   params.append('endDate',   endDate);
       if (searchText.trim()) params.append('search', searchText.trim());
 
       const result = await axiosClient.get(`/admin/stats/bookings?${params}`);
+      
+      // Map kết quả API thành format ManagerBookingListItemDto chuẩn
+      if (result && result.items) {
+        result.items = result.items.map(mapManagerBookingFromApi);
+      }
       setData(result);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [page, filterStatus, startDate, endDate, searchText]);
+  }, [page, filterStatus, filterType, startDate, endDate, searchText]);
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
-  useEffect(() => { setPage(1); }, [filterStatus, startDate, endDate, searchText]);
+  useEffect(() => { setPage(1); }, [filterStatus, filterType, startDate, endDate, searchText]);
 
   const handleExport = async () => {
     try {
-      // Fetch all for export (no paging)
       const params = new URLSearchParams({ page: '1', pageSize: '1000' });
-      if (filterStatus && filterStatus !== 'All') params.append('status', filterStatus);
+      let statusToSent = filterStatus;
+      if (filterStatus === 'UPCOMING') statusToSent = 'CONFIRMED';
+
+      if (statusToSent && statusToSent !== 'All') params.append('status', statusToSent);
+      if (filterType && filterType !== 'All') params.append('bookingType', filterType);
       if (startDate) params.append('startDate', startDate);
       if (endDate)   params.append('endDate',   endDate);
       if (searchText.trim()) params.append('search', searchText.trim());
+      
       const result = await axiosClient.get(`/admin/stats/bookings?${params}`);
-      const rows = (result.items || []).map((b, i) => ({
-        'STT':          i + 1,
-        'Mã đặt':       b.id,
-        'Người chơi':   b.player,
-        'Sân':          b.venue,
-        'Sân con':      b.court,
-        'Ngày':         b.date,
-        'Giờ bắt đầu':  fmtTime(b.startTime),
-        'Giờ kết thúc': fmtTime(b.endTime),
-        'Tiền (VNĐ)':   b.amount,
-        'Trạng thái':   STATUS_MAP[b.status]?.label || b.status,
-      }));
-      const ws = XLSX.utils.json_to_sheet(rows);
+      let rowsToExport = [];
+      if (result && result.items) {
+        const mappedItems = result.items.map(mapManagerBookingFromApi);
+        rowsToExport = mappedItems.map((b, i) => ({
+          'STT':          i + 1,
+          'Mã đặt':       b.bookingCode,
+          'Người chơi':   b.player,
+          'Sân':          b.venue,
+          'Ngày đặt':     b.createdAt,
+          'Ngày & Giờ chơi': `${b.dateDisplay} (${b.timeStart} - ${b.timeEnd})`,
+          'Tiền (VNĐ)':   b.amount,
+          'Trạng thái':   BOOKING_STATUSES[b.status]?.label || b.status,
+        }));
+      }
+
+      const ws = XLSX.utils.json_to_sheet(rowsToExport);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Đặt sân');
       XLSX.writeFile(wb, `thong-ke-dat-san-${new Date().toISOString().slice(0, 10)}.xlsx`);
@@ -144,11 +142,22 @@ export default function AdminBookingsStats() {
               onChange={(e) => setFilterStatus(e.target.value)}
             >
               <option value="All">Tất cả trạng thái</option>
-              <option value="CONFIRMED">Xác nhận</option>
-              <option value="PENDING">Chờ xử lý</option>
-              <option value="CANCELLED">Đã huỷ</option>
+              <option value="PENDING">Chờ duyệt</option>
+              <option value="UPCOMING">Sắp tới</option>
+              <option value="COMPLETED">Hoàn thành</option>
+              <option value="CANCELLED">Đã huỷ / Từ chối</option>
               <option value="PENDING_REFUND">Chờ hoàn tiền</option>
               <option value="REFUNDED">Đã hoàn tiền</option>
+            </select>
+            <select
+              className="form-select"
+              style={{ width: 140 }}
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+            >
+              <option value="All">Tất cả loại</option>
+              <option value="SINGLE">Lịch đơn</option>
+              <option value="LONG_TERM">Dài hạn</option>
             </select>
             <div className="d-flex align-items-center gap-2">
               <label style={{ fontSize: 13, color: '#64748b', whiteSpace: 'nowrap', marginBottom: 0 }}>Từ ngày</label>
@@ -188,10 +197,10 @@ export default function AdminBookingsStats() {
                 ><i className="feather-x" /></button>
               )}
             </div>
-            {(startDate || endDate || searchText || filterStatus !== 'All') && (
+            {(startDate || endDate || searchText || filterStatus !== 'All' || filterType !== 'All') && (
               <button
                 className="btn btn-sm btn-outline-secondary"
-                onClick={() => { setFilterStatus('All'); setStartDate(''); setEndDate(''); setSearchText(''); }}
+                onClick={() => { setFilterStatus('All'); setFilterType('All'); setStartDate(''); setEndDate(''); setSearchText(''); }}
               >
                 <i className="feather-refresh-cw" style={{ fontSize: 13 }} /> Xóa lọc
               </button>
@@ -202,14 +211,14 @@ export default function AdminBookingsStats() {
             <table className="table table-borderless align-middle">
               <thead className="thead-light">
                 <tr>
-                  <th>Mã đặt</th>
-                  <th>Người chơi</th>
+                  <th>Mã đặt sân</th>
                   <th>Sân</th>
-                  <th>Sân con</th>
-                  <th>Ngày</th>
-                  <th>Giờ</th>
-                  <th>Tiền</th>
+                  <th>Người đặt</th>
+                  <th>Ngày đặt</th>
+                  <th>Ngày & Giờ chơi</th>
+                  <th>Thanh toán</th>
                   <th>Trạng thái</th>
+                  <th className="text-center">Hành động</th>
                 </tr>
               </thead>
               <tbody>
@@ -227,42 +236,69 @@ export default function AdminBookingsStats() {
                   <tr>
                     <td colSpan={8} className="text-center text-muted py-4">Không có dữ liệu.</td>
                   </tr>
-                ) : data.items.map((b) => (
-                  <tr key={b.id}>
-                    <td><code>{b.id}</code></td>
-                    <td title={b.player} style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      <strong>{b.player}</strong>
-                    </td>
-                    <td title={b.venue} style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {b.venue}
-                    </td>
-                    <td title={b.court} style={{ maxWidth: 220 }}>
-                      {(() => {
-                        const groups = formatCourtNames(b.court);
-                        if (!groups) return 'N/A';
-                        return groups.map((g, i) => (
-                          <span key={i}>
-                            {i > 0 && ', '}
-                            {g.name}
-                            {g.count > 1 && (
-                              <sup style={{ color: '#e53e3e', fontWeight: 700, fontSize: '0.7em', marginLeft: 1 }}>*{g.count}</sup>
-                            )}
-                          </span>
-                        ));
-                      })()}
-                    </td>
-                    <td>{b.date}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      {b.startTime ? `${fmtTime(b.startTime)} – ${fmtTime(b.endTime)}` : 'N/A'}
-                    </td>
-                    <td><strong>{(b.amount ?? 0).toLocaleString('vi-VN')} ₫</strong></td>
-                    <td>
-                      <span className={`badge ${STATUS_MAP[b.status]?.cls || 'bg-secondary'}`}>
-                        {STATUS_MAP[b.status]?.label || b.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                ) : data.items.map((b) => {
+                  const st = BOOKING_STATUSES[b.status] || BOOKING_STATUSES.PENDING;
+                  return (
+                    <tr key={b.id}>
+                      <td>
+                        <code>{b.bookingCode}</code>
+                        <div className="mt-1">
+                          {b.isLongTerm ? (
+                            <span className="badge" style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#fff' }}>Dài hạn</span>
+                          ) : (
+                            <span className="badge" style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)', color: '#fff' }}>Lịch đơn</span>
+                          )}
+                        </div>
+                      </td>
+                      <td title={b.venue} style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {b.venue}
+                      </td>
+                      <td title={b.player} style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <strong>{b.player}</strong>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: 13, color: '#334155' }}>{b.createdDateStr}</div>
+                        <div style={{ fontSize: 11, color: '#94a3b8' }}>{b.createdTimeStr}</div>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: 13, color: '#334155' }}>{b.dateDisplay}</div>
+                        <div style={{ fontSize: 11, color: '#94a3b8' }}>{b.timeStart} – {b.timeEnd}</div>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: 13, color: '#097E52', fontWeight: 600 }}>{b.amount.toLocaleString('vi-VN')} ₫</div>
+                        <div style={{ fontSize: 11, color: b.paymentStatus === 'PAID' ? '#097E52' : '#94a3b8' }}>
+                          {b.paymentStatus === 'PAID' ? 'Đã thanh toán' : 'Chưa thanh toán'}
+                        </div>
+                      </td>
+                      <td>
+                        <span 
+                          className="badge" 
+                          style={{ 
+                            background: st.bg, 
+                            color: st.color, 
+                            border: `1px solid ${st.border}`, 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            gap: 4 
+                          }}
+                        >
+                          <i className={st.icon} style={{ fontSize: 12 }} />
+                          {st.label}
+                        </span>
+                      </td>
+                      <td className="text-center">
+                        <button
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={() => setDetailModal(b)}
+                          title="Xem chi tiết"
+                          style={{ width: 32, height: 32, padding: 0, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <i className="feather-eye" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -285,6 +321,13 @@ export default function AdminBookingsStats() {
           )}
         </div>
       </div>
+      
+      {detailModal && (
+        <BookingDetailModal
+          booking={detailModal}
+          onClose={() => setDetailModal(null)}
+        />
+      )}
     </>
   );
 }

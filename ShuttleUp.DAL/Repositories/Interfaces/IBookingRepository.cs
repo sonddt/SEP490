@@ -26,9 +26,9 @@ public interface IBookingRepository : IRepository<Booking>
     // ── Admin stats ──
     Task<int> CountAllAsync(DateTime? since = null);
     Task<decimal> SumAllRevenueAsync(string[] paidStatuses, DateTime? since = null);
-    Task<List<Booking>> GetAllPagedAsync(string? status, DateTime? sinceUtc, DateTime? untilUtc, string? search, int skip, int take);
-    Task<int> CountAllFilteredAsync(string? status, DateTime? sinceUtc, DateTime? untilUtc, string? search);
-    Task<int> CountAllByStatusAsync(string status, string? filterStatus, DateTime? sinceUtc, DateTime? untilUtc, string? search);
+    Task<List<Booking>> GetAllPagedAsync(string? status, DateTime? sinceUtc, DateTime? untilUtc, string? search, string? bookingType, int skip, int take);
+    Task<int> CountAllFilteredAsync(string? status, DateTime? sinceUtc, DateTime? untilUtc, string? search, string? bookingType);
+    Task<int> CountAllByStatusAsync(string status, string? filterStatus, DateTime? sinceUtc, DateTime? untilUtc, string? search, string? bookingType);
 
     // ── Manager analytics ──
     Task<List<BookingItem>> GetBookingItemsByVenuesInMonthAsync(List<Guid> venueIds, DateTime sinceUtc);

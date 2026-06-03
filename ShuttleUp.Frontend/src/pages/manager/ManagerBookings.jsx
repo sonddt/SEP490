@@ -27,7 +27,7 @@ function pad2(n) {
   return String(n).padStart(2, '0');
 }
 
-function mapManagerBookingFromApi(b) {
+export function mapManagerBookingFromApi(b) {
   const items = [...(b.items || [])].sort(
     (a, x) => new Date(a.startTime) - new Date(x.startTime),
   );

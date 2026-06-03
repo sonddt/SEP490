@@ -1,4 +1,4 @@
-# Lịch sử phát triển (Development memory)
+﻿# Lịch sử phát triển (Development memory)
 
 Tài liệu ghi lại các mốc làm việc theo thời gian. Đọc từ trên xuống là từ cũ đến mới.
 
@@ -846,3 +846,11 @@ Kết bạn & quan hệ xã hội (Player):
    - Phát hiện BUG logic nghiêm trọng trong `BookingCompletionService` và `UpcomingBookingReminderService` khi so sánh `StartTime`/`EndTime` (vốn lưu theo giờ Local Việt Nam) với `DateTime.UtcNow` (chậm hơn VN 7 tiếng).
    - Lỗi này khiến toàn bộ email nhắc nhở ra sân và tiến trình hoàn thành Booking tự động bị gửi trễ 7 tiếng (đá lúc 18h thì 1h sáng hôm sau mới có tác dụng).
    - Đã xử lý bằng cách khai báo `var vnTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");` và dùng `TimeZoneInfo.ConvertTimeFromUtc(nowUtc, vnTimeZone)` để chuyển đổi `UtcNow` về giờ Việt Nam chuẩn xác trước khi đưa vào hàm so sánh `Where()` của EF Core.
+
+4. **�?ng b? UI & D? li?u trang Admin Bookings Stats**:
+   - C?p nh?t backend AdminService.GetBookingStatsAsync tr? v? ManagerBookingListItemDto (bao g?m ?nh bill, user avatar, danh s�ch chi ti?t s�n con).
+   - B? sung filter theo 'Lo?i don' (L?ch don / D�i h?n) t?i Controller, Service v� BookingRepository.BuildAllQuery.
+   - Vi?t l?i to�n b? trang Frontend /admin/bookings-stats d? d�ng chung component BookingDetailModal v� h�m map mapManagerBookingFromApi v?i trang Manager.
+   - Th�m nh�n m�u hi?n th? ph�n lo?i (L?ch don m�u t�m #7e22ce, D�i h?n m�u xanh #0ea5e9) cho d? nh�n. M? r?ng b? l?c tr?ng th�i v� b? l?c lo?i don d?y d?.
+   - �?m b?o Admin xem du?c **To�n b?** c�c d?t s�n c?a t?t c? c�c c?m s�n tr�n to�n h? th?ng (kh�ng b? kho� b?i OwnerUserId).
+

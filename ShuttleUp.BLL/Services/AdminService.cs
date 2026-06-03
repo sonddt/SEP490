@@ -2,6 +2,7 @@ using ShuttleUp.BLL.Helpers;
 using ShuttleUp.BLL.Interfaces;
 using ShuttleUp.DAL.Models;
 using ShuttleUp.DAL.Repositories.Interfaces;
+using ShuttleUp.BLL.DTOs.Booking;
 using DalFile = ShuttleUp.DAL.Models.File;
 
 namespace ShuttleUp.BLL.Services;
@@ -164,7 +165,7 @@ public class AdminService : IAdminService
         return new AdminRejectResult { UserId = request.UserId, Note = note };
     }
 
-    public async Task<object> GetBookingStatsAsync(string? status, string? startDate, string? endDate, string? search, int page, int pageSize)
+    public async Task<object> GetBookingStatsAsync(string? status, string? startDate, string? endDate, string? search, string? bookingType, int page, int pageSize)
     {
         if (page <= 0) page = 1; if (pageSize <= 0 || pageSize > 100) pageSize = 20;
 
@@ -174,23 +175,53 @@ public class AdminService : IAdminService
         if (!string.IsNullOrWhiteSpace(endDate) && DateTime.TryParseExact(endDate.Trim(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var deLocal))
             untilUtc = TimeZoneHelper.ToUtc(deLocal.Date.AddDays(1));
 
-        var totalItems = await _bookingRepo.CountAllFilteredAsync(status, sinceUtc, untilUtc, search);
+        var totalItems = await _bookingRepo.CountAllFilteredAsync(status, sinceUtc, untilUtc, search, bookingType);
         var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
-        var confirmed = await _bookingRepo.CountAllByStatusAsync("CONFIRMED", status, sinceUtc, untilUtc, search);
-        var pending = await _bookingRepo.CountAllByStatusAsync("PENDING", status, sinceUtc, untilUtc, search);
-        var cancelled = await _bookingRepo.CountAllByStatusAsync("CANCELLED", status, sinceUtc, untilUtc, search);
+        var confirmed = await _bookingRepo.CountAllByStatusAsync("CONFIRMED", status, sinceUtc, untilUtc, search, bookingType);
+        var pending = await _bookingRepo.CountAllByStatusAsync("PENDING", status, sinceUtc, untilUtc, search, bookingType);
+        var cancelled = await _bookingRepo.CountAllByStatusAsync("CANCELLED", status, sinceUtc, untilUtc, search, bookingType);
 
         var vnTz = TimeZoneHelper.GetVietnamTz();
-        var bookings = await _bookingRepo.GetAllPagedAsync(status, sinceUtc, untilUtc, search, (page - 1) * pageSize, pageSize);
-        var pagedItems = bookings.Select(b => new
+        var bookings = await _bookingRepo.GetAllPagedAsync(status, sinceUtc, untilUtc, search, bookingType, (page - 1) * pageSize, pageSize);
+        var pagedItems = bookings.Select(b =>
         {
-            id = "BK" + b.Id.ToString().Substring(0, 5).ToUpper(), bookingId = b.Id,
-            player = b.User?.FullName ?? "N/A", venue = b.Venue?.Name ?? "N/A",
-            court = string.Join(", ", (b.BookingItems ?? (ICollection<DAL.Models.BookingItem>)new List<DAL.Models.BookingItem>()).Select(bi => bi.Court?.Name ?? "")),
-            date = b.CreatedAt.HasValue ? TimeZoneHelper.ToVn(b.CreatedAt.Value).ToString("dd/MM/yyyy") : "",
-            startTime = b.BookingItems?.OrderBy(bi => bi.StartTime).Select(bi => bi.StartTime).FirstOrDefault(),
-            endTime = b.BookingItems?.OrderByDescending(bi => bi.EndTime).Select(bi => bi.EndTime).FirstOrDefault(),
-            amount = b.FinalAmount ?? 0m, amountFmt = string.Format("{0:N0} ₫", b.FinalAmount ?? 0), status = b.Status
+            var bookingCode = "SU" + b.Id.ToString("N")[^6..].ToUpperInvariant();
+            var payment = b.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+            var paymentStatus = payment?.Status?.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase) == true ? "PAID" : "UNPAID";
+
+            return new ManagerBookingListItemDto
+            {
+                BookingId = b.Id,
+                BookingCode = bookingCode,
+                Status = b.Status,
+                SeriesId = b.SeriesId,
+                IsLongTerm = b.SeriesId != null,
+                ContactName = b.ContactName,
+                ContactPhone = b.ContactPhone,
+                GuestNote = b.GuestNote,
+                ManagerStatusNote = b.ManagerStatusNote,
+                TotalAmount = b.FinalAmount ?? b.TotalAmount,
+                VenueName = b.Venue?.Name,
+                VenueAddress = b.Venue?.Address,
+                PlayerName = b.User?.FullName,
+                PlayerPhone = b.ContactPhone ?? b.User?.PhoneNumber,
+                PlayerAvatarUrl = b.User?.AvatarFile?.FileUrl,
+                PaymentStatus = paymentStatus,
+                PaymentMethod = payment?.Method,
+                ProofUrl = payment?.GatewayReference,
+                CreatedAt = b.CreatedAt,
+                Items = b.BookingItems.OrderBy(bi => bi.StartTime).Select(bi =>
+                {
+                    var court = bi.Court;
+                    return new ManagerBookingItemDto
+                    {
+                        CourtName = court?.Name,
+                        CourtImageUrl = court?.Files?.FirstOrDefault()?.FileUrl,
+                        StartTime = bi.StartTime,
+                        EndTime = bi.EndTime
+                    };
+                }).ToList()
+            };
         }).ToList();
 
         return new { summary = new { total = totalItems, confirmed, pending, cancelled }, items = pagedItems, totalItems, totalPages };
