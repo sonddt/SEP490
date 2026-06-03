@@ -7,6 +7,7 @@ import RejectModal from '../../components/manager/RejectModal';
 import CancelModal from '../../components/manager/CancelModal';
 import { normalizeSearchText } from '../../utils/searchNormalize';
 import { useNotification } from '../../hooks/useNotification';
+import ShuttleDateField from '../../components/ui/ShuttleDateField';
 
 /* ── Constants ──────────────────────────────────────────────────────────── */
 const PAGE_SIZE = 8;
@@ -176,7 +177,8 @@ export default function ManagerBookings() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('ALL');
   const [search, setSearch] = useState('');
-  const [timeFilter, setTimeFilter] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [sortBy, setSortBy] = useState('created_desc');
   const [page, setPage] = useState(1);
   const [detailModal, setDetailModal] = useState(null);
@@ -241,7 +243,7 @@ export default function ManagerBookings() {
     });
   }, [bookings, loading, searchParams, setSearchParams]);
 
-  useEffect(() => { setPage(1); }, [activeTab, search, timeFilter, sortBy]);
+  useEffect(() => { setPage(1); }, [activeTab, search, startDate, endDate, sortBy]);
 
   const counts = useMemo(() => {
     const c = {};
@@ -261,9 +263,8 @@ export default function ManagerBookings() {
       if (activeTab === 'CANCELLED') return CANCELLED_GROUP.has(b.status);
       return b.status === activeTab;
     });
-    if (timeFilter === 'today') list = list.filter(b => isToday(new Date(b.date)));
-    if (timeFilter === 'week') list = list.filter(b => isThisWeek(new Date(b.date)));
-    if (timeFilter === 'month') list = list.filter(b => isThisMonth(new Date(b.date)));
+    if (startDate) list = list.filter(b => b.date >= startDate);
+    if (endDate) list = list.filter(b => b.date <= endDate);
     if (search.trim()) {
       const nq = normalizeSearchText(search);
       if (nq) {
@@ -289,7 +290,7 @@ export default function ManagerBookings() {
       return 0;
     });
     return list;
-  }, [bookings, activeTab, search, timeFilter, sortBy]);
+  }, [bookings, activeTab, search, startDate, endDate, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(processed.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -423,23 +424,8 @@ export default function ManagerBookings() {
           </div>
 
           {/* Filters */}
-          <div className="bk-filters-row">
-            <div className="bk-search-wrap">
-              <i className="feather-search bk-search-icon" />
-              <input
-                type="text" className="form-control bk-search-input"
-                placeholder="Tìm theo tên người đặt, tên sân, cụm sân..."
-                value={search} onChange={e => setSearch(e.target.value)}
-              />
-              {search && <button type="button" className="bk-search-clear" onClick={() => setSearch('')}><i className="feather-x" /></button>}
-            </div>
-            <select className="form-select" value={timeFilter} onChange={e => setTimeFilter(e.target.value)}>
-              <option value="all">Ngày chơi: Tất cả</option>
-              <option value="today">Ngày chơi: Hôm nay</option>
-              <option value="week">Ngày chơi: Tuần này</option>
-              <option value="month">Ngày chơi: Tháng này</option>
-            </select>
-            <select className="form-select" value={sortBy} onChange={e => setSortBy(e.target.value)}>
+          <div className="d-flex flex-wrap gap-2 mb-3 mt-3 align-items-center" style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9' }}>
+            <select className="form-select" style={{ width: 190 }} value={sortBy} onChange={e => setSortBy(e.target.value)}>
               <option value="created_desc">Giờ đặt mới nhất</option>
               <option value="created_asc">Giờ đặt cũ nhất</option>
               <option value="play_asc">Giờ chơi gần nhất</option>
@@ -447,6 +433,44 @@ export default function ManagerBookings() {
               <option value="amount_high">Tiền cao → thấp</option>
               <option value="amount_low">Tiền thấp → cao</option>
             </select>
+            <div className="d-flex align-items-center gap-2">
+              <label style={{ fontSize: 13, color: '#64748b', whiteSpace: 'nowrap', marginBottom: 0 }}>Từ ngày</label>
+              <div style={{ width: 160 }}>
+                <ShuttleDateField
+                  value={startDate}
+                  onChange={setStartDate}
+                  placeholder="dd/mm/yyyy"
+                />
+              </div>
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <label style={{ fontSize: 13, color: '#64748b', whiteSpace: 'nowrap', marginBottom: 0 }}>Đến ngày</label>
+              <div style={{ width: 160 }}>
+                <ShuttleDateField
+                  value={endDate}
+                  onChange={setEndDate}
+                  placeholder="dd/mm/yyyy"
+                />
+              </div>
+            </div>
+            <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
+              <i className="feather-search" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: 14 }} />
+              <input
+                type="text" className="form-control"
+                style={{ paddingLeft: 32 }}
+                placeholder="Tìm người đặt, sân, mã HĐ..."
+                value={search} onChange={e => setSearch(e.target.value)}
+              />
+              {search && <button type="button" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0 }} onClick={() => setSearch('')}><i className="feather-x" /></button>}
+            </div>
+            {(startDate || endDate || search) && (
+              <button
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() => { setStartDate(''); setEndDate(''); setSearch(''); }}
+              >
+                <i className="feather-refresh-cw" style={{ fontSize: 13 }} /> Xóa lọc
+              </button>
+            )}
             <span className="bk-filter-count">{processed.length} kết quả</span>
           </div>
 

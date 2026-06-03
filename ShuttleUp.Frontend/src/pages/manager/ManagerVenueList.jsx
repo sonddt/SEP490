@@ -19,8 +19,6 @@ const STATUS_STYLES = {
 const SORT_OPTIONS = [
   { value: 'name_asc',      label: 'Tên sân (A → Z)' },
   { value: 'name_desc',     label: 'Tên sân (Z → A)' },
-  { value: 'revenue_desc',  label: 'Doanh thu (Cao → Thấp)' },
-  { value: 'revenue_asc',   label: 'Doanh thu (Thấp → Cao)' },
   { value: 'status_active', label: 'Trạng thái (Public trước)' },
 ];
 
@@ -167,7 +165,6 @@ export default function ManagerVenueList() {
 
   const totalCourts   = venues.reduce((s, v) => s + (v.courtCount ?? 0), 0);
   const totalBookings = venues.reduce((s, v) => s + (v.totalBookingsThisMonth ?? 0), 0);
-  const totalRevenue  = venues.reduce((s, v) => s + (v.revenueThisMonth ?? 0), 0);
 
   useEffect(() => {
     let mounted = true;
@@ -219,8 +216,6 @@ export default function ManagerVenueList() {
     switch (sort) {
       case 'name_asc':      return [...arr].sort((a, b) => a.name.localeCompare(b.name, 'vi'));
       case 'name_desc':     return [...arr].sort((a, b) => b.name.localeCompare(a.name, 'vi'));
-      case 'revenue_desc':  return [...arr].sort((a, b) => b.revenueThisMonth - a.revenueThisMonth);
-      case 'revenue_asc':   return [...arr].sort((a, b) => a.revenueThisMonth - b.revenueThisMonth);
       case 'status_active': return [...arr].sort((a) => (a.status === 'public' ? -1 : 1));
       default:              return arr;
     }
@@ -286,9 +281,8 @@ export default function ManagerVenueList() {
           { label: 'Tổng cụm sân',       value: venues.length,                                icon: 'feather-map-pin',      variant: 'green' },
           { label: 'Tổng sân',            value: totalCourts,                                  icon: 'feather-grid',         variant: 'blue' },
           { label: 'Đặt sân tháng này',   value: totalBookings,                                icon: 'feather-calendar',     variant: 'amber' },
-          { label: 'Doanh thu tháng',     value: (totalRevenue / 1000000).toFixed(1) + ' tr ₫', icon: 'feather-trending-up',  variant: 'teal' },
         ].map((s) => (
-          <div key={s.label} className="col-xl-3 col-sm-6">
+          <div key={s.label} className="col-xl-4 col-sm-6">
             <div className={`mgr-stat-card mgr-stat-card--${s.variant}`}>
               <div className="mgr-stat-card__icon">
                 <i className={s.icon} />

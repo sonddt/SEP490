@@ -9,7 +9,7 @@ import { notifyError, notifyInfo } from '../../hooks/useNotification';
 import ShuttleDateField from '../../components/ui/ShuttleDateField';
 
 const STATUS_MAP = {
-  CONFIRMED: { label: 'Đã thu',    color: '#097E52', bg: '#e8f5ee', icon: 'feather-check-circle', badge: 'bg-success' },
+  CONFIRMED: { label: 'Sắp tới',    color: '#097E52', bg: '#e8f5ee', icon: 'feather-check-circle', badge: 'bg-success' },
   COMPLETED: { label: 'Hoàn thành', color: '#097E52', bg: '#e8f5ee', icon: 'feather-check-circle', badge: 'bg-success' },
   PENDING:   { label: 'Chờ xử lý', color: '#d97706', bg: '#fef3c7', icon: 'feather-clock',        badge: 'bg-warning text-dark' },
   CANCELLED: { label: 'Đã huỷ',    color: '#ef4444', bg: '#fff1f2', icon: 'feather-x-circle',     badge: 'bg-danger' },
@@ -198,9 +198,18 @@ export default function ManagerEarnings() {
   useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
   useEffect(() => { setPage(1); }, [statusFilter, search, startDate, endDate]);
 
+  const ALLOWED_STATUSES = new Set(['CONFIRMED', 'COMPLETED', 'REFUNDED']);
+  const filteredItems = useMemo(() => {
+    return (data?.items || []).filter(tx => {
+      if (!ALLOWED_STATUSES.has(tx.status)) return false;
+      if (tx.status === 'REFUNDED' && (tx.penaltyAmount ?? 0) === 0) return false;
+      return true;
+    });
+  }, [data?.items]);
+
   const totalPages = data?.totalPages ?? 1;
   const currentPage = Math.min(page, totalPages);
-  const currentItems = data?.items || [];
+  const currentItems = filteredItems;
   
   // Notice user requested: "Doanh thu sẽ hiện theo tổng toàn bộ doanh thu dựa theo tổng thanh toán của toàn bộ đơn trạng thái Đã thu và Hoàn thành dựa theo filter thời gian, cả Số booking cũng sẽ đếm dựa theo filter thời gian"
   // Wait, if totalRevInRange already only calculates PaidStatuses, we can use it. But wait, if they change statusFilter to "Chờ xử lý", totalRevInRange would become 0 from backend. 
@@ -234,7 +243,7 @@ export default function ManagerEarnings() {
         'Sân con': tx.court,
         'Ngày': tx.date,
         'Giờ': tx.startTime ? `${fmtTime(tx.startTime)} – ${fmtTime(tx.endTime)}` : '—',
-        'Tiền (VNĐ)': tx.amount ?? 0,
+        'Tiền (VNĐ)': tx.status === 'REFUNDED' ? (tx.penaltyAmount ?? 0) : (tx.amount ?? 0),
         'Trạng thái': STATUS_MAP[tx.status]?.label || tx.status,
       }));
       const ws = XLSX.utils.json_to_sheet(rows);
@@ -305,11 +314,8 @@ export default function ManagerEarnings() {
               onChange={(e) => setStatusFilter(e.target.value)}
             >
               <option value="ALL">Tất cả trạng thái</option>
-              <option value="CONFIRMED">Đã thu</option>
+              <option value="CONFIRMED">Sắp tới</option>
               <option value="COMPLETED">Hoàn thành</option>
-              <option value="PENDING">Chờ xử lý</option>
-              <option value="CANCELLED">Đã huỷ</option>
-              <option value="PENDING_REFUND">Chờ hoàn tiền</option>
               <option value="REFUNDED">Đã hoàn tiền</option>
             </select>
             <div className="d-flex align-items-center gap-2">
@@ -368,7 +374,7 @@ export default function ManagerEarnings() {
                   <th>Sân / Mã HĐ</th>
                   <th>Người đặt</th>
                   <th>Ngày & Giờ</th>
-                  <th>Thanh toán</th>
+                  <th>Doanh thu</th>
                   <th>Trạng thái</th>
                   <th></th>
                 </tr>
@@ -424,7 +430,7 @@ export default function ManagerEarnings() {
                         <h4>{tx.date}<span>{tx.startTime ? `${fmtTime(tx.startTime)} – ${fmtTime(tx.endTime)}` : '—'}</span></h4>
                       </td>
                       <td>
-                        <span className="pay-dark">{tx.amount.toLocaleString('vi-VN')} ₫</span>
+                        <span className="pay-dark">{(tx.status === 'REFUNDED' ? (tx.penaltyAmount ?? 0) : tx.amount).toLocaleString('vi-VN')} ₫</span>
                       </td>
                       <td>
                         <span className={`badge ${st.badge}`}><i className={st.icon} />{st.label}</span>
