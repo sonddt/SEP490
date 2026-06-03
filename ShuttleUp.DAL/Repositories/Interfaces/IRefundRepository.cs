@@ -10,7 +10,10 @@ public interface IRefundRepository : IRepository<RefundRequest>
     Task<Dictionary<Guid, RefundRequest>> GetLatestByBookingIdsAsync(IEnumerable<Guid> bookingIds, CancellationToken ct = default);
 
     /// <summary>Tổng tiền phạt giữ lại (PaidAmount − RequestedAmount) của các RefundRequest COMPLETED thuộc venueIds, tính theo CreatedAt của Booking gốc.</summary>
-    Task<decimal> SumPenaltyByVenueIdsAsync(List<Guid> venueIds, DateTime? sinceUtc = null, CancellationToken ct = default);
+    Task<decimal> SumPenaltyByVenueIdsAsync(List<Guid> venueIds, DateTime? sinceUtc = null, DateTime? untilUtc = null, CancellationToken ct = default);
+    
+    /// <summary>Số lượt booking tạo ra doanh thu (COMPLETED RefundRequest với penalty > 0) thuộc venueIds trong khoảng thời gian.</summary>
+    Task<int> CountPenaltyBookingsByVenueIdsAsync(List<Guid> venueIds, DateTime? sinceUtc = null, DateTime? untilUtc = null, CancellationToken ct = default);
     
     Task<Dictionary<Guid, decimal>> GetPenaltyByVenuesAsync(DateTime? sinceUtc = null, DateTime? untilUtc = null, CancellationToken ct = default);
 

@@ -243,9 +243,13 @@ public class AdminService : IAdminService
         var venuesStats = venues.Select(v =>
         {
             var bookings = v.Bookings ?? (ICollection<DAL.Models.Booking>)new List<DAL.Models.Booking>();
-            var revenueRaw = bookings.Where(b => PaidStatuses.Contains(b.Status) && (rangeStart == null || b.CreatedAt >= rangeStart) && (rangeEnd == null || b.CreatedAt < rangeEnd)).Sum(b => b.FinalAmount ?? 0);
+            var revenueRaw = bookings.Where(b => new[] { "CONFIRMED", "COMPLETED" }.Contains(b.Status) && (rangeStart == null || b.CreatedAt >= rangeStart) && (rangeEnd == null || b.CreatedAt < rangeEnd)).Sum(b => b.FinalAmount ?? 0);
             var venuePenalty = venuePenalties.TryGetValue(v.Id, out var p) ? p : 0m;
-            var filteredBookingsCount = bookings.Count(b => PaidStatuses.Contains(b.Status) && (rangeStart == null || b.CreatedAt >= rangeStart) && (rangeEnd == null || b.CreatedAt < rangeEnd));
+            var filteredBookingsCount = bookings.Count(b =>
+                ((new[] { "CONFIRMED", "COMPLETED" }.Contains(b.Status)) ||
+                 (b.Status == "REFUNDED" && b.RefundRequests.Any(r => r.Status == "COMPLETED" && r.PaidAmount > r.RequestedAmount)))
+                && (rangeStart == null || b.CreatedAt >= rangeStart)
+                && (rangeEnd == null || b.CreatedAt < rangeEnd));
             return new { id = v.Id, venue = v.Name, owner = v.OwnerUser?.FullName ?? "N/A", totalBookings = filteredBookingsCount, revenue = revenueRaw + venuePenalty };
         }).OrderByDescending(v => v.revenue).ToList();
 

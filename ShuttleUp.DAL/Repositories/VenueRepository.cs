@@ -87,7 +87,7 @@ public class VenueRepository : Repository<Venue>, IVenueRepository
         => await _dbSet.CountAsync(v => v.IsActive == true);
 
     public async Task<List<Venue>> GetActiveWithBookingStatsAsync(DateTime? rangeStart, DateTime? rangeEnd, DateTime startOfMonthUtc, DateTime startOfPrevMonthUtc, DateTime endOfPrevMonthUtc)
-        => await _dbSet.Where(v => v.IsActive == true).Include(v => v.Bookings).Include(v => v.OwnerUser).ToListAsync();
+        => await _dbSet.Where(v => v.IsActive == true).Include(v => v.Bookings).ThenInclude(b => b.RefundRequests).Include(v => v.OwnerUser).ToListAsync();
 
     // ── Public Browsing ──
     public async Task<Venue?> GetPublicVenueDetailsAsync(Guid id, CancellationToken ct = default)

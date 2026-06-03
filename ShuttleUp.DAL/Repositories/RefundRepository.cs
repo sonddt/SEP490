@@ -61,7 +61,7 @@ public class RefundRepository : Repository<RefundRequest>, IRefundRepository
 
     // ── Penalty revenue (tiền phạt giữ lại = PaidAmount − RequestedAmount) ──
 
-    public async Task<decimal> SumPenaltyByVenueIdsAsync(List<Guid> venueIds, DateTime? sinceUtc = null, CancellationToken ct = default)
+    public async Task<decimal> SumPenaltyByVenueIdsAsync(List<Guid> venueIds, DateTime? sinceUtc = null, DateTime? untilUtc = null, CancellationToken ct = default)
     {
         var q = _dbSet.AsNoTracking()
             .Where(r => r.Status == "COMPLETED"
@@ -72,8 +72,27 @@ public class RefundRepository : Repository<RefundRequest>, IRefundRepository
 
         if (sinceUtc.HasValue)
             q = q.Where(r => r.Booking!.CreatedAt >= sinceUtc.Value);
+        if (untilUtc.HasValue)
+            q = q.Where(r => r.Booking!.CreatedAt < untilUtc.Value);
 
         return await q.SumAsync(r => (r.PaidAmount ?? 0) - (r.RequestedAmount ?? 0), ct);
+    }
+
+    public async Task<int> CountPenaltyBookingsByVenueIdsAsync(List<Guid> venueIds, DateTime? sinceUtc = null, DateTime? untilUtc = null, CancellationToken ct = default)
+    {
+        var q = _dbSet.AsNoTracking()
+            .Where(r => r.Status == "COMPLETED"
+                && r.Booking != null && r.Booking.VenueId != null
+                && venueIds.Contains(r.Booking.VenueId.Value)
+                && r.PaidAmount != null && r.RequestedAmount != null
+                && r.PaidAmount > r.RequestedAmount);
+
+        if (sinceUtc.HasValue)
+            q = q.Where(r => r.Booking!.CreatedAt >= sinceUtc.Value);
+        if (untilUtc.HasValue)
+            q = q.Where(r => r.Booking!.CreatedAt < untilUtc.Value);
+
+        return await q.CountAsync(ct);
     }
 
     public async Task<Dictionary<Guid, decimal>> GetPenaltyByVenuesAsync(DateTime? sinceUtc = null, DateTime? untilUtc = null, CancellationToken ct = default)

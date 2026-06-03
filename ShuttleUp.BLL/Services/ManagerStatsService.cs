@@ -81,12 +81,15 @@ public class ManagerStatsService : IManagerStatsService
         var totalItems = await _bookingRepo.CountByVenueIdsFilteredAsync(targetIds.ToList(), status, sinceUtc, untilUtc, search);
         var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
         var totalRevInRange = await _bookingRepo.SumRevenueByVenueIdsFilteredAsync(targetIds.ToList(), PaidStatuses, status, sinceUtc, untilUtc, search);
-        var penaltyInRange = await _refundRepo.SumPenaltyByVenueIdsAsync(targetIds.ToList(), sinceUtc);
+        var penaltyInRange = await _refundRepo.SumPenaltyByVenueIdsAsync(targetIds.ToList(), sinceUtc, untilUtc);
 
-        // Overall totals ignoring status (for top cards)
-        var overallTotalItems = await _bookingRepo.CountByVenueIdsFilteredAsync(targetIds.ToList(), null, sinceUtc, untilUtc, search);
+        // Overall totals (for top stat cards) — only count revenue-generating bookings
+        var overallPenaltyCount = await _refundRepo.CountPenaltyBookingsByVenueIdsAsync(targetIds.ToList(), sinceUtc, untilUtc);
+        var confirmedCount = await _bookingRepo.CountByVenueIdsFilteredAsync(targetIds.ToList(), "CONFIRMED", sinceUtc, untilUtc, search);
+        var completedCount = await _bookingRepo.CountByVenueIdsFilteredAsync(targetIds.ToList(), "COMPLETED", sinceUtc, untilUtc, search);
+        var overallTotalItems = confirmedCount + completedCount + overallPenaltyCount;
         var overallTotalRev = await _bookingRepo.SumRevenueByVenueIdsFilteredAsync(targetIds.ToList(), PaidStatuses, null, sinceUtc, untilUtc, search);
-        var overallPenalty = await _refundRepo.SumPenaltyByVenueIdsAsync(targetIds.ToList());
+        var overallPenalty = await _refundRepo.SumPenaltyByVenueIdsAsync(targetIds.ToList(), sinceUtc, untilUtc);
 
         var bookings = await _bookingRepo.GetByVenueIdsPagedAsync(targetIds.ToList(), status, sinceUtc, untilUtc, search, (page - 1) * pageSize, pageSize);
 
