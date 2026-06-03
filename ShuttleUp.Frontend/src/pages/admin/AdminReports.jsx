@@ -19,7 +19,7 @@ const STATUS_OPTIONS = [
   { value: 'PENDING', label: 'Chờ xử lý' },
   { value: 'REVIEWING', label: 'Đang xem' },
   { value: 'REFUND_PENDING', label: 'Chờ hoàn tiền' },
-  { value: 'REFUND_PENDING_OVERDUE', label: 'Chờ hoàn (quá hạn SLA)' },
+  { value: 'REFUND_PENDING_OVERDUE', label: 'Chờ hoàn (trễ hạn)' },
   { value: 'RESOLVED', label: 'Đã xử lý' },
   { value: 'REJECTED', label: 'Từ chối' },
 ];

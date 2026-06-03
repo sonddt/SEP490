@@ -98,7 +98,6 @@ export default function AdminRevenueStats() {
   const STAT_CONFIG = [
     { key: 'totalRevenue',  label: 'Tổng doanh thu',        icon: 'feather-dollar-sign',  theme: 'indigo', value: `${dynamicTotalRevenue.toLocaleString('vi-VN')} ₫`, isText: true },
     { key: 'totalBookings', label: 'Tổng đặt sân',          icon: 'feather-calendar',     theme: 'green',  value: `${dynamicTotalBookings.toLocaleString('vi-VN')} lượt`, isText: false },
-    { key: 'activeVenues',  label: 'Sân đang hoạt động',    icon: 'feather-map-pin',      theme: 'red',    value: (data?.summary?.activeVenues?.toString() || '0'), isText: false },
   ];
 
   return (

@@ -854,3 +854,11 @@ Kết bạn & quan hệ xã hội (Player):
    - Th�m nh�n m�u hi?n th? ph�n lo?i (L?ch don m�u t�m #7e22ce, D�i h?n m�u xanh #0ea5e9) cho d? nh�n. M? r?ng b? l?c tr?ng th�i v� b? l?c lo?i don d?y d?.
    - �?m b?o Admin xem du?c **To�n b?** c�c d?t s�n c?a t?t c? c�c c?m s�n tr�n to�n h? th?ng (kh�ng b? kho� b?i OwnerUserId).
 
+
+5. **Tối ưu hóa các trang Thống kê và Báo cáo của Admin (Admin Dashboard, Revenue, Reports)**:
+   - Thay đổi các thẻ đếm trên Admin Dashboard (Dashboard Stats): Lược bỏ 'Sân đang hoạt động', 'Đặt sân hôm nay', 'Yêu cầu chờ duyệt'; thêm 'Báo cáo hiện có' và 'Khiếu nại hiện có'.
+   - Sửa lỗi tính sai doanh thu Admin: Cập nhật thuật toán để tiền phạt/hoàn 1 phần (Penalty) được cộng dồn chính xác vào từng Cụm sân trong bảng 'Doanh thu theo sân', đảm bảo tổng ở các dòng cộng lại khớp 100% với Tổng Doanh Thu Lưu Thông trên đầu trang.
+   - Gắn Link chuyển hướng tiện lợi từ các thẻ Dashboard sang trang /admin/reports kèm theo Query String tự động chọn đúng bộ lọc (ví dụ: ?type=REPORT_ONLY&status=PENDING_GROUP).
+   - Nâng cấp bộ lọc trang Báo cáo (/admin/reports): Thêm tuỳ chọn 'Tất cả Báo cáo' (nhóm Người dùng, Cụm sân, Bài ghép sân lại với nhau) và 'Chờ xử lý (nhóm)' (nhóm Pending, Reviewing, Refund_Pending) để không sót việc.
+   - Đổi thuật ngữ 'Chờ hoàn (quá hạn SLA)' thành 'Chờ hoàn (trễ hạn)' cho thuần Việt.
+   - Nâng cấp UX trang Doanh thu (/admin/revenue-stats): Thêm chức năng Sắp xếp (Sort) linh hoạt trên client-side (Doanh thu Cao-Thấp, Lượt đặt Cao-Thấp) và đồng bộ thứ tự này với logic Xuất file Excel.
