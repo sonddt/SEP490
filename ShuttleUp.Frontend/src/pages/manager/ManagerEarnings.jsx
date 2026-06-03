@@ -7,6 +7,7 @@ import {
 import axiosClient from '../../api/axiosClient';
 import { notifyError, notifyInfo } from '../../hooks/useNotification';
 import ShuttleDateField from '../../components/ui/ShuttleDateField';
+import LongTermScheduleDisplay from '../../components/common/LongTermScheduleDisplay';
 
 const STATUS_MAP = {
   CONFIRMED: { label: 'Sắp tới',    color: '#097E52', bg: '#e8f5ee', icon: 'feather-check-circle', badge: 'bg-success' },
@@ -29,16 +30,8 @@ const fmtVndShort = (v) => {
 
 function formatCourtNames(items, rawCourt) {
   if (!items || !items.length) return rawCourt;
-  const counts = {};
-  items.forEach(i => { counts[i.courtName] = (counts[i.courtName] || 0) + 1; });
-  const entries = Object.entries(counts);
-  return entries.map(([name, count], index) => (
-    <span key={name}>
-      {name}
-      {count > 1 && <sup style={{ color: '#ef4444', fontSize: '0.85em', fontWeight: 700, marginLeft: 1 }}>*{count}</sup>}
-      {index < entries.length - 1 && ', '}
-    </span>
-  ));
+  const uniqueNames = [...new Set(items.map(i => i.courtName))];
+  return uniqueNames.join(', ');
 }
 
 function getGroupedModalItems(items) {
@@ -755,32 +748,36 @@ export default function ManagerEarnings() {
                   {/* Right: Schedule + Status + Refund Info */}
                   <div className="col-md-6">
                     {/* Schedule */}
-                    <div className="bk-schedule-wrapper mt-2 mb-3">
-                      <div className="p-3 rounded" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                        <div className="d-flex align-items-center mb-3">
-                          <i className="feather-calendar me-2" style={{ color: '#10b981', fontSize: '18px' }} />
-                          <span className="fw-semibold" style={{ color: '#0f172a', fontSize: '14px' }}>Thông tin lịch đặt</span>
-                        </div>
-                        <div className="row g-2">
-                          <div className="col-6">
-                            <div className="d-flex align-items-center text-muted mb-1" style={{ fontSize: '12px' }}>
-                              <i className="feather-calendar me-1" />Ngày chơi
-                            </div>
-                            <div className="fw-semibold text-dark" style={{ fontSize: '14px' }}>
-                              {tx.date}
-                            </div>
+                    {!tx.isLongTerm ? (
+                      <div className="bk-schedule-wrapper mt-2 mb-3">
+                        <div className="p-3 rounded" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                          <div className="d-flex align-items-center mb-3">
+                            <i className="feather-calendar me-2" style={{ color: '#10b981', fontSize: '18px' }} />
+                            <span className="fw-semibold" style={{ color: '#0f172a', fontSize: '14px' }}>Thông tin lịch đặt</span>
                           </div>
-                          <div className="col-6">
-                            <div className="d-flex align-items-center text-muted mb-1" style={{ fontSize: '12px' }}>
-                              <i className="feather-clock me-1" />Giờ chơi
+                          <div className="row g-2">
+                            <div className="col-6">
+                              <div className="d-flex align-items-center text-muted mb-1" style={{ fontSize: '12px' }}>
+                                <i className="feather-calendar me-1" />Ngày chơi
+                              </div>
+                              <div className="fw-semibold text-dark" style={{ fontSize: '14px' }}>
+                                {tx.date}
+                              </div>
                             </div>
-                            <div className="fw-semibold text-dark" style={{ fontSize: '14px' }}>
-                              {tx.startTime ? `${fmtTime(tx.startTime)} – ${fmtTime(tx.endTime)}` : '—'}
+                            <div className="col-6">
+                              <div className="d-flex align-items-center text-muted mb-1" style={{ fontSize: '12px' }}>
+                                <i className="feather-clock me-1" />Giờ chơi
+                              </div>
+                              <div className="fw-semibold text-dark" style={{ fontSize: '14px' }}>
+                                {tx.startTime ? `${fmtTime(tx.startTime)} – ${fmtTime(tx.endTime)}` : '—'}
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    ) : (
+                      <LongTermScheduleDisplay items={tx.items} />
+                    )}
 
                     {/* Status */}
                     <div className="bk-detail-section mb-3">
