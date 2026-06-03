@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
 import { notifyError } from '../../hooks/useNotification';
@@ -33,16 +33,7 @@ export default function ManagerDashboard() {
     return () => { mounted = false; };
   }, []);
 
-  const stats = useMemo(() => {
-    const o = overview || {};
-    const money = (v) => `${(v ?? 0).toLocaleString('vi-VN')} ₫`;
-    return [
-      { label: 'Tổng cụm sân',        value: (o.totalVenues ?? 0).toLocaleString('vi-VN'), icon: 'feather-map-pin',     variant: 'green' },
-      { label: 'Đặt sân hôm nay',     value: (o.todayBookings ?? 0).toLocaleString('vi-VN'), icon: 'feather-calendar',    variant: 'blue' },
-      { label: 'Doanh thu tháng này', value: money(o.monthRevenue ?? 0), icon: 'feather-trending-up', variant: 'amber' },
-      { label: 'Chờ xử lý',           value: (o.pendingCount ?? 0).toLocaleString('vi-VN'), icon: 'feather-clock',       variant: 'red' },
-    ];
-  }, [overview]);
+
 
   const recentBookings = overview?.recentBookings || [];
 
@@ -53,22 +44,7 @@ export default function ManagerDashboard() {
 
   return (
     <>
-      {/* Stats Cards */}
-      <div className="row g-3 mb-4">
-        {stats.map(s => (
-          <div key={s.label} className="col-xl-3 col-sm-6">
-            <div className={`mgr-stat-card mgr-stat-card--${s.variant}`}>
-              <div className="mgr-stat-card__icon">
-                <i className={s.icon} />
-              </div>
-              <div>
-                <div className="mgr-stat-card__label">{s.label}</div>
-                <div className="mgr-stat-card__value">{s.value}</div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+
 
       <div className="row g-3">
         {/* Recent Bookings */}
