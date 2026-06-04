@@ -159,6 +159,15 @@ export default function ManagerAddVenue() {
     slotDuration: 60,
   });
 
+  const DAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
+  const DAY_MAP = [1, 2, 3, 4, 5, 6, 0];
+  const TIME_SLOTS = [];
+  for (let h = 5; h <= 23; h++) {
+    TIME_SLOTS.push(`${String(h).padStart(2, '0')}:00`);
+    TIME_SLOTS.push(`${String(h).padStart(2, '0')}:30`);
+  }
+  const [dayHours, setDayHours] = useState(DAYS.map(() => ({ open: '06:00', close: '22:00', enabled: true })));
+
   const [thumbnailFiles, setThumbnailFiles] = useState([]);
   const [thumbnailPreview, setThumbnailPreview] = useState(null);
   const [existingThumbnail, setExistingThumbnail] = useState(null);
@@ -201,6 +210,7 @@ export default function ManagerAddVenue() {
   };
 
   const setField = (key, val) => setForm((p) => ({ ...p, [key]: val }));
+  const toggleDay = (i, key, val) => setDayHours((p) => p.map((d, idx) => idx === i ? { ...d, [key]: val } : d));
 
   const showPolicyToast = useCallback((msg, type = 'success') => setPolicyToast({ msg, type }), []);
   const getPolicyFieldError = useCallback((name) => policyFieldErrors[name] || '', [policyFieldErrors]);
@@ -223,15 +233,18 @@ export default function ManagerAddVenue() {
   }, []);
 
   useEffect(() => {
-    if (addressParsedRef.current || !divisionTree || !venueId) return;
-    if (!form.address) return;
+    addressParsedRef.current = false;
+  }, [venueId]);
+
+  useEffect(() => {
+    if (addressParsedRef.current || !divisionTree || !form.address) return;
     addressParsedRef.current = true;
     const parsed = parseVenueAddress(divisionTree, form.address);
     if (parsed.p) {
       setAddrCodes({ p: parsed.p, d: parsed.d });
     }
     setStreet(parsed.street);
-  }, [divisionTree, form.address, venueId]);
+  }, [divisionTree, form.address]);
 
   const assembleAddress = () => {
     const parts = [];
@@ -265,24 +278,42 @@ export default function ManagerAddVenue() {
     }
   };
 
+  const mapOpenHoursToDayHours = useCallback((hours) => {
+    const isLegacy = !hours?.length;
+    return DAYS.map((_, i) => {
+      if (isLegacy) return { enabled: true, open: '06:00', close: '22:00' };
+      const dbDow = DAY_MAP[i];
+      const matched = hours.find((h) => (h.dayOfWeek ?? h.DayOfWeek) === dbDow);
+      if (matched && (matched.enabled ?? matched.Enabled)) {
+        return {
+          enabled: true,
+          open: matched.openTime || matched.OpenTime || '06:00',
+          close: matched.closeTime || matched.CloseTime || '22:00',
+        };
+      }
+      return { enabled: false, open: '06:00', close: '22:00' };
+    });
+  }, []);
+
   useEffect(() => {
     if (!venueId) return;
     let mounted = true;
     const fetchVenue = async () => {
       try {
         setLoading(true);
-        const res = await axiosClient.get(`/venues/${venueId}`);
+        const res = await axiosClient.get(`/manager/venues/${venueId}`);
         if (!mounted) return;
+        const address = res?.address || res?.Address || '';
         setForm(p => ({
           ...p,
           name: res?.name || res?.Name || '',
-          address: res?.address || res?.Address || '',
+          address,
           contactName: res?.contactName || res?.ContactName || '',
           contactPhone: res?.contactPhone || res?.ContactPhone || '',
-          lat: res?.lat || res?.Lat || '',
-          lng: res?.lng || res?.Lng || '',
-          weeklyDiscountPercent: res?.weeklyDiscountPercent || res?.WeeklyDiscountPercent || '',
-          monthlyDiscountPercent: res?.monthlyDiscountPercent || res?.MonthlyDiscountPercent || '',
+          lat: res?.lat ?? res?.Lat ?? '',
+          lng: res?.lng ?? res?.Lng ?? '',
+          weeklyDiscountPercent: res?.weeklyDiscountPercent ?? res?.WeeklyDiscountPercent ?? '',
+          monthlyDiscountPercent: res?.monthlyDiscountPercent ?? res?.MonthlyDiscountPercent ?? '',
           description: res?.description || res?.Description || '',
           includes: Array.isArray(res?.includes) ? res.includes : (Array.isArray(res?.Includes) ? res.Includes : []),
           rules: Array.isArray(res?.rules) ? res.rules : (Array.isArray(res?.Rules) ? res.Rules : []),
@@ -291,15 +322,26 @@ export default function ManagerAddVenue() {
         }));
         setExistingThumbnail(res?.thumbnailUrl || res?.ThumbnailUrl || null);
         setExistingGallery(res?.imageUrls || res?.ImageUrls || []);
+        setDayHours(mapOpenHoursToDayHours(res?.openHours || res?.OpenHours || []));
+        addressParsedRef.current = false;
+        if (divisionTree && address) {
+          const parsed = parseVenueAddress(divisionTree, address);
+          if (parsed.p) setAddrCodes({ p: parsed.p, d: parsed.d });
+          setStreet(parsed.street);
+          addressParsedRef.current = true;
+        }
       } catch (err) {
         console.error('Failed to load venue', err);
+        if (mounted) {
+          setErrorMsg('Không tải được thông tin cụm sân. Bạn thử tải lại trang nhé!');
+        }
       } finally {
         if (mounted) setLoading(false);
       }
     };
     fetchVenue();
     return () => { mounted = false; };
-  }, [venueId]);
+  }, [venueId, divisionTree, mapOpenHoursToDayHours]);
 
   const handleMapPick = useCallback((pos) => {
     setForm((p) => ({
@@ -382,6 +424,23 @@ export default function ManagerAddVenue() {
     setPolicyField('venueRules', DEFAULT_RULES_TEMPLATE);
   }, [policyForm.venueRules, setPolicyField]);
 
+  const buildOpenHoursPayload = () => dayHours.map((d, i) => ({
+    dayOfWeek: DAY_MAP[i],
+    enabled: d.enabled,
+    openTime: d.enabled ? d.open : null,
+    closeTime: d.enabled ? d.close : null,
+  }));
+
+  const persistCheckoutSettings = async (id) => {
+    const policyErrors = validatePolicy();
+    if (Object.keys(policyErrors).length > 0) {
+      setPolicyFieldErrors(policyErrors);
+      throw new Error('POLICY_VALIDATION');
+    }
+    await putVenueCheckoutSettings(id, buildPutBody(policyForm));
+    setSavedPolicyForm(policyForm);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -418,7 +477,7 @@ export default function ManagerAddVenue() {
       const assembledAddr = assembleAddress();
       const errors = {};
       if (!form.name?.trim()) errors.name = ['Bạn chưa định danh tên cụm sân kìa!'];
-      if (!addrCodes.p || !addrCodes.d) errors.address = ['Bạn chưa chọn đủ Tỉnh/TP và Quận/Huyện!'];
+      if (!addrCodes.p || !addrCodes.d) errors.address = ['Bạn chưa chọn đủ Tỉnh/Thành phố và Phường/Xã!'];
       if (Object.keys(errors).length > 0) {
         setFieldErrors(errors);
         setErrorMsg('Oops... Có vài chỗ chưa ổn, bạn kiểm tra lại bên dưới nhé!');
@@ -443,6 +502,7 @@ export default function ManagerAddVenue() {
         rules: form.rules.filter(s => s.trim()),
         amenities: form.amenities,
         slotDuration: form.slotDuration ? Number(form.slotDuration) : 60,
+        openHours: buildOpenHoursPayload(),
       };
 
       let id = venueId;
@@ -454,6 +514,17 @@ export default function ManagerAddVenue() {
       }
 
       if (id) {
+        try {
+          await persistCheckoutSettings(id);
+        } catch (policyErr) {
+          if (policyErr.message === 'POLICY_VALIDATION') {
+            setErrorMsg('Oops… Bạn kiểm tra lại phần Chính sách & Quy định giúp mình nhé!');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+          }
+          throw policyErr;
+        }
+
         if (thumbnailFiles.length > 0) {
           const fd = new FormData();
           for (const file of thumbnailFiles) {
@@ -472,10 +543,16 @@ export default function ManagerAddVenue() {
         }
       }
 
-      navigate('/manager/venues');
-      notifySuccess(venueId ? 'Cập nhật sân thành công!' : 'Tạo sân mới thành công!');
+      if (!venueId && id) {
+        notifySuccess('Tạo cụm sân thành công! Bạn có thể tiếp tục chỉnh sửa.');
+        navigate(`/manager/venues/${id}/edit`);
+        return;
+      }
+
+      notifySuccess('Cập nhật cụm sân thành công!');
     } catch (err) {
       console.error('Submit venue failed', err);
+      if (err.message === 'POLICY_VALIDATION') return;
       if (err.response?.data?.errors) {
         setFieldErrors(err.response.data.errors);
         setErrorMsg('Oops... Hệ thống phát hiện vài phần nhập chưa chuẩn xác.');
@@ -803,13 +880,42 @@ export default function ManagerAddVenue() {
                   </div>
                 </div>
 
+                {/* Schedule Card */}
+                <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
+                  <div className="card-body p-4 p-md-5">
+                    <SectionHeader icon="feather-clock" iconBg="#fef3c7" iconColor="#d97706" title="5. Lịch hoạt động chung" subtitle="Cài đặt khung giờ làm việc tiêu chuẩn" />
+                    <div className="px-2">
+                      {DAYS.map((day, i) => (
+                        <div key={day} className="row align-items-center py-3 border-bottom" style={{ opacity: dayHours[i].enabled ? 1 : 0.5, transition: '0.2s' }}>
+                          <div className="col-3 col-sm-2 fw-bold text-dark" style={{ fontSize: 13 }}>{day}</div>
+                          <div className="col-3 col-sm-4 px-1">
+                            <select className="form-select form-select-sm bg-light border-0" value={dayHours[i].open} disabled={!dayHours[i].enabled} onChange={(e) => toggleDay(i, 'open', e.target.value)}>
+                              {TIME_SLOTS.map((ts) => <option key={ts} value={ts}>{ts}</option>)}
+                            </select>
+                          </div>
+                          <div className="col-3 col-sm-4 px-1">
+                            <select className="form-select form-select-sm bg-light border-0" value={dayHours[i].close} disabled={!dayHours[i].enabled} onChange={(e) => toggleDay(i, 'close', e.target.value)}>
+                              {TIME_SLOTS.map((ts) => <option key={ts} value={ts}>{ts}</option>)}
+                            </select>
+                          </div>
+                          <div className="col-3 col-sm-2 text-end">
+                            <div className="form-check form-switch d-inline-block m-0" style={{ transform: 'scale(1.1)' }}>
+                              <input className="form-check-input m-0 cursor-pointer" type="checkbox" checked={dayHours[i].enabled} onChange={(e) => toggleDay(i, 'enabled', e.target.checked)} />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
 
             {/* ===== ROW 2: Content sections ===== */}
             <div className="row g-4 mt-0">
 
-              {/* Section 5: Description - full width */}
+              {/* Section 6: Description - full width */}
               <div className="col-12">
                 <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
                   <div className="card-body p-4 p-md-5">
@@ -817,7 +923,7 @@ export default function ManagerAddVenue() {
                       icon="feather-file-text"
                       iconBg="#f0fdf4"
                       iconColor="#16a34a"
-                      title="5. Mô tả sân"
+                      title="6. Mô tả sân"
                       subtitle="Giới thiệu về cơ sở — hiển thị ở tab Tổng quan trang chi tiết sân"
                     />
                     <textarea
@@ -835,7 +941,7 @@ export default function ManagerAddVenue() {
                 </div>
               </div>
 
-              {/* Section 6: Includes + Section 7: Rules - 2 columns */}
+              {/* Section 7: Includes + Section 8: Rules - 2 columns */}
               <div className="col-12 col-lg-6">
                 <div className="card border-0 shadow-sm h-100" style={{ borderRadius: 16 }}>
                   <div className="card-body p-4 p-md-5">
@@ -843,7 +949,7 @@ export default function ManagerAddVenue() {
                       icon="feather-check-square"
                       iconBg="#ecfdf5"
                       iconColor="#059669"
-                      title="6. Bao gồm"
+                      title="7. Bao gồm"
                       subtitle="Những gì khách được sử dụng khi thuê sân"
                     />
                     <EditableList
@@ -863,7 +969,7 @@ export default function ManagerAddVenue() {
                       icon="feather-alert-octagon"
                       iconBg="#fff7ed"
                       iconColor="#ea580c"
-                      title="7. Quy định"
+                      title="8. Quy định"
                       subtitle="Các quy tắc khách cần tuân thủ tại cơ sở"
                     />
                     <EditableList
@@ -876,7 +982,7 @@ export default function ManagerAddVenue() {
                 </div>
               </div>
 
-              {/* Section 8: Amenities - full width */}
+              {/* Section 9: Amenities - full width */}
               <div className="col-12">
                 <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
                   <div className="card-body p-4 p-md-5">
@@ -884,7 +990,7 @@ export default function ManagerAddVenue() {
                       icon="feather-star"
                       iconBg="#eff6ff"
                       iconColor="#3b82f6"
-                      title="8. Tiện ích"
+                      title="9. Tiện ích"
                       subtitle="Chọn các cơ sở vật chất & dịch vụ hiện có tại cơ sở"
                     />
                     <div className="row g-3">

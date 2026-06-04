@@ -68,16 +68,39 @@ public class VenueService : IVenueService
 
     public async Task<object?> GetManagedVenueDetailAsync(Guid venueId, Guid managerId)
     {
-        var venue = await _venueRepo.GetByIdAndOwnerAsync(venueId, managerId);
+        var venue = await _venueRepo.GetByIdAndOwnerWithDetailsAsync(venueId, managerId);
         if (venue == null) return null;
         static List<string>? ParseJsonArray(string? json)
         { if (string.IsNullOrWhiteSpace(json)) return null; try { return JsonSerializer.Deserialize<List<string>>(json); } catch { return null; } }
+
+        var thumbnailUrl = venue.Files
+            .Where(f => f.FileName != null && f.FileName.Contains("mac_dinh", StringComparison.OrdinalIgnoreCase))
+            .Select(f => f.FileUrl).FirstOrDefault()
+            ?? venue.Files.OrderByDescending(f => f.CreatedAt).Select(f => f.FileUrl).FirstOrDefault();
+
+        var galleryUrls = venue.Files
+            .Where(f => f.FileUrl != null && f.FileUrl != thumbnailUrl)
+            .OrderByDescending(f => f.CreatedAt)
+            .Select(f => f.FileUrl!)
+            .ToList();
+
+        var openHours = venue.VenueOpenHours
+            .OrderBy(o => o.DayOfWeek)
+            .Select(o => new
+            {
+                o.DayOfWeek,
+                Enabled = o.OpenTime.HasValue && o.CloseTime.HasValue,
+                OpenTime = o.OpenTime?.ToString("HH:mm"),
+                CloseTime = o.CloseTime?.ToString("HH:mm"),
+            })
+            .ToList();
+
         return new
         {
             venue.Id, venue.Name, venue.Address, venue.Lat, venue.Lng, venue.ContactName, venue.ContactPhone,
             venue.WeeklyDiscountPercent, venue.MonthlyDiscountPercent, venue.SlotDuration, venue.Description,
             Includes = ParseJsonArray(venue.Includes), Rules = ParseJsonArray(venue.Rules), Amenities = ParseJsonArray(venue.Amenities),
-            venue.IsActive, venue.CreatedAt
+            venue.IsActive, venue.CreatedAt, thumbnailUrl, imageUrls = galleryUrls, openHours
         };
     }
 
@@ -126,8 +149,27 @@ public class VenueService : IVenueService
         venue.SlotDuration = newSlot;
 
         await _venueRepo.UpdateAsync(venue);
+        if (dto.OpenHours != null)
+            await _venueRepo.ReplaceVenueOpenHoursAsync(venueId, BuildVenueOpenHours(venueId, dto.OpenHours));
+
         return new { venue.Id, venue.Name, venue.Address, venue.ContactName, venue.ContactPhone, venue.IsActive, venue.CreatedAt };
     }
+
+    public async Task ReplaceVenueOpenHoursAsync(Guid venueId, List<ManagerCourtOpenHourDto> openHours)
+        => await _venueRepo.ReplaceVenueOpenHoursAsync(venueId, BuildVenueOpenHours(venueId, openHours));
+
+    private static List<VenueOpenHour> BuildVenueOpenHours(Guid venueId, List<ManagerCourtOpenHourDto> days) =>
+        days.Select(day =>
+        {
+            if (!day.Enabled)
+                return new VenueOpenHour { Id = Guid.NewGuid(), VenueId = venueId, DayOfWeek = day.DayOfWeek };
+            if (string.IsNullOrWhiteSpace(day.OpenTime) || string.IsNullOrWhiteSpace(day.CloseTime))
+                throw new InvalidOperationException("OpenHours: Khi Enabled=true phải cung cấp OpenTime/CloseTime.");
+            if (!TimeOnly.TryParse(day.OpenTime, out var o) || !TimeOnly.TryParse(day.CloseTime, out var cl))
+                throw new InvalidOperationException("OpenHours: OpenTime/CloseTime phải có định dạng HH:mm.");
+            if (o >= cl) throw new InvalidOperationException("OpenHours: OpenTime phải nhỏ hơn CloseTime.");
+            return new VenueOpenHour { Id = Guid.NewGuid(), VenueId = venueId, DayOfWeek = day.DayOfWeek, OpenTime = o, CloseTime = cl };
+        }).ToList();
 
     public async Task<object> DeleteVenueAsync(Guid venueId, Guid managerId)
     {
