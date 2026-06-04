@@ -159,14 +159,6 @@ export default function ManagerAddVenue() {
     slotDuration: 60,
   });
 
-  const DAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
-  const TIME_SLOTS = [];
-  for (let h = 5; h <= 23; h++) {
-    TIME_SLOTS.push(`${String(h).padStart(2, '0')}:00`);
-    TIME_SLOTS.push(`${String(h).padStart(2, '0')}:30`);
-  }
-  const [dayHours, setDayHours] = useState(DAYS.map(() => ({ open: '06:00', close: '22:00', enabled: true })));
-
   const [thumbnailFiles, setThumbnailFiles] = useState([]);
   const [thumbnailPreview, setThumbnailPreview] = useState(null);
   const [existingThumbnail, setExistingThumbnail] = useState(null);
@@ -209,7 +201,6 @@ export default function ManagerAddVenue() {
   };
 
   const setField = (key, val) => setForm((p) => ({ ...p, [key]: val }));
-  const toggleDay = (i, key, val) => setDayHours((p) => p.map((d, idx) => idx === i ? { ...d, [key]: val } : d));
 
   const showPolicyToast = useCallback((msg, type = 'success') => setPolicyToast({ msg, type }), []);
   const getPolicyFieldError = useCallback((name) => policyFieldErrors[name] || '', [policyFieldErrors]);
@@ -812,35 +803,6 @@ export default function ManagerAddVenue() {
                   </div>
                 </div>
 
-                {/* Schedule Card */}
-                <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
-                  <div className="card-body p-4 p-md-5">
-                    <SectionHeader icon="feather-clock" iconBg="#fef3c7" iconColor="#d97706" title="5. Lịch hoạt động chung" subtitle="Cài đặt khung giờ làm việc tiêu chuẩn" />
-                    <div className="px-2">
-                      {DAYS.map((day, i) => (
-                        <div key={day} className="row align-items-center py-3 border-bottom" style={{ opacity: dayHours[i].enabled ? 1 : 0.5, transition: '0.2s' }}>
-                          <div className="col-3 col-sm-2 fw-bold text-dark" style={{ fontSize: 13 }}>{day}</div>
-                          <div className="col-3 col-sm-4 px-1">
-                            <select className="form-select form-select-sm bg-light border-0" value={dayHours[i].open} disabled={!dayHours[i].enabled} onChange={(e) => toggleDay(i, 'open', e.target.value)}>
-                              {TIME_SLOTS.map((ts) => <option key={ts} value={ts}>{ts}</option>)}
-                            </select>
-                          </div>
-                          <div className="col-3 col-sm-4 px-1">
-                            <select className="form-select form-select-sm bg-light border-0" value={dayHours[i].close} disabled={!dayHours[i].enabled} onChange={(e) => toggleDay(i, 'close', e.target.value)}>
-                              {TIME_SLOTS.map((ts) => <option key={ts} value={ts}>{ts}</option>)}
-                            </select>
-                          </div>
-                          <div className="col-3 col-sm-2 text-end">
-                            <div className="form-check form-switch d-inline-block m-0" style={{ transform: 'scale(1.1)' }}>
-                              <input className="form-check-input m-0 cursor-pointer" type="checkbox" checked={dayHours[i].enabled} onChange={(e) => toggleDay(i, 'enabled', e.target.checked)} />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
               </div>
             </div>
 
@@ -855,7 +817,7 @@ export default function ManagerAddVenue() {
                       icon="feather-file-text"
                       iconBg="#f0fdf4"
                       iconColor="#16a34a"
-                      title="6. Mô tả sân"
+                      title="5. Mô tả sân"
                       subtitle="Giới thiệu về cơ sở — hiển thị ở tab Tổng quan trang chi tiết sân"
                     />
                     <textarea
@@ -881,7 +843,7 @@ export default function ManagerAddVenue() {
                       icon="feather-check-square"
                       iconBg="#ecfdf5"
                       iconColor="#059669"
-                      title="7. Bao gồm"
+                      title="6. Bao gồm"
                       subtitle="Những gì khách được sử dụng khi thuê sân"
                     />
                     <EditableList
@@ -901,7 +863,7 @@ export default function ManagerAddVenue() {
                       icon="feather-alert-octagon"
                       iconBg="#fff7ed"
                       iconColor="#ea580c"
-                      title="8. Quy định"
+                      title="7. Quy định"
                       subtitle="Các quy tắc khách cần tuân thủ tại cơ sở"
                     />
                     <EditableList
@@ -922,7 +884,7 @@ export default function ManagerAddVenue() {
                       icon="feather-star"
                       iconBg="#eff6ff"
                       iconColor="#3b82f6"
-                      title="9. Tiện ích"
+                      title="8. Tiện ích"
                       subtitle="Chọn các cơ sở vật chất & dịch vụ hiện có tại cơ sở"
                     />
                     <div className="row g-3">
