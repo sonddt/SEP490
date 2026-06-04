@@ -897,3 +897,13 @@ Kết bạn & quan hệ xã hội (Player):
    - Tự động huỷ các `BookingItems`, `Payments`, cập nhật trạng thái của lịch cố định (Series) và gỡ bỏ các bài tìm kèo (`MatchingPosts`) nếu có.
    - Bắn chuông thông báo (Notification) và gửi Email cho cả 2 bên.
 3. **Database Seed**: Cập nhật file `Database_realistic.txt`, khắc phục lỗi logic trong dữ liệu mẫu (các đơn tương lai bị gán nhầm mác `COMPLETED` đã được trả về đúng trạng thái `CONFIRMED`).
+
+### D. Cập nhật Matching, Quản lý Thống kê & Sửa lỗi Report
+
+1. **Cập nhật Matching (Giá & Múi giờ)**:
+   - **Giá**: Thêm `OriginalPricePerSlot` vào `MatchingPostCardDto`. Tính toán hiển thị giá gốc bị gạch chéo ngoài UI. Xoá bỏ hoàn toàn 2 tuỳ chọn chia tiền cũ là "Nam bao nữ" và "Chia đều" (`split_equal`) khỏi frontend, mặc định chọn "Tùy thỏa thuận". Backend tự động quy đổi `female_free` cũ thành `split_equal` để tương thích ngược.
+   - **Múi giờ**: Sửa lỗi sai giờ ca chơi (bị cộng 7 tiếng) bằng cách xoá bỏ hàm `AsUtcForJson` trong `MatchingService.cs` khi map `StartTime`/`EndTime`, trả lại đúng giờ địa phương cho frontend.
+2. **Tối giản Manager Dashboard**:
+   - Gỡ bỏ hoàn toàn thư viện biểu đồ Recharts (PieChart, BarChart, LineChart) khỏi trang `ManagerEarnings.jsx` và `ManagerDashboard.jsx`. Chỉ giữ lại các thẻ KPI tổng quan và bảng dữ liệu (Table) nhằm tinh gọn giao diện.
+3. **Sửa lỗi Report 500 (EF Core)**:
+   - Khắc phục lỗi `Duplicate entry '...' for key 'files.PRIMARY'` khi User gửi khiếu nại kèm hình ảnh. Nguyên nhân do `_fileRepo.GetByIdsAsync` dùng `.AsNoTracking()` khiến EF Core hiểu lầm các file đính kèm cũ (vừa upload xong lấy ID) là object mới cần Insert lần nữa. Đã xoá bỏ `.AsNoTracking()` tại `FileRepository.cs`, giúp hệ thống tracking đúng vòng đời Entity.
