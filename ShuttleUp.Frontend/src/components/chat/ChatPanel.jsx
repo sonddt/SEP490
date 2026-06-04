@@ -201,7 +201,11 @@ export default function ChatPanel() {
                                         return (
                                             <button key={rid} className="shuttle-chat-panel__room-item" onClick={() => handleSelectRoom(r)}>
                                                 <div className="shuttle-chat-panel__room-avatar">
-                                                    <img src="/assets/img/profiles/avatar-02.jpg" alt="" />
+                                                    {(() => {
+                                                        const peer = r.members?.find((m) => String(m.userId ?? m.UserId) !== String(user?.id));
+                                                        const avatar = peer?.avatarUrl || peer?.AvatarUrl || '/assets/img/profiles/avatar-01.jpg';
+                                                        return <img src={avatar} alt="" />;
+                                                    })()}
                                                     <span className="shuttle-chat-panel__online-dot"></span>
                                                 </div>
                                                 <div className="shuttle-chat-panel__room-info">
@@ -265,7 +269,11 @@ export default function ChatPanel() {
                                 <i className="fa-solid fa-chevron-left"></i>
                             </button>
                             <div className="shuttle-chat-panel__room-avatar" style={{ width: 32, height: 32 }}>
-                                <img src="/assets/img/profiles/avatar-02.jpg" alt="" style={{ width: 32, height: 32 }} />
+                                {(() => {
+                                    const peer = activeRoom.members?.find((m) => String(m.userId ?? m.UserId) !== String(user?.id));
+                                    const avatar = peer?.avatarUrl || peer?.AvatarUrl || '/assets/img/profiles/avatar-01.jpg';
+                                    return <img src={avatar} alt="" style={{ width: 32, height: 32 }} />;
+                                })()}
                             </div>
                             <span className="shuttle-chat-panel__chat-name">{activeRoom.name}</span>
                         </div>

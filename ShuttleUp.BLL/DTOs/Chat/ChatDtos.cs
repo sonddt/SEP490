@@ -28,6 +28,7 @@ public class MemberDto
 {
     public Guid UserId { get; set; }
     public string FullName { get; set; } = null!;
+    public string? AvatarUrl { get; set; }
 }
 
 public class RoomResponseDto
@@ -45,6 +46,7 @@ public class MessageResponseDto
     public Guid RoomId { get; set; }
     public Guid SenderUserId { get; set; }
     public string SenderName { get; set; } = null!;
+    public string? SenderAvatarUrl { get; set; }
     public string? MessageText { get; set; }
     public string? FileUrl { get; set; }
     public DateTime CreatedAt { get; set; }

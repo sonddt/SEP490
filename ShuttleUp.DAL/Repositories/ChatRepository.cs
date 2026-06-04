@@ -16,14 +16,14 @@ public class ChatRepository : IChatRepository
     public async Task<IEnumerable<ChatRoom>> GetRoomsByUserAsync(Guid userId)
         => await _context.ChatRooms
             .Where(r => r.Members.Any(m => m.UserId == userId))
-            .Include(r => r.Members).ThenInclude(m => m.User)
-            .Include(r => r.ChatMessages.OrderByDescending(msg => msg.CreatedAt).Take(1))
+            .Include(r => r.Members).ThenInclude(m => m.User).ThenInclude(u => u.AvatarFile)
+            .Include(r => r.ChatMessages.OrderByDescending(msg => msg.CreatedAt).Take(1)).ThenInclude(m => m.SenderUser).ThenInclude(u => u.AvatarFile)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync();
 
     public async Task<ChatRoom?> GetRoomWithMembersAsync(Guid roomId)
         => await _context.ChatRooms
-            .Include(r => r.Members).ThenInclude(m => m.User)
+            .Include(r => r.Members).ThenInclude(m => m.User).ThenInclude(u => u.AvatarFile)
             .FirstOrDefaultAsync(r => r.Id == roomId);
 
     public async Task<ChatRoom> CreateRoomAsync(ChatRoom room, IEnumerable<Guid> memberIds)
@@ -64,7 +64,7 @@ public class ChatRepository : IChatRepository
         Guid roomId, int page = 1, int pageSize = 50)
         => await _context.ChatMessages
             .Where(m => m.ChatRoomId == roomId)
-            .Include(m => m.SenderUser)
+            .Include(m => m.SenderUser).ThenInclude(u => u.AvatarFile)
             .Include(m => m.Files)
             .OrderByDescending(m => m.CreatedAt)
             .Skip((page - 1) * pageSize)
@@ -84,6 +84,8 @@ public class ChatRepository : IChatRepository
         await _context.SaveChangesAsync();
         await _context.Entry(message)
             .Reference(m => m.SenderUser)
+            .Query()
+            .Include(u => u.AvatarFile)
             .LoadAsync();
         await _context.Entry(message)
             .Collection(m => m.Files)

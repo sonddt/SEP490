@@ -272,7 +272,7 @@ export default function ChatPage() {
                           </div>
                           <input type="checkbox" className="d-none" checked={checked} onChange={() => toggleMember(id)} />
                           <div className="flex items-center gap-2">
-                            <img src="/assets/img/profiles/avatar-02.jpg" alt="" className="w-6 h-6 rounded-full" />
+                            <img src={x.avatarUrl ?? x.AvatarUrl ?? '/assets/img/profiles/avatar-01.jpg'} alt="" className="w-6 h-6 rounded-full" />
                             <span className={`text-[13.5px] ${checked ? 'font-bold text-emerald-800' : 'font-semibold text-slate-700'}`}>{name}</span>
                           </div>
                         </label>
@@ -322,7 +322,11 @@ export default function ChatPage() {
                         >
                           {isActive && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-emerald-500 rounded-r-full"></div>}
                           <div className="relative flex-shrink-0">
-                            <img src="/assets/img/profiles/avatar-02.jpg" alt="" className="w-12 h-12 rounded-full object-cover shadow-sm bg-white p-0.5 border border-slate-200" />
+                            {(() => {
+                              const peer = r.members?.find((m) => String(m.userId ?? m.UserId) !== String(user?.id));
+                              const avatar = peer?.avatarUrl || peer?.AvatarUrl || '/assets/img/profiles/avatar-01.jpg';
+                              return <img src={avatar} alt="" className="w-12 h-12 rounded-full object-cover shadow-sm bg-white p-0.5 border border-slate-200" />;
+                            })()}
                             <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></span>
                           </div>
                           <div className="flex-1 min-w-0 pr-1">
@@ -366,7 +370,11 @@ export default function ChatPage() {
                     <i className="feather-chevron-left text-lg"></i>
                   </button>
                   <div className="relative">
-                    <img src="/assets/img/profiles/avatar-02.jpg" alt="User" className="w-12 h-12 rounded-full border shadow-sm" />
+                    {(() => {
+                      const peer = activeRoom.members?.find((m) => String(m.userId ?? m.UserId) !== String(user?.id));
+                      const avatar = peer?.avatarUrl || peer?.AvatarUrl || '/assets/img/profiles/avatar-01.jpg';
+                      return <img src={avatar} alt="User" className="w-12 h-12 rounded-full border shadow-sm" />;
+                    })()}
                     <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>
                   </div>
                   <div>
@@ -397,7 +405,7 @@ export default function ChatPage() {
                       return (
                         <li key={msgId(msg)} className={`media flex gap-3 ${isMe ? 'flex-row-reverse sent' : 'received'}`}>
                           <div className="avatar flex-shrink-0 self-end mb-1">
-                            <img src={isMe ? (user.avatarUrl || '/assets/img/profiles/avatar-01.jpg') : '/assets/img/profiles/avatar-03.jpg'} alt="" className="w-8 h-8 rounded-full border shadow-sm" />
+                            <img src={isMe ? (user.avatarUrl || '/assets/img/profiles/avatar-01.jpg') : (msg.senderAvatarUrl || msg.SenderAvatarUrl || '/assets/img/profiles/avatar-01.jpg')} alt="" className="w-8 h-8 rounded-full border shadow-sm" />
                           </div>
                           <div className={`media-body flex flex-col max-w-[70%] group ${isMe ? 'items-end' : 'items-start'}`}>
                             {!isMe && <span className="text-[11.5px] font-bold text-slate-500 ms-1 mb-1">{msg.senderName ?? msg.SenderName}</span>}
