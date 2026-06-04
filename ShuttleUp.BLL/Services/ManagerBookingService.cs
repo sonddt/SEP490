@@ -52,6 +52,7 @@ public class ManagerBookingService : IManagerBookingService
                 TotalAmount = b.FinalAmount ?? b.TotalAmount,
                 VenueName = b.Venue?.Name,
                 VenueAddress = b.Venue?.Address,
+                VenueImageUrl = b.Venue?.Files?.Where(f => f.FileName != null && f.FileName.Contains("mac_dinh")).Select(f => f.FileUrl).FirstOrDefault() ?? b.Venue?.Files?.OrderByDescending(f => f.CreatedAt).Select(f => f.FileUrl).FirstOrDefault(),
                 PlayerName = b.User?.FullName,
                 PlayerPhone = b.ContactPhone ?? b.User?.PhoneNumber,
                 PlayerAvatarUrl = b.User?.AvatarFile?.FileUrl,

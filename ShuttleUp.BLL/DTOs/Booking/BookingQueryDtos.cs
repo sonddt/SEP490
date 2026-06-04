@@ -96,6 +96,9 @@ public class PaymentContextDto
     public string? VenueAddress { get; set; }
     public string? Date { get; set; }
     public decimal TotalPrice { get; set; }
+    public decimal OriginalPrice { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public string? CouponCode { get; set; }
     public string TotalHours { get; set; } = null!;
     public int SlotDuration { get; set; }
     public string? CustomerName { get; set; }
@@ -144,6 +147,7 @@ public class ManagerBookingListItemDto
     public decimal? TotalAmount { get; set; }
     public string? VenueName { get; set; }
     public string? VenueAddress { get; set; }
+    public string? VenueImageUrl { get; set; }
     public string? PlayerName { get; set; }
     public string? PlayerPhone { get; set; }
     public string? PlayerAvatarUrl { get; set; }

@@ -84,7 +84,7 @@ export function mapManagerBookingFromApi(b) {
     playerImg: b.playerAvatarUrl || '/assets/img/profiles/avatar-01.jpg',
     playerPhone: b.playerPhone || '—',
     court: courtLabel,
-    courtImg: first?.courtImageUrl || '/assets/img/booking/booking-01.jpg',
+    courtImg: b.venueImageUrl || '/assets/img/booking/booking-01.jpg',
     venue: b.venueName || '',
     date: dateStr,
     dateDisplay,
