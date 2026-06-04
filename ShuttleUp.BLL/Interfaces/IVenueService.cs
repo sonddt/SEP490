@@ -21,6 +21,7 @@ public interface IVenueService
     Task<object> PublishVenueAsync(Guid venueId, Guid managerId);
     Task<object> UnpublishVenueAsync(Guid venueId, Guid managerId);
     Task<object> EditVenueAsync(Guid venueId, Guid managerId, ManagerVenueUpsertDto dto);
+    Task ReplaceVenueOpenHoursAsync(Guid venueId, List<ManagerCourtOpenHourDto> openHours);
     Task<object> DeleteVenueAsync(Guid venueId, Guid managerId);
 
     // ── Venue Files ──

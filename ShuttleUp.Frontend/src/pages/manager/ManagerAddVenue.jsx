@@ -160,6 +160,7 @@ export default function ManagerAddVenue() {
   });
 
   const DAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
+  const DAY_MAP = [1, 2, 3, 4, 5, 6, 0];
   const TIME_SLOTS = [];
   for (let h = 5; h <= 23; h++) {
     TIME_SLOTS.push(`${String(h).padStart(2, '0')}:00`);
@@ -232,15 +233,18 @@ export default function ManagerAddVenue() {
   }, []);
 
   useEffect(() => {
-    if (addressParsedRef.current || !divisionTree || !venueId) return;
-    if (!form.address) return;
+    addressParsedRef.current = false;
+  }, [venueId]);
+
+  useEffect(() => {
+    if (addressParsedRef.current || !divisionTree || !form.address) return;
     addressParsedRef.current = true;
     const parsed = parseVenueAddress(divisionTree, form.address);
     if (parsed.p) {
       setAddrCodes({ p: parsed.p, d: parsed.d });
     }
     setStreet(parsed.street);
-  }, [divisionTree, form.address, venueId]);
+  }, [divisionTree, form.address]);
 
   const assembleAddress = () => {
     const parts = [];
@@ -274,24 +278,42 @@ export default function ManagerAddVenue() {
     }
   };
 
+  const mapOpenHoursToDayHours = useCallback((hours) => {
+    const isLegacy = !hours?.length;
+    return DAYS.map((_, i) => {
+      if (isLegacy) return { enabled: true, open: '06:00', close: '22:00' };
+      const dbDow = DAY_MAP[i];
+      const matched = hours.find((h) => (h.dayOfWeek ?? h.DayOfWeek) === dbDow);
+      if (matched && (matched.enabled ?? matched.Enabled)) {
+        return {
+          enabled: true,
+          open: matched.openTime || matched.OpenTime || '06:00',
+          close: matched.closeTime || matched.CloseTime || '22:00',
+        };
+      }
+      return { enabled: false, open: '06:00', close: '22:00' };
+    });
+  }, []);
+
   useEffect(() => {
     if (!venueId) return;
     let mounted = true;
     const fetchVenue = async () => {
       try {
         setLoading(true);
-        const res = await axiosClient.get(`/venues/${venueId}`);
+        const res = await axiosClient.get(`/manager/venues/${venueId}`);
         if (!mounted) return;
+        const address = res?.address || res?.Address || '';
         setForm(p => ({
           ...p,
           name: res?.name || res?.Name || '',
-          address: res?.address || res?.Address || '',
+          address,
           contactName: res?.contactName || res?.ContactName || '',
           contactPhone: res?.contactPhone || res?.ContactPhone || '',
-          lat: res?.lat || res?.Lat || '',
-          lng: res?.lng || res?.Lng || '',
-          weeklyDiscountPercent: res?.weeklyDiscountPercent || res?.WeeklyDiscountPercent || '',
-          monthlyDiscountPercent: res?.monthlyDiscountPercent || res?.MonthlyDiscountPercent || '',
+          lat: res?.lat ?? res?.Lat ?? '',
+          lng: res?.lng ?? res?.Lng ?? '',
+          weeklyDiscountPercent: res?.weeklyDiscountPercent ?? res?.WeeklyDiscountPercent ?? '',
+          monthlyDiscountPercent: res?.monthlyDiscountPercent ?? res?.MonthlyDiscountPercent ?? '',
           description: res?.description || res?.Description || '',
           includes: Array.isArray(res?.includes) ? res.includes : (Array.isArray(res?.Includes) ? res.Includes : []),
           rules: Array.isArray(res?.rules) ? res.rules : (Array.isArray(res?.Rules) ? res.Rules : []),
@@ -300,15 +322,26 @@ export default function ManagerAddVenue() {
         }));
         setExistingThumbnail(res?.thumbnailUrl || res?.ThumbnailUrl || null);
         setExistingGallery(res?.imageUrls || res?.ImageUrls || []);
+        setDayHours(mapOpenHoursToDayHours(res?.openHours || res?.OpenHours || []));
+        addressParsedRef.current = false;
+        if (divisionTree && address) {
+          const parsed = parseVenueAddress(divisionTree, address);
+          if (parsed.p) setAddrCodes({ p: parsed.p, d: parsed.d });
+          setStreet(parsed.street);
+          addressParsedRef.current = true;
+        }
       } catch (err) {
         console.error('Failed to load venue', err);
+        if (mounted) {
+          setErrorMsg('Không tải được thông tin cụm sân. Bạn thử tải lại trang nhé!');
+        }
       } finally {
         if (mounted) setLoading(false);
       }
     };
     fetchVenue();
     return () => { mounted = false; };
-  }, [venueId]);
+  }, [venueId, divisionTree, mapOpenHoursToDayHours]);
 
   const handleMapPick = useCallback((pos) => {
     setForm((p) => ({
@@ -391,6 +424,23 @@ export default function ManagerAddVenue() {
     setPolicyField('venueRules', DEFAULT_RULES_TEMPLATE);
   }, [policyForm.venueRules, setPolicyField]);
 
+  const buildOpenHoursPayload = () => dayHours.map((d, i) => ({
+    dayOfWeek: DAY_MAP[i],
+    enabled: d.enabled,
+    openTime: d.enabled ? d.open : null,
+    closeTime: d.enabled ? d.close : null,
+  }));
+
+  const persistCheckoutSettings = async (id) => {
+    const policyErrors = validatePolicy();
+    if (Object.keys(policyErrors).length > 0) {
+      setPolicyFieldErrors(policyErrors);
+      throw new Error('POLICY_VALIDATION');
+    }
+    await putVenueCheckoutSettings(id, buildPutBody(policyForm));
+    setSavedPolicyForm(policyForm);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -427,7 +477,7 @@ export default function ManagerAddVenue() {
       const assembledAddr = assembleAddress();
       const errors = {};
       if (!form.name?.trim()) errors.name = ['Bạn chưa định danh tên cụm sân kìa!'];
-      if (!addrCodes.p || !addrCodes.d) errors.address = ['Bạn chưa chọn đủ Tỉnh/TP và Quận/Huyện!'];
+      if (!addrCodes.p || !addrCodes.d) errors.address = ['Bạn chưa chọn đủ Tỉnh/Thành phố và Phường/Xã!'];
       if (Object.keys(errors).length > 0) {
         setFieldErrors(errors);
         setErrorMsg('Oops... Có vài chỗ chưa ổn, bạn kiểm tra lại bên dưới nhé!');
@@ -452,6 +502,7 @@ export default function ManagerAddVenue() {
         rules: form.rules.filter(s => s.trim()),
         amenities: form.amenities,
         slotDuration: form.slotDuration ? Number(form.slotDuration) : 60,
+        openHours: buildOpenHoursPayload(),
       };
 
       let id = venueId;
@@ -463,6 +514,17 @@ export default function ManagerAddVenue() {
       }
 
       if (id) {
+        try {
+          await persistCheckoutSettings(id);
+        } catch (policyErr) {
+          if (policyErr.message === 'POLICY_VALIDATION') {
+            setErrorMsg('Oops… Bạn kiểm tra lại phần Chính sách & Quy định giúp mình nhé!');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+          }
+          throw policyErr;
+        }
+
         if (thumbnailFiles.length > 0) {
           const fd = new FormData();
           for (const file of thumbnailFiles) {
@@ -481,10 +543,16 @@ export default function ManagerAddVenue() {
         }
       }
 
-      navigate('/manager/venues');
-      notifySuccess(venueId ? 'Cập nhật sân thành công!' : 'Tạo sân mới thành công!');
+      if (!venueId && id) {
+        notifySuccess('Tạo cụm sân thành công! Bạn có thể tiếp tục chỉnh sửa.');
+        navigate(`/manager/venues/${id}/edit`);
+        return;
+      }
+
+      notifySuccess('Cập nhật cụm sân thành công!');
     } catch (err) {
       console.error('Submit venue failed', err);
+      if (err.message === 'POLICY_VALIDATION') return;
       if (err.response?.data?.errors) {
         setFieldErrors(err.response.data.errors);
         setErrorMsg('Oops... Hệ thống phát hiện vài phần nhập chưa chuẩn xác.');
