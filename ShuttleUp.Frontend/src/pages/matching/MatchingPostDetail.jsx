@@ -29,7 +29,6 @@ const expenseLabels = {
   split_equal: 'Chia đều',
   per_person: 'Cố định/người',
   host_pays: 'Bao sân',
-  female_free: 'Nữ miễn phí',
   negotiable: 'Thỏa thuận',
 };
 

@@ -33,6 +33,7 @@ public sealed class BookingCompletionService : BackgroundService
             try
             {
                 await CompleteExpiredBookingsAsync(stoppingToken);
+                await CancelExpiredPendingBookingsAsync(stoppingToken);
             }
             catch (Exception ex)
             {
@@ -109,5 +110,133 @@ public sealed class BookingCompletionService : BackgroundService
         _logger.LogInformation(
             "[BookingCompletion] Đã chuyển {Count} booking sang COMPLETED",
             eligibleBookings.Count);
+    }
+
+    private async Task CancelExpiredPendingBookingsAsync(CancellationToken ct)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ShuttleUpDbContext>();
+
+        var nowUtc = DateTime.UtcNow;
+        var vnTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+        var nowVn = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, vnTimeZone);
+
+        var eligibleBookings = await db.Bookings
+            .Include(b => b.BookingItems)
+            .Include(b => b.Payments)
+            .Include(b => b.Venue)
+            .Where(b => b.Status == "PENDING"
+                && b.BookingItems.Count > 0
+                && b.BookingItems.Min(bi => bi.StartTime) <= nowVn)
+            .ToListAsync(ct);
+
+        if (eligibleBookings.Count == 0) return;
+
+        var _notify = scope.ServiceProvider.GetRequiredService<ShuttleUp.BLL.Interfaces.INotificationDispatchService>();
+        var _matchingPostLifecycle = scope.ServiceProvider.GetRequiredService<ShuttleUp.BLL.Interfaces.IMatchingPostLifecycleService>();
+
+        var affectedSeriesIds = new HashSet<Guid>();
+
+        foreach (var booking in eligibleBookings)
+        {
+            var hasPaymentProof = booking.Payments.Any(p => 
+                !string.IsNullOrWhiteSpace(p.GatewayReference) 
+                && p.GatewayReference.TrimStart().StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+                && p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase));
+
+            var proofAmount = booking.Payments
+                .Where(p => p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase))
+                .Sum(p => p.Amount ?? 0);
+
+            if (hasPaymentProof)
+            {
+                booking.Status = "PENDING_RECONCILIATION";
+                db.RefundRequests.Add(new RefundRequest
+                {
+                    Id = Guid.NewGuid(),
+                    BookingId = booking.Id,
+                    UserId = booking.UserId,
+                    ReasonCode = "SYSTEM_LATE_APPROVAL",
+                    Status = "PENDING_RECONCILIATION",
+                    RequestedAmount = proofAmount > 0 ? proofAmount : (booking.FinalAmount ?? booking.TotalAmount),
+                    PlayerNote = "Chủ sân không duyệt trước giờ thi đấu",
+                    RequestedAt = DateTime.UtcNow,
+                });
+            }
+            else
+            {
+                booking.Status = "CANCELLED";
+            }
+
+            foreach (var item in booking.BookingItems)
+                item.Status = booking.Status == "CANCELLED" ? "CANCELLED" : item.Status;
+
+            foreach (var p in booking.Payments.Where(p => p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase)))
+                p.Status = booking.Status == "CANCELLED" ? "CANCELLED" : p.Status;
+
+            if (booking.SeriesId.HasValue)
+                affectedSeriesIds.Add(booking.SeriesId.Value);
+
+            // Notify User
+            if (booking.UserId is { } playerId)
+            {
+                var venueName = booking.Venue?.Name ?? "sân";
+                var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
+                
+                string title, body;
+                if (booking.Status == "PENDING_RECONCILIATION")
+                {
+                    title = "Đơn đặt sân bị huỷ — chờ hoàn tiền";
+                    body = $"Mã #{code} tại {venueName} đã bị huỷ do chủ sân duyệt trễ. Hệ thống đang đối soát hoàn tiền 100% cho bạn.";
+                }
+                else
+                {
+                    title = "Đơn đặt sân đã bị huỷ";
+                    body = $"Mã #{code} tại {venueName} đã tự động bị huỷ do quá hạn duyệt.";
+                }
+
+                await _notify.NotifyUserAsync(playerId, ShuttleUp.BLL.Constants.NotificationTypes.Booking, title, body,
+                    new { bookingId = booking.Id, status = booking.Status, entityType = "booking", deepLink = $"/user/bookings?bookingId={booking.Id}" },
+                    sendEmail: true, cancellationToken: ct);
+            }
+
+            // Notify Manager
+            if (booking.Venue?.OwnerUserId is { } managerId)
+            {
+                var code = "SU" + booking.Id.ToString("N")[^6..].ToUpperInvariant();
+                await _notify.NotifyUserAsync(managerId, ShuttleUp.BLL.Constants.NotificationTypes.Booking,
+                    "Đơn đặt sân tự động bị huỷ",
+                    $"Hệ thống đã tự động huỷ đơn #{code} do quá hạn duyệt.",
+                    new { bookingId = booking.Id, status = booking.Status, entityType = "booking", deepLink = $"/manager/bookings" },
+                    sendEmail: false, cancellationToken: ct);
+            }
+            
+            // Cancel matching posts if cancelled
+            if (booking.Status == "CANCELLED")
+                await _matchingPostLifecycle.CancelPostsByBookingAsync(booking, cancelledBy: "hệ thống tự động", ct);
+        }
+
+        // Series logic
+        if (affectedSeriesIds.Count > 0)
+        {
+            var seriesWithBookings = await db.BookingSeries
+                .Include(s => s.Bookings)
+                .Where(s => affectedSeriesIds.Contains(s.Id) && s.Status != "COMPLETED" && s.Status != "CANCELLED")
+                .ToListAsync(ct);
+
+            foreach (var series in seriesWithBookings)
+            {
+                var allCompleted = series.Bookings.All(b => b.Status == "COMPLETED" || b.Status == "CANCELLED" || b.Status == "REFUNDED" || b.Status == "PENDING_RECONCILIATION" || b.Status == "PENDING_REFUND");
+                var hasAtLeastOneCompleted = series.Bookings.Any(b => b.Status == "COMPLETED");
+
+                if (allCompleted)
+                {
+                    series.Status = hasAtLeastOneCompleted ? "COMPLETED" : "CANCELLED";
+                }
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+        _logger.LogInformation("[BookingCompletion] Đã huỷ tự động {Count} đơn PENDING quá hạn", eligibleBookings.Count);
     }
 }

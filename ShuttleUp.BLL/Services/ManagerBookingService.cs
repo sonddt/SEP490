@@ -90,6 +90,13 @@ public class ManagerBookingService : IManagerBookingService
         if (booking.Status == "CANCELLED")
             throw new ArgumentException("Đơn đã bị huỷ.");
 
+        var vnTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+        var nowVn = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vnTimeZone);
+        var firstStartTime = booking.BookingItems.Any() ? booking.BookingItems.Min(bi => bi.StartTime) : DateTime.MaxValue;
+
+        if (booking.Status == "PENDING" && firstStartTime <= nowVn)
+            throw new ArgumentException("Đơn đặt đã quá giờ bắt đầu thi đấu nhưng chưa được duyệt. Hệ thống sẽ tự động huỷ và xử lý hoàn tiền cho người chơi.");
+
         if (next == "CONFIRMED")
         {
             if (booking.Status != "PENDING")

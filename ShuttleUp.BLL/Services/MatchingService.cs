@@ -89,10 +89,14 @@ public class MatchingService : IMatchingService
         var actualItemsTotal = p.MatchingPostItems.Sum(i =>
             actualMap.GetValueOrDefault(i.BookingItemId, i.BookingItem?.FinalPrice ?? 0m));
         var originalItemsTotal = p.MatchingPostItems.Sum(i => i.BookingItem?.FinalPrice ?? 0m);
-        var shareDivisor = Math.Max((p.RequiredPlayers ?? 0) + 1, 1);
-        decimal? originalPricePerSlot = p.ExpenseSharing is "host_pays" or "negotiable"
-            ? null
-            : originalItemsTotal / shareDivisor;
+        var headCount = Math.Max((p.RequiredPlayers ?? 0) + 1, 1);
+        var expenseSharing = p.ExpenseSharing == "female_free" ? "split_equal" : p.ExpenseSharing;
+        decimal? originalPricePerSlot = expenseSharing switch
+        {
+            "host_pays" => 0,
+            "negotiable" => null,
+            _ => originalItemsTotal / headCount
+        };
 
         var dto = new MatchingPostDetailDto
         {
@@ -110,7 +114,7 @@ public class MatchingService : IMatchingService
             RequiredPlayers = p.RequiredPlayers,
             SkillLevel = p.SkillLevel,
             GenderPref = p.GenderPref,
-            ExpenseSharing = p.ExpenseSharing,
+            ExpenseSharing = expenseSharing,
             PlayPurpose = p.PlayPurpose,
             Notes = p.Notes,
             Status = p.Status,
@@ -600,6 +604,17 @@ public class MatchingService : IMatchingService
         var canRequestJoin = !isHost && !isMember && !isPending && p.Status == "OPEN" && slotsLeft > 0
             && !IsInactiveStatus(p.Status);
 
+        // Calculate original price for strikethrough display
+        var totalOriginal = p.MatchingPostItems.Sum(i => i.BookingItem?.FinalPrice ?? 0m);
+        var headCount = Math.Max(totalSlots, 1);
+        var expenseSharing = p.ExpenseSharing == "female_free" ? "split_equal" : p.ExpenseSharing;
+        decimal? originalPricePerSlot = expenseSharing switch
+        {
+            "host_pays" => 0,
+            "negotiable" => null,
+            _ => totalOriginal / headCount
+        };
+
         return new MatchingPostCardDto
         {
             Id = p.Id,
@@ -611,10 +626,11 @@ public class MatchingService : IMatchingService
             VenueAddress = p.Venue?.Address,
             CourtName = p.CourtName,
             PricePerSlot = p.PricePerSlot,
+            OriginalPricePerSlot = originalPricePerSlot,
             RequiredPlayers = p.RequiredPlayers,
             SkillLevel = p.SkillLevel,
             GenderPref = p.GenderPref,
-            ExpenseSharing = p.ExpenseSharing,
+            ExpenseSharing = expenseSharing,
             PlayPurpose = p.PlayPurpose,
             Status = p.Status,
             MembersCount = filled,
@@ -636,15 +652,11 @@ public class MatchingService : IMatchingService
     private static bool IsInactiveStatus(string? status) =>
         string.Equals(status, "Inactive", StringComparison.OrdinalIgnoreCase);
 
-    private static DateTime? AsUtcForJson(DateTime? dt)
-    {
-        if (!dt.HasValue) return null;
-        var d = dt.Value;
-        return d.Kind switch
-        {
-            DateTimeKind.Utc => d,
-            DateTimeKind.Local => d.ToUniversalTime(),
-            _ => DateTime.SpecifyKind(d, DateTimeKind.Utc)
-        };
-    }
+    private static DateTime? AsUtcForJson(DateTime? dt) =>
+        dt.HasValue
+            ? (dt.Value.Kind == DateTimeKind.Unspecified
+                ? DateTime.SpecifyKind(dt.Value, DateTimeKind.Utc)
+                : dt.Value.ToUniversalTime())
+            : null;
+
 }
