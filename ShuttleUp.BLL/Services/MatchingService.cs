@@ -78,6 +78,22 @@ public class MatchingService : IMatchingService
         var myMemberId = p.MatchingMembers.FirstOrDefault(m => m.UserId == me)?.Id;
         var myJoinRequest = p.MatchingJoinRequests.FirstOrDefault(r => r.UserId == me && r.Status == "PENDING");
 
+        Dictionary<Guid, decimal> actualMap = new();
+        if (p.BookingId.HasValue)
+        {
+            var booking = await _bookingRepo.GetByIdWithItemsAndCourtsAsync(p.BookingId.Value);
+            if (booking != null)
+                actualMap = PriceDistributionHelper.BuildActualItemPriceMap(booking);
+        }
+
+        var actualItemsTotal = p.MatchingPostItems.Sum(i =>
+            actualMap.GetValueOrDefault(i.BookingItemId, i.BookingItem?.FinalPrice ?? 0m));
+        var originalItemsTotal = p.MatchingPostItems.Sum(i => i.BookingItem?.FinalPrice ?? 0m);
+        var shareDivisor = Math.Max((p.RequiredPlayers ?? 0) + 1, 1);
+        decimal? originalPricePerSlot = p.ExpenseSharing is "host_pays" or "negotiable"
+            ? null
+            : originalItemsTotal / shareDivisor;
+
         var dto = new MatchingPostDetailDto
         {
             Id = p.Id,
@@ -89,6 +105,8 @@ public class MatchingService : IMatchingService
             VenueAddress = p.Venue?.Address,
             CourtName = p.CourtName,
             PricePerSlot = p.PricePerSlot,
+            OriginalPricePerSlot = originalPricePerSlot,
+            HasDiscount = originalItemsTotal > actualItemsTotal + 0.01m,
             RequiredPlayers = p.RequiredPlayers,
             SkillLevel = p.SkillLevel,
             GenderPref = p.GenderPref,
@@ -121,13 +139,18 @@ public class MatchingService : IMatchingService
                 Gender = m.User?.Gender,
                 JoinedAt = m.JoinedAt
             }),
-            BookingItems = p.MatchingPostItems.Select(i => new MatchingBookingItemDto
+            BookingItems = p.MatchingPostItems.Select(i =>
             {
-                BookingItemId = i.BookingItemId,
-                CourtName = i.BookingItem?.Court?.Name,
-                StartTime = AsUtcForJson(i.BookingItem?.StartTime),
-                EndTime = AsUtcForJson(i.BookingItem?.EndTime),
-                Price = i.BookingItem?.FinalPrice
+                var original = i.BookingItem?.FinalPrice ?? 0m;
+                return new MatchingBookingItemDto
+                {
+                    BookingItemId = i.BookingItemId,
+                    CourtName = i.BookingItem?.Court?.Name,
+                    StartTime = AsUtcForJson(i.BookingItem?.StartTime),
+                    EndTime = AsUtcForJson(i.BookingItem?.EndTime),
+                    Price = actualMap.GetValueOrDefault(i.BookingItemId, original),
+                    OriginalPrice = original
+                };
             }),
             PendingRequests = isHost ? p.MatchingJoinRequests.Where(r => r.Status == "PENDING").Select(r => new MatchingJoinRequestDto
             {
@@ -547,13 +570,18 @@ public class MatchingService : IMatchingService
                 Items = b.BookingItems
                     .Where(i => i.StartTime > now)
                     .OrderBy(i => i.StartTime)
-                    .Select(i => new MatchingBookingItemDto
+                    .Select(i =>
                     {
-                        BookingItemId = i.Id,
-                        CourtName = i.Court?.Name,
-                        StartTime = i.StartTime,
-                        EndTime = i.EndTime,
-                        Price = actualMap.GetValueOrDefault(i.Id, i.FinalPrice ?? 0m)
+                        var original = i.FinalPrice ?? 0m;
+                        return new MatchingBookingItemDto
+                        {
+                            BookingItemId = i.Id,
+                            CourtName = i.Court?.Name,
+                            StartTime = i.StartTime,
+                            EndTime = i.EndTime,
+                            Price = actualMap.GetValueOrDefault(i.Id, original),
+                            OriginalPrice = original
+                        };
                     })
             };
         });

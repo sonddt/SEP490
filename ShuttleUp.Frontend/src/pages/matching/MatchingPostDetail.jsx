@@ -9,6 +9,7 @@ import ReportModal from '../../components/common/ReportModal';
 import { useAuth } from '../../context/AuthContext';
 import { parseSlotDate, buildScheduleSummary } from '../../utils/matchingScheduleSummary';
 import { normalizeSearchText } from '../../utils/searchNormalize';
+import DiscountPriceDisplay from '../../components/matching/DiscountPriceDisplay';
 
 import { notifyError, notifySuccess } from '../../hooks/useNotification';
 
@@ -146,6 +147,7 @@ export default function MatchingPostDetail() {
             item.courtName,
             formatBookingSlotDetail(item),
             item.price != null ? String(item.price) : '',
+            item.originalPrice != null ? String(item.originalPrice) : '',
           ]
             .filter(Boolean)
             .join(' '),
@@ -478,7 +480,21 @@ export default function MatchingPostDetail() {
                         </div>
                         <div>
                             <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Chi phí dự kiến</div>
-                            <div style={{ fontSize: '18px', color: '#097E52', fontWeight: '700', marginBottom: '2px', letterSpacing: '-0.5px' }}>{formatPrice(post.pricePerSlot)} <span style={{ fontSize: '14px', color: '#64748b', fontWeight: '600' }}>/ ng</span></div>
+                            <div style={{ fontSize: '18px', color: '#097E52', fontWeight: '700', marginBottom: '2px', letterSpacing: '-0.5px', display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '8px' }}>
+                              {post.pricePerSlot != null ? (
+                                <>
+                                  <DiscountPriceDisplay
+                                    price={post.pricePerSlot}
+                                    originalPrice={post.originalPricePerSlot}
+                                    format={(v) => (v == null ? '' : `${Number(v).toLocaleString('vi-VN')}đ`)}
+                                    primaryStyle={{ fontSize: '18px', color: '#097E52', fontWeight: '700', letterSpacing: '-0.5px' }}
+                                  />
+                                  <span style={{ fontSize: '14px', color: '#64748b', fontWeight: '600' }}>/ ng</span>
+                                </>
+                              ) : (
+                                <span>{formatPrice(post.pricePerSlot)}</span>
+                              )}
+                            </div>
                             <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}><i className="feather-pie-chart me-1"></i> {expenseLabels[post.expenseSharing] || post.expenseSharing}</div>
                         </div>
                     </div>
@@ -553,7 +569,15 @@ export default function MatchingPostDetail() {
                                   {formatBookingSlotDetail(item)}
                                 </div>
                               </div>
-                              <span style={{ fontWeight: '700', color: '#097E52', flexShrink: 0 }}>{formatPrice(item.price)}</span>
+                              <span style={{ flexShrink: 0 }}>
+                                <DiscountPriceDisplay
+                                  price={item.price}
+                                  originalPrice={item.originalPrice}
+                                  format={(v) => (v == null ? '' : `${Number(v).toLocaleString('vi-VN')}đ`)}
+                                  layout="block"
+                                  primaryStyle={{ fontWeight: '700', color: '#097E52' }}
+                                />
+                              </span>
                             </div>
                           ))}
                           {filteredBookingSlots.length > BOOKING_SLOTS_PREVIEW && (

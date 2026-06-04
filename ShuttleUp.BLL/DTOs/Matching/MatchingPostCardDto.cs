@@ -20,6 +20,9 @@ public class MatchingPostCardDto
     public string? VenueAddress { get; set; }
     public string? CourtName { get; set; }
     public decimal? PricePerSlot { get; set; }
+    /// <summary>Chi phí / người trước giảm giá đơn (khi chia đều).</summary>
+    public decimal? OriginalPricePerSlot { get; set; }
+    public bool HasDiscount { get; set; }
     public int? RequiredPlayers { get; set; }
     public string? SkillLevel { get; set; }
     public string? GenderPref { get; set; }

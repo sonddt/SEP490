@@ -18,6 +18,8 @@ public class MatchingBookingItemDto
     public DateTime? StartTime { get; set; }
     public DateTime? EndTime { get; set; }
     public decimal? Price { get; set; }
+    /// <summary>Giá ca trước khi phân bổ giảm giá đơn đặt sân.</summary>
+    public decimal? OriginalPrice { get; set; }
 }
 
 public class MatchingJoinRequestDto

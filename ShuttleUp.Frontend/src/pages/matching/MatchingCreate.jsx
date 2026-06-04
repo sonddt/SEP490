@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import matchingApi from '../../api/matchingApi';
 import MatchingPeopleCountInput from '../../components/matching/MatchingPeopleCountInput';
+import DiscountPriceDisplay from '../../components/matching/DiscountPriceDisplay';
 
 const skillOptions = [
   { value: '', label: 'Không yêu cầu' },
@@ -141,6 +142,7 @@ export default function MatchingCreate() {
 
   const selectedItems = selectedBooking?.items?.filter((i) => selectedItemIds.includes(i.bookingItemId)) || [];
   const totalPrice = selectedItems.reduce((sum, i) => sum + (i.price || 0), 0);
+  const totalOriginal = selectedItems.reduce((sum, i) => sum + (i.originalPrice ?? i.price ?? 0), 0);
   const bookingHasDiscount = Boolean(selectedBooking?.hasDiscount);
 
   const renderPricePerPerson = () => {
@@ -228,7 +230,12 @@ export default function MatchingCreate() {
                                 <span className="fw-medium text-dark">{dateStr}</span>
                                 <span className="mx-2 text-muted">|</span>
                                 <i className="feather-credit-card me-2 text-success"></i>
-                                <span className="fw-bold text-success">{formatPrice(b.finalAmount)}</span>
+                                <DiscountPriceDisplay
+                                  price={b.finalAmount}
+                                  originalPrice={b.totalAmount}
+                                  format={formatPrice}
+                                  primaryStyle={{ fontWeight: '700', color: '#097E52' }}
+                                />
                               </div>
 
                               <div className="matching-booking-items-wrapper">
@@ -369,7 +376,13 @@ export default function MatchingCreate() {
                           
                           <div style={{ textAlign: 'right' }}>
                             <div style={{ fontSize: '22px', fontWeight: '800', color: '#097E52', marginBottom: '4px', letterSpacing: '-0.5px' }}>
-                              {formatPrice(item.price)}
+                              <DiscountPriceDisplay
+                                price={item.price}
+                                originalPrice={item.originalPrice}
+                                format={formatPrice}
+                                layout="block"
+                                primaryStyle={{ fontSize: '22px', fontWeight: '800', color: '#097E52', letterSpacing: '-0.5px' }}
+                              />
                             </div>
                             <div style={{ fontSize: '12px', fontWeight: '700', color: isSelected ? '#097E52' : '#94a3b8', letterSpacing: '0.5px' }}>
                               {isSelected ? 'ĐÃ CHỌN LỊCH' : 'CHỌN CA NÀY'}
@@ -438,7 +451,14 @@ export default function MatchingCreate() {
                           TỔNG THANH TOÁN
                         </div>
                         <div style={{ fontSize: '32px', fontWeight: '800', color: '#097E52', letterSpacing: '-1px' }}>
-                          {formatPrice(totalPrice)}
+                          <DiscountPriceDisplay
+                            price={totalPrice}
+                            originalPrice={totalOriginal}
+                            format={formatPrice}
+                            layout="block"
+                            primaryStyle={{ fontSize: '32px', fontWeight: '800', color: '#097E52', letterSpacing: '-1px' }}
+                            strikeStyle={{ fontSize: '18px' }}
+                          />
                         </div>
                       </div>
                     </div>
@@ -635,7 +655,16 @@ export default function MatchingCreate() {
                                             </div>
                                             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                 <div style={{ fontSize: '16px', fontWeight: '800', color: '#1e293b', marginBottom: '4px' }}>{formatTime(item.startTime)} - {formatTime(item.endTime)}</div>
-                                                <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}>{item.courtName} • <span style={{ color: '#097E52' }}>{formatPrice(item.price)}</span></div>
+                                                <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
+                                                  {item.courtName} •
+                                                  <DiscountPriceDisplay
+                                                    price={item.price}
+                                                    originalPrice={item.originalPrice}
+                                                    format={formatPrice}
+                                                    primaryStyle={{ color: '#097E52', fontWeight: '700' }}
+                                                    strikeStyle={{ fontSize: '12px' }}
+                                                  />
+                                                </div>
                                             </div>
                                         </div>
                                     );
