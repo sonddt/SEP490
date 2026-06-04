@@ -249,7 +249,7 @@ const Personalization = () => {
                 )}
                 <div className="mb-3">
                   <label className="form-label fw-semibold" htmlFor="personalization-district">
-                    Khu vực (Quận / Huyện)
+                    Phường / Xã
                   </label>
                   <SearchableSelect
                     id="personalization-district"
@@ -261,35 +261,16 @@ const Personalization = () => {
                         ? 'Đang tải danh sách…'
                         : '-- Chọn khu vực --'
                     }
-                    searchPlaceholder="Gõ tên quận, huyện…"
+                    searchPlaceholder="Gõ tên phường, xã…"
                     disabled={!divisionTree?.length}
                   />
                   {divisionTree?.length > 0 && currentDistricts.length === 0 && (
                     <p className="text-muted small mt-2 mb-0">
-                      Chưa tìm thấy quận/huyện cho tỉnh này trong danh mục. Thử chọn tỉnh khác hoặc bấm Bỏ qua.
+                      Chưa tìm thấy phường/xã cho tỉnh này trong danh mục. Thử chọn tỉnh khác hoặc bấm Bỏ qua.
                     </p>
                   )}
                 </div>
-                <div className="d-flex flex-wrap gap-2 mt-3">
-                  {currentDistricts.map(d => (
-                    <button
-                      key={d}
-                      onClick={() => handleSelect('district', d)}
-                      className="btn btn-sm"
-                      style={{
-                        borderRadius: '20px',
-                        padding: '5px 14px',
-                        backgroundColor: formData.district === d ? '#32b260' : '#f1f5f9',
-                        color: formData.district === d ? '#fff' : '#475569',
-                        border: 'none',
-                        fontWeight: formData.district === d ? 600 : 400,
-                        fontSize: '13px',
-                      }}
-                    >
-                      {d}
-                    </button>
-                  ))}
-                </div>
+                {/* Đã gỡ bỏ danh sách quick-select (button map) vì quá nhiều phường/xã gây trôi giao diện. Người dùng sẽ dùng SearchableSelect ở trên */}
               </div>
             )}
 
