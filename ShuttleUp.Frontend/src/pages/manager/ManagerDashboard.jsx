@@ -44,9 +44,64 @@ export default function ManagerDashboard() {
 
   return (
     <>
+      {/* 4 KPIs Row */}
+      <div className="row g-3 mb-4">
+        <div className="col-lg-3 col-sm-6">
+          <Link to="/manager/bookings" className="card border-0 h-100 text-decoration-none" style={{ borderRadius: 12, boxShadow: '0 2px 10px rgba(0,0,0,0.05)', display: 'block', transition: 'transform 0.2s', cursor: 'pointer' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
+            <div className="card-body p-4 d-flex flex-column justify-content-center">
+              <div className="d-flex align-items-center mb-2 gap-2">
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <i className="feather-pie-chart" style={{ fontSize: 16, color: '#e11d48' }} />
+                </div>
+                <h6 className="mb-0 text-muted" style={{ fontSize: 14 }}>Tỉ lệ huỷ đơn</h6>
+              </div>
+              <h3 className="mb-0 fw-bold" style={{ color: '#0f172a', fontSize: 24 }}>{overview?.cancelRate || 0}%</h3>
+            </div>
+          </Link>
+        </div>
 
+        <div className="col-lg-3 col-sm-6">
+          <Link to="/manager/bookings" className="card border-0 h-100 text-decoration-none" style={{ borderRadius: 12, boxShadow: '0 2px 10px rgba(0,0,0,0.05)', display: 'block', transition: 'transform 0.2s', cursor: 'pointer' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
+            <div className="card-body p-4 d-flex flex-column justify-content-center">
+              <div className="d-flex align-items-center mb-2 gap-2">
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <i className="feather-clock" style={{ fontSize: 16, color: '#d97706' }} />
+                </div>
+                <h6 className="mb-0 text-muted" style={{ fontSize: 14 }}>Đơn chờ xử lý</h6>
+              </div>
+              <h3 className="mb-0 fw-bold" style={{ color: '#0f172a', fontSize: 24 }}>{overview?.pendingCount || 0}</h3>
+            </div>
+          </Link>
+        </div>
 
-      <div className="row g-3">
+        <div className="col-lg-3 col-sm-6">
+          <Link to="/manager/earnings" className="card border-0 h-100 text-decoration-none" style={{ borderRadius: 12, boxShadow: '0 2px 10px rgba(0,0,0,0.05)', display: 'block', transition: 'transform 0.2s', cursor: 'pointer' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
+            <div className="card-body p-4 d-flex flex-column justify-content-center">
+              <div className="d-flex align-items-center mb-2 gap-2">
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <i className="feather-dollar-sign" style={{ fontSize: 16, color: '#10b981' }} />
+                </div>
+                <h6 className="mb-0 text-muted" style={{ fontSize: 14 }}>Phí phạt huỷ</h6>
+              </div>
+              <h3 className="mb-0 fw-bold" style={{ color: '#0f172a', fontSize: 24 }}>{(overview?.penaltyRevenue?.month || 0).toLocaleString('vi-VN')} ₫</h3>
+            </div>
+          </Link>
+        </div>
+
+        <div className="col-lg-3 col-sm-6">
+          <Link to="/manager/refunds" className="card border-0 h-100 text-decoration-none" style={{ borderRadius: 12, boxShadow: '0 2px 10px rgba(0,0,0,0.05)', display: 'block', transition: 'transform 0.2s', cursor: 'pointer' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
+            <div className="card-body p-4 d-flex flex-column justify-content-center">
+              <div className="d-flex align-items-center mb-2 gap-2">
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <i className="feather-refresh-ccw" style={{ fontSize: 16, color: '#3b82f6' }} />
+                </div>
+                <h6 className="mb-0 text-muted" style={{ fontSize: 14 }}>Chờ hoàn tiền</h6>
+              </div>
+              <h3 className="mb-0 fw-bold" style={{ color: '#0f172a', fontSize: 24 }}>{overview?.pendingRefundCount || 0}</h3>
+            </div>
+          </Link>
+        </div>
+      </div>      <div className="row g-3">
         {/* Recent Bookings */}
         <div className="col-lg-8">
           <div className="card card-tableset border-0 h-100">
