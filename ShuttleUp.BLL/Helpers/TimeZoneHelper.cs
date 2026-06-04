@@ -26,4 +26,14 @@ public static class TimeZoneHelper
 
     public static DateTime StartOfMonthUtc(DateTime vnNow)
         => ToUtc(new DateTime(vnNow.Year, vnNow.Month, 1));
+
+    /// <summary>Thời điểm hiện tại theo giờ Việt Nam (wall-clock).</summary>
+    public static DateTime NowVn() => ToVn(DateTime.UtcNow);
+
+    /// <summary>
+    /// Khung đã qua: EndTime (lưu wall-clock VN, Kind Unspecified) không còn sau thời điểm hiện tại VN.
+    /// Cùng quy ước với lưới đặt lẻ (slot kết thúc &lt;= bây giờ → không chọn được).
+    /// </summary>
+    public static bool IsSlotInPast(DateTime slotEndVnLocal)
+        => slotEndVnLocal <= NowVn();
 }

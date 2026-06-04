@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import BookingSteps from '../../components/booking/BookingSteps';
 import { getVenueCourts, getVenueAvailability } from '../../api/bookingApi';
+import { getVnNow } from '../../utils/bookingSlotTime';
 
 // ── Mini Calendar Popup ────────────────────────────────────────────────────
 function CalendarPopup({ value, onChange, onClose }) {
@@ -488,12 +489,9 @@ export default function BookingTimeline() {
     existingBookings.find(b => b.courtId === courtId && slotIndex >= b.startIndex && slotIndex < b.endIndex);
 
   const isPastSlot = (slotIndex) => {
-    const now = new Date();
     const { end } = slotLocalBounds(selectedDate, slotIndex, slotDuration);
-    // Nếu thời điểm kết thúc slot <= hiện tại → slot đã qua.
-    // Hoạt động đúng cho cả ngày đã qua lẫn các slot đã qua trong ngày hôm nay.
-    // Các ngày tương lai thì end > now → trả về false → vẫn chọn được.
-    return end.getTime() <= now.getTime();
+    // So sánh theo giờ VN (đồng bộ StartTime/EndTime wall-clock VN trên backend).
+    return end.getTime() <= getVnNow().getTime();
   };
 
   const getCellStatus = (courtId, slotIndex) => {

@@ -8,6 +8,9 @@ public static class BookingSlotHelper
 {
     public const int MaxLongTermSlots = 400;
 
+    private const string NoFutureSlotsMessage =
+        "Không còn khung giờ nào trong tương lai phù hợp lịch đã chọn. Vui lòng chọn ngày bắt đầu sau hôm nay hoặc khung giờ muộn hơn.";
+
     public static (HashSet<DayOfWeek> Days, string? Error) ParseDaysOfWeek(IList<int>? raw)
     {
         if (raw == null || raw.Count == 0)
@@ -78,6 +81,9 @@ public static class BookingSlotHelper
                 if (slotEnd > item.EndTime)
                     return (normalizedItems, $"Mỗi khung phải là bội số {slotDuration} phút.");
 
+                if (TimeZoneHelper.IsSlotInPast(slotEnd))
+                    continue;
+
                 var price = ResolveSlotPrice(court.CourtPrices.ToList(), slotStart);
                 if (price == null)
                     return (normalizedItems, $"Chưa cấu hình giá cho sân {court.Name} tại {slotStart:HH:mm}.");
@@ -85,6 +91,9 @@ public static class BookingSlotHelper
                 normalizedItems.Add((item.CourtId, slotStart, slotEnd, price.Value));
             }
         }
+
+        if (normalizedItems.Count == 0)
+            return (normalizedItems, "Không có khung giờ hợp lệ (các khung đã qua không được đặt).");
 
         return (normalizedItems, null);
     }
@@ -127,6 +136,9 @@ public static class BookingSlotHelper
                 if (slotEnd > dtEnd)
                     return (normalizedItems, $"Khung giờ trong ngày phải là bội số {slotDuration} phút.");
 
+                if (TimeZoneHelper.IsSlotInPast(slotEnd))
+                    continue;
+
                 var price = ResolveSlotPrice(court.CourtPrices.ToList(), slotStart);
                 if (price == null)
                     return (normalizedItems, $"Chưa cấu hình giá cho sân {court.Name} tại {slotStart:HH:mm}.");
@@ -138,7 +150,7 @@ public static class BookingSlotHelper
         }
 
         if (normalizedItems.Count == 0)
-            return (normalizedItems, "Không có buổi nào khớp điều kiện (thứ trong tuần / khoảng ngày).");
+            return (normalizedItems, NoFutureSlotsMessage);
 
         return (normalizedItems, null);
     }
@@ -180,6 +192,9 @@ public static class BookingSlotHelper
                 if (slotEnd > dtEnd)
                     return (normalizedItems, $"Khung giờ trong ngày phải là bội số {slotDuration} phút.");
 
+                if (TimeZoneHelper.IsSlotInPast(slotEnd))
+                    continue;
+
                 var price = ResolveSlotPrice(court.CourtPrices.ToList(), slotStart);
                 if (price == null)
                     return (normalizedItems, $"Chưa cấu hình giá cho sân {court.Name} tại {slotStart:HH:mm}.");
@@ -191,7 +206,7 @@ public static class BookingSlotHelper
         }
 
         if (normalizedItems.Count == 0)
-            return (normalizedItems, "Không có buổi nào khớp điều kiện (thứ trong tuần / khoảng ngày).");
+            return (normalizedItems, NoFutureSlotsMessage);
 
         return (normalizedItems, null);
     }
@@ -224,13 +239,15 @@ public static class BookingSlotHelper
             {
                 var se = ss.AddMinutes(slotDuration);
                 if (se > dtEnd) return (slots, $"Khung giờ trong ngày phải là bội số {slotDuration} phút.");
+                if (TimeZoneHelper.IsSlotInPast(se))
+                    continue;
                 slots.Add((ss, se));
                 if (slots.Count > maxSlots)
                     return (slots, $"Vượt quá số khung tối đa ({maxSlots} ô × {slotDuration} phút).");
             }
         }
         if (slots.Count == 0)
-            return (slots, "Không có buổi nào khớp điều kiện (thứ trong tuần / khoảng ngày).");
+            return (slots, NoFutureSlotsMessage);
         return (slots, null);
     }
 
@@ -260,13 +277,15 @@ public static class BookingSlotHelper
             {
                 var se = ss.AddMinutes(slotDuration);
                 if (se > dtEnd) return (slots, $"Khung giờ trong ngày phải là bội số {slotDuration} phút.");
+                if (TimeZoneHelper.IsSlotInPast(se))
+                    continue;
                 slots.Add((ss, se));
                 if (slots.Count > maxSlots)
                     return (slots, $"Vượt quá số khung tối đa ({maxSlots} ô × {slotDuration} phút).");
             }
         }
         if (slots.Count == 0)
-            return (slots, "Không có buổi nào khớp điều kiện (thứ trong tuần / khoảng ngày).");
+            return (slots, NoFutureSlotsMessage);
         return (slots, null);
     }
 }
