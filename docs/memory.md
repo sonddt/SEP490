@@ -1,4 +1,4 @@
-﻿# Lịch sử phát triển (Development memory)
+# Lịch sử phát triển (Development memory)
 
 Tài liệu ghi lại các mốc làm việc theo thời gian. Đọc từ trên xuống là từ cũ đến mới.
 
@@ -881,5 +881,19 @@ Kết bạn & quan hệ xã hội (Player):
 
 - Cập nhật file dữ liệu hạt giống gốc Database_realistic.txt để đảm bảo hệ thống không bị lỗi khi seed db:
   - **Bảng users**: Dùng Script quét và thay thế tất cả các cặp dữ liệu district & province cũ thành cấu trúc Phường/Xã + Tỉnh/Thành phố hợp lệ.
-  - **Bảng enues**: Cột ddress chứa chuỗi thô. Backend và Frontend vẫn hỗ trợ fallback an toàn (nếu địa chỉ cũ không match hệ thống mới, chuỗi đó sẽ được nạp tự động vào ô Số nhà, Đường).
+  - **Bảng  enues**: Cột  ddress chứa chuỗi thô. Backend và Frontend vẫn hỗ trợ fallback an toàn (nếu địa chỉ cũ không match hệ thống mới, chuỗi đó sẽ được nạp tự động vào ô Số nhà, Đường).
 - Hệ thống đã compile thành công, sạch sẽ hoàn toàn khỏi dấu vết của cấp hành chính Quận/Huyện cũ.
+
+### C. Tính năng tự động huỷ đơn quá hạn & hoàn tiền (Lỗi chủ sân quên duyệt)
+
+1. **Rào chắn thao tác cho chủ sân (`ManagerBookingService`)**:
+   - Thêm bước chặn tại hàm `PatchStatusAsync`: Nếu đơn `PENDING` nhưng thời gian bắt đầu trận đấu (`StartTime` của item đầu tiên) đã trôi qua so với giờ Việt Nam hiện tại, hệ thống sẽ ném `ArgumentException`.
+   - Giúp ngăn chặn chủ sân cố tình "lách luật" bấm Duyệt vào phút chót hoặc ngày hôm sau để lấy tiền mà không cho khách chơi.
+2. **Quét tự động ngầm (`BookingCompletionService`)**:
+   - Bổ sung hàm `CancelExpiredPendingBookingsAsync` chạy tự động mỗi 5 phút cùng với luồng hoàn thành đơn.
+   - Tìm các đơn `PENDING` đã trôi qua giờ thi đấu.
+   - Nếu người chơi **đã tải biên lai chuyển khoản** (`Payment.Status == PENDING`): Tự động đổi trạng thái đơn sang `PENDING_RECONCILIATION` (Chờ đối soát) và sinh ra một `RefundRequest` với `ReasonCode = "SYSTEM_LATE_APPROVAL"`. Chủ sân phải đối soát giao dịch và hoàn lại 100% tiền.
+   - Nếu người chơi **chưa tải biên lai**: Đổi thẳng sang `CANCELLED`.
+   - Tự động huỷ các `BookingItems`, `Payments`, cập nhật trạng thái của lịch cố định (Series) và gỡ bỏ các bài tìm kèo (`MatchingPosts`) nếu có.
+   - Bắn chuông thông báo (Notification) và gửi Email cho cả 2 bên.
+3. **Database Seed**: Cập nhật file `Database_realistic.txt`, khắc phục lỗi logic trong dữ liệu mẫu (các đơn tương lai bị gán nhầm mác `COMPLETED` đã được trả về đúng trạng thái `CONFIRMED`).
