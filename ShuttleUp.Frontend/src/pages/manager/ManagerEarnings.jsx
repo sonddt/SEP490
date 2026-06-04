@@ -588,22 +588,8 @@ export default function ManagerEarnings() {
 
       {/* ── Rankings + Pie ──────────────────────────────── */}
       <div className="row g-4 mb-4">
-        <div className="col-lg-4">
-          <RankingCard
-            title="Sân đặt nhiều nhất"
-            icon="feather-trending-up"
-            iconBg="#e8f5ee"
-            data={analytics?.topBookedCourts}
-            valueKey="bookingCount"
-            valueLabel="booking"
-            secondaryKey="revenue"
-            secondaryLabel="doanh thu"
-            emptyText="Chưa có dữ liệu tháng này"
-          />
-        </div>
-        
         {/* Status Distribution Donut */}
-        <div className="col-lg-4">
+        <div className="col-lg-6">
           <div className="card border-0 h-100" style={{ borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,.06)' }}>
             <div className="card-body p-4">
               <div className="d-flex align-items-center gap-2 mb-3">
@@ -654,7 +640,7 @@ export default function ManagerEarnings() {
         </div>
 
         {/* Revenue Distribution Donut */}
-        <div className="col-lg-4">
+        <div className="col-lg-6">
           <div className="card border-0 h-100" style={{ borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,.06)' }}>
             <div className="card-body p-4">
               <div className="d-flex align-items-center gap-2 mb-3">
