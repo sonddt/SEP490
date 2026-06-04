@@ -43,6 +43,7 @@ export default function ManagerDashboard() {
   };
 
   return (
+    <>
       {/* 4 KPIs Row */}
       <div className="row g-3 mb-4">
         <div className="col-lg-3 col-sm-6">
