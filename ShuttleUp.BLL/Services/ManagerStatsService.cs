@@ -103,21 +103,36 @@ public class ManagerStatsService : IManagerStatsService
         var items = bookings.Select(b =>
         {
             refundMap.TryGetValue(b.Id, out var refund);
+            var payment = b.Payments?.FirstOrDefault();
             return new
             {
-                id = b.Id, refId = "BK" + b.Id.ToString().Substring(0, 6).ToUpper(),
-                player = b.User?.FullName ?? "N/A", venue = b.Venue?.Name ?? "N/A", venueId = b.VenueId,
+                id = b.Id, refId = "SU" + b.Id.ToString("N")[^6..].ToUpperInvariant(),
+                player = b.User?.FullName ?? "N/A", 
+                playerPhone = b.ContactPhone ?? b.User?.PhoneNumber ?? "—",
+                playerImg = b.User?.AvatarFile?.FileUrl,
+                venue = b.Venue?.Name ?? "N/A", venueId = b.VenueId,
                 court = string.Join(", ", (b.BookingItems ?? (ICollection<DAL.Models.BookingItem>)new List<DAL.Models.BookingItem>()).Select(bi => bi.Court?.Name ?? "")),
+                courtImg = b.BookingItems?.OrderBy(bi => bi.StartTime).Select(bi => bi.Court?.Files?.FirstOrDefault()?.FileUrl).FirstOrDefault(url => !string.IsNullOrEmpty(url)),
                 date = b.CreatedAt.HasValue ? TimeZoneHelper.ToVn(b.CreatedAt.Value).ToString("dd/MM/yyyy") : "", dateIso = b.CreatedAt,
                 startTime = b.BookingItems?.OrderBy(bi => bi.StartTime).Select(bi => bi.StartTime).FirstOrDefault(),
                 endTime = b.BookingItems?.OrderByDescending(bi => bi.EndTime).Select(bi => bi.EndTime).FirstOrDefault(),
                 amount = b.FinalAmount ?? 0m, status = b.Status, note = b.GuestNote,
+                isLongTerm = b.SeriesId.HasValue,
+                paymentMethod = payment?.Method,
+                paymentStatus = payment?.Status,
+                paymentProofImg = payment?.GatewayReference,
+                guests = 2,
                 // Refund details: refundedAmount = tiền hoàn lại cho khách, paidAmount = tiền khách đã trả, penaltyAmount = tiền manager giữ lại
                 refundedAmount = refund?.RequestedAmount ?? 0m,
                 paidAmount = refund?.PaidAmount ?? 0m,
                 penaltyAmount = refund != null ? (refund.PaidAmount ?? 0m) - (refund.RequestedAmount ?? 0m) : 0m,
                 refundStatus = refund?.Status,
-                items = (b.BookingItems ?? (ICollection<DAL.Models.BookingItem>)new List<DAL.Models.BookingItem>()).Select(bi => new { courtName = bi.Court?.Name ?? "Sân", price = bi.FinalPrice ?? 0 })
+                items = (b.BookingItems ?? (ICollection<DAL.Models.BookingItem>)new List<DAL.Models.BookingItem>()).Select(bi => new { 
+                    courtName = bi.Court?.Name ?? "Sân", 
+                    price = bi.FinalPrice ?? 0,
+                    startTime = bi.StartTime,
+                    endTime = bi.EndTime
+                })
             };
         }).ToList();
 

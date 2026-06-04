@@ -7,6 +7,7 @@ import {
 import axiosClient from '../../api/axiosClient';
 import { notifyError, notifyInfo } from '../../hooks/useNotification';
 import ShuttleDateField from '../../components/ui/ShuttleDateField';
+import LongTermScheduleDisplay from '../../components/common/LongTermScheduleDisplay';
 
 const STATUS_MAP = {
   CONFIRMED: { label: 'Sắp tới',    color: '#097E52', bg: '#e8f5ee', icon: 'feather-check-circle', badge: 'bg-success' },
@@ -29,16 +30,8 @@ const fmtVndShort = (v) => {
 
 function formatCourtNames(items, rawCourt) {
   if (!items || !items.length) return rawCourt;
-  const counts = {};
-  items.forEach(i => { counts[i.courtName] = (counts[i.courtName] || 0) + 1; });
-  const entries = Object.entries(counts);
-  return entries.map(([name, count], index) => (
-    <span key={name}>
-      {name}
-      {count > 1 && <sup style={{ color: '#ef4444', fontSize: '0.85em', fontWeight: 700, marginLeft: 1 }}>*{count}</sup>}
-      {index < entries.length - 1 && ', '}
-    </span>
-  ));
+  const uniqueNames = [...new Set(items.map(i => i.courtName))];
+  return uniqueNames.join(', ');
 }
 
 function getGroupedModalItems(items) {
@@ -371,7 +364,8 @@ export default function ManagerEarnings() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Sân / Mã HĐ</th>
+                  <th>Mã đặt sân</th>
+                  <th>Sân</th>
                   <th>Người đặt</th>
                   <th>Ngày & Giờ</th>
                   <th>Doanh thu</th>
@@ -383,7 +377,7 @@ export default function ManagerEarnings() {
                 {loading ? (
                   [...Array(5)].map((_, i) => (
                     <tr key={i}>
-                      <td colSpan={6}>
+                      <td colSpan={7}>
                         <div className="placeholder-glow">
                           <span className="placeholder col-12" style={{ height: 30 }} />
                         </div>
@@ -392,7 +386,7 @@ export default function ManagerEarnings() {
                   ))
                 ) : !currentItems.length ? (
                   <tr>
-                    <td colSpan={6}>
+                    <td colSpan={7}>
                       <div className="bk-empty">
                         <div className="bk-empty-icon"><i className={search ? 'feather-search' : 'feather-inbox'} /></div>
                         <p className="bk-empty-title">{search ? `Không tìm thấy "${search}"` : 'Không có dữ liệu'}</p>
@@ -405,24 +399,54 @@ export default function ManagerEarnings() {
                   return (
                     <tr key={tx.id}>
                       <td>
-                        <h2 className="table-avatar">
-                          <span className="avatar avatar-sm flex-shrink-0">
-                            <img className="avatar-img" src={'/assets/img/booking/booking-01.jpg'} alt="" onError={e => { e.target.src = '/assets/img/booking/booking-01.jpg'; }} />
-                          </span>
-                          <span className="table-head-name flex-grow-1">
-                            <a href="#!" onClick={e => e.preventDefault()}>{formatCourtNames(tx.items, tx.court)}</a>
-                            <span><i className="feather-map-pin" style={{ fontSize: 11, marginRight: 3 }} />{tx.venue}</span>
-                            <span style={{ color: '#2563eb', fontWeight: 600 }}>{tx.refId}</span>
-                          </span>
-                        </h2>
+                        <span
+                          className="badge"
+                          title={`Mã đặt: #${tx.refId}`}
+                          style={{
+                            background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+                            color: '#065f46',
+                            border: '1px solid #6ee7b7',
+                            fontFamily: 'monospace, ui-monospace, monospace',
+                            fontSize: 13,
+                            fontWeight: 700,
+                            padding: '6px 10px',
+                            borderRadius: 8,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          #{tx.refId}
+                        </span>
                       </td>
-                      <td>
+                      <td style={{ minWidth: 200 }}>
+                        <div className="d-flex align-items-center gap-3">
+                          <div className="flex-shrink-0" style={{ width: 56, height: 56 }}>
+                            <img className="rounded shadow-sm" src={tx.courtImg || '/assets/img/booking/booking-01.jpg'} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.src = '/assets/img/venues/venues-01.jpg'; }} />
+                          </div>
+                          <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                            <a href="#!" onClick={e => { e.preventDefault(); setDetailModal(tx); }} style={{ fontSize: 14, color: '#0f172a', lineHeight: 1.3, display: 'block', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={tx.court}>
+                              {formatCourtNames(tx.items, tx.court)}
+                            </a>
+                            {tx.isLongTerm ? (
+                                  <span className="badge" style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, marginTop: 4, display: 'inline-flex', alignItems: 'center', background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)', color: '#fff' }}><i className="feather-calendar me-1" style={{ fontSize: 10 }} />Lịch dài hạn</span>
+                                ) : (
+                                  <span className="badge" style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, marginTop: 4, display: 'inline-flex', alignItems: 'center', background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: '#fff' }}><i className="feather-clock me-1" style={{ fontSize: 10 }} />Lịch đơn</span>
+                                )}
+                            <span style={{ display: 'block', fontSize: 12, marginTop: 4, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={tx.venue}>
+                              <i className="feather-map-pin me-1" style={{ fontSize: 10 }} />{tx.venue}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ maxWidth: 180 }}>
                         <h2 className="table-avatar">
                           <span className="avatar avatar-sm flex-shrink-0" style={{ borderRadius: '50%' }}>
-                            <img className="avatar-img rounded-circle" src={'/assets/img/profiles/avatar-01.jpg'} alt="" onError={e => { e.target.src = '/assets/img/profiles/avatar-01.jpg'; }} />
+                            <img className="avatar-img rounded-circle" src={tx.playerImg || '/assets/img/profiles/avatar-01.jpg'} alt="" onError={e => { e.target.src = '/assets/img/profiles/avatar-01.jpg'; }} />
                           </span>
-                          <span className="table-head-name flex-grow-1">
-                            <a href="#!" onClick={e => e.preventDefault()}>{tx.player}</a>
+                          <span className="table-head-name flex-grow-1" style={{ minWidth: 0 }}>
+                            <strong style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: '1.3', marginBottom: '2px', color: '#0f172a' }} title={tx.player}>
+                              {tx.player}
+                            </strong>
+                            <span style={{ display: 'block', fontSize: 13, color: '#64748b' }}>{tx.playerPhone || '—'}</span>
                           </span>
                         </h2>
                       </td>
@@ -653,7 +677,7 @@ export default function ManagerEarnings() {
                     {/* Court card */}
                     <div className="bk-detail-card mb-3">
                       <div className="bk-detail-card__img-wrap">
-                        <img src="/assets/img/booking/booking-01.jpg" alt="" className="bk-detail-card__img" />
+                        <img src={tx.courtImg || '/assets/img/booking/booking-01.jpg'} alt="" className="bk-detail-card__img" onError={e => { e.target.src = '/assets/img/venues/venues-01.jpg'; }} />
                       </div>
                       <div className="bk-detail-card__body">
                         <div className="bk-detail-card__title">{formatCourtNames(tx.items, tx.court)}</div>
@@ -665,32 +689,57 @@ export default function ManagerEarnings() {
 
                     {/* Player card */}
                     <div className="bk-detail-card mb-3">
-                      <img src="/assets/img/profiles/avatar-01.jpg" alt="" className="bk-detail-card__avatar rounded-circle" />
+                      <img src={tx.playerImg || '/assets/img/profiles/avatar-01.jpg'} alt="" className="bk-detail-card__avatar rounded-circle" onError={e => { e.target.src = '/assets/img/profiles/avatar-01.jpg'; }} />
                       <div className="bk-detail-card__body">
                         <div className="bk-detail-card__title">{tx.player}</div>
+                        <div className="bk-detail-card__sub">
+                          <i className="feather-phone" /> {tx.playerPhone || '—'}
+                        </div>
                       </div>
                     </div>
 
                     {/* Payment Info */}
-                    <div className="bk-detail-section">
-                      <h6 className="bk-detail-section-title">Thanh toán</h6>
+                    <div className="bk-detail-section mt-3">
+                      <h6 className="bk-detail-section-title">
+                        <i className="feather-dollar-sign me-1" style={{ color: '#10b981' }} />Thanh toán
+                      </h6>
                       <div className="bk-detail-row">
-                        <span className="bk-detail-label">Tổng đơn</span>
+                        <span className="bk-detail-label">Số tiền</span>
                         <span className="bk-detail-value">
-                          <strong style={{ color: '#097E52', fontSize: 15 }}>{fmtVnd(tx.amount)}</strong>
+                          <strong style={{ color: '#097E52', fontSize: '18px' }}>{fmtVnd(tx.amount)}</strong>
                         </span>
                       </div>
-                      {tx.items?.length > 0 && (
-                        <div style={{ marginTop: 8 }}>
-                          {getGroupedModalItems(tx.items).map((item, idx) => (
-                            <div key={idx} className="d-flex justify-content-between" style={{ fontSize: 13, color: '#64748b', padding: '2px 0' }}>
-                              <span>
-                                {item.name}
-                                {item.count > 1 && <sup style={{ color: '#ef4444', fontWeight: 700, marginLeft: 1 }}>×{item.count}</sup>}
-                              </span>
-                              <span>{fmtVnd(item.totalPrice)}</span>
-                            </div>
-                          ))}
+                      <div className="bk-detail-row">
+                        <span className="bk-detail-label">Hình thức</span>
+                        <span className="bk-detail-value">
+                          <span>
+                            <i className={tx.paymentMethod === 'VNPAY' ? 'feather-credit-card' : 'feather-briefcase'} style={{ fontSize: '12px', marginRight: '4px', color: '#64748b' }} />
+                            {tx.paymentMethod === 'VNPAY' ? 'Thanh toán VNPay' : tx.paymentMethod === 'BANK' ? 'Chuyển khoản' : tx.paymentMethod || '—'}
+                          </span>
+                        </span>
+                      </div>
+                      <div className="bk-detail-row">
+                        <span className="bk-detail-label">Trạng thái TT</span>
+                        <span className="bk-detail-value">
+                          <strong style={{ color: tx.paymentStatus === 'PAID' ? '#097E52' : tx.paymentStatus === 'REFUNDED' ? '#f59e0b' : '#94a3b8' }}>
+                            {tx.paymentStatus === 'PAID' ? 'Đã thanh toán' : tx.paymentStatus === 'REFUNDED' ? 'Đã hoàn tiền' : tx.paymentStatus === 'FAILED' ? 'Thất bại' : 'Chưa thanh toán'}
+                          </strong>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Payment Proof */}
+                    <div className="bk-detail-section mt-3">
+                      <h6 className="bk-detail-section-title">
+                        <i className="feather-image me-1" />Ảnh minh chứng chuyển khoản
+                      </h6>
+                      {!tx.paymentProofImg || !/^https?:\/\//i.test(tx.paymentProofImg.trim()) ? (
+                        <p className="mb-0 text-muted small" style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                          Môi trường dev — chưa có ảnh minh chứng thật (cần cấu hình Cloudinary trên server).
+                        </p>
+                      ) : (
+                        <div style={{ position: 'relative', cursor: 'pointer', borderRadius: 10, overflow: 'hidden', border: '2px solid #d1fae5', background: '#f0fdf4' }}>
+                          <img src={tx.paymentProofImg} alt="Minh chứng" style={{ width: '100%', maxHeight: 200, objectFit: 'contain', display: 'block' }} onError={e => { e.target.src = '/assets/img/booking/booking-01.jpg'; }} />
                         </div>
                       )}
                     </div>
@@ -699,30 +748,57 @@ export default function ManagerEarnings() {
                   {/* Right: Schedule + Status + Refund Info */}
                   <div className="col-md-6">
                     {/* Schedule */}
-                    <div className="bk-detail-section mb-3">
-                      <h6 className="bk-detail-section-title">Thông tin lịch đặt</h6>
-                      <div className="bk-detail-row">
-                        <span className="bk-detail-label">Ngày</span>
-                        <span className="bk-detail-value">{tx.date}</span>
+                    {!tx.isLongTerm ? (
+                      <div className="bk-schedule-wrapper mt-2 mb-3">
+                        <div className="p-3 rounded" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                          <div className="d-flex align-items-center mb-3">
+                            <i className="feather-calendar me-2" style={{ color: '#10b981', fontSize: '18px' }} />
+                            <span className="fw-semibold" style={{ color: '#0f172a', fontSize: '14px' }}>Thông tin lịch đặt</span>
+                          </div>
+                          <div className="row g-2">
+                            <div className="col-6">
+                              <div className="d-flex align-items-center text-muted mb-1" style={{ fontSize: '12px' }}>
+                                <i className="feather-calendar me-1" />Ngày chơi
+                              </div>
+                              <div className="fw-semibold text-dark" style={{ fontSize: '14px' }}>
+                                {tx.date}
+                              </div>
+                            </div>
+                            <div className="col-6">
+                              <div className="d-flex align-items-center text-muted mb-1" style={{ fontSize: '12px' }}>
+                                <i className="feather-clock me-1" />Giờ chơi
+                              </div>
+                              <div className="fw-semibold text-dark" style={{ fontSize: '14px' }}>
+                                {tx.startTime ? `${fmtTime(tx.startTime)} – ${fmtTime(tx.endTime)}` : '—'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="bk-detail-row">
-                        <span className="bk-detail-label">Giờ</span>
-                        <span className="bk-detail-value">
-                          {tx.startTime ? `${fmtTime(tx.startTime)} – ${fmtTime(tx.endTime)}` : '—'}
-                        </span>
-                      </div>
-                    </div>
+                    ) : (
+                      <LongTermScheduleDisplay items={tx.items} />
+                    )}
 
                     {/* Status */}
                     <div className="bk-detail-section mb-3">
-                      <h6 className="bk-detail-section-title">Trạng thái</h6>
+                      <h6 className="bk-detail-section-title">
+                        <i className="feather-info me-1" style={{ color: '#3b82f6' }} />Thông tin bổ sung
+                      </h6>
                       <div className="bk-detail-row">
-                        <span className="bk-detail-label">Đơn hàng</span>
+                        <span className="bk-detail-label">Số khách</span>
+                        <span className="bk-detail-value">{tx.guests || 2} người</span>
+                      </div>
+                      <div className="bk-detail-row">
+                        <span className="bk-detail-label">Trạng thái</span>
                         <span className="bk-detail-value">
                           <span className={`badge ${st.badge}`} style={{ fontSize: 12 }}>
                             <i className={st.icon} /> {st.label}
                           </span>
                         </span>
+                      </div>
+                      <div className="bk-detail-row">
+                        <span className="bk-detail-label">Ngày đặt</span>
+                        <span className="bk-detail-value">{tx.dateIso ? new Date(tx.dateIso).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}</span>
                       </div>
                     </div>
 
