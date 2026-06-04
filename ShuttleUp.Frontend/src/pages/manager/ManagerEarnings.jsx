@@ -136,6 +136,7 @@ function RankingCard({ title, icon, iconBg, data, valueKey, valueLabel, valueSuf
 /* ═══ MAIN ═══════════════════════════════════════════════════════════════ */
 export default function ManagerEarnings() {
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [venueFilter, setVenueFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [search, setSearch] = useState('');
@@ -156,6 +157,7 @@ export default function ManagerEarnings() {
       setLoading(true);
       const params = new URLSearchParams({ page: String(page), pageSize: String(itemsPerPage) });
       if (statusFilter && statusFilter !== 'ALL') params.append('status', statusFilter);
+      if (venueFilter) params.append('venueId', venueFilter);
       if (search.trim()) params.append('search', search.trim());
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
@@ -164,6 +166,7 @@ export default function ManagerEarnings() {
       setData(res);
 
       const chartParams = new URLSearchParams({ days: '30' });
+      if (venueFilter) chartParams.append('venueId', venueFilter);
       const chartRes = await axiosClient.get(`/manager/stats/chart/daily?${chartParams.toString()}`);
       setChart(Array.isArray(chartRes) ? chartRes : []);
     } catch (e) {
@@ -173,7 +176,7 @@ export default function ManagerEarnings() {
     } finally {
       setLoading(false);
     }
-  }, [page, itemsPerPage, statusFilter, search, startDate, endDate]);
+  }, [page, itemsPerPage, statusFilter, venueFilter, search, startDate, endDate]);
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -189,7 +192,7 @@ export default function ManagerEarnings() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
-  useEffect(() => { setPage(1); }, [statusFilter, search, startDate, endDate]);
+  useEffect(() => { setPage(1); }, [statusFilter, venueFilter, search, startDate, endDate]);
 
   const ALLOWED_STATUSES = new Set(['CONFIRMED', 'COMPLETED', 'REFUNDED']);
   const filteredItems = useMemo(() => {
@@ -256,6 +259,21 @@ export default function ManagerEarnings() {
       .map(v => ({ name: v.venueName, value: Number(v.revenue) }));
   }, [analytics]);
 
+  const statusPieData = useMemo(() => {
+    if (!analytics?.statusDistribution?.length) return [];
+    return analytics.statusDistribution
+      .map(s => ({
+        name: STATUS_MAP[s.status]?.label || s.status,
+        value: s.count,
+        color: STATUS_MAP[s.status]?.color || '#94a3b8'
+      }))
+      .filter(x => x.value > 0);
+  }, [analytics]);
+
+  const peakHoursData = useMemo(() => {
+    return analytics?.peakHoursChart || [];
+  }, [analytics]);
+
   return (
     <>
       {/* ── Stats Cards ─────────────────────────────────── */}
@@ -310,6 +328,17 @@ export default function ManagerEarnings() {
               <option value="CONFIRMED">Sắp tới</option>
               <option value="COMPLETED">Hoàn thành</option>
               <option value="REFUNDED">Đã hoàn tiền</option>
+            </select>
+            <select
+              className="form-select"
+              style={{ width: 180 }}
+              value={venueFilter}
+              onChange={(e) => setVenueFilter(e.target.value)}
+            >
+              <option value="">Tất cả cụm sân</option>
+              {(data?.venues || []).map(v => (
+                <option key={v.id} value={v.name}>{v.name}</option>
+              ))}
             </select>
             <div className="d-flex align-items-center gap-2">
               <label style={{ fontSize: 13, color: '#64748b', whiteSpace: 'nowrap', marginBottom: 0 }}>Từ ngày</label>
@@ -572,19 +601,59 @@ export default function ManagerEarnings() {
             emptyText="Chưa có dữ liệu tháng này"
           />
         </div>
+        
+        {/* Status Distribution Donut */}
         <div className="col-lg-4">
-          <RankingCard
-            title="Sân bị huỷ nhiều nhất"
-            icon="feather-x-circle"
-            iconBg="#fff1f2"
-            data={analytics?.topCancelledCourts}
-            valueKey="cancelCount"
-            valueLabel="lần huỷ"
-            secondaryKey="cancelRate"
-            secondaryLabel="tỉ lệ huỷ"
-            emptyText="Không có sân bị huỷ"
-          />
+          <div className="card border-0 h-100" style={{ borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,.06)' }}>
+            <div className="card-body p-4">
+              <div className="d-flex align-items-center gap-2 mb-3">
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <i className="feather-activity" style={{ fontSize: 16, color: '#d97706' }} />
+                </div>
+                <h6 className="mb-0" style={{ fontWeight: 700, color: '#0f172a', fontSize: 15 }}>Phân bổ trạng thái</h6>
+              </div>
+              {!statusPieData?.length ? (
+                <div className="text-center py-4" style={{ color: '#94a3b8', fontSize: 13 }}>
+                  <i className="feather-inbox d-block mb-2" style={{ fontSize: 28 }} />
+                  Chưa có dữ liệu
+                </div>
+              ) : (
+                <>
+                  <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer>
+                      <PieChart>
+                        <Pie
+                          data={statusPieData}
+                          cx="50%" cy="50%"
+                          innerRadius={50} outerRadius={80}
+                          paddingAngle={3}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {statusPieData.map((entry, idx) => (
+                            <Cell key={`cell-${idx}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(v) => `${v} booking`} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 12px' }}>
+                    {statusPieData.map((entry, idx) => (
+                      <div key={idx} className="d-flex align-items-center gap-2" style={{ fontSize: 12 }}>
+                        <span style={{ width: 10, height: 10, borderRadius: 3, background: entry.color, flexShrink: 0 }} />
+                        <span style={{ color: '#334155' }}>{entry.name}</span>
+                        <span style={{ fontWeight: 700, color: '#0f172a' }}>{entry.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
+
+        {/* Revenue Distribution Donut */}
         <div className="col-lg-4">
           <div className="card border-0 h-100" style={{ borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,.06)' }}>
             <div className="card-body p-4">
@@ -633,6 +702,45 @@ export default function ManagerEarnings() {
               )}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* ── Peak Hours Chart ──────────────────────────────── */}
+      <div className="card border-0 mb-4" style={{ borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,.06)' }}>
+        <div className="card-body p-4">
+          <div className="d-flex align-items-center gap-2 mb-4">
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="feather-clock" style={{ fontSize: 16, color: '#10b981' }} />
+            </div>
+            <div>
+              <h6 className="mb-0" style={{ fontWeight: 700, color: '#0f172a', fontSize: 15 }}>Khung giờ đặt sân phổ biến</h6>
+              <div style={{ fontSize: 13, color: '#64748b' }}>Thống kê lượt đặt theo từng giờ trong tháng</div>
+            </div>
+          </div>
+          
+          {!peakHoursData?.length ? (
+            <div className="text-center py-5" style={{ color: '#94a3b8', fontSize: 13 }}>
+              <i className="feather-bar-chart-2 d-block mb-2" style={{ fontSize: 28 }} />
+              Chưa có dữ liệu khung giờ
+            </div>
+          ) : (
+            <div style={{ width: '100%', height: 260 }}>
+              <ResponsiveContainer>
+                <BarChart data={peakHoursData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="hour" tickFormatter={(h) => `${h}:00`} tick={{ fill: '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} dy={10} />
+                  <YAxis tick={{ fill: '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <Tooltip 
+                    cursor={{ fill: '#f1f5f9' }}
+                    contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                    formatter={(value) => [`${value} lượt đặt`, 'Số lượng']}
+                    labelFormatter={(label) => `Khung giờ: ${label}:00 - ${label+1}:00`}
+                  />
+                  <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       </div>
 

@@ -33,6 +33,12 @@ public class ManagerStatsService : IManagerStatsService
         var todayBookings = await _bookingRepo.CountByVenueIdsAsync(venueIds, startOfDayUtc);
         var monthBookings = await _bookingRepo.CountByVenueIdsAsync(venueIds, startOfMonthUtc);
         var pendingCount = await _bookingRepo.CountByStatusInVenuesAsync(venueIds, "PENDING");
+        var pendingRefundCount = await _bookingRepo.CountByStatusInVenuesAsync(venueIds, "PENDING_REFUND");
+        
+        var cancelledCount = await _bookingRepo.CountByVenueIdsFilteredAsync(venueIds, "CANCELLED", startOfMonthUtc, null, null);
+        var monthTotalForCancel = await _bookingRepo.CountByVenueIdsFilteredAsync(venueIds, null, startOfMonthUtc, null, null);
+        var cancelRate = monthTotalForCancel > 0 ? Math.Round(cancelledCount * 100.0 / monthTotalForCancel, 1) : 0;
+
         var monthRevenue = await _bookingRepo.SumRevenueByVenueIdsAsync(venueIds, PaidStatuses, startOfMonthUtc);
         var totalRevenue = await _bookingRepo.SumRevenueByVenueIdsAsync(venueIds, PaidStatuses);
         var monthPenalty = await _refundRepo.SumPenaltyByVenueIdsAsync(venueIds, startOfMonthUtc);
@@ -57,7 +63,7 @@ public class ManagerStatsService : IManagerStatsService
             amount = b.FinalAmount ?? 0m, b.Status
         }).ToList();
 
-        return new { totalVenues, totalCourts, activeCourts, todayBookings, monthBookings, pendingCount, monthRevenue = monthRevenue + monthPenalty, totalRevenue = totalRevenue + totalPenalty, penaltyRevenue = new { month = monthPenalty, total = totalPenalty }, topVenues, recentBookings };
+        return new { totalVenues, totalCourts, activeCourts, todayBookings, monthBookings, pendingCount, pendingRefundCount, cancelRate, monthRevenue = monthRevenue + monthPenalty, totalRevenue = totalRevenue + totalPenalty, penaltyRevenue = new { month = monthPenalty, total = totalPenalty }, topVenues, recentBookings };
     }
 
     public async Task<object> GetEarningsPagedAsync(Guid managerId, Guid? venueId, string? startDate, string? endDate, string? status, string? search, int page, int pageSize)
@@ -191,15 +197,18 @@ public class ManagerStatsService : IManagerStatsService
             .Select(g => new { courtId = g.Key.CourtId, courtName = g.Key.CourtName, venueName = g.Key.VenueName, bookingCount = g.Select(bi => bi.BookingId).Distinct().Count(), revenue = g.Where(bi => PaidStatuses.Contains(bi.Booking?.Status)).Sum(bi => bi.FinalPrice ?? 0) })
             .OrderByDescending(x => x.bookingCount).Take(5).ToList();
 
-        var topCancelledCourts = courtBookingItems
-            .GroupBy(bi => new { bi.CourtId, CourtName = bi.Court?.Name ?? "N/A", VenueName = bi.Court?.Venue?.Name ?? "N/A" })
-            .Select(g =>
-            {
-                var total = g.Select(x => x.BookingId).Distinct().Count();
-                var cancelled = g.Where(x => x.Booking?.Status == "CANCELLED").Select(x => x.BookingId).Distinct().Count();
-                return new { courtId = g.Key.CourtId, courtName = g.Key.CourtName, venueName = g.Key.VenueName, cancelCount = cancelled, totalBookings = total, cancelRate = total > 0 ? Math.Round(cancelled * 100.0 / total, 1) : 0 };
-            })
-            .Where(x => x.cancelCount > 0).OrderByDescending(x => x.cancelCount).Take(5).ToList();
+        var statusDistribution = courtBookingItems
+            .GroupBy(bi => bi.Booking?.Status ?? "UNKNOWN")
+            .Select(g => new { status = g.Key, count = g.Select(bi => bi.BookingId).Distinct().Count() })
+            .ToList();
+
+        var peakHoursChart = courtBookingItems
+            .Where(bi => bi.Booking?.Status != "CANCELLED")
+            .GroupBy(bi => bi.StartTime.HasValue ? bi.StartTime.Value.Hour : -1)
+            .Where(g => g.Key != -1)
+            .Select(g => new { hour = g.Key, count = g.Select(bi => bi.BookingId).Distinct().Count() })
+            .OrderBy(x => x.hour)
+            .ToList();
 
         // 4) Revenue by venue
         var venues = await _venueRepo.GetActiveWithBookingStatsAsync(null, null, startOfMonthUtc, default, default);
@@ -210,6 +219,6 @@ public class ManagerStatsService : IManagerStatsService
             bookingCount = (v.Bookings ?? (ICollection<DAL.Models.Booking>)new List<DAL.Models.Booking>()).Count(b => b.Status != "CANCELLED" && b.CreatedAt >= startOfMonthUtc)
         }).OrderByDescending(x => x.revenue).ToList();
 
-        return new { monthlyRevenue, topBookedCourts, topCancelledCourts, revenueByVenue };
+        return new { monthlyRevenue, topBookedCourts, statusDistribution, peakHoursChart, revenueByVenue };
     }
 }
