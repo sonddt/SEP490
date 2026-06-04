@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import * as signalR from '@microsoft/signalr';
 import { useAuth } from './AuthContext';
 import chatApi from '../api/chatApi';
@@ -18,10 +19,15 @@ function senderId(msg) {
 
 export function ChatProvider({ children }) {
   const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [connStatus, setConnStatus] = useState('Chưa đăng nhập');
   const [hubConnected, setHubConnected] = useState(false);
   const [openingPeerId, setOpeningPeerId] = useState(null);
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
+  /** Phòng cần mở sau khi điều hướng từ Nhắn tin (profile / bạn bè). */
+  const [pendingOpenRoom, setPendingOpenRoom] = useState(null);
+
+  const clearPendingOpenRoom = useCallback(() => setPendingOpenRoom(null), []);
 
   const toggleChatPanel = useCallback(() => setChatPanelOpen(p => !p), []);
   const openChatPanel = useCallback(() => setChatPanelOpen(true), []);
@@ -183,7 +189,9 @@ export function ChatProvider({ children }) {
         }
         const rid = roomIdOf(room);
         if (!rid) throw new Error('Thiếu room id');
-        // Room resolved — caller can navigate to /user/chat if needed
+        setPendingOpenRoom(room);
+        closeChatPanel();
+        navigate('/user/chat');
       } catch (e) {
         const msg =
           e?.response?.data?.message ||
@@ -194,7 +202,7 @@ export function ChatProvider({ children }) {
         setOpeningPeerId(null);
       }
     },
-    [user?.id]
+    [user?.id, navigate, closeChatPanel]
   );
 
   const value = {
@@ -202,6 +210,8 @@ export function ChatProvider({ children }) {
     hubConnected,
     openingPeerId,
     openChatWithPeer,
+    pendingOpenRoom,
+    clearPendingOpenRoom,
     subscribeToRoom,
     acquireRoom,
     releaseRoom,
