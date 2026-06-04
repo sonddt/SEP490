@@ -4,6 +4,7 @@ import { ChevronUp, ChevronDown, ArrowUpDown } from 'lucide-react';
 import LongTermBookingSteps from '../../components/booking/LongTermBookingSteps';
 import { getVenueCourts, previewLongTermBooking, previewDiscount } from '../../api/bookingApi';
 import ShuttleDateField from '../../components/ui/ShuttleDateField';
+import { filterFutureSlotItems, todayIsoVn } from '../../utils/bookingSlotTime';
 
 /* ── Constants ────────────────────────────────────────────── */
 const DAY_OPTS = [
@@ -34,9 +35,31 @@ function slotLabel(mins) {
   return `${mins / 60} giờ`;
 }
 
-function todayIso() {
-  const t = new Date();
-  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+const todayIso = todayIsoVn;
+
+/** Chuẩn hóa preview: bỏ khung đã qua (giờ VN), tính lại tổng. */
+function sanitizePreviewResult(result) {
+  if (!result?.items?.length) return result;
+  const futureItems = filterFutureSlotItems(result.items.filter((i) => !i.isUnavailable));
+  const pastSkipped = (result.items.filter((i) => !i.isUnavailable)).length - futureItems.length;
+  const totalAmount = futureItems.reduce((s, i) => s + (i.price || 0), 0);
+  const sessionDates = new Set(
+    futureItems.map((i) => {
+      const st = i.startTime || i.start || '';
+      return typeof st === 'string' ? st.split('T')[0] : '';
+    }).filter(Boolean),
+  );
+  return {
+    ...result,
+    items: [
+      ...futureItems.map((i) => ({ ...i, isUnavailable: false })),
+      ...(result.items.filter((i) => i.isUnavailable) || []),
+    ],
+    slotCount: futureItems.length,
+    sessionCount: sessionDates.size,
+    totalAmount,
+    pastSlotsSkipped: pastSkipped,
+  };
 }
 
 /** Add hours to a HH:mm string, return HH:mm */
@@ -433,7 +456,17 @@ export default function LongTermBooking() {
     }
     setPreviewLoading(true);
     try {
-      const result = await previewLongTermBooking(schedulePayload);
+      const rawResult = await previewLongTermBooking(schedulePayload);
+      const result = sanitizePreviewResult(rawResult);
+
+      if (!result?.slotCount) {
+        setPreviewError(
+          result?.pastSlotsSkipped > 0
+            ? 'Các khung giờ trong ngày hôm nay đã qua. Vui lòng chọn giờ muộn hơn hoặc bắt đầu từ ngày mai.'
+            : 'Không còn khung giờ nào trong tương lai phù hợp lịch đã chọn.',
+        );
+        return;
+      }
 
       let finalDiscount = null;
       if (result && result.items && result.items.length > 0) {
@@ -480,7 +513,11 @@ export default function LongTermBooking() {
   /* ── Next step ─────────────────────────── */
   const handleNext = () => {
     if (!preview?.slotCount) return;
-    const availItems = (preview.items || []).filter(i => !i.isUnavailable);
+    const availItems = filterFutureSlotItems((preview.items || []).filter(i => !i.isUnavailable));
+    if (!availItems.length) {
+      setPreviewError('Các khung giờ đã chọn không còn hợp lệ (đã qua theo giờ VN). Vui lòng xem trước lại.');
+      return;
+    }
 
     // Extract actual available dates (ISO yyyy-MM-dd) — excludes fully-booked days
     const availableBookedDates = [...new Set(

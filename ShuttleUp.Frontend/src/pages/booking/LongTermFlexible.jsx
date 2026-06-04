@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import LongTermBookingSteps from '../../components/booking/LongTermBookingSteps';
 import { getVenueCourts, getVenueAvailability } from '../../api/bookingApi';
+import { getVnNow } from '../../utils/bookingSlotTime';
 
 function normalizeGroupName(value) {
   return String(value ?? '')
@@ -526,10 +527,8 @@ export default function LongTermFlexible() {
     existingBookings.find(b => b.courtId === courtId && slotIndex >= b.startIndex && slotIndex < b.endIndex);
 
   const isPastSlot = (slotIndex) => {
-    const now = new Date();
     const { end } = slotLocalBounds(selectedDate, slotIndex, slotDuration);
-    // Nếu thời điểm kết thúc slot <= hiện tại → slot đã qua.
-    return end.getTime() <= now.getTime();
+    return end.getTime() <= getVnNow().getTime();
   };
 
   const getCellStatus = (courtId, slotIndex) => {
