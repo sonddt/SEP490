@@ -21,6 +21,8 @@ public class UserProfileDto
     public bool? IsPersonalized { get; set; }
     public string? AvatarUrl { get; set; }
     public DateTime? CreatedAt { get; set; }
+    public string? AuthProvider { get; set; }
+    public bool HasPassword { get; set; }
 }
 
 public class ManagerProfilePublicDto

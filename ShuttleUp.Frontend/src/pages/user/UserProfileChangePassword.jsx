@@ -9,13 +9,10 @@ export default function UserProfileChangePassword() {
   const navigate = useNavigate();
 
   const isGoogleUser = user?.authProvider === 'GOOGLE';
-  const hasPassword = !!user?.hasPassword; // sẽ xác định qua PasswordHash ở backend
+  const hasPassword = !!user?.hasPassword;
 
-  // Google user chưa có password → mode "SET", còn lại → mode "CHANGE"
-  // Nếu isGoogleUser và chưa set password → show form "Thêm mật khẩu"
-  // Sau khi set xong hoặc LOCAL user → show form "Đổi mật khẩu"
-  const [passwordSet, setPasswordSet] = useState(false);
-  const showSetPasswordForm = isGoogleUser && !passwordSet;
+  // Google + chưa có password trong DB →「Thêm mật khẩu」; còn lại →「Đổi mật khẩu」
+  const showSetPasswordForm = isGoogleUser && !hasPassword;
 
   // ── Form state cho "Đổi mật khẩu" (LOCAL) ──
   const [form, setForm] = useState({
@@ -125,9 +122,7 @@ export default function UserProfileChangePassword() {
       setSuccess('Tuyệt vời! Thêm mật khẩu thành công. Bây giờ bạn có thể đăng nhập bằng email và mật khẩu!');
       notifySuccess('Thêm mật khẩu thành công!');
       setSetForm2({ newPassword: '', confirmPassword: '' });
-      setPasswordSet(true);
-      // Cập nhật context: giờ user đã có password
-      updateUser({ authProvider: 'GOOGLE' });
+      updateUser({ authProvider: user?.authProvider ?? 'GOOGLE', hasPassword: true });
     } catch (err) {
       const msg = err.response?.data?.message ?? 'Oops... Có sự cố khi thêm mật khẩu, bạn thử lại nha.';
       setError(msg);

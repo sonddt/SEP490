@@ -15,4 +15,6 @@ public class UserInfoDto
     public string FullName { get; set; } = null!;
     public IEnumerable<string> Roles { get; set; } = [];
     public string AuthProvider { get; set; } = "LOCAL";
+    /// <summary>true khi user đã có PasswordHash (kể cả tài khoản Google đã「Thêm mật khẩu」).</summary>
+    public bool HasPassword { get; set; }
 }

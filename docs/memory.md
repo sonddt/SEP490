@@ -897,3 +897,29 @@ Kết bạn & quan hệ xã hội (Player):
    - Tự động huỷ các `BookingItems`, `Payments`, cập nhật trạng thái của lịch cố định (Series) và gỡ bỏ các bài tìm kèo (`MatchingPosts`) nếu có.
    - Bắn chuông thông báo (Notification) và gửi Email cho cả 2 bên.
 3. **Database Seed**: Cập nhật file `Database_realistic.txt`, khắc phục lỗi logic trong dữ liệu mẫu (các đơn tương lai bị gán nhầm mác `COMPLETED` đã được trả về đúng trạng thái `CONFIRMED`).
+
+---
+
+## 4 tháng 6, 2026 (Matching giá giảm, giờ ca, thanh toán, thông báo)
+
+### A. Merge branch — Matching giảm giá + chia phí
+
+- Giải quyết 5 conflict (3 file): `MatchingPostCardDto.cs`, `MatchingService.cs`, `MatchingPostDetail.jsx`.
+- Giữ **cả hai** nhánh logic: `PriceDistributionHelper` + `HasDiscount` + `OriginalPrice`/`OriginalPricePerSlot` (HEAD) **và** chuẩn hóa `expenseSharing` (`female_free` → `split_equal`, `host_pays` → 0) từ nhánh merge.
+- `MatchingPostDetail.jsx`: dùng `DiscountPriceDisplay` cho chi phí/người và từng ca trong danh sách.
+
+### B. Đồng bộ giờ ca sân trên Matching (18h → 1h)
+
+- **Nguyên nhân**: `GetPostDetailAsync` gắn `AsUtcForJson` lên `BookingItem.StartTime`/`EndTime` → JSON có suffix `Z` → FE hiểu 18:00 là UTC → hiển thị **01:00 VN** (lệch +7h). Trái quy tắc mục G (3/6): `StartTime`/`EndTime` giữ **wall-clock VN**, không gắn UTC.
+- **Backend**: `MatchingService.GetPostDetailAsync` trả `StartTime`/`EndTime` thô (giống `GetUpcomingBookingsAsync`); bỏ helper `AsUtcForJson` khỏi matching.
+- **Frontend**: `matchingScheduleSummary.js` thêm `parseBookingSlotDate` → dùng `parseSlotDateTime` từ `bookingSlotTime.js` cho ca sân; `parseSlotDate` (UTC) **chỉ** cho bình luận matching. `MatchingPostDetail.jsx`, `MatchingCreate.jsx` dùng parser wall-clock VN.
+
+### C. Thanh toán — Bỏ dòng Phí dịch vụ
+
+- `BookingPayment.jsx`: xóa dòng「Phí dịch vụ — 0 VNĐ」(hardcode, không có API; khớp Điều khoản: app không thu phí nền tảng khi đặt sân). Bảng kê còn: Tạm tính → Mã giảm giá (nếu có) → Tổng cộng.
+
+### D. Thông báo — Deep link hồ sơ Chủ sân bị từ chối
+
+- **Lỗi**: Thông báo `MANAGER_REQUEST_REJECTED` (`AdminController`) dùng `deepLink = "/user/manager-info"` → route không tồn tại → 404.
+- **Route đúng**: `/user/profile/manager-info` (`UserManagerInfo.jsx` trong `App.jsx`).
+- **Sửa**: `AdminController` metadata mới; `notificationNavigation.js` chuẩn hóa link cũ `/user/manager-info` → route đúng; `App.jsx` redirect legacy `/user/manager-info`.

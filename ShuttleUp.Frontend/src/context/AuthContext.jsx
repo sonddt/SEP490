@@ -68,7 +68,9 @@ export function AuthProvider({ children }) {
           if (u.isPersonalized !== undefined && u.isPersonalized !== user.isPersonalized) patch.isPersonalized = u.isPersonalized;
           if (u.skillLevel !== undefined && u.skillLevel !== user.skillLevel) patch.skillLevel = u.skillLevel;
           if (u.province !== undefined && u.province !== user.province) patch.province = u.province;
-          
+          if (u.authProvider !== undefined && u.authProvider !== user.authProvider) patch.authProvider = u.authProvider;
+          if (u.hasPassword !== undefined && u.hasPassword !== user.hasPassword) patch.hasPassword = u.hasPassword;
+
           if (Object.keys(patch).length > 0) {
             updateUser(patch);
           }

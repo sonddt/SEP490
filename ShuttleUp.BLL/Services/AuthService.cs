@@ -314,6 +314,7 @@ public class AuthService : IAuthService
                 FullName = user.FullName,
                 Roles = user.Roles.Select(r => r.Name),
                 AuthProvider = user.AuthProvider,
+                HasPassword = !string.IsNullOrEmpty(user.PasswordHash),
             }
         };
     }

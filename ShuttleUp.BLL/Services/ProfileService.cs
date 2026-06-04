@@ -102,7 +102,9 @@ public class ProfileService : IProfileService
             PlayFrequency = user.PlayFrequency,
             IsPersonalized = user.IsPersonalized,
             AvatarUrl = user.AvatarFile?.FileUrl,
-            CreatedAt = user.CreatedAt
+            CreatedAt = user.CreatedAt,
+            AuthProvider = user.AuthProvider,
+            HasPassword = !string.IsNullOrEmpty(user.PasswordHash),
         };
 
         var managerProfileDto = managerProfile == null ? null : new ManagerProfilePublicDto
