@@ -10,7 +10,7 @@ public class FileRepository : Repository<DalFile>, IFileRepository
     public FileRepository(ShuttleUpDbContext context) : base(context) { }
 
     public async Task<List<DalFile>> GetByIdsAsync(List<Guid> ids)
-        => ids.Count == 0 ? new List<DalFile>() : await _dbSet.AsNoTracking().Where(f => ids.Contains(f.Id)).ToListAsync();
+        => ids.Count == 0 ? new List<DalFile>() : await _dbSet.Where(f => ids.Contains(f.Id)).ToListAsync();
 
     public async Task AddFileAsync(DalFile file)
     {
