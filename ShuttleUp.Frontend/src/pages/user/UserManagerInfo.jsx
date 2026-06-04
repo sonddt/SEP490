@@ -13,6 +13,7 @@ export default function UserManagerInfo() {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null);
   const [requestType, setRequestType] = useState(null);
+  const [decisionNote, setDecisionNote] = useState(null);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
@@ -48,6 +49,7 @@ export default function UserManagerInfo() {
         if (!mounted) return;
         setStatus(data.status ?? data.Status ?? null);
         setRequestType(data.requestType ?? data.RequestType ?? null);
+        setDecisionNote(data.decisionNote ?? data.DecisionNote ?? null);
         setForm({
           taxCode: data.taxCode ?? data.TaxCode ?? '',
           address: data.address ?? data.Address ?? '',
@@ -233,6 +235,7 @@ export default function UserManagerInfo() {
       const data = await managerProfileApi.getMe();
       setStatus(data.status ?? data.Status ?? null);
       setRequestType(data.requestType ?? data.RequestType ?? null);
+      setDecisionNote(data.decisionNote ?? data.DecisionNote ?? null);
       setForm({
         taxCode: data.taxCode ?? data.TaxCode ?? '',
         address: data.address ?? data.Address ?? '',
@@ -301,6 +304,18 @@ export default function UserManagerInfo() {
 
       <div className="max-w-5xl">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-8">
+          {(status || '').toUpperCase() === 'REJECTED' && decisionNote && (
+            <div className="mb-6 rounded-xl border-l-4 border-rose-500 bg-rose-50 p-4">
+              <div className="flex items-start gap-3">
+                <i className="fa-solid fa-circle-info text-rose-500 mt-1"></i>
+                <div>
+                  <h4 className="font-bold text-rose-800 text-sm mb-1">Lý do từ chối:</h4>
+                  <p className="text-rose-700 text-sm m-0 whitespace-pre-wrap">{decisionNote}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {err && (
             <div className="alert alert-danger rounded-xl border-0 shadow-sm flex items-center gap-3 bg-rose-50 text-rose-700 py-3 px-4 mb-6">
               <i className="fa-solid fa-circle-exclamation text-rose-500"></i>
