@@ -189,6 +189,7 @@ function App() {
           {/* Legacy /user/* redirects */}
           <Route path="/user/dashboard" element={<Navigate to="/user/profile" replace />} />
           <Route path="/user/my-profile" element={<Navigate to="/user/profile" replace />} />
+          <Route path="/user/manager-info" element={<Navigate to="/user/profile/manager-info" replace />} />
 
           {/* Player misc */}
           <Route path="/chat" element={<Navigate to="/user/chat" replace />} />

@@ -1,3 +1,14 @@
+const MANAGER_PROFILE_PATH = '/user/profile/manager-info';
+
+/** Chuẩn hóa deepLink cũ / sai route. */
+function normalizeDeepLink(path) {
+  if (!path || typeof path !== 'string') return path;
+  if (path === '/user/manager-info' || path === '/profile/manager-info') {
+    return MANAGER_PROFILE_PATH;
+  }
+  return path;
+}
+
 /**
  * @param {string | null | undefined} metadataJson
  * @param {boolean} isManager
@@ -13,11 +24,11 @@ export function getNotificationTargetPath(metadataJson, isManager) {
     }
   }
   if (meta.deepLink && typeof meta.deepLink === 'string' && meta.deepLink.startsWith('/')) {
-    return meta.deepLink;
+    return normalizeDeepLink(meta.deepLink);
   }
-  // Manager request notifications
-  if (meta.requestId) {
-    return isManager ? '/user/manager-info' : '/admin/manager-requests';
+  // Manager request notifications (friend request cũng có requestId — ưu tiên deepLink ở trên)
+  if (meta.requestId && !meta.fromUserId && !meta.postId) {
+    return isManager ? MANAGER_PROFILE_PATH : '/admin/manager-requests';
   }
   if (meta.postId != null && meta.postId !== '') {
     return `/matching/${meta.postId}`;

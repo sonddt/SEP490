@@ -188,7 +188,7 @@ public class AdminController : ControllerBase
                 NotificationTypes.ManagerRequestRejected,
                 "Hồ sơ Chủ sân chưa được duyệt",
                 $"Lý do: {body.Note?.Trim()}. Bạn có thể cập nhật lại hồ sơ và gửi lại.",
-                metadata: new { deepLink = "/user/manager-info" },
+                metadata: new { deepLink = "/user/profile/manager-info" },
                 sendEmail: true);
 
             return Ok(new { message = "Đã từ chối cấp quyền Chủ sân thành công." });
