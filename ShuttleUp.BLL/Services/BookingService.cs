@@ -387,7 +387,7 @@ public class BookingService : IBookingService
                 VenueName = b.Venue?.Name,
                 VenueAddress = b.Venue?.Address,
                 VenueId = b.VenueId,
-                VenueImageUrl = b.Venue?.Files?.OrderBy(f => f.CreatedAt).Select(f => f.FileUrl).FirstOrDefault(),
+                VenueImageUrl = b.Venue?.Files?.Where(f => f.FileName != null && f.FileName.Contains("mac_dinh")).Select(f => f.FileUrl).FirstOrDefault() ?? b.Venue?.Files?.OrderByDescending(f => f.CreatedAt).Select(f => f.FileUrl).FirstOrDefault(),
                 LastPaymentMethod = b.Payments.OrderByDescending(p => p.CreatedAt).Select(p => p.Method).FirstOrDefault(),
                 PaymentProofUrl = b.Payments
                     .OrderByDescending(p => p.CreatedAt)
@@ -538,6 +538,9 @@ public class BookingService : IBookingService
             VenueAddress = booking.Venue?.Address,
             Date = booking.BookingItems.Min(bi => bi.StartTime)?.ToString("yyyy-MM-dd"),
             TotalPrice = booking.FinalAmount ?? 0,
+            OriginalPrice = booking.TotalAmount ?? 0,
+            DiscountAmount = booking.DiscountAmount ?? 0,
+            CouponCode = booking.VenueCoupon?.Code,
             TotalHours = tm > 0 ? $"{th}h{tm}" : $"{th}h",
             SlotDuration = venueSlotDuration,
             CustomerName = booking.ContactName,

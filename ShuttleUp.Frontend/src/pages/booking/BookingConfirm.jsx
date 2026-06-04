@@ -543,7 +543,10 @@ export default function BookingConfirm() {
                   <>
                     {discountInfo.discountAmount > 0 && (
                       <div className="d-flex justify-content-between align-items-center mb-2 text-success">
-                        <span>Giảm giá</span>
+                        <span>
+                          <i className="feather-gift me-1" />
+                          Giảm giá do mã ưu đãi{appliedCoupon ? ` (${appliedCoupon})` : ''}
+                        </span>
                         <strong>-{(discountInfo.discountAmount).toLocaleString('vi-VN')} VNĐ</strong>
                       </div>
                     )}

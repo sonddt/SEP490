@@ -72,6 +72,9 @@ export default function BookingPayment() {
     customerName: '',
     customerPhone: '',
     note: '',
+    originalPrice: 0,
+    discountAmount: 0,
+    couponCode: '',
   });
 
   const [bookingId, setBookingId] = useState(paramBookingId);
@@ -108,6 +111,9 @@ export default function BookingPayment() {
         customerName: ctx.customerName ?? '',
         customerPhone: ctx.customerPhone ?? '',
         note: ctx.note ?? '',
+        originalPrice: Number(ctx.originalPrice ?? 0),
+        discountAmount: Number(ctx.discountAmount ?? 0),
+        couponCode: ctx.couponCode ?? '',
       });
     } catch (err) {
       const code = err.response?.data?.code;
@@ -310,7 +316,7 @@ export default function BookingPayment() {
     }
   };
 
-  const { venueName, venueAddress, date, selectedSlots, totalPrice, totalHours, customerName, customerPhone, note } = pay;
+  const { venueName, venueAddress, date, selectedSlots, totalPrice, originalPrice, discountAmount, couponCode, totalHours, customerName, customerPhone, note } = pay;
 
   const [sortConfig, setSortConfig] = useState({ key: 'time', dir: 'asc' });
 
@@ -719,9 +725,17 @@ export default function BookingPayment() {
 
                 <ul className="order-sub-total list-unstyled">
                   <li className="d-flex justify-content-between mb-2">
-                    <span>Tạm tính</span>
-                    <span>{totalPrice.toLocaleString('vi-VN')} VNĐ</span>
+                    <span>Tạm tính (Giá gốc)</span>
+                    <span className={discountAmount > 0 ? "text-decoration-line-through text-muted" : ""}>
+                      {(originalPrice || totalPrice).toLocaleString('vi-VN')} VNĐ
+                    </span>
                   </li>
+                  {discountAmount > 0 && (
+                    <li className="d-flex justify-content-between mb-2 text-success">
+                      <span>Mã giảm giá{couponCode ? ` (${couponCode})` : ''}</span>
+                      <span>-{discountAmount.toLocaleString('vi-VN')} VNĐ</span>
+                    </li>
+                  )}
                   <li className="d-flex justify-content-between mb-2">
                     <span>Phí dịch vụ</span>
                     <span>0 VNĐ</span>

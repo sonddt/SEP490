@@ -15,6 +15,7 @@ public partial class BookingRepository
     {
         var q = _dbSet
             .Include(b => b.Venue)
+            .Include(b => b.VenueCoupon)
             .Include(b => b.BookingItems).ThenInclude(bi => bi.Court)
             .Include(b => b.Payments)
             .Where(b => b.Id == id && b.UserId == userId);
@@ -75,7 +76,7 @@ public partial class BookingRepository
         var query = _dbSet
             .AsNoTracking()
             .AsSplitQuery()
-            .Include(b => b.Venue)
+            .Include(b => b.Venue).ThenInclude(v => v!.Files)
             .Include(b => b.User)!.ThenInclude(u => u!.AvatarFile)
             .Include(b => b.BookingItems).ThenInclude(bi => bi.Court)!.ThenInclude(c => c!.Files)
             .Include(b => b.Payments)
