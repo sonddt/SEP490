@@ -194,13 +194,9 @@ export default function ManagerEarnings() {
   useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
   useEffect(() => { setPage(1); }, [statusFilter, venueFilter, search, startDate, endDate]);
 
-  const ALLOWED_STATUSES = new Set(['CONFIRMED', 'COMPLETED', 'REFUNDED']);
+  const ALLOWED_STATUSES = new Set(['CONFIRMED', 'COMPLETED', 'REFUNDED', 'CANCELLED']);
   const filteredItems = useMemo(() => {
-    return (data?.items || []).filter(tx => {
-      if (!ALLOWED_STATUSES.has(tx.status)) return false;
-      if (tx.status === 'REFUNDED' && (tx.penaltyAmount ?? 0) === 0) return false;
-      return true;
-    });
+    return (data?.items || []).filter(tx => ALLOWED_STATUSES.has(tx.status));
   }, [data?.items]);
 
   const totalPages = data?.totalPages ?? 1;
@@ -337,7 +333,7 @@ export default function ManagerEarnings() {
             >
               <option value="">Tất cả cụm sân</option>
               {(data?.venues || []).map(v => (
-                <option key={v.id} value={v.name}>{v.name}</option>
+                <option key={v.id} value={v.id}>{v.name}</option>
               ))}
             </select>
             <div className="d-flex align-items-center gap-2">
@@ -555,7 +551,7 @@ export default function ManagerEarnings() {
             <div>
               <h5 className="mb-1" style={{ fontWeight: 800, color: '#0f172a' }}>
                 <i className="feather-activity me-2" style={{ color: '#2563eb' }} />
-                Doanh thu 30 ngày gần nhất
+                Doanh thu 30 ngày gần nhất <span style={{ fontSize: 14, color: '#94a3b8', fontWeight: 500 }}>(trong phạm vi 30 ngày)</span>
               </h5>
               <p className="mb-0" style={{ fontSize: 13, color: '#94a3b8' }}>Theo giờ VN</p>
             </div>
@@ -596,7 +592,7 @@ export default function ManagerEarnings() {
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <i className="feather-activity" style={{ fontSize: 16, color: '#d97706' }} />
                 </div>
-                <h6 className="mb-0" style={{ fontWeight: 700, color: '#0f172a', fontSize: 15 }}>Phân bổ trạng thái</h6>
+                <h6 className="mb-0" style={{ fontWeight: 700, color: '#0f172a', fontSize: 15 }}>Phân bổ trạng thái <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 500 }}>(trong tháng hiện tại)</span></h6>
               </div>
               {!statusPieData?.length ? (
                 <div className="text-center py-4" style={{ color: '#94a3b8', fontSize: 13 }}>
@@ -647,7 +643,7 @@ export default function ManagerEarnings() {
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <i className="feather-pie-chart" style={{ fontSize: 16, color: '#2563eb' }} />
                 </div>
-                <h6 className="mb-0" style={{ fontWeight: 700, color: '#0f172a', fontSize: 15 }}>Phân bổ doanh thu</h6>
+                <h6 className="mb-0" style={{ fontWeight: 700, color: '#0f172a', fontSize: 15 }}>Phân bổ doanh thu <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 500 }}>(trong tháng hiện tại)</span></h6>
               </div>
               {!pieData?.length ? (
                 <div className="text-center py-4" style={{ color: '#94a3b8', fontSize: 13 }}>
@@ -699,8 +695,8 @@ export default function ManagerEarnings() {
               <i className="feather-clock" style={{ fontSize: 16, color: '#10b981' }} />
             </div>
             <div>
-              <h6 className="mb-0" style={{ fontWeight: 700, color: '#0f172a', fontSize: 15 }}>Khung giờ đặt sân phổ biến</h6>
-              <div style={{ fontSize: 13, color: '#64748b' }}>Thống kê lượt đặt theo từng giờ trong tháng</div>
+              <h6 className="mb-0" style={{ fontWeight: 700, color: '#0f172a', fontSize: 15 }}>Khung giờ đặt sân phổ biến <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 500 }}>(trong tháng hiện tại)</span></h6>
+              <div style={{ fontSize: 13, color: '#64748b' }}>Thống kê lượt đặt theo từng giờ</div>
             </div>
           </div>
           
