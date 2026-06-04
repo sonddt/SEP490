@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import matchingApi from '../../api/matchingApi';
 import MatchingPeopleCountInput from '../../components/matching/MatchingPeopleCountInput';
 import DiscountPriceDisplay from '../../components/matching/DiscountPriceDisplay';
+import { parseSlotDateTime } from '../../utils/bookingSlotTime';
 
 const skillOptions = [
   { value: '', label: 'Không yêu cầu' },
@@ -125,14 +126,15 @@ export default function MatchingCreate() {
   };
 
   const formatDate = (d) => {
-    if (!d) return '';
-    const date = new Date(d);
+    const date = parseSlotDateTime(d);
+    if (!date) return '';
     return date.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
   const formatTime = (d) => {
-    if (!d) return '';
-    return new Date(d).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    const date = parseSlotDateTime(d);
+    if (!date) return '';
+    return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
   };
 
   const formatPrice = (v) => {
@@ -644,9 +646,9 @@ export default function MatchingCreate() {
                             <div>
                                 <div style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}><i className="feather-calendar me-2"></i>Lịch trình ({selectedItems.length} ca)</div>
                                 {(showAllItems ? selectedItems : selectedItems.slice(0, 2)).map((item) => {
-                                    const dateObj = new Date(item.startTime);
+                                    const dateObj = parseSlotDateTime(item.startTime);
                                     const dayName = formatDate(item.startTime).split(',')[0];
-                                    const dayDate = dateObj.getDate();
+                                    const dayDate = dateObj?.getDate() ?? 0;
                                     return (
                                         <div key={item.bookingItemId} style={{ display: 'flex', gap: '16px', marginBottom: '12px', padding: '14px', backgroundColor: '#f8fafc', borderRadius: '14px', border: '1px solid #f1f5f9' }}>
                                             <div style={{ width: '56px', height: '56px', borderRadius: '12px', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', flexShrink: 0 }}>

@@ -150,8 +150,8 @@ public class MatchingService : IMatchingService
                 {
                     BookingItemId = i.BookingItemId,
                     CourtName = i.BookingItem?.Court?.Name,
-                    StartTime = AsUtcForJson(i.BookingItem?.StartTime),
-                    EndTime = AsUtcForJson(i.BookingItem?.EndTime),
+                    StartTime = i.BookingItem?.StartTime,
+                    EndTime = i.BookingItem?.EndTime,
                     Price = actualMap.GetValueOrDefault(i.BookingItemId, original),
                     OriginalPrice = original
                 };
@@ -651,12 +651,5 @@ public class MatchingService : IMatchingService
 
     private static bool IsInactiveStatus(string? status) =>
         string.Equals(status, "Inactive", StringComparison.OrdinalIgnoreCase);
-
-    private static DateTime? AsUtcForJson(DateTime? dt) =>
-        dt.HasValue
-            ? (dt.Value.Kind == DateTimeKind.Unspecified
-                ? DateTime.SpecifyKind(dt.Value, DateTimeKind.Utc)
-                : dt.Value.ToUniversalTime())
-            : null;
 
 }

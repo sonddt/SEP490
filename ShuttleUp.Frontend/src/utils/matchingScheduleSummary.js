@@ -1,4 +1,12 @@
-/** Parse API datetime (UTC) — khớp logic comment matching. */
+import { parseSlotDateTime } from './bookingSlotTime';
+
+/** Parse giờ ca đặt sân / booking item (wall-clock VN, khớp TimeZoneHelper backend). */
+export function parseBookingSlotDate(d) {
+  const parsed = parseSlotDateTime(d);
+  return parsed ?? new Date(NaN);
+}
+
+/** Parse API datetime (UTC) — chỉ dùng cho bình luận matching. */
 export function parseSlotDate(d) {
   if (d == null) return new Date(NaN);
   if (d instanceof Date) return d;
@@ -26,8 +34,8 @@ export function formatVnLongWeekdayDate(d) {
 export function buildScheduleSummary(post) {
   const sortedBookingItems = [...(post?.bookingItems || [])];
   sortedBookingItems.sort((a, b) => {
-    const ta = parseSlotDate(a.startTime).getTime();
-    const tb = parseSlotDate(b.startTime).getTime();
+    const ta = parseBookingSlotDate(a.startTime).getTime();
+    const tb = parseBookingSlotDate(b.startTime).getTime();
     if (Number.isNaN(ta) && Number.isNaN(tb)) return 0;
     if (Number.isNaN(ta)) return 1;
     if (Number.isNaN(tb)) return -1;
@@ -40,8 +48,8 @@ export function buildScheduleSummary(post) {
     let minTs = Infinity;
     let maxTs = -Infinity;
     for (const item of sortedBookingItems) {
-      const s = parseSlotDate(item.startTime);
-      const e = parseSlotDate(item.endTime);
+      const s = parseBookingSlotDate(item.startTime);
+      const e = parseBookingSlotDate(item.endTime);
       const ts = s.getTime();
       const te = e.getTime();
       if (!Number.isNaN(ts) && ts < minTs) {

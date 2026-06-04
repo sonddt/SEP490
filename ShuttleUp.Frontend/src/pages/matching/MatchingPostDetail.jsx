@@ -7,7 +7,7 @@ import MatchingComments from '../../components/matching/MatchingComments';
 import MatchingScheduleModal from '../../components/matching/MatchingScheduleModal';
 import ReportModal from '../../components/common/ReportModal';
 import { useAuth } from '../../context/AuthContext';
-import { parseSlotDate, buildScheduleSummary } from '../../utils/matchingScheduleSummary';
+import { parseBookingSlotDate, buildScheduleSummary } from '../../utils/matchingScheduleSummary';
 import { normalizeSearchText } from '../../utils/searchNormalize';
 import DiscountPriceDisplay from '../../components/matching/DiscountPriceDisplay';
 
@@ -63,8 +63,8 @@ function vnWeekdayShort(d) {
 }
 
 function formatBookingSlotDetail(item) {
-  const start = parseSlotDate(item.startTime);
-  const end = parseSlotDate(item.endTime);
+  const start = parseBookingSlotDate(item.startTime);
+  const end = parseBookingSlotDate(item.endTime);
   const timeRange = `${formatHHmm(start)} - ${formatHHmm(end)}`.trim();
   const wd = vnWeekdayShort(start);
   const dateStr = Number.isNaN(start.getTime())
@@ -126,8 +126,8 @@ export default function MatchingPostDetail() {
   const sortedBookingItems = useMemo(() => {
     const items = [...(post?.bookingItems || [])];
     items.sort((a, b) => {
-      const ta = parseSlotDate(a.startTime).getTime();
-      const tb = parseSlotDate(b.startTime).getTime();
+      const ta = parseBookingSlotDate(a.startTime).getTime();
+      const tb = parseBookingSlotDate(b.startTime).getTime();
       if (Number.isNaN(ta) && Number.isNaN(tb)) return 0;
       if (Number.isNaN(ta)) return 1;
       if (Number.isNaN(tb)) return -1;
@@ -158,8 +158,8 @@ export default function MatchingPostDetail() {
     items.sort((a, b) => {
       switch (sortKey) {
         case 'time_desc': {
-          const ta = parseSlotDate(a.startTime).getTime();
-          const tb = parseSlotDate(b.startTime).getTime();
+          const ta = parseBookingSlotDate(a.startTime).getTime();
+          const tb = parseBookingSlotDate(b.startTime).getTime();
           if (Number.isNaN(ta) && Number.isNaN(tb)) return 0;
           if (Number.isNaN(ta)) return 1;
           if (Number.isNaN(tb)) return -1;
@@ -181,8 +181,8 @@ export default function MatchingPostDetail() {
         }
         case 'time_asc':
         default: {
-          const ta = parseSlotDate(a.startTime).getTime();
-          const tb = parseSlotDate(b.startTime).getTime();
+          const ta = parseBookingSlotDate(a.startTime).getTime();
+          const tb = parseBookingSlotDate(b.startTime).getTime();
           if (Number.isNaN(ta) && Number.isNaN(tb)) return 0;
           if (Number.isNaN(ta)) return 1;
           if (Number.isNaN(tb)) return -1;

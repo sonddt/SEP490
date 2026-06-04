@@ -736,10 +736,6 @@ export default function BookingPayment() {
                       <span>-{discountAmount.toLocaleString('vi-VN')} VNĐ</span>
                     </li>
                   )}
-                  <li className="d-flex justify-content-between mb-2">
-                    <span>Phí dịch vụ</span>
-                    <span>0 VNĐ</span>
-                  </li>
                 </ul>
                 <div className="order-total d-flex justify-content-between align-items-center mb-3">
                   <h5 className="mb-0">Tổng cộng</h5>
