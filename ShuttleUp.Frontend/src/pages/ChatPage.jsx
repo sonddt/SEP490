@@ -21,6 +21,8 @@ export default function ChatPage() {
     acquireRoom,
     releaseRoom,
     sendHubMessage,
+    pendingOpenRoom,
+    clearPendingOpenRoom,
   } = useChat();
 
   const [rooms, setRooms] = useState([]);
@@ -55,6 +57,22 @@ export default function ChatPage() {
   useEffect(() => {
     loadRooms();
   }, [loadRooms]);
+
+  useEffect(() => {
+    if (!pendingOpenRoom) return;
+    const rid = roomIdOf(pendingOpenRoom);
+    if (!rid) {
+      clearPendingOpenRoom();
+      return;
+    }
+    setRooms((prev) => {
+      if (prev.some((r) => String(roomIdOf(r)) === String(rid))) return prev;
+      return [pendingOpenRoom, ...prev];
+    });
+    setActiveRoom(pendingOpenRoom);
+    setMobileShowChat(true);
+    clearPendingOpenRoom();
+  }, [pendingOpenRoom, clearPendingOpenRoom]);
 
   const loadFriendChoices = useCallback(() => {
     setLoadingFriends(true);
@@ -357,27 +375,6 @@ export default function ChatPage() {
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                       Tham gia: {(activeRoom.members || activeRoom.Members || []).map((m) => m.fullName ?? m.FullName).filter(Boolean).slice(0, 3).join(', ')}{(activeRoom.members?.length > 3) ? '...' : ''}
                     </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button className="w-10 h-10 rounded-full bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-emerald-600 transition-all flex items-center justify-center border border-transparent hover:border-slate-200">
-                    <i className="feather-phone text-lg"></i>
-                  </button>
-                  <button className="w-10 h-10 rounded-full bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-emerald-600 transition-all flex items-center justify-center border border-transparent hover:border-slate-200">
-                    <i className="feather-video text-lg"></i>
-                  </button>
-                  <div className="dropdown">
-                    <button className="w-10 h-10 rounded-full bg-slate-50 text-slate-600 hover:bg-slate-100 transition-all flex items-center justify-center" data-bs-toggle="dropdown">
-                      <i className="fas fa-ellipsis-v"></i>
-                    </button>
-                    <div className="dropdown-menu dropdown-menu-end border-0 shadow-lg rounded-xl overflow-hidden mt-2 p-0">
-                      <div className="p-2">
-                        <a className="dropdown-item py-2 px-3 rounded-lg hover:bg-slate-50 text-[14px] font-semibold flex items-center gap-2" href="#"><i className="feather-archive text-slate-400"></i> Lưu trữ</a>
-                        <a className="dropdown-item py-2 px-3 rounded-lg hover:bg-slate-50 text-[14px] font-semibold flex items-center gap-2" href="#"><i className="feather-mic-off text-slate-400"></i> Tắt thông báo</a>
-                        <div className="border-t border-slate-100 my-1"></div>
-                        <a className="dropdown-item py-2 px-3 rounded-lg hover:bg-rose-50 text-rose-600 text-[14px] font-semibold flex items-center gap-2" href="#"><i className="feather-trash-2"></i> Xóa lịch sử</a>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
