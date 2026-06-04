@@ -317,12 +317,14 @@ export default function UserProfileEdit() {
         skillLevel: form.skillLevel || null,
         playPurpose: form.playPurpose || null,
         playFrequency: form.playFrequency || null,
+        isPersonalized: true,
       });
 
       try {
         updateUser({
           fullName,
           phoneNumber: cleanedPhone || undefined,
+          isPersonalized: true,
         });
       } catch {
         /* ignore */

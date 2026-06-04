@@ -62,8 +62,16 @@ export function AuthProvider({ children }) {
     profileApi.getMe()
       .then((data) => {
         const u = data?.user ?? data?.User;
-        if (u?.avatarUrl && u.avatarUrl !== user.avatarUrl) {
-          updateUser({ avatarUrl: u.avatarUrl });
+        if (u) {
+          const patch = {};
+          if (u.avatarUrl !== undefined && u.avatarUrl !== user.avatarUrl) patch.avatarUrl = u.avatarUrl;
+          if (u.isPersonalized !== undefined && u.isPersonalized !== user.isPersonalized) patch.isPersonalized = u.isPersonalized;
+          if (u.skillLevel !== undefined && u.skillLevel !== user.skillLevel) patch.skillLevel = u.skillLevel;
+          if (u.province !== undefined && u.province !== user.province) patch.province = u.province;
+          
+          if (Object.keys(patch).length > 0) {
+            updateUser(patch);
+          }
         }
       })
       .catch(() => { /* ignore - avatar just won't update */ });
