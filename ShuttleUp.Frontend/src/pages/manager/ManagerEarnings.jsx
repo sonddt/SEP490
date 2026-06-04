@@ -194,13 +194,9 @@ export default function ManagerEarnings() {
   useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
   useEffect(() => { setPage(1); }, [statusFilter, venueFilter, search, startDate, endDate]);
 
-  const ALLOWED_STATUSES = new Set(['CONFIRMED', 'COMPLETED', 'REFUNDED']);
+  const ALLOWED_STATUSES = new Set(['CONFIRMED', 'COMPLETED', 'REFUNDED', 'CANCELLED']);
   const filteredItems = useMemo(() => {
-    return (data?.items || []).filter(tx => {
-      if (!ALLOWED_STATUSES.has(tx.status)) return false;
-      if (tx.status === 'REFUNDED' && (tx.penaltyAmount ?? 0) === 0) return false;
-      return true;
-    });
+    return (data?.items || []).filter(tx => ALLOWED_STATUSES.has(tx.status));
   }, [data?.items]);
 
   const totalPages = data?.totalPages ?? 1;
@@ -337,7 +333,7 @@ export default function ManagerEarnings() {
             >
               <option value="">Tất cả cụm sân</option>
               {(data?.venues || []).map(v => (
-                <option key={v.id} value={v.name}>{v.name}</option>
+                <option key={v.id} value={v.id}>{v.name}</option>
               ))}
             </select>
             <div className="d-flex align-items-center gap-2">
