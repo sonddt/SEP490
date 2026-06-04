@@ -20,6 +20,7 @@ public class MatchingPostCardDto
     public string? VenueAddress { get; set; }
     public string? CourtName { get; set; }
     public decimal? PricePerSlot { get; set; }
+    public decimal? OriginalPricePerSlot { get; set; }
     public int? RequiredPlayers { get; set; }
     public string? SkillLevel { get; set; }
     public string? GenderPref { get; set; }

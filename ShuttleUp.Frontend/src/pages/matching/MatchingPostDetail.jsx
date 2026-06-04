@@ -28,7 +28,6 @@ const expenseLabels = {
   split_equal: 'Chia đều',
   per_person: 'Cố định/người',
   host_pays: 'Bao sân',
-  female_free: 'Nữ miễn phí',
   negotiable: 'Thỏa thuận',
 };
 
@@ -478,7 +477,12 @@ export default function MatchingPostDetail() {
                         </div>
                         <div>
                             <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Chi phí dự kiến</div>
-                            <div style={{ fontSize: '18px', color: '#097E52', fontWeight: '700', marginBottom: '2px', letterSpacing: '-0.5px' }}>{formatPrice(post.pricePerSlot)} <span style={{ fontSize: '14px', color: '#64748b', fontWeight: '600' }}>/ ng</span></div>
+                            <div style={{ fontSize: '18px', color: '#097E52', fontWeight: '700', marginBottom: '2px', letterSpacing: '-0.5px' }}>
+                              {formatPrice(post.pricePerSlot)} <span style={{ fontSize: '14px', color: '#64748b', fontWeight: '600' }}>/ ng</span>
+                              {post.originalPricePerSlot != null && post.pricePerSlot != null && post.originalPricePerSlot > post.pricePerSlot && (
+                                <span style={{ textDecoration: 'line-through', color: '#94a3b8', fontSize: '14px', marginLeft: '8px', fontWeight: '500' }}>{formatPrice(post.originalPricePerSlot)}</span>
+                              )}
+                            </div>
                             <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}><i className="feather-pie-chart me-1"></i> {expenseLabels[post.expenseSharing] || post.expenseSharing}</div>
                         </div>
                     </div>

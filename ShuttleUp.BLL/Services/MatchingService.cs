@@ -78,6 +78,17 @@ public class MatchingService : IMatchingService
         var myMemberId = p.MatchingMembers.FirstOrDefault(m => m.UserId == me)?.Id;
         var myJoinRequest = p.MatchingJoinRequests.FirstOrDefault(r => r.UserId == me && r.Status == "PENDING");
 
+        // Calculate original price (before discount) for strikethrough display
+        var totalOriginal = p.MatchingPostItems.Sum(i => i.BookingItem?.FinalPrice ?? 0m);
+        var headCount = Math.Max((p.RequiredPlayers ?? 0) + 1, 1);
+        var expenseSharing = p.ExpenseSharing == "female_free" ? "split_equal" : p.ExpenseSharing;
+        decimal? originalPricePerSlot = expenseSharing switch
+        {
+            "host_pays" => 0,
+            "negotiable" => null,
+            _ => totalOriginal / headCount
+        };
+
         var dto = new MatchingPostDetailDto
         {
             Id = p.Id,
@@ -89,10 +100,11 @@ public class MatchingService : IMatchingService
             VenueAddress = p.Venue?.Address,
             CourtName = p.CourtName,
             PricePerSlot = p.PricePerSlot,
+            OriginalPricePerSlot = originalPricePerSlot,
             RequiredPlayers = p.RequiredPlayers,
             SkillLevel = p.SkillLevel,
             GenderPref = p.GenderPref,
-            ExpenseSharing = p.ExpenseSharing,
+            ExpenseSharing = expenseSharing,
             PlayPurpose = p.PlayPurpose,
             Notes = p.Notes,
             Status = p.Status,
@@ -125,8 +137,8 @@ public class MatchingService : IMatchingService
             {
                 BookingItemId = i.BookingItemId,
                 CourtName = i.BookingItem?.Court?.Name,
-                StartTime = AsUtcForJson(i.BookingItem?.StartTime),
-                EndTime = AsUtcForJson(i.BookingItem?.EndTime),
+                StartTime = i.BookingItem?.StartTime,
+                EndTime = i.BookingItem?.EndTime,
                 Price = i.BookingItem?.FinalPrice
             }),
             PendingRequests = isHost ? p.MatchingJoinRequests.Where(r => r.Status == "PENDING").Select(r => new MatchingJoinRequestDto
@@ -572,6 +584,17 @@ public class MatchingService : IMatchingService
         var canRequestJoin = !isHost && !isMember && !isPending && p.Status == "OPEN" && slotsLeft > 0
             && !IsInactiveStatus(p.Status);
 
+        // Calculate original price for strikethrough display
+        var totalOriginal = p.MatchingPostItems.Sum(i => i.BookingItem?.FinalPrice ?? 0m);
+        var headCount = Math.Max(totalSlots, 1);
+        var expenseSharing = p.ExpenseSharing == "female_free" ? "split_equal" : p.ExpenseSharing;
+        decimal? originalPricePerSlot = expenseSharing switch
+        {
+            "host_pays" => 0,
+            "negotiable" => null,
+            _ => totalOriginal / headCount
+        };
+
         return new MatchingPostCardDto
         {
             Id = p.Id,
@@ -583,10 +606,11 @@ public class MatchingService : IMatchingService
             VenueAddress = p.Venue?.Address,
             CourtName = p.CourtName,
             PricePerSlot = p.PricePerSlot,
+            OriginalPricePerSlot = originalPricePerSlot,
             RequiredPlayers = p.RequiredPlayers,
             SkillLevel = p.SkillLevel,
             GenderPref = p.GenderPref,
-            ExpenseSharing = p.ExpenseSharing,
+            ExpenseSharing = expenseSharing,
             PlayPurpose = p.PlayPurpose,
             Status = p.Status,
             MembersCount = filled,
@@ -608,15 +632,4 @@ public class MatchingService : IMatchingService
     private static bool IsInactiveStatus(string? status) =>
         string.Equals(status, "Inactive", StringComparison.OrdinalIgnoreCase);
 
-    private static DateTime? AsUtcForJson(DateTime? dt)
-    {
-        if (!dt.HasValue) return null;
-        var d = dt.Value;
-        return d.Kind switch
-        {
-            DateTimeKind.Utc => d,
-            DateTimeKind.Local => d.ToUniversalTime(),
-            _ => DateTime.SpecifyKind(d, DateTimeKind.Utc)
-        };
-    }
 }

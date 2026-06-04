@@ -24,7 +24,6 @@ const expenseLabels = {
   split_equal: 'Chia đều',
   per_person: 'Cố định/người',
   host_pays: 'Bao sân',
-  female_free: 'Nữ miễn phí',
   negotiable: 'Thỏa thuận',
 };
 
@@ -203,6 +202,9 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
             )}
             <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '16px 12px 12px', background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)', zIndex: 1 }}>
               <span style={{ color: '#fff', fontWeight: '700', fontSize: '15px' }}>{formatPrice(post.pricePerSlot)}<span style={{ fontSize: '12px', opacity: 0.8 }}>/slot</span></span>
+              {post.originalPricePerSlot != null && post.pricePerSlot != null && post.originalPricePerSlot > post.pricePerSlot && (
+                <span style={{ color: '#fca5a5', textDecoration: 'line-through', fontSize: '12px', marginLeft: '6px', fontWeight: '600' }}>{formatPrice(post.originalPricePerSlot)}</span>
+              )}
             </div>
           </div>
 
@@ -335,6 +337,9 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
           )}
           <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '16px 12px 12px', background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)', zIndex: 1 }}>
               <span style={{ color: '#fff', fontWeight: '800', fontSize: '16px' }}>{formatPrice(post.pricePerSlot)}<span style={{ fontSize: '12px', opacity: 0.8 }}>/slot</span></span>
+              {post.originalPricePerSlot != null && post.pricePerSlot != null && post.originalPricePerSlot > post.pricePerSlot && (
+                <span style={{ color: '#fca5a5', textDecoration: 'line-through', fontSize: '12px', marginLeft: '6px', fontWeight: '600' }}>{formatPrice(post.originalPricePerSlot)}</span>
+              )}
           </div>
         </div>
 

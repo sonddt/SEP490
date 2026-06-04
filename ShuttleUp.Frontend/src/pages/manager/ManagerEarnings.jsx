@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
-import {
-  ResponsiveContainer, LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, Tooltip, CartesianGrid, Legend,
-} from 'recharts';
 import axiosClient from '../../api/axiosClient';
 import { notifyError, notifyInfo } from '../../hooks/useNotification';
 import ShuttleDateField from '../../components/ui/ShuttleDateField';
@@ -71,67 +67,7 @@ function Pagination({ page, totalPages, onChange }) {
   );
 }
 
-/* ── Custom Tooltip ──────────────────────────────────────────────────────── */
-function MonthlyTooltip({ active, payload, label }) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div style={{ background: 'rgba(255,255,255,.97)', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 14px', boxShadow: '0 4px 20px rgba(0,0,0,.1)', fontSize: 13 }}>
-      <div style={{ fontWeight: 700, marginBottom: 4, color: '#0f172a' }}>Tháng {label}</div>
-      <div style={{ color: '#097E52' }}>Doanh thu: <strong>{fmtVnd(payload[0]?.value)}</strong></div>
-      {payload[1] && <div style={{ color: '#2563eb' }}>Booking: <strong>{payload[1]?.value}</strong></div>}
-    </div>
-  );
-}
 
-/* ── Ranking Card ────────────────────────────────────────────────────────── */
-function RankingCard({ title, icon, iconBg, data, valueKey, valueLabel, valueSuffix, secondaryKey, secondaryLabel, emptyText }) {
-  return (
-    <div className="card border-0 h-100" style={{ borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,.06)' }}>
-      <div className="card-body p-4">
-        <div className="d-flex align-items-center gap-2 mb-3">
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <i className={icon} style={{ fontSize: 16, color: iconBg === '#e8f5ee' ? '#097E52' : '#ef4444' }} />
-          </div>
-          <h6 className="mb-0" style={{ fontWeight: 700, color: '#0f172a', fontSize: 15 }}>{title}</h6>
-        </div>
-        {!data?.length ? (
-          <div className="text-center py-4" style={{ color: '#94a3b8', fontSize: 13 }}>
-            <i className="feather-inbox d-block mb-2" style={{ fontSize: 28 }} />
-            {emptyText || 'Chưa có dữ liệu'}
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {data.map((item, idx) => (
-              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: idx === 0 ? (iconBg === '#e8f5ee' ? '#f0fdf4' : '#fff5f5') : '#fafafa', borderRadius: 10, border: `1px solid ${idx === 0 ? (iconBg === '#e8f5ee' ? '#bbf7d0' : '#fecaca') : '#f1f5f9'}`, transition: 'all .15s' }}>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff', background: idx === 0 ? '#097E52' : idx === 1 ? '#2563eb' : '#94a3b8', flexShrink: 0 }}>
-                  {idx + 1}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.courtName}</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8' }}>{item.venueName}</div>
-                </div>
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: iconBg === '#e8f5ee' ? '#097E52' : '#ef4444' }}>
-                    {item[valueKey]}{valueSuffix || ''}
-                  </div>
-                  <div style={{ fontSize: 11, color: '#94a3b8' }}>{valueLabel}</div>
-                </div>
-                {secondaryKey && (
-                  <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 8 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: '#64748b' }}>
-                      {typeof item[secondaryKey] === 'number' && secondaryKey.includes('revenue') ? fmtVndShort(item[secondaryKey]) : item[secondaryKey]}{secondaryKey === 'cancelRate' ? '%' : ''}
-                    </div>
-                    <div style={{ fontSize: 11, color: '#94a3b8' }}>{secondaryLabel}</div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 /* ═══ MAIN ═══════════════════════════════════════════════════════════════ */
 export default function ManagerEarnings() {
@@ -146,9 +82,6 @@ export default function ManagerEarnings() {
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({ items: [], totalItems: 0, totalPages: 1, venues: [], totalRevInRange: 0, page: 1, pageSize: itemsPerPage });
-  const [chart, setChart] = useState([]);
-  const [analytics, setAnalytics] = useState(null);
-  const [analyticsLoading, setAnalyticsLoading] = useState(true);
 
   const handleClearSearch = useCallback(() => setSearch(''), []);
 
@@ -164,34 +97,15 @@ export default function ManagerEarnings() {
 
       const res = await axiosClient.get(`/manager/stats/earnings?${params.toString()}`);
       setData(res);
-
-      const chartParams = new URLSearchParams({ days: '30' });
-      if (venueFilter) chartParams.append('venueId', venueFilter);
-      const chartRes = await axiosClient.get(`/manager/stats/chart/daily?${chartParams.toString()}`);
-      setChart(Array.isArray(chartRes) ? chartRes : []);
     } catch (e) {
       setData({ items: [], totalItems: 0, totalPages: 1, venues: [], totalRevInRange: 0, page: 1, pageSize: itemsPerPage });
-      setChart([]);
       notifyError(e?.response?.data?.message || 'Oops… Không tải được báo cáo doanh thu.');
     } finally {
       setLoading(false);
     }
   }, [page, itemsPerPage, statusFilter, venueFilter, search, startDate, endDate]);
 
-  const fetchAnalytics = useCallback(async () => {
-    try {
-      setAnalyticsLoading(true);
-      const res = await axiosClient.get('/manager/stats/earnings-analytics');
-      setAnalytics(res);
-    } catch {
-      setAnalytics(null);
-    } finally {
-      setAnalyticsLoading(false);
-    }
-  }, []);
-
   useEffect(() => { fetchData(); }, [fetchData]);
-  useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
   useEffect(() => { setPage(1); }, [statusFilter, venueFilter, search, startDate, endDate]);
 
   const ALLOWED_STATUSES = new Set(['CONFIRMED', 'COMPLETED', 'REFUNDED', 'CANCELLED']);
@@ -247,28 +161,7 @@ export default function ManagerEarnings() {
     }
   };
 
-  // Pie chart data
-  const pieData = useMemo(() => {
-    if (!analytics?.revenueByVenue?.length) return [];
-    return analytics.revenueByVenue
-      .filter(v => v.revenue > 0)
-      .map(v => ({ name: v.venueName, value: Number(v.revenue) }));
-  }, [analytics]);
 
-  const statusPieData = useMemo(() => {
-    if (!analytics?.statusDistribution?.length) return [];
-    return analytics.statusDistribution
-      .map(s => ({
-        name: STATUS_MAP[s.status]?.label || s.status,
-        value: s.count,
-        color: STATUS_MAP[s.status]?.color || '#94a3b8'
-      }))
-      .filter(x => x.value > 0);
-  }, [analytics]);
-
-  const peakHoursData = useMemo(() => {
-    return analytics?.peakHoursChart || [];
-  }, [analytics]);
 
   return (
     <>
@@ -506,225 +399,7 @@ export default function ManagerEarnings() {
         )}
       </div>
 
-{/* ── Monthly Revenue Chart ───────────────────────── */}
-      <div className="card border-0 mb-4" style={{ borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,.06)' }}>
-        <div className="card-body p-4">
-          <div className="d-flex align-items-center justify-content-between mb-3">
-            <div>
-              <h5 className="mb-1" style={{ fontWeight: 800, color: '#0f172a' }}>
-                <i className="feather-bar-chart-2 me-2" style={{ color: '#097E52' }} />
-                Doanh thu theo tháng
-              </h5>
-              <p className="mb-0" style={{ fontSize: 13, color: '#94a3b8' }}>12 tháng gần nhất</p>
-            </div>
-          </div>
-          <div style={{ width: '100%', height: 300 }}>
-            {analyticsLoading ? (
-              <div className="placeholder-glow"><span className="placeholder col-12" style={{ height: 300 }} /></div>
-            ) : !analytics?.monthlyRevenue?.length ? (
-              <div className="text-muted text-center" style={{ paddingTop: 80 }}>Chưa có dữ liệu biểu đồ.</div>
-            ) : (
-              <ResponsiveContainer>
-                <BarChart data={analytics.monthlyRevenue} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#097E52" stopOpacity={0.9} />
-                      <stop offset="100%" stopColor="#097E52" stopOpacity={0.4} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: '#64748b' }} width={65} axisLine={false} tickLine={false} tickFormatter={(v) => fmtVndShort(v)} />
-                  <Tooltip content={<MonthlyTooltip />} />
-                  <Bar dataKey="revenue" fill="url(#barGrad)" radius={[6, 6, 0, 0]} maxBarSize={40} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-      </div>
 
-      {/* ── Daily Revenue (30 days line chart) ──────────── */}
-      <div className="card border-0 mb-4" style={{ borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,.06)' }}>
-        <div className="card-body p-4">
-          <div className="d-flex align-items-center justify-content-between mb-3">
-            <div>
-              <h5 className="mb-1" style={{ fontWeight: 800, color: '#0f172a' }}>
-                <i className="feather-activity me-2" style={{ color: '#2563eb' }} />
-                Doanh thu 30 ngày gần nhất <span style={{ fontSize: 14, color: '#94a3b8', fontWeight: 500 }}>(trong phạm vi 30 ngày)</span>
-              </h5>
-              <p className="mb-0" style={{ fontSize: 13, color: '#94a3b8' }}>Theo giờ VN</p>
-            </div>
-          </div>
-          <div style={{ width: '100%', height: 240 }}>
-            {loading ? (
-              <div className="placeholder-glow"><span className="placeholder col-12" style={{ height: 240 }} /></div>
-            ) : !chart?.length ? (
-              <div className="text-muted text-center" style={{ paddingTop: 60 }}>Chưa có dữ liệu biểu đồ.</div>
-            ) : (
-              <ResponsiveContainer>
-                <LineChart data={chart} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#2563eb" stopOpacity={0.15} />
-                      <stop offset="100%" stopColor="#2563eb" stopOpacity={0.01} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} width={60} axisLine={false} tickLine={false} tickFormatter={(v) => fmtVndShort(v)} />
-                  <Tooltip formatter={(v) => [fmtVnd(v), 'Doanh thu']} labelFormatter={(l) => `Ngày ${l}`} />
-                  <Line type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={2.5} dot={false} fill="url(#lineGrad)" />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Rankings + Pie ──────────────────────────────── */}
-      <div className="row g-4 mb-4">
-        {/* Status Distribution Donut */}
-        <div className="col-lg-6">
-          <div className="card border-0 h-100" style={{ borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,.06)' }}>
-            <div className="card-body p-4">
-              <div className="d-flex align-items-center gap-2 mb-3">
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <i className="feather-activity" style={{ fontSize: 16, color: '#d97706' }} />
-                </div>
-                <h6 className="mb-0" style={{ fontWeight: 700, color: '#0f172a', fontSize: 15 }}>Phân bổ trạng thái <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 500 }}>(trong tháng hiện tại)</span></h6>
-              </div>
-              {!statusPieData?.length ? (
-                <div className="text-center py-4" style={{ color: '#94a3b8', fontSize: 13 }}>
-                  <i className="feather-inbox d-block mb-2" style={{ fontSize: 28 }} />
-                  Chưa có dữ liệu
-                </div>
-              ) : (
-                <>
-                  <div style={{ width: '100%', height: 200 }}>
-                    <ResponsiveContainer>
-                      <PieChart>
-                        <Pie
-                          data={statusPieData}
-                          cx="50%" cy="50%"
-                          innerRadius={50} outerRadius={80}
-                          paddingAngle={3}
-                          dataKey="value"
-                          stroke="none"
-                        >
-                          {statusPieData.map((entry, idx) => (
-                            <Cell key={`cell-${idx}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(v) => `${v} booking`} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 12px' }}>
-                    {statusPieData.map((entry, idx) => (
-                      <div key={idx} className="d-flex align-items-center gap-2" style={{ fontSize: 12 }}>
-                        <span style={{ width: 10, height: 10, borderRadius: 3, background: entry.color, flexShrink: 0 }} />
-                        <span style={{ color: '#334155' }}>{entry.name}</span>
-                        <span style={{ fontWeight: 700, color: '#0f172a' }}>{entry.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Revenue Distribution Donut */}
-        <div className="col-lg-6">
-          <div className="card border-0 h-100" style={{ borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,.06)' }}>
-            <div className="card-body p-4">
-              <div className="d-flex align-items-center gap-2 mb-3">
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <i className="feather-pie-chart" style={{ fontSize: 16, color: '#2563eb' }} />
-                </div>
-                <h6 className="mb-0" style={{ fontWeight: 700, color: '#0f172a', fontSize: 15 }}>Phân bổ doanh thu <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 500 }}>(trong tháng hiện tại)</span></h6>
-              </div>
-              {!pieData?.length ? (
-                <div className="text-center py-4" style={{ color: '#94a3b8', fontSize: 13 }}>
-                  <i className="feather-inbox d-block mb-2" style={{ fontSize: 28 }} />
-                  Chưa có dữ liệu
-                </div>
-              ) : (
-                <>
-                  <div style={{ width: '100%', height: 200 }}>
-                    <ResponsiveContainer>
-                      <PieChart>
-                        <Pie
-                          data={pieData}
-                          cx="50%" cy="50%"
-                          innerRadius={50} outerRadius={80}
-                          paddingAngle={3}
-                          dataKey="value"
-                          stroke="none"
-                        >
-                          {pieData.map((_, idx) => (
-                            <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(v) => fmtVnd(v)} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {pieData.map((entry, idx) => (
-                      <div key={idx} className="d-flex align-items-center gap-2" style={{ fontSize: 12 }}>
-                        <span style={{ width: 10, height: 10, borderRadius: 3, background: PIE_COLORS[idx % PIE_COLORS.length], flexShrink: 0 }} />
-                        <span style={{ flex: 1, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.name}</span>
-                        <span style={{ fontWeight: 700, color: '#0f172a' }}>{fmtVndShort(entry.value)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Peak Hours Chart ──────────────────────────────── */}
-      <div className="card border-0 mb-4" style={{ borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,.06)' }}>
-        <div className="card-body p-4">
-          <div className="d-flex align-items-center gap-2 mb-4">
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <i className="feather-clock" style={{ fontSize: 16, color: '#10b981' }} />
-            </div>
-            <div>
-              <h6 className="mb-0" style={{ fontWeight: 700, color: '#0f172a', fontSize: 15 }}>Khung giờ đặt sân phổ biến <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 500 }}>(trong tháng hiện tại)</span></h6>
-              <div style={{ fontSize: 13, color: '#64748b' }}>Thống kê lượt đặt theo từng giờ</div>
-            </div>
-          </div>
-          
-          {!peakHoursData?.length ? (
-            <div className="text-center py-5" style={{ color: '#94a3b8', fontSize: 13 }}>
-              <i className="feather-bar-chart-2 d-block mb-2" style={{ fontSize: 28 }} />
-              Chưa có dữ liệu khung giờ
-            </div>
-          ) : (
-            <div style={{ width: '100%', height: 260 }}>
-              <ResponsiveContainer>
-                <BarChart data={peakHoursData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="hour" tickFormatter={(h) => `${h}:00`} tick={{ fill: '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} dy={10} />
-                  <YAxis tick={{ fill: '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <Tooltip 
-                    cursor={{ fill: '#f1f5f9' }}
-                    contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                    formatter={(value) => [`${value} lượt đặt`, 'Số lượng']}
-                    labelFormatter={(label) => `Khung giờ: ${label}:00 - ${label+1}:00`}
-                  />
-                  <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* Detail Modal — Styled like BookingDetailModal */}
       {detailModal && (() => {
