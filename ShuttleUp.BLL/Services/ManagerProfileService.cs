@@ -67,7 +67,33 @@ public class ManagerProfileService : IManagerProfileService
         var isApproved = string.Equals(snapshot?.Status, "APPROVED", StringComparison.OrdinalIgnoreCase);
         var requestType = isApproved ? "CAP_NHAT" : "DANG_KY";
         var isRegistration = requestType == "DANG_KY";
+        
         var pending = await _requestRepo.GetPendingByUserIdAsync(userId);
+        var latestRequest = await _requestRepo.GetLatestByUserIdAsync(userId);
+        bool isNewPending = false;
+
+        if (pending == null)
+        {
+            pending = new ManagerProfileRequest 
+            { 
+                Id = Guid.NewGuid(), 
+                UserId = userId, 
+                RequestType = requestType, 
+                Status = "PENDING", 
+                RequestedAt = DateTime.UtcNow 
+            };
+            if (latestRequest != null)
+            {
+                pending.TaxCode = latestRequest.TaxCode;
+                pending.Address = latestRequest.Address;
+                pending.CccdFrontFileId = latestRequest.CccdFrontFileId;
+                pending.CccdBackFileId = latestRequest.CccdBackFileId;
+                pending.BusinessLicenseFileId1 = latestRequest.BusinessLicenseFileId1;
+                pending.BusinessLicenseFileId2 = latestRequest.BusinessLicenseFileId2;
+                pending.BusinessLicenseFileId3 = latestRequest.BusinessLicenseFileId3;
+            }
+            isNewPending = true;
+        }
 
         var licenseFiles = (p.BusinessLicenseFiles ?? new List<FileUploadParam>()).Where(f => f.Length > 0).ToList();
         var hasTaxCode = !string.IsNullOrWhiteSpace(p.TaxCode);
@@ -77,7 +103,8 @@ public class ManagerProfileService : IManagerProfileService
         var hasLicenseUpload = licenseFiles.Count > 0;
         var hasLicenseRetainStr = p.RetainedLicenseIds != null;
         var hasAnyUpdate = hasTaxCode || hasAddress || hasCccdFront || hasCccdBack || hasLicenseUpload || hasLicenseRetainStr;
-        if (!hasAnyUpdate) throw new InvalidOperationException("Bạn chưa cập nhật thông tin nào.");
+        
+        if (!hasAnyUpdate && !isNewPending) throw new InvalidOperationException("Bạn chưa cập nhật thông tin nào.");
 
         const long maxFileSizeBytes = 5 * 1024 * 1024;
         bool IsImage(string? ct) => !string.IsNullOrWhiteSpace(ct) && (ct.StartsWith("image/jpeg", StringComparison.OrdinalIgnoreCase) || ct.StartsWith("image/png", StringComparison.OrdinalIgnoreCase));
@@ -110,20 +137,19 @@ public class ManagerProfileService : IManagerProfileService
 
         if (isRegistration)
         {
-            var hasCccdFrontEff = hasCccdFront || pending?.CccdFrontFileId != null;
-            var hasCccdBackEff = hasCccdBack || pending?.CccdBackFileId != null;
-            var hasLicenseEff = hasLicenseEffectiveUpdate ? (retainedIds.Count + licenseFiles.Count > 0) : (pending?.BusinessLicenseFileId1 != null || pending?.BusinessLicenseFileId2 != null || pending?.BusinessLicenseFileId3 != null);
-            var hasTaxEff = hasTaxCode || !string.IsNullOrWhiteSpace(pending?.TaxCode);
-            var hasAddressEff = hasAddress || !string.IsNullOrWhiteSpace(pending?.Address);
+            var hasCccdFrontEff = hasCccdFront || pending.CccdFrontFileId != null;
+            var hasCccdBackEff = hasCccdBack || pending.CccdBackFileId != null;
+            var hasLicenseEff = hasLicenseEffectiveUpdate ? (retainedIds.Count + licenseFiles.Count > 0) : (pending.BusinessLicenseFileId1 != null || pending.BusinessLicenseFileId2 != null || pending.BusinessLicenseFileId3 != null);
+            var hasTaxEff = hasTaxCode || !string.IsNullOrWhiteSpace(pending.TaxCode);
+            var hasAddressEff = hasAddress || !string.IsNullOrWhiteSpace(pending.Address);
             if (!hasCccdFrontEff || !hasCccdBackEff) throw new InvalidOperationException("Thiếu ảnh CCCD (cần đủ 2 mặt).");
             if (!hasLicenseEff) throw new InvalidOperationException("Vui lòng tải lên giấy phép kinh doanh.");
             if (!hasTaxEff) throw new InvalidOperationException("Vui lòng nhập mã số thuế.");
             if (!hasAddressEff) throw new InvalidOperationException("Vui lòng nhập địa chỉ.");
         }
 
-        if (pending == null)
+        if (isNewPending)
         {
-            pending = new ManagerProfileRequest { Id = Guid.NewGuid(), UserId = userId, RequestType = requestType, Status = "PENDING", RequestedAt = DateTime.UtcNow };
             await _requestRepo.AddAsync(pending);
         }
 

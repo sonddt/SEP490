@@ -898,6 +898,13 @@ Kết bạn & quan hệ xã hội (Player):
    - Bắn chuông thông báo (Notification) và gửi Email cho cả 2 bên.
 3. **Database Seed**: Cập nhật file `Database_realistic.txt`, khắc phục lỗi logic trong dữ liệu mẫu (các đơn tương lai bị gán nhầm mác `COMPLETED` đã được trả về đúng trạng thái `CONFIRMED`).
 
+### D. Tối giản Manager Dashboard & Sửa lỗi Report
+
+1. **Tối giản Manager Dashboard**:
+   - Gỡ bỏ hoàn toàn thư viện biểu đồ Recharts (PieChart, BarChart, LineChart) khỏi trang `ManagerEarnings.jsx` và `ManagerDashboard.jsx`. Chỉ giữ lại các thẻ KPI tổng quan và bảng dữ liệu (Table) nhằm tinh gọn giao diện.
+2. **Sửa lỗi Report 500 (EF Core)**:
+   - Khắc phục lỗi `Duplicate entry '...' for key 'files.PRIMARY'` khi User gửi khiếu nại kèm hình ảnh. Nguyên nhân do `_fileRepo.GetByIdsAsync` dùng `.AsNoTracking()` khiến EF Core hiểu lầm các file đính kèm cũ (vừa upload xong lấy ID) là object mới cần Insert lần nữa. Đã xoá bỏ `.AsNoTracking()` tại `FileRepository.cs`, giúp hệ thống tracking đúng vòng đời Entity.
+
 ---
 
 ## 4 tháng 6, 2026 (Matching giá giảm, giờ ca, thanh toán, thông báo)
@@ -906,6 +913,7 @@ Kết bạn & quan hệ xã hội (Player):
 
 - Giải quyết 5 conflict (3 file): `MatchingPostCardDto.cs`, `MatchingService.cs`, `MatchingPostDetail.jsx`.
 - Giữ **cả hai** nhánh logic: `PriceDistributionHelper` + `HasDiscount` + `OriginalPrice`/`OriginalPricePerSlot` (HEAD) **và** chuẩn hóa `expenseSharing` (`female_free` → `split_equal`, `host_pays` → 0) từ nhánh merge.
+- Thêm `OriginalPricePerSlot` vào `MatchingPostCardDto` cho giá gốc gạch chéo ngoài UI. Xoá 2 tuỳ chọn chia tiền cũ ("Nam bao nữ", "Chia đều" `split_equal`) khỏi frontend; mặc định "Tùy thỏa thuận". Backend quy đổi `female_free` cũ → `split_equal` tương thích ngược.
 - `MatchingPostDetail.jsx`: dùng `DiscountPriceDisplay` cho chi phí/người và từng ca trong danh sách.
 
 ### B. Đồng bộ giờ ca sân trên Matching (18h → 1h)
