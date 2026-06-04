@@ -10,7 +10,6 @@ import {
   loadVietnamDivisionTree,
   provinceByCode,
   districtByCode,
-  wardByCode,
   normalizeKey,
 } from '../../utils/vietnamDivisions';
 import {
@@ -102,7 +101,7 @@ function EditableList({ items, onChange, placeholder, addLabel }) {
 }
 
 function parseVenueAddress(tree, text) {
-  const out = { p: '', d: '', w: '', street: text || '' };
+  const out = { p: '', d: '', street: text || '' };
   if (!tree?.length || !text) return out;
   const parts = text.split(',').map((s) => s.trim()).filter(Boolean);
   if (!parts.length) return out;
@@ -124,14 +123,6 @@ function parseVenueAddress(tree, text) {
     if (dist) {
       out.d = String(dist.c);
       remaining.pop();
-
-      if (remaining.length) {
-        const ward = (dist.w || []).find((w) => fuzzy(w.n, remaining[remaining.length - 1]));
-        if (ward) {
-          out.w = String(ward.c);
-          remaining.pop();
-        }
-      }
     }
   }
 
@@ -191,7 +182,7 @@ export default function ManagerAddVenue() {
   const [errorMsg, setErrorMsg] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [divisionTree, setDivisionTree] = useState(null);
-  const [addrCodes, setAddrCodes] = useState({ p: '', d: '', w: '' });
+  const [addrCodes, setAddrCodes] = useState({ p: '', d: '' });
   const [street, setStreet] = useState('');
   const [mapFlyQuery, setMapFlyQuery] = useState('');
   const [mapFlyZoom, setMapFlyZoom] = useState(14);
@@ -246,7 +237,7 @@ export default function ManagerAddVenue() {
     addressParsedRef.current = true;
     const parsed = parseVenueAddress(divisionTree, form.address);
     if (parsed.p) {
-      setAddrCodes({ p: parsed.p, d: parsed.d, w: parsed.w });
+      setAddrCodes({ p: parsed.p, d: parsed.d });
     }
     setStreet(parsed.street);
   }, [divisionTree, form.address, venueId]);
@@ -254,10 +245,6 @@ export default function ManagerAddVenue() {
   const assembleAddress = () => {
     const parts = [];
     if (street.trim()) parts.push(street.trim());
-    if (addrCodes.w && divisionTree) {
-      const w = wardByCode(divisionTree, addrCodes.p, addrCodes.d, addrCodes.w);
-      if (w) parts.push(w.n);
-    }
     if (addrCodes.d && divisionTree) {
       const d = districtByCode(divisionTree, addrCodes.p, addrCodes.d);
       if (d) parts.push(d.n);
@@ -270,13 +257,13 @@ export default function ManagerAddVenue() {
   };
 
   const handleProvinceChange = (code) => {
-    setAddrCodes({ p: code, d: '', w: '' });
+    setAddrCodes({ p: code, d: '' });
     setMapFlyQuery('');
     setFieldErrors((p) => ({ ...p, address: null }));
   };
 
   const handleDistrictChange = (code) => {
-    setAddrCodes((prev) => ({ ...prev, d: code, w: '' }));
+    setAddrCodes((prev) => ({ ...prev, d: code }));
     setFieldErrors((p) => ({ ...p, address: null }));
     if (!code || !divisionTree) return;
     const prov = provinceByCode(divisionTree, addrCodes.p);
@@ -284,19 +271,6 @@ export default function ManagerAddVenue() {
     if (prov && dist) {
       setMapFlyQuery(`${dist.n}, ${prov.n}, Vietnam`);
       setMapFlyZoom(14);
-    }
-  };
-
-  const handleWardChange = (code) => {
-    setAddrCodes((prev) => ({ ...prev, w: code }));
-    setFieldErrors((p) => ({ ...p, address: null }));
-    if (!code || !divisionTree) return;
-    const prov = provinceByCode(divisionTree, addrCodes.p);
-    const dist = districtByCode(divisionTree, addrCodes.p, addrCodes.d);
-    const ward = (dist?.w || []).find((x) => String(x.c) === code);
-    if (prov && dist && ward) {
-      setMapFlyQuery(`${ward.n}, ${dist.n}, ${prov.n}, Vietnam`);
-      setMapFlyZoom(16);
     }
   };
 
@@ -621,10 +595,8 @@ export default function ManagerAddVenue() {
                           onStreetChange={(v) => { setStreet(v); setFieldErrors((p) => ({ ...p, address: null })); }}
                           provinceCode={addrCodes.p}
                           districtCode={addrCodes.d}
-                          wardCode={addrCodes.w}
                           onChangeProvince={handleProvinceChange}
                           onChangeDistrict={handleDistrictChange}
-                          onChangeWard={handleWardChange}
                         />
                         {getFieldError('address') && <div className="text-danger small mt-2">{getFieldError('address')}</div>}
                       </div>

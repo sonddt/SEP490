@@ -13,7 +13,6 @@ import {
   namesFromCodes,
   provinceByCode,
   resolveCodesFromProfile,
-  wardByCode,
 } from '../../utils/vietnamDivisions';
 
 function sliceYmd(s) {
@@ -84,7 +83,7 @@ export default function UserProfileEdit() {
   const [initialForm, setInitialForm] = useState(null);
   const [divisionTree, setDivisionTree] = useState(null);
   const [divisionLoadError, setDivisionLoadError] = useState('');
-  const [addrCodes, setAddrCodes] = useState({ p: '', d: '', w: '' });
+  const [addrCodes, setAddrCodes] = useState({ p: '', d: '' });
 
   useEffect(() => {
     let ok = true;
@@ -118,7 +117,7 @@ export default function UserProfileEdit() {
       initialForm.province,
       initialForm.district
     );
-    setAddrCodes({ p: r.provinceCode, d: r.districtCode, w: r.wardCode });
+    setAddrCodes({ p: r.provinceCode, d: r.districtCode });
   }, [divisionTree, initialForm]);
 
   const handleChange = (e) => {
@@ -186,7 +185,7 @@ export default function UserProfileEdit() {
           initialForm.province,
           initialForm.district
         );
-        setAddrCodes({ p: r.provinceCode, d: r.districtCode, w: r.wardCode });
+        setAddrCodes({ p: r.provinceCode, d: r.districtCode });
         initialSnapshotRef.current = `${initialForm.province}\n${initialForm.district}\n${initialForm.address}`;
       }
     }
@@ -296,8 +295,7 @@ export default function UserProfileEdit() {
       const n = namesFromCodes(
         divisionTree,
         addrCodes.p,
-        addrCodes.d,
-        addrCodes.w
+        addrCodes.d
       );
       if (n.province) provinceOut = n.province;
       if (addrCodes.d) {
@@ -367,7 +365,7 @@ export default function UserProfileEdit() {
   const onProvinceCode = (pCode) => {
     if (!divisionTree) return;
     const pr = provinceByCode(divisionTree, pCode);
-    setAddrCodes({ p: pCode, d: '', w: '' });
+    setAddrCodes({ p: pCode, d: '' });
     setForm((f) => ({ ...f, province: pr?.n ?? '', district: '' }));
   };
 
@@ -375,24 +373,11 @@ export default function UserProfileEdit() {
     if (!divisionTree) return;
     const di = districtByCode(divisionTree, addrCodes.p, dCode);
     const pr = provinceByCode(divisionTree, addrCodes.p);
-    setAddrCodes((c) => ({ ...c, d: dCode, w: '' }));
+    setAddrCodes((c) => ({ ...c, d: dCode }));
     setForm((f) => ({
       ...f,
       province: pr?.n ?? f.province,
-      district: di ? formatDistrictForStorage('', di.n) : '',
-    }));
-  };
-
-  const onWardCode = (wCode) => {
-    if (!divisionTree) return;
-    const wn = wardByCode(divisionTree, addrCodes.p, addrCodes.d, wCode);
-    const di = districtByCode(divisionTree, addrCodes.p, addrCodes.d);
-    const pr = provinceByCode(divisionTree, addrCodes.p);
-    setAddrCodes((c) => ({ ...c, w: wCode }));
-    setForm((f) => ({
-      ...f,
-      province: pr?.n ?? f.province,
-      district: formatDistrictForStorage(wn?.n, di?.n),
+      district: di ? formatDistrictForStorage(di.n) : '',
     }));
   };
 
@@ -625,10 +610,8 @@ export default function UserProfileEdit() {
                   }}
                   provinceCode={addrCodes.p}
                   districtCode={addrCodes.d}
-                  wardCode={addrCodes.w}
                   onChangeProvinceCode={onProvinceCode}
                   onChangeDistrictCode={onDistrictCode}
-                  onChangeWardCode={onWardCode}
                   disabled={loading || saving}
                 />
               </div>

@@ -40,13 +40,6 @@ export function districtByCode(tree, provinceCode, districtCode) {
   return (prov.d || []).find((x) => String(x.c) === dk) ?? null;
 }
 
-export function wardByCode(tree, provinceCode, districtCode, wardCode) {
-  const dist = districtByCode(tree, provinceCode, districtCode);
-  if (!dist) return null;
-  const wk = String(wardCode);
-  return (dist.w || []).find((x) => String(x.c) === wk) ?? null;
-}
-
 function provinceNameMatch(p, name) {
   const a = normalizeKey(p.n);
   const b = normalizeKey(name);
@@ -81,52 +74,33 @@ function districtNameMatch(d, name) {
   return a === b || a2 === b2 || a.includes(b2) || b.includes(a2);
 }
 
-function wardNameMatch(w, name) {
-  const a = normalizeKey(w.n);
-  const b = normalizeKey(name);
-  const b2 = normalizeKey(stripAdminPrefix(name));
-  const a2 = normalizeKey(stripAdminPrefix(w.n));
-  return a === b || a2 === b2;
-}
-
 /**
  * Tách trường district đã lưu: "Phường X|||Quận Y" hoặc legacy chỉ tên quận.
  */
 export function parseStoredDistrictField(districtStr) {
   const raw = String(districtStr || '').trim();
-  if (!raw) return { wardName: '', districtName: '' };
-  const idx = raw.indexOf(DISTRICT_SPLIT);
-  if (idx === -1) return { wardName: '', districtName: raw };
-  return {
-    wardName: raw.slice(0, idx).trim(),
-    districtName: raw.slice(idx + DISTRICT_SPLIT.length).trim(),
-  };
+  return { districtName: raw };
 }
 
-/** Lưu DB: có phường → "Tên phường|||Tên quận", không → chỉ quận */
-export function formatDistrictForStorage(wardName, districtName) {
-  const w = String(wardName || '').trim();
-  const d = String(districtName || '').trim();
-  if (w && d) return `${w}${DISTRICT_SPLIT}${d}`;
-  return d;
+/** Lưu DB: giờ chỉ còn lưu tên Phường/Xã (vào trường district của DB) */
+export function formatDistrictForStorage(districtName) {
+  return String(districtName || '').trim();
 }
 
 /** Hiển thị (không dùng delimiter thô) */
 export function formatDistrictForDisplay(districtStr) {
-  const { wardName, districtName } = parseStoredDistrictField(districtStr);
-  if (wardName && districtName) return `${wardName} — ${districtName}`;
-  return districtName || districtStr || '';
+  return String(districtStr || '').trim();
 }
 
 /**
  * Gán mã từ tên đã lưu (khi mở form).
- * @returns {{ provinceCode: string, districtCode: string, wardCode: string }}
+ * @returns {{ provinceCode: string, districtCode: string }}
  */
 export function resolveCodesFromProfile(tree, provinceName, districtField) {
-  const out = { provinceCode: '', districtCode: '', wardCode: '' };
+  const out = { provinceCode: '', districtCode: '' };
   if (!tree?.length) return out;
 
-  const { wardName, districtName } = parseStoredDistrictField(districtField);
+  const { districtName } = parseStoredDistrictField(districtField);
   const prov =
     tree.find((p) => provinceNameMatch(p, provinceName)) ??
     tree.find((p) => normalizeKey(p.n) === normalizeKey(provinceName));
@@ -139,22 +113,16 @@ export function resolveCodesFromProfile(tree, provinceName, districtField) {
   if (!dist) return out;
   out.districtCode = String(dist.c);
 
-  if (!wardName) return out;
-  const ward = (dist.w || []).find((w) => wardNameMatch(w, wardName));
-  if (ward) out.wardCode = String(ward.c);
-
   return out;
 }
 
 /** Tên gửi API từ mã */
-export function namesFromCodes(tree, pCode, dCode, wCode) {
+export function namesFromCodes(tree, pCode, dCode) {
   const p = provinceByCode(tree, pCode);
   const d = districtByCode(tree, pCode, dCode);
-  const w = wardByCode(tree, pCode, dCode, wCode);
   return {
     province: p?.n ?? '',
-    district: formatDistrictForStorage(w?.n, d?.n),
+    district: formatDistrictForStorage(d?.n),
     districtOnly: d?.n ?? '',
-    ward: w?.n ?? '',
-  };
+    };
 }

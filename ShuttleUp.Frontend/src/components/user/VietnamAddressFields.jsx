@@ -12,17 +12,13 @@ export default function VietnamAddressFields({
   onStreetChange,
   provinceCode,
   districtCode,
-  wardCode,
   onChangeProvinceCode,
   onChangeDistrictCode,
-  onChangeWardCode,
   disabled,
 }) {
   const provinces = tree || [];
   const prov = provinceByCode(provinces, provinceCode);
   const districts = prov?.d || [];
-  const dist = districtByCode(provinces, provinceCode, districtCode);
-  const wards = dist?.w || [];
 
   const provinceOptions = useMemo(
     () => provinces.map((p) => ({ value: String(p.c), label: p.n })),
@@ -32,14 +28,10 @@ export default function VietnamAddressFields({
     () => districts.map((d) => ({ value: String(d.c), label: d.n })),
     [districts]
   );
-  const wardOptions = useMemo(
-    () => wards.map((w) => ({ value: String(w.c), label: w.n })),
-    [wards]
-  );
 
   return (
     <>
-      <div className="col-lg-4 col-md-6">
+      <div className="col-lg-6 col-md-6">
         <div className="input-space">
           <label className="form-label user-profile-form-label">Tỉnh / Thành phố</label>
           <SearchableSelect
@@ -52,28 +44,15 @@ export default function VietnamAddressFields({
         </div>
       </div>
 
-      <div className="col-lg-4 col-md-6">
+      <div className="col-lg-6 col-md-6">
         <div className="input-space">
-          <label className="form-label user-profile-form-label">Quận / Huyện</label>
+          <label className="form-label user-profile-form-label">Phường / Xã</label>
           <SearchableSelect
             options={districtOptions}
             value={districtCode ? String(districtCode) : ''}
             onChange={onChangeDistrictCode}
-            placeholder="-- Chọn quận / huyện --"
-            disabled={disabled || !tree || !provinceCode}
-          />
-        </div>
-      </div>
-
-      <div className="col-lg-4 col-md-6">
-        <div className="input-space">
-          <label className="form-label user-profile-form-label">Phường / Xã</label>
-          <SearchableSelect
-            options={wardOptions}
-            value={wardCode ? String(wardCode) : ''}
-            onChange={onChangeWardCode}
             placeholder="-- Chọn phường / xã --"
-            disabled={disabled || !tree || !districtCode}
+            disabled={disabled || !tree || !provinceCode}
           />
         </div>
       </div>
@@ -90,7 +69,7 @@ export default function VietnamAddressFields({
             onChange={(e) => onStreetChange(e.target.value)}
           />
           <small className="user-profile-form-hint text-muted d-block mt-1">
-            Nhập số nhà và tên đường; phường/xã chọn ở trên.
+            Nhập số nhà và tên đường; phường/xã và tỉnh thành chọn ở trên.
           </small>
         </div>
       </div>

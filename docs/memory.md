@@ -862,3 +862,24 @@ Kết bạn & quan hệ xã hội (Player):
    - Nâng cấp bộ lọc trang Báo cáo (/admin/reports): Thêm tuỳ chọn 'Tất cả Báo cáo' (nhóm Người dùng, Cụm sân, Bài ghép sân lại với nhau) và 'Chờ xử lý (nhóm)' (nhóm Pending, Reviewing, Refund_Pending) để không sót việc.
    - Đổi thuật ngữ 'Chờ hoàn (quá hạn SLA)' thành 'Chờ hoàn (trễ hạn)' cho thuần Việt.
    - Nâng cấp UX trang Doanh thu (/admin/revenue-stats): Thêm chức năng Sắp xếp (Sort) linh hoạt trên client-side (Doanh thu Cao-Thấp, Lượt đặt Cao-Thấp) và đồng bộ thứ tự này với logic Xuất file Excel.
+
+---
+
+## 4 tháng 6, 2026 (Cập nhật Hành chính 2 cấp)
+
+### A. Cập nhật dữ liệu Tỉnh/Thành phố & Phường/Xã mới
+
+- **Dữ liệu**: Chuyển đổi dữ liệu hành chính từ 3 cấp (63 tỉnh thành) xuống còn 2 cấp (34 tỉnh thành) do sáp nhập, chỉ giữ lại cấp **Tỉnh/Thành phố** và **Phường/Xã** (loại bỏ hoàn toàn cấp Quận/Huyện trung gian).
+- **Frontend Data (n-divisions.json)**: Đã cập nhật file data gốc từ danh sách mới nhất do user cung cấp. Tối ưu hóa file, chỉ còn lưu thông tin cấu trúc 2 cấp.
+- **UI Components**: 
+  - Chỉnh sửa VietnamAddressFields.jsx và VenueAddressFields.jsx: Loại bỏ hoàn toàn dropdown Quận/Huyện cũ. Đổi nhãn form thành 2 trường duy nhất: Tỉnh / Thành phố và Phường / Xã. Tự động căn chỉnh layout 2 cột cân đối.
+  - Cập nhật trang UserProfileEdit.jsx và ManagerAddVenue.jsx: Loại bỏ logic xử lý wardCode, gửi thẳng data 2 cấp xuống Backend.
+- **Logic Component**: 
+  - Đơn giản hóa ietnamDivisions.js, lược bỏ hoàn toàn các logic dư thừa (wardNameMatch, wardByCode).
+
+### B. Cập nhật Database Seed (Seed Data Migration)
+
+- Cập nhật file dữ liệu hạt giống gốc Database_realistic.txt để đảm bảo hệ thống không bị lỗi khi seed db:
+  - **Bảng users**: Dùng Script quét và thay thế tất cả các cặp dữ liệu district & province cũ thành cấu trúc Phường/Xã + Tỉnh/Thành phố hợp lệ.
+  - **Bảng enues**: Cột ddress chứa chuỗi thô. Backend và Frontend vẫn hỗ trợ fallback an toàn (nếu địa chỉ cũ không match hệ thống mới, chuỗi đó sẽ được nạp tự động vào ô Số nhà, Đường).
+- Hệ thống đã compile thành công, sạch sẽ hoàn toàn khỏi dấu vết của cấp hành chính Quận/Huyện cũ.

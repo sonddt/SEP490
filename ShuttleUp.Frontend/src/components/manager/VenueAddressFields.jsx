@@ -134,21 +134,17 @@ export default function VenueAddressFields({
   onStreetChange,
   provinceCode,
   districtCode,
-  wardCode,
   onChangeProvince,
   onChangeDistrict,
-  onChangeWard,
   disabled,
 }) {
   const provinces = tree || [];
   const prov = provinceByCode(provinces, provinceCode);
   const districts = prov?.d || [];
-  const dist = districtByCode(provinces, provinceCode, districtCode);
-  const wards = dist?.w || [];
 
   return (
     <div className="row g-3">
-      <div className="col-12 col-md-4">
+      <div className="col-12 col-md-6">
         <SearchSelect
           label="Tỉnh / Thành phố"
           required
@@ -160,26 +156,15 @@ export default function VenueAddressFields({
         />
       </div>
 
-      <div className="col-12 col-md-4">
+      <div className="col-12 col-md-6">
         <SearchSelect
-          label="Quận / Huyện"
+          label="Phường / Xã"
           required
-          placeholder="-- Chọn quận / huyện --"
+          placeholder="-- Chọn phường / xã --"
           disabled={disabled || !tree || !provinceCode}
           value={districtCode}
           options={districts.map((d) => ({ value: String(d.c), label: d.n }))}
           onChange={onChangeDistrict}
-        />
-      </div>
-
-      <div className="col-12 col-md-4">
-        <SearchSelect
-          label="Phường / Xã"
-          placeholder="-- Chọn phường / xã --"
-          disabled={disabled || !tree || !districtCode}
-          value={wardCode}
-          options={wards.map((w) => ({ value: String(w.c), label: w.n }))}
-          onChange={onChangeWard}
         />
       </div>
 
