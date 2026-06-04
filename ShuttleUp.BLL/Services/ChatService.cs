@@ -86,8 +86,9 @@ public class ChatService : IChatService
         CreatedAt = r.CreatedAt ?? DateTime.UtcNow,
         Members   = r.Members.Select(m => new MemberDto
         {
-            UserId   = m.UserId,
-            FullName = m.User?.FullName ?? "Unknown",
+            UserId    = m.UserId,
+            FullName  = m.User?.FullName ?? "Unknown",
+            AvatarUrl = m.User?.AvatarFile?.FileUrl
         }),
         LastMessage = r.ChatMessages
             .OrderByDescending(m => m.CreatedAt)
@@ -99,9 +100,10 @@ public class ChatService : IChatService
     {
         Id           = m.Id,
         RoomId       = m.ChatRoomId ?? Guid.Empty,
-        SenderUserId = m.SenderUserId ?? Guid.Empty,
-        SenderName   = m.SenderUser?.FullName ?? "Unknown",
-        MessageText  = m.MessageText,
+        SenderUserId    = m.SenderUserId ?? Guid.Empty,
+        SenderName      = m.SenderUser?.FullName ?? "Unknown",
+        SenderAvatarUrl = m.SenderUser?.AvatarFile?.FileUrl,
+        MessageText     = m.MessageText,
         FileUrl      = m.Files.FirstOrDefault()?.FileUrl,
         CreatedAt    = m.CreatedAt ?? DateTime.UtcNow,
     };
