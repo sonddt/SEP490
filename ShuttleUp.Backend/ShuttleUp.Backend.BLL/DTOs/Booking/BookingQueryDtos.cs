@@ -159,7 +159,6 @@ public class ManagerBookingListItemDto
     public decimal? PaidAmount { get; set; }
     public DateTime? CreatedAt { get; set; }
     public decimal? RefundedAmount { get; set; }
-    public decimal? PaidAmount { get; set; }
     public decimal? PenaltyAmount { get; set; }
     public List<ManagerBookingItemDto> Items { get; set; } = new();
 }

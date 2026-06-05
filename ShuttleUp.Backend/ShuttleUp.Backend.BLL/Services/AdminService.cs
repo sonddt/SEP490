@@ -221,10 +221,9 @@ public class AdminService : IAdminService
                 ProofUrl = payment?.GatewayReference,
                 RefundStatus = refundReq?.Status,
                 RefundAmount = refundReq?.RequestedAmount,
-                PaidAmount = refundReq?.PaidAmount ?? payment?.Amount,
                 CreatedAt = b.CreatedAt,
                 RefundedAmount = refund?.RequestedAmount ?? 0m,
-                PaidAmount = refund?.PaidAmount ?? 0m,
+                PaidAmount = refund != null ? (refund.PaidAmount ?? 0m) : (refundReq?.PaidAmount ?? payment?.Amount),
                 PenaltyAmount = refund != null ? (refund.PaidAmount ?? 0m) - (refund.RequestedAmount ?? 0m) : 0m,
                 Items = b.BookingItems.OrderBy(bi => bi.StartTime).Select(bi =>
                 {
