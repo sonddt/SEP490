@@ -171,8 +171,12 @@ public class BookingService : IBookingService
             cancelBranch = "NO_PAYMENT";
             newBookingStatus = "CANCELLED";
         }
-
         booking.Status = newBookingStatus;
+
+        if (!string.IsNullOrWhiteSpace(body?.PlayerNote))
+        {
+            booking.ManagerStatusNote = $"[Người chơi huỷ]: {body.PlayerNote.Trim()}";
+        }
         foreach (var item in booking.BookingItems)
             item.Status = (newBookingStatus is "CANCELLED" or "PENDING_REFUND" or "PENDING_RECONCILIATION") ? "CANCELLED" : item.Status;
 
@@ -378,7 +382,9 @@ public class BookingService : IBookingService
                 Id = b.Id,
                 BookingCode = "SU" + b.Id.ToString("N")[^6..].ToUpperInvariant(),
                 Status = b.Status,
-                ManagerStatusNote = b.ManagerStatusNote,
+                ManagerStatusNote = !string.IsNullOrWhiteSpace(b.ManagerStatusNote) 
+                    ? b.ManagerStatusNote 
+                    : (!string.IsNullOrWhiteSpace(refund?.PlayerNote) ? $"[Người chơi huỷ]: {refund.PlayerNote}" : null),
                 TotalAmount = b.TotalAmount,
                 FinalAmount = b.FinalAmount,
                 CreatedAt = b.CreatedAt,

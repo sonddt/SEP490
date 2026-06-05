@@ -275,28 +275,45 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
               {booking.rejectReason && (
                 <div className="bk-detail-section mt-3" style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '10px 14px' }}>
                   <h6 className="bk-detail-section-title" style={{ color: '#ef4444' }}>
-                    <i className="feather-alert-circle me-1" />Lý do từ chối / huỷ
+                    <i className="feather-alert-circle me-1" />
+                    {booking.rejectReason.startsWith('[Người chơi huỷ]:') ? 'Lý do huỷ (từ người chơi)' : 'Lý do từ chối / huỷ (của bạn)'}
                   </h6>
                   <p className="mb-0" style={{ fontSize: 13, color: '#ef4444' }}>
-                    {booking.rejectReason}
+                    {booking.rejectReason.replace('[Người chơi huỷ]:', '').trim()}
                   </p>
                 </div>
               )}
 
               {booking.refundStatus && (
-                <div className="bk-detail-section mt-3" style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '12px 14px' }}>
-                  <h6 className="bk-detail-section-title" style={{ color: '#ef4444' }}>
-                    <i className="feather-refresh-ccw me-1" />Hoàn tiền
+                <div className="bk-detail-section mt-3" style={{ background: booking.refundStatus === 'COMPLETED' ? '#f0f9ff' : (booking.refundStatus === 'REJECTED' ? '#fef2f2' : '#fffbeb'), border: `1px solid ${booking.refundStatus === 'COMPLETED' ? '#bae6fd' : (booking.refundStatus === 'REJECTED' ? '#fca5a5' : '#fcd34d')}`, borderRadius: 10, padding: '14px 16px' }}>
+                  <h6 className="bk-detail-section-title" style={{ color: booking.refundStatus === 'COMPLETED' ? '#0284c7' : (booking.refundStatus === 'REJECTED' ? '#ef4444' : '#d97706') }}>
+                    <i className={`feather-${booking.refundStatus === 'COMPLETED' ? 'check-circle' : (booking.refundStatus === 'REJECTED' ? 'x-circle' : 'clock')} me-1`} />
+                    {booking.refundStatus === 'COMPLETED' ? 'Thông tin hoàn tiền' : (booking.refundStatus === 'REJECTED' ? 'Đã từ chối hoàn' : 'Đang chờ hoàn tiền')}
                   </h6>
-                  <InfoRow label="Đã thu" value={`${Number(booking.paidAmount || 0).toLocaleString('vi-VN')} ₫`} />
-                  {booking.paidAmount != null && booking.refundAmount != null && booking.paidAmount > booking.refundAmount && (
-                    <InfoRow label={booking.refundStatus === 'COMPLETED' ? "Nhận lại từ chính sách" : "Khấu trừ chính sách"} value={<strong style={{ color: '#ef4444' }}>{(Number(booking.paidAmount) - Number(booking.refundAmount)).toLocaleString('vi-VN')} ₫</strong>} />
+                  <div className="bk-detail-row">
+                    <span className="bk-detail-label">Khách đã thanh toán</span>
+                    <span className="bk-detail-value" style={{ fontWeight: 700 }}>{Number(booking.paidAmount || 0).toLocaleString('vi-VN')} ₫</span>
+                  </div>
+                  <div className="bk-detail-row">
+                    <span className="bk-detail-label">{booking.refundStatus === 'REJECTED' ? 'Không hoàn tiền' : 'Cần hoàn lại cho khách'}</span>
+                    <span className="bk-detail-value" style={{ fontWeight: 700, color: booking.refundStatus === 'REJECTED' ? '#94a3b8' : '#ef4444' }}>
+                      {booking.refundStatus === 'REJECTED' ? '0 ₫' : `– ${Number(booking.refundAmount || 0).toLocaleString('vi-VN')} ₫`}
+                    </span>
+                  </div>
+                  {booking.paidAmount != null && booking.refundAmount != null && booking.paidAmount > booking.refundAmount && booking.refundStatus !== 'REJECTED' && (
+                    <>
+                      <div style={{ height: 1, background: '#e2e8f0', margin: '8px 0' }} />
+                      <div className="bk-detail-row">
+                        <span className="bk-detail-label" style={{ fontWeight: 700, color: '#0f172a' }}>Bạn giữ lại (phí phạt)</span>
+                        <span className="bk-detail-value" style={{ fontWeight: 800, color: '#097E52', fontSize: 15 }}>
+                          {(booking.paidAmount - booking.refundAmount).toLocaleString('vi-VN')} ₫
+                        </span>
+                      </div>
+                      <div style={{ marginTop: 8, fontSize: 11, color: '#94a3b8', fontStyle: 'italic' }}>
+                        * Áp dụng theo chính sách hoàn tiền đã được cấu hình cho sân.
+                      </div>
+                    </>
                   )}
-                  <InfoRow label={booking.refundStatus === 'COMPLETED' ? "Đã hoàn cho khách" : (booking.refundStatus === 'REJECTED' ? "Không hoàn tiền" : "Cần hoàn")} value={
-                    <strong style={{ color: booking.refundStatus === 'REJECTED' ? '#64748b' : '#097E52', fontSize: '16px' }}>
-                      {booking.refundStatus === 'REJECTED' ? '0' : Number(booking.refundAmount || 0).toLocaleString('vi-VN')} ₫
-                    </strong>
-                  } />
                 </div>
               )}
             </div>

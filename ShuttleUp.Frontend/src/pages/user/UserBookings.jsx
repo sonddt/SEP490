@@ -341,8 +341,8 @@ export default function UserBookings() {
       }
       const needsBankInfo = cancelPreview.cancelBranch === 'PAID' || cancelPreview.cancelBranch === 'PROOF_UPLOADED';
       const body = needsBankInfo
-        ? { refundBankName: bankForm.refundBankName, refundAccountNumber: bankForm.refundAccountNumber, refundAccountHolder: bankForm.refundAccountHolder, refundQrImageUrl: qrUrl || undefined }
-        : {};
+        ? { refundBankName: bankForm.refundBankName, refundAccountNumber: bankForm.refundAccountNumber, refundAccountHolder: bankForm.refundAccountHolder, refundQrImageUrl: qrUrl || undefined, playerNote: bankForm.playerNote?.trim() || undefined }
+        : { playerNote: bankForm.playerNote?.trim() || undefined };
       const result = await cancelBooking(cancelTarget.id, body);
       setCancelTarget(null);
       setCancelPreview(null);
@@ -841,9 +841,10 @@ export default function UserBookings() {
               {(detailBooking.status === 'CANCELLED' || detailBooking.status === 'REFUND') && detailBooking.managerStatusNote && (
                 <div className="mt-3 p-3 rounded" style={{ background: '#fef2f2', border: '1px solid #fca5a5' }}>
                   <small className="text-danger d-block fw-semibold mb-1">
-                    <i className="feather-alert-circle me-1" />Ghi chú từ sân
+                    <i className="feather-alert-circle me-1" />
+                    {detailBooking.managerStatusNote.startsWith('[Người chơi huỷ]:') ? 'Lý do huỷ (của bạn)' : 'Ghi chú từ sân'}
                   </small>
-                  <p className="mb-0 small text-danger">{detailBooking.managerStatusNote}</p>
+                  <p className="mb-0 small text-danger">{detailBooking.managerStatusNote.replace('[Người chơi huỷ]:', '').trim()}</p>
                 </div>
               )}
 
@@ -1189,6 +1190,17 @@ export default function UserBookings() {
                           <i className="feather-check-circle me-1" />Chủ sân chưa xác nhận sân → bạn được hoàn <strong>100%</strong> số tiền đã chuyển.
                         </div>
                       )}
+
+                      {/* Reason input */}
+                      <div className="mb-3 mt-3">
+                        <label className="form-label fw-semibold" style={{ fontSize: 13, color: '#334155' }}>
+                          <i className="feather-message-square me-1" />Lý do huỷ <span className="text-muted fw-normal" style={{ fontSize: 11 }}>(tùy chọn)</span>
+                        </label>
+                        <textarea className="form-control" placeholder="Bạn có thể nhập lý do huỷ sân..."
+                          value={bankForm.playerNote || ''}
+                          onChange={e => setBankForm(p => ({ ...p, playerNote: e.target.value }))}
+                          style={{ borderRadius: 8, minHeight: 70, fontSize: 13 }} />
+                      </div>
 
                       {/* No payment branch — show agreement here */}
                       {cancelPreview.cancelBranch !== 'PAID' && cancelPreview.cancelBranch !== 'PROOF_UPLOADED' && (
