@@ -102,7 +102,6 @@ export function mapManagerBookingFromApi(b) {
     rejectReason: (b.managerStatusNote || '').trim() || null,
     refundStatus: b.refundStatus,
     refundAmount: b.refundAmount,
-    paidAmount: b.paidAmount,
     createdAt,
     createdDateStr,
     createdTimeStr,
