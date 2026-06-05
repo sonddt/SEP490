@@ -12,24 +12,11 @@ import { notifyInfo, notifySuccess, notifyWarning } from '../../hooks/useNotific
 const sortOptions = [
   { value: 'newest', label: 'Mới nhất' },
   { value: 'oldest', label: 'Cũ nhất' },
-  { value: 'price_asc', label: 'Giá tăng dần' },
-  { value: 'price_desc', label: 'Giá giảm dần' },
   { value: 'soonest', label: 'Sắp diễn ra' },
 ];
 
 function clientSortCompare(a, b, sort) {
-  const priceNum = (p) => (p.pricePerSlot != null && p.pricePerSlot !== '' ? Number(p.pricePerSlot) : null);
   switch (sort) {
-    case 'price_asc': {
-      const pa = priceNum(a);
-      const pb = priceNum(b);
-      return (pa ?? Number.POSITIVE_INFINITY) - (pb ?? Number.POSITIVE_INFINITY);
-    }
-    case 'price_desc': {
-      const pa = priceNum(a);
-      const pb = priceNum(b);
-      return (pb ?? Number.NEGATIVE_INFINITY) - (pa ?? Number.NEGATIVE_INFINITY);
-    }
     case 'soonest': {
       const da = new Date(a.playDate).getTime();
       const db = new Date(b.playDate).getTime();

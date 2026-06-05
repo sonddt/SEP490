@@ -15,8 +15,6 @@ function sameUserId(a, b) {
 const defaultImg = '/assets/img/venues/venues-01.jpg';
 
 const expenseLabels = {
-  split_equal: 'Chia đều',
-  per_person: 'Cố định/người',
   host_pays: 'Bao sân',
   negotiable: 'Thỏa thuận',
 };

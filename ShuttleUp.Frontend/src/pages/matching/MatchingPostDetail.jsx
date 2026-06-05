@@ -23,8 +23,6 @@ const defaultImg = '/assets/img/venues/venues-01.jpg';
 const defaultAvatar = '/assets/img/profiles/avatar-01.jpg';
 
 const expenseLabels = {
-  split_equal: 'Chia đều',
-  per_person: 'Cố định/người',
   host_pays: 'Bao sân',
   negotiable: 'Thỏa thuận',
 };
@@ -36,16 +34,9 @@ const bookingSlotSortOptions = [
   { value: 'time_desc', label: 'Thời gian (muộn → sớm)' },
   { value: 'court_asc', label: 'Tên sân (A → Z)' },
   { value: 'court_desc', label: 'Tên sân (Z → A)' },
-  { value: 'price_asc', label: 'Giá tăng dần' },
-  { value: 'price_desc', label: 'Giá giảm dần' },
 ];
 
-function bookingItemPriceNum(item) {
-  const n = item?.price;
-  if (n == null || n === '') return null;
-  const x = Number(n);
-  return Number.isNaN(x) ? null : x;
-}
+
 
 function formatHHmm(d) {
   if (!d || Number.isNaN(d.getTime())) return '';
@@ -166,16 +157,7 @@ export default function MatchingPostDetail() {
           return String(a.courtName || '').localeCompare(String(b.courtName || ''), 'vi', { sensitivity: 'base' });
         case 'court_desc':
           return String(b.courtName || '').localeCompare(String(a.courtName || ''), 'vi', { sensitivity: 'base' });
-        case 'price_asc': {
-          const pa = bookingItemPriceNum(a);
-          const pb = bookingItemPriceNum(b);
-          return (pa ?? Number.POSITIVE_INFINITY) - (pb ?? Number.POSITIVE_INFINITY);
-        }
-        case 'price_desc': {
-          const pa = bookingItemPriceNum(a);
-          const pb = bookingItemPriceNum(b);
-          return (pb ?? Number.NEGATIVE_INFINITY) - (pa ?? Number.NEGATIVE_INFINITY);
-        }
+
         case 'time_asc':
         default: {
           const ta = parseBookingSlotDate(a.startTime).getTime();

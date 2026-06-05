@@ -91,7 +91,7 @@ public class MatchingService : IMatchingService
             actualMap.GetValueOrDefault(i.BookingItemId, i.BookingItem?.FinalPrice ?? 0m));
         var originalItemsTotal = p.MatchingPostItems.Sum(i => i.BookingItem?.FinalPrice ?? 0m);
         var headCount = Math.Max((p.RequiredPlayers ?? 0) + 1, 1);
-        var expenseSharing = p.ExpenseSharing == "female_free" ? "split_equal" : p.ExpenseSharing;
+        var expenseSharing = p.ExpenseSharing == "female_free" ? "negotiable" : p.ExpenseSharing;
         decimal? originalPricePerSlot = expenseSharing switch
         {
             "host_pays" => 0,
@@ -608,7 +608,7 @@ public class MatchingService : IMatchingService
         // Calculate original price for strikethrough display
         var totalOriginal = p.MatchingPostItems.Sum(i => i.BookingItem?.FinalPrice ?? 0m);
         var headCount = Math.Max(totalSlots, 1);
-        var expenseSharing = p.ExpenseSharing == "female_free" ? "split_equal" : p.ExpenseSharing;
+        var expenseSharing = p.ExpenseSharing == "female_free" ? "negotiable" : p.ExpenseSharing;
         decimal? originalPricePerSlot = expenseSharing switch
         {
             "host_pays" => 0,
