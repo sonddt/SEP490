@@ -3,7 +3,7 @@ title ShuttleUp - Backend package diagram
 skinparam packageStyle rectangle
 skinparam defaultFontName Segoe UI
 
-package "ShuttleUp.DAL" {
+package "ShuttleUp.Backend.DAL" {
   package "ShuttleUp.DAL.Models" as DALModels {
     note right
       Entities, ShuttleUpDbContext
@@ -16,22 +16,22 @@ package "ShuttleUp.DAL" {
   }
 }
 
-package "ShuttleUp.BLL" {
+package "ShuttleUp.Backend.BLL" {
   package "ShuttleUp.BLL.DTOs" as BLLDTO
   package "ShuttleUp.BLL.Interfaces" as BLLInt
   package "ShuttleUp.BLL.Services" as BLLSvc
 }
 
-package "ShuttleUp.Backend" {
+package "ShuttleUp.Backend.Presentation" {
   package "ShuttleUp.Backend.Controllers" as BECtrl
   package "ShuttleUp.Backend.Hubs" as BEHub
   package "ShuttleUp.Backend.Models" as BEModels
 }
 
 ' Project-level dependencies (csproj)
-ShuttleUp.BLL ..> ShuttleUp.DAL : <<ProjectReference>>
-ShuttleUp.Backend ..> ShuttleUp.BLL : <<ProjectReference>>
-ShuttleUp.Backend ..> ShuttleUp.DAL : <<ProjectReference>>
+ShuttleUp.Backend.BLL ..> ShuttleUp.Backend.DAL : <<ProjectReference>>
+ShuttleUp.Backend.Presentation ..> ShuttleUp.Backend.BLL : <<ProjectReference>>
+ShuttleUp.Backend.Presentation ..> ShuttleUp.Backend.DAL : <<ProjectReference>>
 
 ' Typical code dependencies
 BLLSvc --> DALRepo

@@ -390,7 +390,7 @@ yarn-error.log*
 .vite/
 
 # File log build thủ công (redirect output) — không commit
-ShuttleUp.Backend/build_err.txt
-ShuttleUp.Backend/build_output.txt
-ShuttleUp.Backend/build_errors.log
-ShuttleUp.Backend/build.log
+ShuttleUp.Backend/ShuttleUp.Backend.Presentation/build_err.txt
+ShuttleUp.Backend/ShuttleUp.Backend.Presentation/build_output.txt
+ShuttleUp.Backend/ShuttleUp.Backend.Presentation/build_errors.log
+ShuttleUp.Backend/ShuttleUp.Backend.Presentation/build.log

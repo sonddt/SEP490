@@ -6,9 +6,9 @@ File **chỉ code Mermaid**: [`backend-package-diagram.mmd`](./backend-package-d
 
 | Project | References |
 |---------|------------|
-| `ShuttleUp.DAL` | — |
-| `ShuttleUp.BLL` | `ShuttleUp.DAL` |
-| `ShuttleUp.Backend` | `ShuttleUp.BLL`, `ShuttleUp.DAL` |
+| `ShuttleUp.Backend.DAL` | — |
+| `ShuttleUp.Backend.BLL` | `ShuttleUp.Backend.DAL` |
+| `ShuttleUp.Backend.Presentation` | `ShuttleUp.Backend.BLL`, `ShuttleUp.Backend.DAL` |
 
 > Backend tham chiếu DAL vì một số controller dùng trực tiếp `ShuttleUpDbContext` / entity.
 
@@ -16,18 +16,18 @@ File **chỉ code Mermaid**: [`backend-package-diagram.mmd`](./backend-package-d
 
 ```mermaid
 flowchart TB
-  subgraph DAL["ShuttleUp.DAL"]
+  subgraph DAL["ShuttleUp.Backend.DAL"]
     DAL_Models["Models\n(Entities, ShuttleUpDbContext)"]
     DAL_Repo["Repositories\n+ Repositories.Interfaces"]
   end
 
-  subgraph BLL["ShuttleUp.BLL"]
+  subgraph BLL["ShuttleUp.Backend.BLL"]
     BLL_DTO["DTOs\n(Auth, Manager, Chat, Review, …)"]
     BLL_Int["Interfaces\n(IAuthService, ICourtService, …)"]
     BLL_Svc["Services\n(AuthService, CourtService, …)"]
   end
 
-  subgraph BE["ShuttleUp.Backend"]
+  subgraph BE["ShuttleUp.Backend.Presentation"]
     BE_Ctrl["Controllers"]
     BE_Hub["Hubs\n(ChatHub)"]
     BE_Models["Models\n(duplicate EF – legacy / song song DAL)"]

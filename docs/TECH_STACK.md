@@ -58,8 +58,8 @@ Kiến trúc 3 lớp (3-Layer Architecture) đảm bảo tính mở rộng và d
 | **Core Platform** | .NET 8 (ASP.NET Core 8) | Hiệu năng cao, đa nền tảng |
 | **Web API** | ASP.NET Core Web API | RESTful standards |
 | **Real-time Hub** | SignalR | Xử lý thông báo (Notification) và Chat |
-| **Logic Layer** | ShuttleUp.BLL | Xử lý nghiệp vụ, Validation nâng cao |
-| **Data Layer** | ShuttleUp.DAL | Abstraction cho Database qua EF Core |
+| **Logic Layer** | ShuttleUp.Backend.BLL | Xử lý nghiệp vụ, Validation nâng cao |
+| **Data Layer** | ShuttleUp.Backend.DAL | Abstraction cho Database qua EF Core |
 | **Documentation** | Swagger / OpenAPI | Tự động sinh tài liệu API |
 
 ### 2.3 Database & Storage

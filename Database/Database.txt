@@ -17,7 +17,7 @@
 --   • Phần ALTER cuối file kiểm tra information_schema: cột đã có thì bỏ qua (an toàn
 --     nếu bạn chỉ paste chạy phần migration trên DB cũ cần giữ dữ liệu — nguồn chuẩn vẫn là file này).
 --   • Backend: ConnectionStrings:DefaultConnection → database=shuttle_up
---     (ShuttleUp.Backend/appsettings.json); có thể ghi đè bằng biến môi trường.
+--     (ShuttleUp.Backend/ShuttleUp.Backend.Presentation/appsettings.json); có thể ghi đè bằng biến môi trường.
 --   • Workbench: luôn USE shuttle_up; hoặc chọn schema shuttle_up ở panel trái; bôi đen một đoạn thì DATABASE() có thể lệch.
 --
 -- Nếu API báo "Unknown column ...":

@@ -12,16 +12,16 @@ Sau khi clone repo, bạn cần chạy được backend và frontend trên máy 
 
 Chạy script Database.txt trong MySQL (theo quy ước team, thường chạy cả file nếu muốn DB mẫu sạch).
 
-Mở ShuttleUp.Backend/appsettings.json và sửa ConnectionStrings DefaultConnection cho đúng server, user, mật khẩu và tên database trên máy bạn.
+Mở ShuttleUp.Backend/ShuttleUp.Backend.Presentation/appsettings.json và sửa ConnectionStrings DefaultConnection cho đúng server, user, mật khẩu và tên database trên máy bạn.
 
 ## Bước 2: Backend và Cloudinary
 
 API cần Cloudinary để upload ảnh (avatar, minh chứng thanh toán, v.v.). Trong repo chỉ có CloudName và tên thư mục; Api Key và Api Secret mỗi người tự cấu hình trên máy bằng User Secrets.
 
-Mở PowerShell tại thư mục ShuttleUp.Backend:
+Mở PowerShell tại thư mục ShuttleUp.Backend.Presentation:
 
 ```
-cd ShuttleUp.Backend
+cd ShuttleUp.Backend/ShuttleUp.Backend.Presentation
 ```
 
 Lần đầu trên máy có thể cần (nếu project đã có UserSecretsId trong file csproj thì có thể bỏ qua):
@@ -50,7 +50,7 @@ Trang cài đặt thanh toán của Manager dùng VietQR Lookup API để xác m
 Cách 1 — vào đúng thư mục backend rồi chạy (khuyên dùng):
 
 ```
-cd ShuttleUp.Backend
+cd ShuttleUp.Backend/ShuttleUp.Backend.Presentation
 dotnet user-secrets set "VietQR:ClientId" "DÁN_CLIENT_ID_VÀO_ĐÂY"
 dotnet user-secrets set "VietQR:ApiKey" "DÁN_API_KEY_VÀO_ĐÂY"
 ```
@@ -58,8 +58,8 @@ dotnet user-secrets set "VietQR:ApiKey" "DÁN_API_KEY_VÀO_ĐÂY"
 Cách 2 — đứng ở thư mục gốc repo, chỉ rõ project:
 
 ```
-dotnet user-secrets set "VietQR:ClientId" "DÁN_CLIENT_ID_VÀO_ĐÂY" --project ShuttleUp.Backend/ShuttleUp.Backend.csproj
-dotnet user-secrets set "VietQR:ApiKey" "DÁN_API_KEY_VÀO_ĐÂY" --project ShuttleUp.Backend/ShuttleUp.Backend.csproj
+dotnet user-secrets set "VietQR:ClientId" "DÁN_CLIENT_ID_VÀO_ĐÂY" --project ShuttleUp.Backend/ShuttleUp.Backend.Presentation/ShuttleUp.Backend.Presentation.csproj
+dotnet user-secrets set "VietQR:ApiKey" "DÁN_API_KEY_VÀO_ĐÂY" --project ShuttleUp.Backend/ShuttleUp.Backend.Presentation/ShuttleUp.Backend.Presentation.csproj
 ```
 
 Mỗi lệnh **một dòng** — không dán hai lệnh `dotnet` liền nhau trên cùng một dòng (PowerShell sẽ báo *Unrecognized command or argument 'dotnet'*).
@@ -106,7 +106,7 @@ Có thể dùng biến môi trường, ví dụ Cloudinary__CloudName, Cloudinar
 
 ## Gặp lỗi
 
-- **Could not find a MSBuild project file:** Bạn đang chạy `dotnet user-secrets` ở thư mục sai. `cd ShuttleUp.Backend` trước, hoặc thêm `--project ShuttleUp.Backend/ShuttleUp.Backend.csproj` (khi đứng ở thư mục gốc repo).
+- **Could not find a MSBuild project file:** Bạn đang chạy `dotnet user-secrets` ở thư mục sai. `cd ShuttleUp.Backend/ShuttleUp.Backend.Presentation` trước, hoặc thêm `--project ShuttleUp.Backend/ShuttleUp.Backend.Presentation/ShuttleUp.Backend.Presentation.csproj` (khi đứng ở thư mục gốc repo).
 - **Unrecognized command or argument 'dotnet':** Hai lệnh bị dán trên một dòng. Chạy từng lệnh `dotnet user-secrets set ...` riêng biệt, mỗi lệnh Enter một lần.
 - Backend báo thiếu Cloudinary hoặc VietQR: làm lại bước User Secrets hoặc kiểm tra đã dán đúng key chưa.
 - Lệnh user-secrets lỗi với secret: thử bọc giá trị bằng nháy đơn.

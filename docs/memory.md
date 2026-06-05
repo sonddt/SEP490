@@ -931,3 +931,15 @@ Kết bạn & quan hệ xã hội (Player):
 - **Lỗi**: Thông báo `MANAGER_REQUEST_REJECTED` (`AdminController`) dùng `deepLink = "/user/manager-info"` → route không tồn tại → 404.
 - **Route đúng**: `/user/profile/manager-info` (`UserManagerInfo.jsx` trong `App.jsx`).
 - **Sửa**: `AdminController` metadata mới; `notificationNavigation.js` chuẩn hóa link cũ `/user/manager-info` → route đúng; `App.jsx` redirect legacy `/user/manager-info`.
+
+---
+
+## 5 tháng 6, 2026 — Chuẩn hóa cấu trúc thư mục Backend
+
+Gom backend về một nhánh `ShuttleUp.Backend/` với 3 project con:
+
+- `ShuttleUp.Backend.Presentation` (trước: `ShuttleUp.Backend`)
+- `ShuttleUp.Backend.BLL` (trước: `ShuttleUp.BLL`)
+- `ShuttleUp.Backend.DAL` (trước: `ShuttleUp.DAL`)
+
+`ShuttleUp.Frontend` giữ nguyên ở root. Cập nhật `ShuttleUp.sln`, `*.csproj`, `README/LOCAL_SETUP.md`, docs kiến trúc/sơ đồ, `.gitignore`. Namespace C# không đổi (`ShuttleUp.BLL`, `ShuttleUp.DAL`, `ShuttleUp.Backend`). `dotnet build ShuttleUp.sln` OK.
