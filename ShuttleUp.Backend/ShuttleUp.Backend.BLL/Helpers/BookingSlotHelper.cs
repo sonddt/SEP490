@@ -81,7 +81,7 @@ public static class BookingSlotHelper
                 if (slotEnd > item.EndTime)
                     return (normalizedItems, $"Mỗi khung phải là bội số {slotDuration} phút.");
 
-                if (TimeZoneHelper.IsSlotInPast(slotEnd))
+                if (TimeZoneHelper.IsSlotInPast(slotStart))
                     continue;
 
                 var price = ResolveSlotPrice(court.CourtPrices.ToList(), slotStart);
@@ -136,7 +136,7 @@ public static class BookingSlotHelper
                 if (slotEnd > dtEnd)
                     return (normalizedItems, $"Khung giờ trong ngày phải là bội số {slotDuration} phút.");
 
-                if (TimeZoneHelper.IsSlotInPast(slotEnd))
+                if (TimeZoneHelper.IsSlotInPast(slotStart))
                     continue;
 
                 var price = ResolveSlotPrice(court.CourtPrices.ToList(), slotStart);
@@ -192,7 +192,7 @@ public static class BookingSlotHelper
                 if (slotEnd > dtEnd)
                     return (normalizedItems, $"Khung giờ trong ngày phải là bội số {slotDuration} phút.");
 
-                if (TimeZoneHelper.IsSlotInPast(slotEnd))
+                if (TimeZoneHelper.IsSlotInPast(slotStart))
                     continue;
 
                 var price = ResolveSlotPrice(court.CourtPrices.ToList(), slotStart);
@@ -239,7 +239,7 @@ public static class BookingSlotHelper
             {
                 var se = ss.AddMinutes(slotDuration);
                 if (se > dtEnd) return (slots, $"Khung giờ trong ngày phải là bội số {slotDuration} phút.");
-                if (TimeZoneHelper.IsSlotInPast(se))
+                if (TimeZoneHelper.IsSlotInPast(ss))
                     continue;
                 slots.Add((ss, se));
                 if (slots.Count > maxSlots)
@@ -277,7 +277,7 @@ public static class BookingSlotHelper
             {
                 var se = ss.AddMinutes(slotDuration);
                 if (se > dtEnd) return (slots, $"Khung giờ trong ngày phải là bội số {slotDuration} phút.");
-                if (TimeZoneHelper.IsSlotInPast(se))
+                if (TimeZoneHelper.IsSlotInPast(ss))
                     continue;
                 slots.Add((ss, se));
                 if (slots.Count > maxSlots)

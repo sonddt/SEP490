@@ -31,11 +31,11 @@ public static class TimeZoneHelper
     public static DateTime NowVn() => ToVn(DateTime.UtcNow);
 
     /// <summary>
-    /// Khung đã qua: EndTime (lưu wall-clock VN, Kind Unspecified) không còn sau thời điểm hiện tại VN.
-    /// Cùng quy ước với lưới đặt lẻ (slot kết thúc &lt;= bây giờ → không chọn được).
+    /// Khung đã qua: StartTime (lưu wall-clock VN, Kind Unspecified) không còn sau thời điểm hiện tại VN.
+    /// Cùng quy ước với lưới đặt lẻ (slot bắt đầu <= bây giờ → không chọn được).
     /// </summary>
-    public static bool IsSlotInPast(DateTime slotEndVnLocal)
-        => slotEndVnLocal <= NowVn();
+    public static bool IsSlotInPast(DateTime slotStartVnLocal)
+        => slotStartVnLocal <= NowVn();
 
     /// <summary>Format deadline UTC sang chuỗi hiển thị giờ Việt Nam.</summary>
     public static string FormatDeadlineVn(DateTime utcDeadline)
