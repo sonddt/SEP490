@@ -270,22 +270,7 @@ export default function ManagerAddVenue() {
     }
   };
 
-  const mapOpenHoursToDayHours = useCallback((hours) => {
-    const isLegacy = !hours?.length;
-    return DAYS.map((_, i) => {
-      if (isLegacy) return { enabled: true, open: '06:00', close: '22:00' };
-      const dbDow = DAY_MAP[i];
-      const matched = hours.find((h) => (h.dayOfWeek ?? h.DayOfWeek) === dbDow);
-      if (matched && (matched.enabled ?? matched.Enabled)) {
-        return {
-          enabled: true,
-          open: matched.openTime || matched.OpenTime || '06:00',
-          close: matched.closeTime || matched.CloseTime || '22:00',
-        };
-      }
-      return { enabled: false, open: '06:00', close: '22:00' };
-    });
-  }, []);
+
 
   useEffect(() => {
     if (!venueId) return;
@@ -865,32 +850,26 @@ export default function ManagerAddVenue() {
                     </div>
                   </div>
                 </div>
-
-                {/* Schedule Card */}
-                <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
-                  <div className="card-body p-4 p-md-5">
-                    <SectionHeader icon="feather-clock" iconBg="#fef3c7" iconColor="#d97706" title="5. Lịch hoạt động chung" subtitle="Cài đặt khung giờ làm việc tiêu chuẩn" />
-                    <div className="px-2">
-                      {DAYS.map((day, i) => (
-                        <div key={day} className="row align-items-center py-3 border-bottom" style={{ opacity: dayHours[i].enabled ? 1 : 0.5, transition: '0.2s' }}>
-                          <div className="col-3 col-sm-2 fw-bold text-dark" style={{ fontSize: 13 }}>{day}</div>
-                          <div className="col-3 col-sm-4 px-1">
-                            <select className="form-select form-select-sm bg-light border-0" value={dayHours[i].open} disabled={!dayHours[i].enabled} onChange={(e) => toggleDay(i, 'open', e.target.value)}>
-                              {TIME_SLOTS.map((ts) => <option key={ts} value={ts}>{ts}</option>)}
-                            </select>
-                          </div>
-                          <div className="col-3 col-sm-4 px-1">
-                            <select className="form-select form-select-sm bg-light border-0" value={dayHours[i].close} disabled={!dayHours[i].enabled} onChange={(e) => toggleDay(i, 'close', e.target.value)}>
-                              {TIME_SLOTS.map((ts) => <option key={ts} value={ts}>{ts}</option>)}
-                            </select>
-                          </div>
-                          <div className="col-3 col-sm-2 text-end">
-                            <div className="form-check form-switch d-inline-block m-0" style={{ transform: 'scale(1.1)' }}>
-                              <input className="form-check-input m-0 cursor-pointer" type="checkbox" checked={dayHours[i].enabled} onChange={(e) => toggleDay(i, 'enabled', e.target.checked)} />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                
+                {/* Section 5: Description */}
+                <div className="card border-0 shadow-sm flex-grow-1" style={{ borderRadius: 16 }}>
+                  <div className="card-body p-4 p-md-5 d-flex flex-column">
+                    <SectionHeader
+                      icon="feather-file-text"
+                      iconBg="#f0fdf4"
+                      iconColor="#16a34a"
+                      title="5. Mô tả sân"
+                      subtitle="Giới thiệu về cơ sở — hiển thị ở tab Tổng quan trang chi tiết sân"
+                    />
+                    <textarea
+                      className="form-control bg-light border-0 flex-grow-1"
+                      style={{ fontSize: 14, resize: 'none', lineHeight: 1.8, minHeight: 120 }}
+                      placeholder="Ví dụ: Cụm sân cầu lông tiêu chuẩn thi đấu, hệ thống đèn LED cao cấp, thảm PVC chuyên dụng. Phù hợp cho cả người mới bắt đầu và vận động viên chuyên nghiệp. Đội ngũ hỗ trợ chuyên nghiệp, sẵn sàng phục vụ 7 ngày trong tuần..."
+                      value={form.description}
+                      onChange={(e) => setField('description', e.target.value)}
+                    />
+                    <div className="d-flex justify-content-end mt-2">
+                      <span style={{ fontSize: 12, color: '#94a3b8' }}>{form.description.length} ký tự</span>
                     </div>
                   </div>
                 </div>
@@ -901,33 +880,7 @@ export default function ManagerAddVenue() {
             {/* ===== ROW 2: Content sections ===== */}
             <div className="row g-4 mt-0">
 
-              {/* Section 6: Description - full width */}
-              <div className="col-12">
-                <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
-                  <div className="card-body p-4 p-md-5">
-                    <SectionHeader
-                      icon="feather-file-text"
-                      iconBg="#f0fdf4"
-                      iconColor="#16a34a"
-                      title="6. Mô tả sân"
-                      subtitle="Giới thiệu về cơ sở — hiển thị ở tab Tổng quan trang chi tiết sân"
-                    />
-                    <textarea
-                      className="form-control bg-light border-0"
-                      rows={5}
-                      style={{ fontSize: 14, resize: 'vertical', lineHeight: 1.8 }}
-                      placeholder="Ví dụ: Cụm sân cầu lông tiêu chuẩn thi đấu, hệ thống đèn LED cao cấp, thảm PVC chuyên dụng. Phù hợp cho cả người mới bắt đầu và vận động viên chuyên nghiệp. Đội ngũ hỗ trợ chuyên nghiệp, sẵn sàng phục vụ 7 ngày trong tuần..."
-                      value={form.description}
-                      onChange={(e) => setField('description', e.target.value)}
-                    />
-                    <div className="d-flex justify-content-end mt-2">
-                      <span style={{ fontSize: 12, color: '#94a3b8' }}>{form.description.length} ký tự</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 7: Includes + Section 8: Rules - 2 columns */}
+              {/* Section 6: Includes + Section 7: Rules - 2 columns */}
               <div className="col-12 col-lg-6">
                 <div className="card border-0 shadow-sm h-100" style={{ borderRadius: 16 }}>
                   <div className="card-body p-4 p-md-5">
@@ -935,7 +888,7 @@ export default function ManagerAddVenue() {
                       icon="feather-check-square"
                       iconBg="#ecfdf5"
                       iconColor="#059669"
-                      title="7. Bao gồm"
+                      title="6. Bao gồm"
                       subtitle="Những gì khách được sử dụng khi thuê sân"
                     />
                     <EditableList
@@ -955,7 +908,7 @@ export default function ManagerAddVenue() {
                       icon="feather-alert-octagon"
                       iconBg="#fff7ed"
                       iconColor="#ea580c"
-                      title="8. Quy định"
+                      title="7. Quy định"
                       subtitle="Các quy tắc khách cần tuân thủ tại cơ sở"
                     />
                     <EditableList
@@ -968,7 +921,7 @@ export default function ManagerAddVenue() {
                 </div>
               </div>
 
-              {/* Section 9: Amenities - full width */}
+              {/* Section 8: Amenities - full width */}
               <div className="col-12">
                 <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
                   <div className="card-body p-4 p-md-5">
@@ -976,7 +929,7 @@ export default function ManagerAddVenue() {
                       icon="feather-star"
                       iconBg="#eff6ff"
                       iconColor="#3b82f6"
-                      title="9. Tiện ích"
+                      title="8. Tiện ích"
                       subtitle="Chọn các cơ sở vật chất & dịch vụ hiện có tại cơ sở"
                     />
                     <div className="row g-3">

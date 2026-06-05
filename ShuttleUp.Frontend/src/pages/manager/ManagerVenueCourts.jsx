@@ -172,7 +172,6 @@ export default function ManagerVenueCourts() {
 
   const activeCourts = courts.filter(c => c.status).length;
   const inactiveCourts = courts.filter(c => !c.status).length;
-  const avgPrice = courts.length > 0 ? Math.round(courts.reduce((s, c) => s + (c.pricePerHour || 0), 0) / courts.length) : 0;
 
   return (
     <>
@@ -214,9 +213,8 @@ export default function ManagerVenueCourts() {
           { label: 'Tổng số sân', value: courts.length, icon: 'feather-grid', variant: 'blue' },
           { label: 'Đang hoạt động', value: activeCourts, icon: 'feather-check-circle', variant: 'green' },
           { label: 'Tạm ngưng', value: inactiveCourts, icon: 'feather-pause-circle', variant: 'red' },
-          { label: 'Giá TB / giờ', value: avgPrice > 0 ? `${avgPrice.toLocaleString('vi-VN')}₫` : '—', icon: 'feather-tag', variant: 'amber' },
         ].map(s => (
-          <div key={s.label} className="col-xl-3 col-sm-6">
+          <div key={s.label} className="col-xl-4 col-md-4 col-sm-12">
             <div className={`mgr-stat-card mgr-stat-card--${s.variant}`}>
               <div className="mgr-stat-card__icon"><i className={s.icon} /></div>
               <div>
