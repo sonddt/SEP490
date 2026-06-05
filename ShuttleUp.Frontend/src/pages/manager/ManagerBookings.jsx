@@ -19,7 +19,7 @@ const TABS = [
   { key: 'PENDING', label: 'Chờ duyệt', icon: 'feather-clock' },
   { key: 'UPCOMING', label: 'Sắp tới', icon: 'feather-calendar' },
   { key: 'COMPLETED', label: 'Hoàn thành', icon: 'feather-check-circle' },
-  { key: 'CANCELLED', label: 'Đã huỷ / Từ chối', icon: 'feather-x-circle' },
+  { key: 'CANCELLED', label: 'Đã huỷ / Đã hoàn tiền', icon: 'feather-x-circle' },
 ];
 
 const CANCELLED_GROUP = new Set(['CANCELLED', 'PENDING_REFUND', 'PENDING_RECONCILIATION', 'REFUNDED']);

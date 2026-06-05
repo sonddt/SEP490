@@ -58,7 +58,9 @@ public class ManagerBookingService : IManagerBookingService
                 ContactName = b.ContactName,
                 ContactPhone = b.ContactPhone,
                 GuestNote = b.GuestNote,
-                ManagerStatusNote = b.ManagerStatusNote,
+                ManagerStatusNote = !string.IsNullOrWhiteSpace(b.ManagerStatusNote) 
+                    ? b.ManagerStatusNote 
+                    : (!string.IsNullOrWhiteSpace(refund?.PlayerNote) ? $"[Người chơi huỷ]: {refund.PlayerNote}" : null),
                 TotalAmount = b.FinalAmount ?? b.TotalAmount,
                 VenueName = b.Venue?.Name,
                 VenueAddress = b.Venue?.Address,
@@ -69,8 +71,8 @@ public class ManagerBookingService : IManagerBookingService
                 PaymentStatus = paymentStatus,
                 PaymentMethod = payment?.Method,
                 ProofUrl = payment?.GatewayReference,
-                RefundStatus = refundReq?.Status,
-                RefundAmount = refundReq?.RequestedAmount,
+                RefundStatus = refund?.Status,
+                RefundAmount = refund?.RequestedAmount,
                 CreatedAt = b.CreatedAt,
                 RefundedAmount = refund?.RequestedAmount ?? 0m,
                 PaidAmount = refund != null ? (refund.PaidAmount ?? 0m) : (refundReq?.PaidAmount ?? payment?.Amount),
