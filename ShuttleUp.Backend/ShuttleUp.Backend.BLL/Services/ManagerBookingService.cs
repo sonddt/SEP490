@@ -159,7 +159,6 @@ public class ManagerBookingService : IManagerBookingService
                     Status = "PENDING_REFUND",
                     RequestedAmount = paidAmount,
                     PaidAmount = paidAmount,
-                    PlayerNote = reason?.Trim(),
                     RequestedAt = DateTime.UtcNow,
                 }, saveChanges: false);
             }
@@ -180,7 +179,6 @@ public class ManagerBookingService : IManagerBookingService
                     ReasonCode = "MANAGER_REJECT",
                     Status = "PENDING_RECONCILIATION",
                     RequestedAmount = proofAmount > 0 ? proofAmount : (booking.FinalAmount ?? booking.TotalAmount),
-                    PlayerNote = reason?.Trim(),
                     RequestedAt = DateTime.UtcNow,
                 }, saveChanges: false);
             }

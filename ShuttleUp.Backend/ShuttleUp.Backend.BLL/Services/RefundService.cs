@@ -203,6 +203,7 @@ public class RefundService : IRefundService
                 RefundAccountHolder = r.RefundAccountHolder,
                 RefundQrImageUrl = r.RefundQrImageUrl,
                 PlayerNote = r.PlayerNote,
+                ManagerStatusNote = b.ManagerStatusNote,
                 RejectionReason = r.RejectionReason,
                 ManagerNote = r.ManagerNote,
                 ManagerEvidenceUrl = r.ManagerEvidenceFile?.FileUrl,

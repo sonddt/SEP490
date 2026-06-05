@@ -416,13 +416,15 @@ export default function ManagerRefunds() {
                   {detail.playerNote && (
                     <div className="bk-detail-section mt-3">
                       <h6 className="bk-detail-section-title">
-                        <i className="feather-message-square me-1" style={{ color: '#64748b' }} />Lý do / Ghi chú hủy sân
+                        <i className="feather-message-square me-1" style={{ color: '#64748b' }} />Lý do huỷ sân (từ người chơi)
                       </h6>
                       <p className="mb-0" style={{ fontSize: 13, color: '#64748b', fontStyle: 'italic' }}>
                         "{detail.playerNote}"
                       </p>
                     </div>
                   )}
+
+
 
                   {(detail.refundBankName || detail.refundAccountNumber) && (
                     <div className="bk-detail-section mt-3" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 14px' }}>
@@ -531,10 +533,21 @@ export default function ManagerRefunds() {
                     alt="Evidence"
                   />
 
+                  {detail.managerStatusNote && !detail.managerStatusNote.startsWith('[Người chơi huỷ]:') && (
+                    <div className="bk-detail-section mt-3" style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '10px 14px' }}>
+                      <h6 className="bk-detail-section-title" style={{ color: '#ef4444' }}>
+                        <i className="feather-alert-circle me-1" />Lý do huỷ sân (của bạn)
+                      </h6>
+                      <p className="mb-0" style={{ fontSize: 13, color: '#ef4444' }}>
+                        {detail.managerStatusNote}
+                      </p>
+                    </div>
+                  )}
+
                   {detail.rejectionReason && (
                     <div className="bk-detail-section mt-3" style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '10px 14px' }}>
                       <h6 className="bk-detail-section-title" style={{ color: '#ef4444' }}>
-                        <i className="feather-alert-circle me-1" />Lý do từ chối
+                        <i className="feather-alert-circle me-1" />Lý do từ chối (của bạn)
                       </h6>
                       <p className="mb-0" style={{ fontSize: 13, color: '#ef4444' }}>
                         {detail.rejectionReason}

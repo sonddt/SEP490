@@ -275,10 +275,11 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
               {booking.rejectReason && (
                 <div className="bk-detail-section mt-3" style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '10px 14px' }}>
                   <h6 className="bk-detail-section-title" style={{ color: '#ef4444' }}>
-                    <i className="feather-alert-circle me-1" />Lý do từ chối / huỷ
+                    <i className="feather-alert-circle me-1" />
+                    {booking.rejectReason.startsWith('[Người chơi huỷ]:') ? 'Lý do huỷ (từ người chơi)' : 'Lý do từ chối / huỷ (của bạn)'}
                   </h6>
                   <p className="mb-0" style={{ fontSize: 13, color: '#ef4444' }}>
-                    {booking.rejectReason}
+                    {booking.rejectReason.replace('[Người chơi huỷ]:', '').trim()}
                   </p>
                 </div>
               )}

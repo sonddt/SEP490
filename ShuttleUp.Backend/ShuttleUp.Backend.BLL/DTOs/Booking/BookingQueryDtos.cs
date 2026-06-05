@@ -196,6 +196,7 @@ public class ManagerRefundListItemDto
     public string? RefundAccountHolder { get; set; }
     public string? RefundQrImageUrl { get; set; }
     public string? PlayerNote { get; set; }
+    public string? ManagerStatusNote { get; set; }
     public string? RejectionReason { get; set; }
     public string? ManagerNote { get; set; }
     public string? ManagerEvidenceUrl { get; set; }

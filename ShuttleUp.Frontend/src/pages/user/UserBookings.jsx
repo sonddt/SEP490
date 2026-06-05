@@ -841,9 +841,10 @@ export default function UserBookings() {
               {(detailBooking.status === 'CANCELLED' || detailBooking.status === 'REFUND') && detailBooking.managerStatusNote && (
                 <div className="mt-3 p-3 rounded" style={{ background: '#fef2f2', border: '1px solid #fca5a5' }}>
                   <small className="text-danger d-block fw-semibold mb-1">
-                    <i className="feather-alert-circle me-1" />Ghi chú từ sân
+                    <i className="feather-alert-circle me-1" />
+                    {detailBooking.managerStatusNote.startsWith('[Người chơi huỷ]:') ? 'Lý do huỷ (của bạn)' : 'Ghi chú từ sân'}
                   </small>
-                  <p className="mb-0 small text-danger">{detailBooking.managerStatusNote}</p>
+                  <p className="mb-0 small text-danger">{detailBooking.managerStatusNote.replace('[Người chơi huỷ]:', '').trim()}</p>
                 </div>
               )}
 
