@@ -5,11 +5,12 @@ import { getNotifications, markNotificationRead } from '../../api/notificationsA
 import { useUnreadNotificationCount } from '../../hooks/useUnreadNotificationCount';
 import { refreshNotificationBadge } from '../../utils/appToast';
 import { getNotificationTargetPath } from '../../utils/notificationNavigation';
+import { parseSlotDateTime } from '../../utils/bookingSlotTime';
 
 function formatTime(iso) {
   if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
+  const d = parseSlotDateTime(iso);
+  if (!d || Number.isNaN(d.getTime())) return '';
   return d.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
 }
 

@@ -489,9 +489,9 @@ export default function BookingTimeline() {
     existingBookings.find(b => b.courtId === courtId && slotIndex >= b.startIndex && slotIndex < b.endIndex);
 
   const isPastSlot = (slotIndex) => {
-    const { end } = slotLocalBounds(selectedDate, slotIndex, slotDuration);
+    const { start } = slotLocalBounds(selectedDate, slotIndex, slotDuration);
     // So sánh theo giờ VN (đồng bộ StartTime/EndTime wall-clock VN trên backend).
-    return end.getTime() <= getVnNow().getTime();
+    return start.getTime() <= getVnNow().getTime();
   };
 
   const getCellStatus = (courtId, slotIndex) => {

@@ -527,8 +527,8 @@ export default function LongTermFlexible() {
     existingBookings.find(b => b.courtId === courtId && slotIndex >= b.startIndex && slotIndex < b.endIndex);
 
   const isPastSlot = (slotIndex) => {
-    const { end } = slotLocalBounds(selectedDate, slotIndex, slotDuration);
-    return end.getTime() <= getVnNow().getTime();
+    const { start } = slotLocalBounds(selectedDate, slotIndex, slotDuration);
+    return start.getTime() <= getVnNow().getTime();
   };
 
   const getCellStatus = (courtId, slotIndex) => {

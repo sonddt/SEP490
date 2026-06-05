@@ -8,6 +8,7 @@ import {
 } from '../../api/notificationsApi';
 import { refreshNotificationBadge } from '../../utils/appToast';
 import { getNotificationTargetPath } from '../../utils/notificationNavigation';
+import { parseSlotDateTime } from '../../utils/bookingSlotTime';
 
 const typeIcon = {
   BOOKING: { icon: 'feather-calendar', color: '#2563eb', bg: '#eff6ff' },
@@ -18,8 +19,8 @@ const typeIcon = {
 
 function formatTime(iso) {
   if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
+  const d = parseSlotDateTime(iso);
+  if (!d || Number.isNaN(d.getTime())) return '';
   return d.toLocaleString('vi-VN');
 }
 
