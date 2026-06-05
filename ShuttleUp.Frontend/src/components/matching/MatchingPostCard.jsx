@@ -61,6 +61,27 @@ function getMatchingPostStatusBadge(status) {
   };
 }
 
+/** Giá sân trên overlay ảnh: giá sau giảm + /sân, kèm giá gốc gạch ngang. */
+function CourtPriceOverlay({ price, originalPrice, formatPrice, fontSize = '16px' }) {
+  const p = price != null && price !== '' ? Number(price) : null;
+  const o = originalPrice != null && originalPrice !== '' ? Number(originalPrice) : null;
+  const showStrike = o != null && p != null && o > p + 0.5;
+
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '6px', flexWrap: 'wrap' }}>
+      <span style={{ color: '#fff', fontWeight: '800', fontSize }}>
+        {formatPrice(p ?? o)}
+        <span style={{ fontSize: '12px', opacity: 0.8 }}>/sân</span>
+      </span>
+      {showStrike && (
+        <span style={{ color: '#fca5a5', textDecoration: 'line-through', fontSize: '12px', fontWeight: '600' }}>
+          {formatPrice(o)}
+        </span>
+      )}
+    </span>
+  );
+}
+
 const scheduleLinkBtnStyle = {
   display: 'inline',
   padding: 0,
@@ -195,10 +216,12 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
               </div>
             )}
             <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '16px 12px 12px', background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)', zIndex: 1 }}>
-              <span style={{ color: '#fff', fontWeight: '700', fontSize: '15px' }}>{formatPrice(post.totalCourtPrice)}<span style={{ fontSize: '12px', opacity: 0.8 }}>/sân</span></span>
-              {post.originalTotalCourtPrice != null && post.totalCourtPrice != null && post.originalTotalCourtPrice > post.totalCourtPrice + 1 && (
-                <span style={{ color: '#fca5a5', textDecoration: 'line-through', fontSize: '12px', marginLeft: '6px', fontWeight: '600' }}>{formatPrice(post.originalTotalCourtPrice)}</span>
-              )}
+              <CourtPriceOverlay
+                price={post.totalCourtPrice}
+                originalPrice={post.originalTotalCourtPrice}
+                formatPrice={formatPrice}
+                fontSize="15px"
+              />
             </div>
           </div>
 
@@ -333,10 +356,11 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
             </div>
           )}
           <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '16px 12px 12px', background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)', zIndex: 1 }}>
-              <span style={{ color: '#fff', fontWeight: '800', fontSize: '16px' }}>{formatPrice(post.totalCourtPrice)}<span style={{ fontSize: '12px', opacity: 0.8 }}>/sân</span></span>
-              {post.originalTotalCourtPrice != null && post.totalCourtPrice != null && post.originalTotalCourtPrice > post.totalCourtPrice + 1 && (
-                <span style={{ color: '#fca5a5', textDecoration: 'line-through', fontSize: '12px', marginLeft: '6px', fontWeight: '600' }}>{formatPrice(post.originalTotalCourtPrice)}</span>
-              )}
+            <CourtPriceOverlay
+              price={post.totalCourtPrice}
+              originalPrice={post.originalTotalCourtPrice}
+              formatPrice={formatPrice}
+            />
           </div>
         </div>
 

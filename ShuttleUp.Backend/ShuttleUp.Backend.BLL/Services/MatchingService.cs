@@ -79,28 +79,26 @@ public class MatchingService : IMatchingService
         var myMemberId = p.MatchingMembers.FirstOrDefault(m => m.UserId == me)?.Id;
         var myJoinRequest = p.MatchingJoinRequests.FirstOrDefault(r => r.UserId == me && r.Status == "PENDING");
 
+        Booking? booking = null;
         Dictionary<Guid, decimal> actualMap = new();
         if (p.BookingId.HasValue)
         {
-            var booking = await _bookingRepo.GetByIdWithItemsAndCourtsAsync(p.BookingId.Value);
+            booking = await _bookingRepo.GetByIdWithItemsAndCourtsAsync(p.BookingId.Value);
             if (booking != null)
                 actualMap = PriceDistributionHelper.BuildActualItemPriceMap(booking);
         }
 
-        var actualItemsTotal = p.MatchingPostItems.Sum(i =>
-            actualMap.GetValueOrDefault(i.BookingItemId, i.BookingItem?.FinalPrice ?? 0m));
         var headCount = Math.Max((p.RequiredPlayers ?? 0) + 1, 1);
-        var dbActualTotal = p.PricePerSlot.HasValue ? p.PricePerSlot.Value * headCount : (decimal?)null;
-        var originalItemsTotal = p.MatchingPostItems.Sum(i => i.BookingItem?.FinalPrice ?? 0m);
+        var (originalItemsTotal, actualItemsTotal, hasDiscount) = ComputePostCourtPrices(p, headCount, booking);
 
         var bookingItems = p.MatchingPostItems.Select(i =>
         {
             var original = i.BookingItem?.FinalPrice ?? 0m;
             var actual = actualMap.GetValueOrDefault(i.BookingItemId, original);
-            if (dbActualTotal.HasValue && Math.Abs(dbActualTotal.Value - actualItemsTotal) > 0.1m)
+            if (hasDiscount && originalItemsTotal > 0m && Math.Abs(actualItemsTotal - originalItemsTotal) > 0.5m)
             {
-                var ratio = originalItemsTotal > 0 ? dbActualTotal.Value / originalItemsTotal : 1m;
-                actual = Math.Round(original * ratio, 0);
+                var ratio = actualItemsTotal / originalItemsTotal;
+                actual = Math.Round(original * ratio, 0, MidpointRounding.AwayFromZero);
             }
             return new MatchingBookingItemDto
             {
@@ -134,11 +132,16 @@ public class MatchingService : IMatchingService
             VenueName = p.Venue?.Name,
             VenueAddress = p.Venue?.Address,
             CourtName = p.CourtName,
-            PricePerSlot = expenseSharing == "negotiable" ? null : (expenseSharing == "host_pays" ? 0 : p.PricePerSlot),
+            PricePerSlot = expenseSharing switch
+            {
+                "negotiable" => null,
+                "host_pays" => 0,
+                _ => hasDiscount ? actualItemsTotal / headCount : p.PricePerSlot
+            },
             OriginalPricePerSlot = originalPricePerSlot,
-            TotalCourtPrice = dbActualTotal ?? actualItemsTotal,
-            OriginalTotalCourtPrice = originalItemsTotal,
-            HasDiscount = originalItemsTotal > (dbActualTotal ?? actualItemsTotal) + 0.01m,
+            TotalCourtPrice = actualItemsTotal,
+            OriginalTotalCourtPrice = hasDiscount ? originalItemsTotal : null,
+            HasDiscount = hasDiscount,
             RequiredPlayers = p.RequiredPlayers,
             SkillLevel = p.SkillLevel,
             GenderPref = p.GenderPref,
@@ -620,18 +623,22 @@ public class MatchingService : IMatchingService
         var canRequestJoin = !isHost && !isMember && !isPending && p.Status == "OPEN" && slotsLeft > 0
             && !IsInactiveStatus(p.Status);
 
-        // Calculate original price for strikethrough display
-        var totalOriginal = p.MatchingPostItems.Sum(i => i.BookingItem?.FinalPrice ?? 0m);
-        var headCount = Math.Max(totalSlots, 1);
-        var dbActualTotal = p.PricePerSlot.HasValue ? p.PricePerSlot.Value * headCount : (decimal?)null;
+        var (originalItemsTotal, actualItemsTotal, hasDiscount) = ComputePostCourtPrices(p, totalSlots);
 
         var expenseSharing = (p.ExpenseSharing == "female_free" || p.ExpenseSharing == "split_equal" || p.ExpenseSharing == "per_person") 
             ? "negotiable" : p.ExpenseSharing;
+        var headCount = Math.Max(totalSlots, 1);
         decimal? originalPricePerSlot = expenseSharing switch
         {
             "host_pays" => 0,
             "negotiable" => null,
-            _ => totalOriginal / headCount
+            _ => originalItemsTotal / headCount
+        };
+        decimal? pricePerSlot = expenseSharing switch
+        {
+            "negotiable" => null,
+            "host_pays" => 0,
+            _ => hasDiscount ? actualItemsTotal / headCount : p.PricePerSlot
         };
 
         return new MatchingPostCardDto
@@ -645,10 +652,11 @@ public class MatchingService : IMatchingService
             VenueAddress = p.Venue?.Address,
             VenueImageUrl = p.Venue?.Files?.Where(f => f.FileName != null && f.FileName.Contains("mac_dinh")).Select(f => f.FileUrl).FirstOrDefault() ?? p.Venue?.Files?.OrderByDescending(f => f.CreatedAt).Select(f => f.FileUrl).FirstOrDefault(),
             CourtName = p.CourtName,
-            PricePerSlot = expenseSharing == "negotiable" ? null : (expenseSharing == "host_pays" ? 0 : p.PricePerSlot),
+            PricePerSlot = pricePerSlot,
             OriginalPricePerSlot = originalPricePerSlot,
-            TotalCourtPrice = dbActualTotal ?? totalOriginal,
-            OriginalTotalCourtPrice = totalOriginal,
+            TotalCourtPrice = actualItemsTotal,
+            OriginalTotalCourtPrice = hasDiscount ? originalItemsTotal : null,
+            HasDiscount = hasDiscount,
             RequiredPlayers = p.RequiredPlayers,
             SkillLevel = p.SkillLevel,
             GenderPref = p.GenderPref,
@@ -673,5 +681,35 @@ public class MatchingService : IMatchingService
 
     private static bool IsInactiveStatus(string? status) =>
         string.Equals(status, "Inactive", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Tổng giá sân (các ca đã chọn): gốc + sau ưu đãi đơn đặt sân.
+    /// </summary>
+    private static (decimal originalTotal, decimal actualTotal, bool hasDiscount) ComputePostCourtPrices(
+        MatchingPost p, int totalSlots, Booking? booking = null)
+    {
+        var originalItemsTotal = p.MatchingPostItems.Sum(i => i.BookingItem?.FinalPrice ?? 0m);
+
+        Dictionary<Guid, decimal> actualMap = new();
+        var bookingRef = booking ?? p.Booking;
+        if (bookingRef != null)
+            actualMap = PriceDistributionHelper.BuildActualItemPriceMap(bookingRef);
+
+        var actualItemsTotal = p.MatchingPostItems.Sum(i =>
+            actualMap.GetValueOrDefault(i.BookingItemId, i.BookingItem?.FinalPrice ?? 0m));
+
+        var headCount = Math.Max(totalSlots, 1);
+        if (p.PricePerSlot.HasValue)
+        {
+            var fromSlot = p.PricePerSlot.Value * headCount;
+            if (actualMap.Count == 0)
+                actualItemsTotal = fromSlot;
+            else if (Math.Abs(fromSlot - actualItemsTotal) > 0.5m && fromSlot < originalItemsTotal - 0.5m)
+                actualItemsTotal = fromSlot;
+        }
+
+        var hasDiscount = originalItemsTotal > actualItemsTotal + 0.5m;
+        return (originalItemsTotal, actualItemsTotal, hasDiscount);
+    }
 
 }

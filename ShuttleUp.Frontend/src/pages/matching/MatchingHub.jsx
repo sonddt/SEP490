@@ -272,7 +272,7 @@ export default function MatchingHub() {
           {/* ── Filter & View Options ── */}
           {tab === 'all' && (
             <div style={{ backgroundColor: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', padding: '24px', marginBottom: '32px' }}>
-              <div className="row align-items-center">
+              <div className="row">
                   <div className="col-12 mb-3">
                     <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block' }}>
                       <i className="feather-search me-1"></i> Tìm kiếm (theo từng ký tự)
@@ -287,18 +287,17 @@ export default function MatchingHub() {
                       autoComplete="off"
                     />
                   </div>
-                  <div className="col-lg-8">
-                     {/* Modern Filter Inputs */}
-                     <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                        <div style={{ flex: 1, minWidth: '180px' }}>
-                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px' }}><i className="feather-award me-1"></i> Trình độ</label>
-                            <select className="form-select" style={{ borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '700', color: '#1e293b' }} value={filters.skillLevel} onChange={(e) => handleFilterChange('skillLevel', e.target.value)}>
+                  <div className="col-12">
+                     <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                        <div style={{ flex: '1 1 160px', minWidth: '140px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block' }}><i className="feather-award me-1"></i> Trình độ</label>
+                            <select className="form-select" style={{ height: '48px', borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '700', color: '#1e293b' }} value={filters.skillLevel} onChange={(e) => handleFilterChange('skillLevel', e.target.value)}>
                               {SKILL_FILTER_OPTIONS.map(o => <option key={o.value || 'all'} value={o.value}>{o.label}</option>)}
                             </select>
                         </div>
-                        <div style={{ flex: 1, minWidth: '180px' }}>
-                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px' }}><i className="feather-calendar me-1"></i> Ngày chơi</label>
-                            <div style={{ borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '700', color: '#1e293b', padding: '1px 3px' }}>
+                        <div style={{ flex: '1 1 160px', minWidth: '140px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block' }}><i className="feather-calendar me-1"></i> Ngày chơi</label>
+                            <div style={{ height: '48px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '700', color: '#1e293b', padding: '1px 3px' }}>
                                 <ShuttleDateField
                                   value={filters.playDate}
                                   onChange={(ymd) => handleFilterChange('playDate', ymd)}
@@ -306,43 +305,34 @@ export default function MatchingHub() {
                                 />
                             </div>
                         </div>
-                        <div style={{ flex: 1, minWidth: '180px' }}>
-                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px' }}><i className="feather-map-pin me-1"></i> Khu vực</label>
-                            <input type="text" className="form-control" placeholder="VD: Hồ Chí Minh, Hà Nội…" style={{ borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '700', color: '#1e293b' }} value={filters.province} onChange={(e) => handleFilterChange('province', e.target.value)} />
+                        <div style={{ flex: '1 1 160px', minWidth: '140px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block' }}><i className="feather-map-pin me-1"></i> Khu vực</label>
+                            <input type="text" className="form-control" placeholder="VD: Hồ Chí Minh, Hà Nội…" style={{ height: '48px', borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '700', color: '#1e293b' }} value={filters.province} onChange={(e) => handleFilterChange('province', e.target.value)} />
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '2px', gap: '8px' }}>
-                            <button onClick={handleMatchForYou} style={{ height: '48px', padding: '0 16px', borderRadius: '12px', backgroundColor: isMatchingActive ? '#097E52' : '#e8f5ee', color: isMatchingActive ? '#fff' : '#097E52', border: isMatchingActive ? '1px solid #097E52' : '1px solid #bbf7d0', fontWeight: '700', transition: 'all 0.2s', display: 'flex', alignItems: 'center', boxShadow: isMatchingActive ? '0 2px 8px rgba(9,126,82,0.25)' : 'none' }}>
-                                <i className="feather-target me-1"></i> Phù hợp với bạn
-                            </button>
-                            <button onClick={handleResetFilters} style={{ height: '48px', padding: '0 16px', borderRadius: '12px', backgroundColor: '#fef2f2', color: '#ef4444', border: '1px solid #fee2e2', fontWeight: '700', transition: 'all 0.2s', display: 'flex', alignItems: 'center' }}>
-                                <i className="feather-x me-1"></i> Xoá lọc (Tất cả)
-                            </button>
-                        </div>
-                     </div>
-                  </div>
-                  
-                  <div className="col-lg-4 mt-4 mt-lg-0">
-                     <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-end', alignItems: 'flex-start' }}>
-
-                         {/* Status Filter */}
-                         <div style={{ minWidth: '160px' }}>
+                        <div style={{ flex: '1 1 160px', minWidth: '140px' }}>
                             <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block' }}>Trạng thái</label>
-                            <select className="form-select" style={{ height: '48px', borderRadius: '12px', border: 'none', backgroundColor: '#f1f5f9', fontWeight: '700', color: '#1e293b' }} value={filters.status || ''} onChange={(e) => handleFilterChange('status', e.target.value)}>
+                            <select className="form-select" style={{ height: '48px', borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '700', color: '#1e293b' }} value={filters.status || ''} onChange={(e) => handleFilterChange('status', e.target.value)}>
                               <option value="">Tất cả</option>
                               <option value="OPEN">Còn thiếu người</option>
                               <option value="FULL">Đã đủ người</option>
                             </select>
-                         </div>
-                         
-                         {/* Sort Options */}
-                         <div style={{ minWidth: '160px' }}>
+                        </div>
+                        <div style={{ flex: '1 1 160px', minWidth: '140px' }}>
                             <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block' }}>Sắp xếp</label>
-                            <select className="form-select" style={{ height: '48px', borderRadius: '12px', border: 'none', backgroundColor: '#f1f5f9', fontWeight: '700', color: '#1e293b' }} value={filters.sort || 'newest'} onChange={(e) => handleFilterChange('sort', e.target.value)}>
+                            <select className="form-select" style={{ height: '48px', borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '700', color: '#1e293b' }} value={filters.sort || 'newest'} onChange={(e) => handleFilterChange('sort', e.target.value)}>
                               {sortOptions.map((o) => (
                                 <option key={o.value} value={o.value}>{o.label}</option>
                               ))}
                             </select>
-                         </div>
+                        </div>
+                     </div>
+                     <div style={{ display: 'flex', gap: '8px', marginTop: '16px', flexWrap: 'wrap' }}>
+                        <button onClick={handleMatchForYou} style={{ height: '48px', padding: '0 16px', borderRadius: '12px', backgroundColor: isMatchingActive ? '#097E52' : '#e8f5ee', color: isMatchingActive ? '#fff' : '#097E52', border: isMatchingActive ? '1px solid #097E52' : '1px solid #bbf7d0', fontWeight: '700', transition: 'all 0.2s', display: 'flex', alignItems: 'center', boxShadow: isMatchingActive ? '0 2px 8px rgba(9,126,82,0.25)' : 'none' }}>
+                            <i className="feather-target me-1"></i> Phù hợp với bạn
+                        </button>
+                        <button onClick={handleResetFilters} style={{ height: '48px', padding: '0 16px', borderRadius: '12px', backgroundColor: '#fef2f2', color: '#ef4444', border: '1px solid #fee2e2', fontWeight: '700', transition: 'all 0.2s', display: 'flex', alignItems: 'center' }}>
+                            <i className="feather-x me-1"></i> Xoá lọc (Tất cả)
+                        </button>
                      </div>
                   </div>
               </div>

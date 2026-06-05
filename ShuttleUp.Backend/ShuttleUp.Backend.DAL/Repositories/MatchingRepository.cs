@@ -92,6 +92,7 @@ public class MatchingRepository : Repository<MatchingPost>, IMatchingRepository
             return await query
                 .Include(p => p.CreatorUser).ThenInclude(u => u!.AvatarFile)
                 .Include(p => p.Venue).ThenInclude(v => v!.Files)
+                .Include(p => p.Booking).ThenInclude(b => b!.BookingItems)
                 .Include(p => p.MatchingMembers)
                 .Include(p => p.MatchingJoinRequests)
                 .Include(p => p.MatchingPostItems).ThenInclude(i => i.BookingItem)
@@ -101,6 +102,7 @@ public class MatchingRepository : Repository<MatchingPost>, IMatchingRepository
         var all = await query
             .Include(p => p.CreatorUser).ThenInclude(u => u!.AvatarFile)
             .Include(p => p.Venue).ThenInclude(v => v!.Files)
+            .Include(p => p.Booking).ThenInclude(b => b!.BookingItems)
             .Include(p => p.MatchingMembers)
             .Include(p => p.MatchingJoinRequests)
             .Include(p => p.MatchingPostItems).ThenInclude(i => i.BookingItem)
@@ -158,6 +160,7 @@ public class MatchingRepository : Repository<MatchingPost>, IMatchingRepository
         return await _dbSet.AsNoTracking()
             .Include(p => p.CreatorUser).ThenInclude(u => u!.AvatarFile)
             .Include(p => p.Venue).ThenInclude(v => v!.Files)
+            .Include(p => p.Booking).ThenInclude(b => b!.BookingItems)
             .Include(p => p.MatchingMembers)
             .Include(p => p.MatchingJoinRequests)
             .Include(p => p.MatchingPostItems).ThenInclude(i => i.BookingItem)
@@ -171,6 +174,7 @@ public class MatchingRepository : Repository<MatchingPost>, IMatchingRepository
         return await _dbSet.AsNoTracking()
             .Include(p => p.CreatorUser).ThenInclude(u => u!.AvatarFile)
             .Include(p => p.Venue).ThenInclude(v => v!.Files)
+            .Include(p => p.Booking).ThenInclude(b => b!.BookingItems)
             .Include(p => p.MatchingMembers)
             .Include(p => p.MatchingJoinRequests)
             .Include(p => p.MatchingPostItems).ThenInclude(i => i.BookingItem)
