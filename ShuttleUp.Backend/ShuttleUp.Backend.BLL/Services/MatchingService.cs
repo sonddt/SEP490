@@ -3,6 +3,7 @@ using ShuttleUp.BLL.Constants;
 using ShuttleUp.BLL.DTOs.Matching;
 using ShuttleUp.BLL.Helpers;
 using ShuttleUp.BLL.Interfaces;
+using ShuttleUp.DAL.Helpers;
 using ShuttleUp.DAL.Models;
 using ShuttleUp.DAL.Repositories.Interfaces;
 
@@ -212,7 +213,7 @@ public class MatchingService : IMatchingService
                 _ => actualSelectedTotal / Math.Max(dto.RequiredPlayers + 1, 1)
             },
             RequiredPlayers = dto.RequiredPlayers,
-            SkillLevel = dto.SkillLevel,
+            SkillLevel = SkillLevelHelper.Normalize(dto.SkillLevel),
             GenderPref = dto.GenderPref,
             ExpenseSharing = dto.ExpenseSharing,
             PlayPurpose = dto.PlayPurpose,
@@ -275,7 +276,7 @@ public class MatchingService : IMatchingService
         }
 
         if (dto.Title != null) post.Title = dto.Title;
-        if (dto.SkillLevel != null) post.SkillLevel = dto.SkillLevel;
+        if (dto.SkillLevel != null) post.SkillLevel = SkillLevelHelper.Normalize(dto.SkillLevel);
         if (dto.GenderPref != null) post.GenderPref = dto.GenderPref;
         if (dto.ExpenseSharing != null)
         {

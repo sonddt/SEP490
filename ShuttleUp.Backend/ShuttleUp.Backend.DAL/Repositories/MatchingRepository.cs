@@ -11,29 +11,54 @@ public class MatchingRepository : Repository<MatchingPost>, IMatchingRepository
     {
     }
 
-    public async Task<IEnumerable<MatchingPost>> GetPostsPagedAsync(string? skillLevel, string? province, DateOnly? playDate, string? sort, string? search, int skip, int take)
+    private static IQueryable<MatchingPost> BuildOpenPostsQuery(IQueryable<MatchingPost> query, DateTime localTime)
     {
-        var localTime = DateTime.Now;
-        var query = _dbSet.AsNoTracking()
-            .Include(p => p.CreatorUser).ThenInclude(u => u!.AvatarFile)
-            .Include(p => p.Venue)
-            .Include(p => p.MatchingMembers)
-            .Include(p => p.MatchingJoinRequests)
-            .Include(p => p.MatchingPostItems).ThenInclude(i => i.BookingItem)
+        return query
             .Where(p => p.Status == "OPEN" || p.Status == "FULL")
             .Where(p => p.MatchingPostItems.Any(i =>
                 i.BookingItem != null
                 && i.BookingItem.StartTime.HasValue
                 && i.BookingItem.StartTime.Value > localTime));
+    }
 
-        if (!string.IsNullOrWhiteSpace(skillLevel))
-            query = query.Where(p => p.SkillLevel == skillLevel);
-        if (playDate.HasValue)
-            query = query.Where(p => p.PlayDate == playDate);
+    private static bool MatchesProvince(MatchingPost post, string province)
+    {
+        return SearchNormalize.FoldedContains(post.Venue?.Address, province)
+            || SearchNormalize.FoldedContains(post.Venue?.Name, province);
+    }
+
+    private static bool MatchesSearch(MatchingPost post, string search)
+    {
+        var foldQ = SearchNormalize.Fold(search);
+        if (string.IsNullOrEmpty(foldQ)) return true;
+        return SearchNormalize.FoldedContains(post.Title, search)
+            || SearchNormalize.FoldedContains(post.Venue?.Name, search)
+            || SearchNormalize.FoldedContains(post.CourtName, search)
+            || SearchNormalize.FoldedContains(post.Venue?.Address, search)
+            || SearchNormalize.FoldedContains(post.CreatorUser?.FullName, search);
+    }
+
+    private static IEnumerable<MatchingPost> ApplyInMemoryFilters(
+        IEnumerable<MatchingPost> posts, string? province, string? search)
+    {
+        var result = posts;
         if (!string.IsNullOrWhiteSpace(province))
-            query = query.Where(p => p.Venue != null && p.Venue.Address.Contains(province));
+            result = result.Where(p => MatchesProvince(p, province));
+        if (!string.IsNullOrWhiteSpace(search))
+            result = result.Where(p => MatchesSearch(p, search));
+        return result;
+    }
 
-        query = sort switch
+    private static IQueryable<MatchingPost> ApplySkillFilter(IQueryable<MatchingPost> query, string? skillLevel)
+    {
+        if (string.IsNullOrWhiteSpace(skillLevel)) return query;
+        var aliases = SkillLevelHelper.GetFilterAliases(skillLevel).ToList();
+        return query.Where(p => p.SkillLevel != null && aliases.Contains(p.SkillLevel));
+    }
+
+    private static IQueryable<MatchingPost> ApplySort(IQueryable<MatchingPost> query, string? sort)
+    {
+        return sort switch
         {
             "price_asc" => query.OrderBy(p => p.PricePerSlot),
             "price_desc" => query.OrderByDescending(p => p.PricePerSlot),
@@ -41,53 +66,63 @@ public class MatchingRepository : Repository<MatchingPost>, IMatchingRepository
             "oldest" => query.OrderBy(p => p.CreatedAt),
             _ => query.OrderByDescending(p => p.CreatedAt)
         };
+    }
 
-        if (string.IsNullOrWhiteSpace(search))
+    public async Task<IEnumerable<MatchingPost>> GetPostsPagedAsync(string? skillLevel, string? province, DateOnly? playDate, string? sort, string? search, int skip, int take)
+    {
+        var localTime = DateTime.Now;
+        IQueryable<MatchingPost> query = _dbSet.AsNoTracking();
+        query = BuildOpenPostsQuery(query, localTime);
+        query = ApplySkillFilter(query, skillLevel);
+
+        if (playDate.HasValue)
+            query = query.Where(p => p.PlayDate == playDate);
+
+        query = ApplySort(query, sort);
+
+        var needsInMemoryFilter = !string.IsNullOrWhiteSpace(province) || !string.IsNullOrWhiteSpace(search);
+        if (!needsInMemoryFilter)
         {
-            return await query.Skip(skip).Take(take).ToListAsync();
+            return await query
+                .Include(p => p.CreatorUser).ThenInclude(u => u!.AvatarFile)
+                .Include(p => p.Venue)
+                .Include(p => p.MatchingMembers)
+                .Include(p => p.MatchingJoinRequests)
+                .Include(p => p.MatchingPostItems).ThenInclude(i => i.BookingItem)
+                .Skip(skip).Take(take).ToListAsync();
         }
 
-        var foldQ = SearchNormalize.Fold(search);
-        var all = await query.ToListAsync();
-        return all.Where(p =>
-            SearchNormalize.FoldedContains(p.Title, foldQ)
-            || SearchNormalize.FoldedContains(p.Venue?.Name, foldQ)
-            || SearchNormalize.FoldedContains(p.CourtName, foldQ)
-            || SearchNormalize.FoldedContains(p.Venue?.Address, foldQ)
-            || SearchNormalize.FoldedContains(p.CreatorUser?.FullName, foldQ))
-            .Skip(skip).Take(take).ToList();
+        var all = await query
+            .Include(p => p.CreatorUser).ThenInclude(u => u!.AvatarFile)
+            .Include(p => p.Venue)
+            .Include(p => p.MatchingMembers)
+            .Include(p => p.MatchingJoinRequests)
+            .Include(p => p.MatchingPostItems).ThenInclude(i => i.BookingItem)
+            .ToListAsync();
+        return ApplyInMemoryFilters(all, province, search).Skip(skip).Take(take).ToList();
     }
 
     public async Task<int> CountPostsAsync(string? skillLevel, string? province, DateOnly? playDate, string? search)
     {
         var localTime = DateTime.Now;
-        var query = _dbSet.AsNoTracking()
-            .Where(p => p.Status == "OPEN" || p.Status == "FULL")
-            .Where(p => p.MatchingPostItems.Any(i =>
-                i.BookingItem != null
-                && i.BookingItem.StartTime.HasValue
-                && i.BookingItem.StartTime.Value > localTime));
+        IQueryable<MatchingPost> query = _dbSet.AsNoTracking();
+        query = BuildOpenPostsQuery(query, localTime);
+        query = ApplySkillFilter(query, skillLevel);
 
-        if (!string.IsNullOrWhiteSpace(skillLevel))
-            query = query.Where(p => p.SkillLevel == skillLevel);
         if (playDate.HasValue)
             query = query.Where(p => p.PlayDate == playDate);
-        if (!string.IsNullOrWhiteSpace(province))
-            query = query.Where(p => p.Venue != null && p.Venue.Address.Contains(province));
 
-        if (string.IsNullOrWhiteSpace(search))
+        var needsInMemoryFilter = !string.IsNullOrWhiteSpace(province) || !string.IsNullOrWhiteSpace(search);
+        if (!needsInMemoryFilter)
         {
             return await query.CountAsync();
         }
 
-        var foldQ = SearchNormalize.Fold(search);
-        var all = await query.ToListAsync();
-        return all.Count(p =>
-            SearchNormalize.FoldedContains(p.Title, foldQ)
-            || SearchNormalize.FoldedContains(p.Venue?.Name, foldQ)
-            || SearchNormalize.FoldedContains(p.CourtName, foldQ)
-            || SearchNormalize.FoldedContains(p.Venue?.Address, foldQ)
-            || SearchNormalize.FoldedContains(p.CreatorUser?.FullName, foldQ));
+        var all = await query
+            .Include(p => p.Venue)
+            .Include(p => p.CreatorUser)
+            .ToListAsync();
+        return ApplyInMemoryFilters(all, province, search).Count();
     }
 
     public async Task<MatchingPost?> GetPostDetailAsync(Guid postId)

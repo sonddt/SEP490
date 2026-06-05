@@ -2,13 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import matchingApi from '../../api/matchingApi';
 import MatchingPeopleCountInput from '../../components/matching/MatchingPeopleCountInput';
-
-const skillOptions = [
-  { value: 'beginner', label: 'Mới chơi' },
-  { value: 'intermediate', label: 'Trung bình' },
-  { value: 'advanced', label: 'Khá giỏi' },
-  { value: 'expert', label: 'Chuyên nghiệp' },
-];
+import { SKILL_CREATE_OPTIONS } from '../../constants/skillLevels';
 
 const genderOptions = [
   { value: '', label: 'Không yêu cầu' },
@@ -185,7 +179,7 @@ export default function MatchingEditPost() {
                 <div className="mb-3">
                   <label className="form-label">Trình độ yêu cầu</label>
                   <div className="matching-chips">
-                    {skillOptions.map((o) => (
+                    {SKILL_CREATE_OPTIONS.filter((o) => o.value).map((o) => (
                       <button
                         key={o.value}
                         type="button"

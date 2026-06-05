@@ -113,6 +113,12 @@ const Personalization = () => {
       setSaving(true);
       setError('');
       try {
+        let existingPhone = user?.phoneNumber ?? null;
+        try {
+          const me = await profileApi.getMe();
+          existingPhone = me?.user?.phoneNumber ?? existingPhone;
+        } catch { /* giữ SĐT từ context nếu getMe lỗi */ }
+
         const payload = {
           fullName: user?.fullName || 'User',
           province: formData.province,
@@ -123,6 +129,7 @@ const Personalization = () => {
           playFrequency: formData.playFrequency,
           isPersonalized: true,
         };
+        if (existingPhone) payload.phoneNumber = existingPhone;
 
         await profileApi.updateMe(payload);
 

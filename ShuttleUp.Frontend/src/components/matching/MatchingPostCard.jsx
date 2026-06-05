@@ -5,6 +5,7 @@ import MatchingScheduleModal from './MatchingScheduleModal';
 import { buildScheduleSummary } from '../../utils/matchingScheduleSummary';
 import { useAuth } from '../../context/AuthContext';
 import { notifySuccess, notifyError } from '../../hooks/useNotification';
+import { getSkillLabel } from '../../constants/skillLevels';
 
 function sameUserId(a, b) {
   if (a == null || b == null) return false;
@@ -12,13 +13,6 @@ function sameUserId(a, b) {
 }
 
 const defaultImg = '/assets/img/venues/venues-01.jpg';
-
-const skillLabels = {
-  beginner: 'Mới chơi',
-  intermediate: 'Trung bình',
-  advanced: 'Khá giỏi',
-  expert: 'Chuyên nghiệp',
-};
 
 const expenseLabels = {
   split_equal: 'Chia đều',
@@ -169,7 +163,7 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
             <div style={{ position: 'absolute', top: '12px', left: '12px', display: 'flex', gap: '8px', zIndex: 1 }}>
               {post.skillLevel && (
                 <span style={{ backgroundColor: '#097E52', color: '#fff', padding: '4px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: '700' }}>
-                  {skillLabels[post.skillLevel] || post.skillLevel}
+                  {getSkillLabel(post.skillLevel) || post.skillLevel}
                 </span>
               )}
             </div>
@@ -304,7 +298,7 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
           <div style={{ position: 'absolute', top: '12px', left: '12px', display: 'flex', gap: '8px', zIndex: 1 }}>
             {post.skillLevel && (
                <span style={{ backgroundColor: '#097E52', color: '#fff', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                 {skillLabels[post.skillLevel] || post.skillLevel}
+                 {getSkillLabel(post.skillLevel) || post.skillLevel}
                </span>
             )}
           </div>

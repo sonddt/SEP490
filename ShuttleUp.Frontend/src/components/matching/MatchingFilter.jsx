@@ -1,13 +1,6 @@
 import { useState } from 'react';
 import ShuttleDateField from '../ui/ShuttleDateField';
-
-const skillOptions = [
-  { value: '', label: 'Tất cả trình độ' },
-  { value: 'beginner', label: 'Mới chơi' },
-  { value: 'intermediate', label: 'Trung bình' },
-  { value: 'advanced', label: 'Khá giỏi' },
-  { value: 'expert', label: 'Chuyên nghiệp' },
-];
+import { SKILL_FILTER_OPTIONS } from '../../constants/skillLevels';
 
 export default function MatchingFilter({ filters, onFilterChange }) {
   const [expanded, setExpanded] = useState(false);
@@ -26,8 +19,8 @@ export default function MatchingFilter({ filters, onFilterChange }) {
             value={filters.skillLevel || ''}
             onChange={(e) => handleChange('skillLevel', e.target.value)}
           >
-            {skillOptions.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+            {SKILL_FILTER_OPTIONS.map((o) => (
+              <option key={o.value || 'all'} value={o.value}>{o.label}</option>
             ))}
           </select>
         </div>
@@ -46,7 +39,7 @@ export default function MatchingFilter({ filters, onFilterChange }) {
           <input
             type="text"
             className="form-control"
-            placeholder="Khu vực (VD: Quận 7)"
+            placeholder="Khu vực (VD: Hồ Chí Minh)"
             value={filters.province || ''}
             onChange={(e) => handleChange('province', e.target.value)}
           />

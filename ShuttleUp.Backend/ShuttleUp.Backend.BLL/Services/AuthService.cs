@@ -312,6 +312,7 @@ public class AuthService : IAuthService
                 Id = user.Id,
                 Email = user.Email,
                 FullName = user.FullName,
+                PhoneNumber = user.PhoneNumber,
                 Roles = user.Roles.Select(r => r.Name),
                 AuthProvider = user.AuthProvider,
                 HasPassword = !string.IsNullOrEmpty(user.PasswordHash),

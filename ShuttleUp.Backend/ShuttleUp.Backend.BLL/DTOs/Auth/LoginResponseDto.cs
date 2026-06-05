@@ -13,6 +13,7 @@ public class UserInfoDto
     public Guid Id { get; set; }
     public string Email { get; set; } = null!;
     public string FullName { get; set; } = null!;
+    public string? PhoneNumber { get; set; }
     public IEnumerable<string> Roles { get; set; } = [];
     public string AuthProvider { get; set; } = "LOCAL";
     /// <summary>true khi user đã có PasswordHash (kể cả tài khoản Google đã「Thêm mật khẩu」).</summary>

@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import MatchingPostCard from '../../components/matching/MatchingPostCard';
 import ShuttleDateField from '../../components/ui/ShuttleDateField';
 import { normalizeSearchText } from '../../utils/searchNormalize';
+import { SKILL_FILTER_OPTIONS } from '../../constants/skillLevels';
 import { notifyInfo, notifySuccess, notifyWarning } from '../../hooks/useNotification';
 
 const sortOptions = [
@@ -62,16 +63,6 @@ function applyClientListFilterSort(items, search, sort) {
   list.sort((a, b) => clientSortCompare(a, b, key));
   return list;
 }
-
-const skillOptions = [
-  { value: '', label: 'Tất cả trình độ' },
-  { value: 'Yếu', label: 'Yếu / Mới chơi' },
-  { value: 'Trung Bình Yếu', label: 'Trung Bình Yếu' },
-  { value: 'Trung Bình', label: 'Trung Bình' },
-  { value: 'Khá', label: 'Khá' },
-  { value: 'Bán Chuyên', label: 'Bán Chuyên' },
-  { value: 'Chuyên Nghiệp', label: 'Chuyên nghiệp' }
-];
 
 export default function MatchingHub() {
   const { user, updateUser } = useAuth();
@@ -305,7 +296,7 @@ export default function MatchingHub() {
                         <div style={{ flex: 1, minWidth: '180px' }}>
                             <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px' }}><i className="feather-award me-1"></i> Trình độ</label>
                             <select className="form-select" style={{ borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '700', color: '#1e293b' }} value={filters.skillLevel} onChange={(e) => handleFilterChange('skillLevel', e.target.value)}>
-                              {skillOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                              {SKILL_FILTER_OPTIONS.map(o => <option key={o.value || 'all'} value={o.value}>{o.label}</option>)}
                             </select>
                         </div>
                         <div style={{ flex: 1, minWidth: '180px' }}>
@@ -320,7 +311,7 @@ export default function MatchingHub() {
                         </div>
                         <div style={{ flex: 1, minWidth: '180px' }}>
                             <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px' }}><i className="feather-map-pin me-1"></i> Khu vực</label>
-                            <input type="text" className="form-control" placeholder="VD: Quận 7" style={{ borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '700', color: '#1e293b' }} value={filters.province} onChange={(e) => handleFilterChange('province', e.target.value)} />
+                            <input type="text" className="form-control" placeholder="VD: Hồ Chí Minh, Hà Nội…" style={{ borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '700', color: '#1e293b' }} value={filters.province} onChange={(e) => handleFilterChange('province', e.target.value)} />
                         </div>
                         <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '2px', gap: '8px' }}>
                             <button onClick={handleMatchForYou} style={{ height: '48px', padding: '0 16px', borderRadius: '12px', backgroundColor: isMatchingActive ? '#097E52' : '#e8f5ee', color: isMatchingActive ? '#fff' : '#097E52', border: isMatchingActive ? '1px solid #097E52' : '1px solid #bbf7d0', fontWeight: '700', transition: 'all 0.2s', display: 'flex', alignItems: 'center', boxShadow: isMatchingActive ? '0 2px 8px rgba(9,126,82,0.25)' : 'none' }}>

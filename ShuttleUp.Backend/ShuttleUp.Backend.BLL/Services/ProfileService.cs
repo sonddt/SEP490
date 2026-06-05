@@ -193,34 +193,47 @@ public class ProfileService : IProfileService
 
     public async Task<object> UpdateMyProfileAsync(Guid userId, UpdateProfileDto dto)
     {
-        var fullName = (dto.FullName ?? string.Empty).Trim();
-        var phone = string.IsNullOrWhiteSpace(dto.PhoneNumber) ? null : dto.PhoneNumber.Trim();
-
-        try
-        {
-            if (!string.IsNullOrWhiteSpace(phone))
-            {
-                var phoneInUse = await _userRepo.IsPhoneInUseAsync(userId, phone);
-                if (phoneInUse) throw new InvalidOperationException("Số điện thoại đã được sử dụng.");
-            }
-        }
-        catch (Exception ex) when (IsUnknownColumnException(ex)) { }
-
-        DateOnly? parsedDob = null;
-        if (!string.IsNullOrWhiteSpace(dto.DateOfBirth))
-        {
-            if (!DateOnly.TryParse(dto.DateOfBirth.Trim(), out var dob))
-                throw new ArgumentException("Ngày sinh không hợp lệ (dùng định dạng yyyy-MM-dd).");
-            parsedDob = dob;
-        }
-
         var user = await _userRepo.GetByIdAsync(userId);
         if (user == null) throw new KeyNotFoundException("Không tìm thấy tài khoản.");
 
-        user.FullName = fullName;
-        user.PhoneNumber = phone;
-        user.Gender = string.IsNullOrWhiteSpace(dto.Gender) ? null : dto.Gender.Trim();
-        user.DateOfBirth = parsedDob;
+        if (!string.IsNullOrWhiteSpace(dto.FullName))
+            user.FullName = dto.FullName.Trim();
+
+        string? phoneToSave = user.PhoneNumber;
+        if (dto.PhoneNumber != null)
+        {
+            phoneToSave = string.IsNullOrWhiteSpace(dto.PhoneNumber) ? null : dto.PhoneNumber.Trim();
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(phoneToSave))
+                {
+                    var phoneInUse = await _userRepo.IsPhoneInUseAsync(userId, phoneToSave);
+                    if (phoneInUse) throw new InvalidOperationException("Số điện thoại đã được sử dụng.");
+                }
+            }
+            catch (Exception ex) when (IsUnknownColumnException(ex)) { }
+
+            user.PhoneNumber = phoneToSave;
+        }
+
+        if (dto.Gender != null)
+            user.Gender = string.IsNullOrWhiteSpace(dto.Gender) ? null : dto.Gender.Trim();
+
+        if (dto.DateOfBirth != null)
+        {
+            if (string.IsNullOrWhiteSpace(dto.DateOfBirth))
+            {
+                user.DateOfBirth = null;
+            }
+            else if (!DateOnly.TryParse(dto.DateOfBirth.Trim(), out var dob))
+            {
+                throw new ArgumentException("Ngày sinh không hợp lệ (dùng định dạng yyyy-MM-dd).");
+            }
+            else
+            {
+                user.DateOfBirth = dob;
+            }
+        }
 
         try
         {
@@ -228,16 +241,20 @@ public class ProfileService : IProfileService
         }
         catch (Exception ex) when (IsUnknownColumnException(ex))
         {
-            await _userRepo.UpdateProfileFallbackAsync(userId, fullName, phone);
+            await _userRepo.UpdateProfileFallbackAsync(userId, user.FullName, phoneToSave);
             return new { message = "Cập nhật họ tên và số điện thoại thành công. (Một số cột khác trên DB có thể chưa đồng bộ)" };
         }
 
         try
         {
-            user.About = string.IsNullOrWhiteSpace(dto.About) ? null : dto.About.Trim();
-            user.Address = string.IsNullOrWhiteSpace(dto.Address) ? null : dto.Address.Trim();
-            user.District = string.IsNullOrWhiteSpace(dto.District) ? null : dto.District.Trim();
-            user.Province = string.IsNullOrWhiteSpace(dto.Province) ? null : dto.Province.Trim();
+            if (dto.About != null)
+                user.About = string.IsNullOrWhiteSpace(dto.About) ? null : dto.About.Trim();
+            if (dto.Address != null)
+                user.Address = string.IsNullOrWhiteSpace(dto.Address) ? null : dto.Address.Trim();
+            if (dto.District != null)
+                user.District = string.IsNullOrWhiteSpace(dto.District) ? null : dto.District.Trim();
+            if (dto.Province != null)
+                user.Province = string.IsNullOrWhiteSpace(dto.Province) ? null : dto.Province.Trim();
 
             if (dto.SkillLevel != null) user.SkillLevel = dto.SkillLevel.Trim();
             if (dto.PlayPurpose != null) user.PlayPurpose = dto.PlayPurpose.Trim();

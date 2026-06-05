@@ -4,16 +4,7 @@ import matchingApi from '../../api/matchingApi';
 import MatchingPeopleCountInput from '../../components/matching/MatchingPeopleCountInput';
 import DiscountPriceDisplay from '../../components/matching/DiscountPriceDisplay';
 import { parseSlotDateTime } from '../../utils/bookingSlotTime';
-
-const skillOptions = [
-  { value: '', label: 'Không yêu cầu' },
-  { value: 'Yếu', label: 'Yếu / Mới chơi' },
-  { value: 'Trung Bình Yếu', label: 'Trung Bình Yếu' },
-  { value: 'Trung Bình', label: 'Trung Bình' },
-  { value: 'Khá', label: 'Khá' },
-  { value: 'Bán Chuyên', label: 'Bán Chuyên' },
-  { value: 'Chuyên Nghiệp', label: 'Chuyên nghiệp' }
-];
+import { SKILL_CREATE_OPTIONS } from '../../constants/skillLevels';
 
 const genderOptions = [
   { value: '', label: 'Không yêu cầu' },
@@ -518,7 +509,7 @@ export default function MatchingCreate() {
                       <div className="mb-3">
                         <label className="form-label">Trình độ yêu cầu</label>
                         <div className="matching-chips">
-                          {skillOptions.map((o) => (
+                          {SKILL_CREATE_OPTIONS.map((o) => (
                             <button
                               key={o.value}
                               className={`matching-chip ${form.skillLevel === o.value ? 'active' : ''}`}
@@ -595,7 +586,7 @@ export default function MatchingCreate() {
                           <p><i className="feather-map-pin"></i> {selectedBooking?.venueName}</p>
                           <p><i className="feather-clock"></i> {selectedItems.length} ca chơi</p>
                           <p><i className="feather-dollar-sign"></i> {renderPricePerPerson()}</p>
-                          {form.skillLevel && <span className="badge bg-info me-1">{skillOptions.find(o => o.value === form.skillLevel)?.label}</span>}
+                          {form.skillLevel && <span className="badge bg-info me-1">{SKILL_CREATE_OPTIONS.find(o => o.value === form.skillLevel)?.label}</span>}
                           {form.genderPref && <span className="badge bg-secondary me-1">{form.genderPref}</span>}
                           {form.playPurpose && <span className="badge bg-primary me-1">{form.playPurpose}</span>}
                           <span className="badge bg-success">{expenseOptions.find(o => o.value === form.expenseSharing)?.label}</span>
@@ -703,7 +694,7 @@ export default function MatchingCreate() {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '16px', borderBottom: '1px solid #f1f5f9' }}>
                                         <span style={{ color: '#64748b', fontWeight: '600', display: 'flex', alignItems: 'center' }}><i className="feather-bar-chart-2 me-2"></i>Trình độ</span>
-                                        <span style={{ color: '#1e293b', fontWeight: '800' }}>{skillOptions.find(o => o.value === form.skillLevel)?.label || 'Bất kỳ mức nào'}</span>
+                                        <span style={{ color: '#1e293b', fontWeight: '800' }}>{SKILL_CREATE_OPTIONS.find(o => o.value === form.skillLevel)?.label || 'Bất kỳ mức nào'}</span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '16px', borderBottom: '1px solid #f1f5f9' }}>
                                         <span style={{ color: '#64748b', fontWeight: '600', display: 'flex', alignItems: 'center' }}><i className="feather-users me-2"></i>Giới tính</span>

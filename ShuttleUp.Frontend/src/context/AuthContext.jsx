@@ -70,6 +70,7 @@ export function AuthProvider({ children }) {
           if (u.province !== undefined && u.province !== user.province) patch.province = u.province;
           if (u.authProvider !== undefined && u.authProvider !== user.authProvider) patch.authProvider = u.authProvider;
           if (u.hasPassword !== undefined && u.hasPassword !== user.hasPassword) patch.hasPassword = u.hasPassword;
+          if (u.phoneNumber !== undefined && u.phoneNumber !== user.phoneNumber) patch.phoneNumber = u.phoneNumber;
 
           if (Object.keys(patch).length > 0) {
             updateUser(patch);

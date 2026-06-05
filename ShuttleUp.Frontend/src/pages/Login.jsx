@@ -72,6 +72,7 @@ export default function Login() {
       const u = me?.user ?? {};
       updateUser?.({
         avatarUrl: u.avatarUrl ?? null,
+        phoneNumber: u.phoneNumber ?? null,
         isPersonalized: u.isPersonalized ?? null,
         province: u.province ?? null,
         district: u.district ?? null,

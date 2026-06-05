@@ -177,12 +177,16 @@ export default function Register() {
         isManagerRoleRequested: activeTab === 'manager',
       });
       login(data);
+      if (data?.user?.phoneNumber) {
+        updateUser?.({ phoneNumber: data.user.phoneNumber });
+      }
       notifySuccess(TOAST.GUEST.REGISTER_SUCCESS);
       try {
         const me = await profileApi.getMe();
         const profileUser = me?.user ?? {};
         updateUser?.({
           avatarUrl: profileUser.avatarUrl ?? null,
+          phoneNumber: profileUser.phoneNumber ?? data?.user?.phoneNumber ?? null,
           isPersonalized: profileUser.isPersonalized ?? null,
           province: profileUser.province ?? null,
           district: profileUser.district ?? null,
@@ -232,6 +236,7 @@ export default function Register() {
         const profileUser = me?.user ?? {};
         updateUser?.({
           avatarUrl: profileUser.avatarUrl ?? null,
+          phoneNumber: profileUser.phoneNumber ?? data?.user?.phoneNumber ?? null,
           isPersonalized: profileUser.isPersonalized ?? null,
           province: profileUser.province ?? null,
           district: profileUser.district ?? null,
