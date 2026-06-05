@@ -20,9 +20,10 @@ const TABS = [
   { key: 'UPCOMING', label: 'Sắp tới', icon: 'feather-calendar' },
   { key: 'COMPLETED', label: 'Hoàn thành', icon: 'feather-check-circle' },
   { key: 'CANCELLED', label: 'Đã huỷ / Từ chối', icon: 'feather-x-circle' },
+  { key: 'REFUNDED', label: 'Đã hoàn tiền', icon: 'feather-rotate-ccw' },
 ];
 
-const CANCELLED_GROUP = new Set(['CANCELLED', 'PENDING_REFUND', 'PENDING_RECONCILIATION', 'REFUNDED']);
+const CANCELLED_GROUP = new Set(['CANCELLED', 'PENDING_REFUND', 'PENDING_RECONCILIATION']);
 
 const WEEKDAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
@@ -256,11 +257,14 @@ export default function ManagerBookings() {
   const counts = useMemo(() => {
     const c = {};
     let cancelledTab = 0;
+    let refundedTab = 0;
     bookings.forEach(b => {
       c[b.status] = (c[b.status] || 0) + 1;
       if (CANCELLED_GROUP.has(b.status)) cancelledTab++;
+      if (b.status === 'REFUNDED') refundedTab++;
     });
     c['CANCELLED'] = cancelledTab;
+    c['REFUNDED'] = refundedTab;
     c['ALL'] = bookings.length;
     return c;
   }, [bookings]);
@@ -269,6 +273,7 @@ export default function ManagerBookings() {
     let list = bookings.filter(b => {
       if (activeTab === 'ALL') return true;
       if (activeTab === 'CANCELLED') return CANCELLED_GROUP.has(b.status);
+      if (activeTab === 'REFUNDED') return b.status === 'REFUNDED';
       return b.status === activeTab;
     });
     if (startDate) list = list.filter(b => b.date >= startDate);
