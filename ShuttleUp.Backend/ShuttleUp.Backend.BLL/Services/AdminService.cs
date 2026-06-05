@@ -188,6 +188,7 @@ public class AdminService : IAdminService
             var bookingCode = "SU" + b.Id.ToString("N")[^6..].ToUpperInvariant();
             var payment = b.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
             var paymentStatus = payment?.Status?.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase) == true ? "PAID" : "UNPAID";
+            var refundReq = b.RefundRequests.OrderByDescending(r => r.RequestedAt).FirstOrDefault();
 
             return new ManagerBookingListItemDto
             {
@@ -209,6 +210,9 @@ public class AdminService : IAdminService
                 PaymentStatus = paymentStatus,
                 PaymentMethod = payment?.Method,
                 ProofUrl = payment?.GatewayReference,
+                RefundStatus = refundReq?.Status,
+                RefundAmount = refundReq?.RequestedAmount,
+                PaidAmount = refundReq?.PaidAmount ?? payment?.Amount,
                 CreatedAt = b.CreatedAt,
                 Items = b.BookingItems.OrderBy(bi => bi.StartTime).Select(bi =>
                 {

@@ -27,7 +27,10 @@ public partial class BookingRepository
                          && courtIds.Contains(bi.CourtId.Value)
                          && bi.StartTime < maxEnd && bi.EndTime > minStart
                          && bi.Booking != null
-                         && bi.Booking.Status != "CANCELLED");
+                         && bi.Booking.Status != "CANCELLED"
+                         && bi.Booking.Status != "PENDING_REFUND"
+                         && bi.Booking.Status != "REFUNDED"
+                         && bi.Booking.Status != "PENDING_RECONCILIATION");
 
         if (excludeBookingId.HasValue)
             query = query.Where(bi => bi.BookingId != excludeBookingId.Value);
@@ -157,6 +160,9 @@ public partial class BookingRepository
                          && bi.StartTime < maxEnd && bi.EndTime > minStart
                          && bi.Booking != null
                          && bi.Booking.Status != "CANCELLED"
+                         && bi.Booking.Status != "PENDING_REFUND"
+                         && bi.Booking.Status != "REFUNDED"
+                         && bi.Booking.Status != "PENDING_RECONCILIATION"
                          && (bi.Booking.Status != "HOLDING"
                              || bi.Booking.HoldExpiresAt != null && bi.Booking.HoldExpiresAt > now))
             .ToListAsync(ct);

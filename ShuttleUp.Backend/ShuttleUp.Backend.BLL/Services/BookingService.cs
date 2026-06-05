@@ -174,7 +174,7 @@ public class BookingService : IBookingService
 
         booking.Status = newBookingStatus;
         foreach (var item in booking.BookingItems)
-            item.Status = newBookingStatus == "CANCELLED" ? "CANCELLED" : item.Status;
+            item.Status = (newBookingStatus is "CANCELLED" or "PENDING_REFUND" or "PENDING_RECONCILIATION") ? "CANCELLED" : item.Status;
 
         if (newBookingStatus == "CANCELLED")
         {

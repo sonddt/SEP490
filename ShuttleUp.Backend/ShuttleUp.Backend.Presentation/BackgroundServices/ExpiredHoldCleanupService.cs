@@ -46,6 +46,7 @@ public sealed class ExpiredHoldCleanupService : BackgroundService
         var now = DateTime.UtcNow;
 
         var expired = await db.Bookings
+            .Include(b => b.BookingItems)
             .Where(b => b.Status == "HOLDING" && b.HoldExpiresAt != null && b.HoldExpiresAt <= now)
             .ToListAsync(ct);
 
@@ -56,6 +57,11 @@ public sealed class ExpiredHoldCleanupService : BackgroundService
             booking.Status = "CANCELLED";
             booking.HoldExpiresAt = null;
             booking.ManagerStatusNote = "Hết thời gian giữ chỗ (5 phút)";
+            
+            foreach (var item in booking.BookingItems)
+            {
+                item.Status = "CANCELLED";
+            }
         }
 
         await db.SaveChangesAsync(ct);

@@ -119,7 +119,7 @@ public partial class BookingRepository : Repository<Booking>, IBookingRepository
 
     private IQueryable<Booking> BuildAllQuery(string? status, DateTime? sinceUtc, DateTime? untilUtc, string? search, string? bookingType)
     {
-        var q = _dbSet.AsNoTracking().AsSplitQuery().Include(b => b.Venue).Include(b => b.User)!.ThenInclude(u => u!.AvatarFile).Include(b => b.BookingItems).ThenInclude(bi => bi.Court)!.ThenInclude(c => c!.Files).Include(b => b.Payments).AsQueryable();
+        var q = _dbSet.AsNoTracking().AsSplitQuery().Include(b => b.Venue).Include(b => b.User)!.ThenInclude(u => u!.AvatarFile).Include(b => b.BookingItems).ThenInclude(bi => bi.Court)!.ThenInclude(c => c!.Files).Include(b => b.Payments).Include(b => b.RefundRequests).AsQueryable();
         if (!string.IsNullOrWhiteSpace(status) && status != "All") q = q.Where(b => b.Status == status.Trim().ToUpperInvariant());
         if (sinceUtc.HasValue) q = q.Where(b => b.CreatedAt.HasValue && b.CreatedAt.Value >= sinceUtc.Value);
         if (untilUtc.HasValue) q = q.Where(b => b.CreatedAt.HasValue && b.CreatedAt.Value < untilUtc.Value);

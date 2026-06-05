@@ -138,7 +138,11 @@ public class VenueRepository : Repository<Venue>, IVenueRepository
         var q = _context.BookingItems.AsNoTracking()
             .Where(bi => bi.Court != null && bi.Court.VenueId == venueId
                                           && bi.StartTime < end && bi.EndTime > start
-                                          && bi.Booking != null && bi.Booking.Status != "CANCELLED");
+                                          && bi.Booking != null
+                                          && bi.Booking.Status != "CANCELLED"
+                                          && bi.Booking.Status != "PENDING_REFUND"
+                                          && bi.Booking.Status != "REFUNDED"
+                                          && bi.Booking.Status != "PENDING_RECONCILIATION");
 
         if (userId != null)
         {

@@ -385,11 +385,11 @@ export default function ManagerRefunds() {
                     <InfoRow label="Tổng đơn" value={<strong style={{ fontSize: '16px' }}>{Number(detail.finalAmount || 0).toLocaleString('vi-VN')} ₫</strong>} />
                     <InfoRow label="Đã thu (CK)" value={<strong style={{ fontSize: '16px' }}>{detail.paidAmount != null ? `${Number(detail.paidAmount).toLocaleString('vi-VN')} ₫` : '—'}</strong>} />
                     {detail.paidAmount != null && detail.requestedAmount != null && detail.paidAmount > detail.requestedAmount && (
-                      <InfoRow label="Phí hủy / Khấu trừ" value={<strong style={{ color: '#ef4444', fontSize: '16px' }}>-{(detail.paidAmount - detail.requestedAmount).toLocaleString('vi-VN')} ₫</strong>} />
+                      <InfoRow label={detail.refundStatus === 'COMPLETED' ? "Nhận lại từ chính sách" : "Phí hủy / Khấu trừ"} value={<strong style={{ color: '#ef4444', fontSize: '16px' }}>{detail.refundStatus === 'COMPLETED' ? '' : '-'}{(detail.paidAmount - detail.requestedAmount).toLocaleString('vi-VN')} ₫</strong>} />
                     )}
-                    <InfoRow label="Cần hoàn tiền" value={
-                      <strong style={{ color: '#097E52', fontSize: '18px' }}>
-                        {Number(detail.requestedAmount || 0).toLocaleString('vi-VN')} ₫
+                    <InfoRow label={detail.refundStatus === 'COMPLETED' ? "Đã hoàn cho khách" : (detail.refundStatus === 'REJECTED' ? "Không hoàn tiền" : "Cần hoàn tiền")} value={
+                      <strong style={{ color: detail.refundStatus === 'REJECTED' ? '#64748b' : '#097E52', fontSize: '18px' }}>
+                        {detail.refundStatus === 'REJECTED' ? '0' : Number(detail.requestedAmount || 0).toLocaleString('vi-VN')} ₫
                       </strong>
                     } />
                   </div>

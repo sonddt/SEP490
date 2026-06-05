@@ -79,6 +79,8 @@ public class RefundService : IRefundService
 
         refund.Status = "REJECTED";
         refund.RejectionReason = reason.Trim();
+        refund.RequestedAmount = 0;
+        refund.PaidAmount = 0;
         refund.ProcessedBy = managerId;
         refund.ProcessedAt = DateTime.UtcNow;
         refund.Booking!.Status = "CANCELLED";

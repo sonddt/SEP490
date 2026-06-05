@@ -154,6 +154,9 @@ public class ManagerBookingListItemDto
     public string PaymentStatus { get; set; } = null!;
     public string? PaymentMethod { get; set; }
     public string? ProofUrl { get; set; }
+    public string? RefundStatus { get; set; }
+    public decimal? RefundAmount { get; set; }
+    public decimal? PaidAmount { get; set; }
     public DateTime? CreatedAt { get; set; }
     public List<ManagerBookingItemDto> Items { get; set; } = new();
 }

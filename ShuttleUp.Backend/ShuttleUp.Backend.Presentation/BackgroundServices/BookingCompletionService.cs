@@ -169,7 +169,7 @@ public sealed class BookingCompletionService : BackgroundService
             }
 
             foreach (var item in booking.BookingItems)
-                item.Status = booking.Status == "CANCELLED" ? "CANCELLED" : item.Status;
+                item.Status = (booking.Status is "CANCELLED" or "PENDING_REFUND" or "PENDING_RECONCILIATION") ? "CANCELLED" : item.Status;
 
             foreach (var p in booking.Payments.Where(p => p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase)))
                 p.Status = booking.Status == "CANCELLED" ? "CANCELLED" : p.Status;

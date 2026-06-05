@@ -97,6 +97,7 @@ function mapApiRowToBooking(api) {
     status: mapUserBookingTabStatus(api.status, items),
     sortTime: new Date(api.createdAt).getTime(),
     filterDate: start,
+    createdAt: api.createdAt,
     refundStatus: api.refundStatus || null,
     refundAmount: api.refundAmount ?? null,
     refundBankName: api.refundBankName || '',
@@ -784,6 +785,12 @@ export default function UserBookings() {
                       <StatusBadge b={detailBooking} />
                     </div>
                     <div className="bk-detail-row d-flex justify-content-between align-items-center mb-2">
+                      <span className="text-muted small">Ngày đặt:</span>
+                      <strong style={{ fontSize: 13, color: '#1e293b' }}>
+                        {new Date(detailBooking.createdAt).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}
+                      </strong>
+                    </div>
+                    <div className="bk-detail-row d-flex justify-content-between align-items-center mb-2">
                       <span className="text-muted small">Tổng tiền:</span>
                       <strong style={{ color: '#097E52', fontSize: 16 }}>{detailBooking.amount.toLocaleString('vi-VN')} ₫</strong>
                     </div>
@@ -867,10 +874,10 @@ export default function UserBookings() {
                         </div>
                         <div className="mb-2 d-flex justify-content-between align-items-center">
                           <span className="text-muted small">
-                            {detailBooking.refundStatus === 'COMPLETED' ? 'Số tiền đã hoàn:' : 'Số tiền cần hoàn:'}
+                            {detailBooking.refundStatus === 'COMPLETED' ? 'Số tiền đã hoàn:' : (detailBooking.refundStatus === 'REJECTED' ? 'Không hoàn tiền:' : 'Số tiền cần hoàn:')}
                           </span>
-                          <strong style={{ color: '#097E52', fontSize: 17 }}>
-                            {detailBooking.refundAmount != null ? `${Number(detailBooking.refundAmount).toLocaleString('vi-VN')} ₫` : '—'}
+                          <strong style={{ color: detailBooking.refundStatus === 'REJECTED' ? '#64748b' : '#097E52', fontSize: 17 }}>
+                            {detailBooking.refundStatus === 'REJECTED' ? '0 ₫' : (detailBooking.refundAmount != null ? `${Number(detailBooking.refundAmount).toLocaleString('vi-VN')} ₫` : '—')}
                           </strong>
                         </div>
 

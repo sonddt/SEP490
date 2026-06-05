@@ -37,6 +37,7 @@ public class ManagerBookingService : IManagerBookingService
             var bookingCode = "SU" + b.Id.ToString("N")[^6..].ToUpperInvariant();
             var payment = b.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
             var paymentStatus = payment?.Status?.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase) == true ? "PAID" : "UNPAID";
+            var refundReq = b.RefundRequests.OrderByDescending(r => r.RequestedAt).FirstOrDefault();
 
             return new ManagerBookingListItemDto
             {
@@ -59,6 +60,9 @@ public class ManagerBookingService : IManagerBookingService
                 PaymentStatus = paymentStatus,
                 PaymentMethod = payment?.Method,
                 ProofUrl = payment?.GatewayReference,
+                RefundStatus = refundReq?.Status,
+                RefundAmount = refundReq?.RequestedAmount,
+                PaidAmount = refundReq?.PaidAmount ?? payment?.Amount,
                 CreatedAt = b.CreatedAt,
                 Items = b.BookingItems.OrderBy(bi => bi.StartTime).Select(bi =>
                 {
@@ -173,7 +177,7 @@ public class ManagerBookingService : IManagerBookingService
             }
 
             foreach (var item in booking.BookingItems)
-                item.Status = booking.Status == "CANCELLED" ? "CANCELLED" : item.Status;
+                item.Status = (booking.Status is "CANCELLED" or "PENDING_REFUND" or "PENDING_RECONCILIATION") ? "CANCELLED" : item.Status;
             foreach (var p in booking.Payments.Where(p =>
                          p.Status != null && p.Status.Equals("PENDING", StringComparison.OrdinalIgnoreCase)))
                 p.Status = booking.Status == "CANCELLED" ? "CANCELLED" : p.Status;

@@ -213,6 +213,23 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
 
               {/* Payment proof image */}
               <PaymentProofSection proofImg={booking.paymentProofImg} />
+
+              {booking.refundStatus && (
+                <div className="bk-detail-section mt-3" style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '12px 14px' }}>
+                  <h6 className="bk-detail-section-title" style={{ color: '#ef4444' }}>
+                    <i className="feather-refresh-ccw me-1" />Hoàn tiền
+                  </h6>
+                  <InfoRow label="Đã thu" value={`${Number(booking.paidAmount || 0).toLocaleString('vi-VN')} ₫`} />
+                  {booking.paidAmount != null && booking.refundAmount != null && booking.paidAmount > booking.refundAmount && (
+                    <InfoRow label={booking.refundStatus === 'COMPLETED' ? "Nhận lại từ chính sách" : "Khấu trừ chính sách"} value={<strong style={{ color: '#ef4444' }}>{(Number(booking.paidAmount) - Number(booking.refundAmount)).toLocaleString('vi-VN')} ₫</strong>} />
+                  )}
+                  <InfoRow label={booking.refundStatus === 'COMPLETED' ? "Đã hoàn cho khách" : (booking.refundStatus === 'REJECTED' ? "Không hoàn tiền" : "Cần hoàn")} value={
+                    <strong style={{ color: booking.refundStatus === 'REJECTED' ? '#64748b' : '#097E52', fontSize: '16px' }}>
+                      {booking.refundStatus === 'REJECTED' ? '0' : Number(booking.refundAmount || 0).toLocaleString('vi-VN')} ₫
+                    </strong>
+                  } />
+                </div>
+              )}
             </div>
 
             {/* Right: booking details */}
