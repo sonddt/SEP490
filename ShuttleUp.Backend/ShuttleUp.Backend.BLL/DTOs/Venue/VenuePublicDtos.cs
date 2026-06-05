@@ -19,7 +19,6 @@ public class VenuePublicDetailsDto
     public int? SlotDuration { get; set; }
     public bool? CancelAllowed { get; set; }
     public string? ThumbnailUrl { get; set; }
-    public object? TodayOpenHours { get; set; }
     public Guid? OwnerUserId { get; set; }
     public string? OwnerName { get; set; }
     public string? OwnerEmail { get; set; }

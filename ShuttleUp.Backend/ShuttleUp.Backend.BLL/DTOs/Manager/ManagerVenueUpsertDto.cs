@@ -24,6 +24,5 @@ public class ManagerVenueUpsertDto
     /// <summary>Key tiện ích có tại cơ sở (parking, wifi, ...) — hiển thị tab Tiện ích.</summary>
     public List<string>? Amenities { get; set; }
 
-    /// <summary>Lịch hoạt động chung cấp cụm sân (venue_open_hours).</summary>
-    public List<ManagerCourtOpenHourDto>? OpenHours { get; set; }
+
 }

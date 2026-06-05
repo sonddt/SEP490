@@ -12,7 +12,6 @@ public interface IVenueRepository : IRepository<Venue>
     Task<Venue?> GetByIdTrackedAsync(Guid id);
     Task<Venue?> GetByIdAndOwnerAsync(Guid id, Guid ownerId);
     Task<Venue?> GetByIdAndOwnerWithDetailsAsync(Guid id, Guid ownerId);
-    Task ReplaceVenueOpenHoursAsync(Guid venueId, List<VenueOpenHour> newHours);
     Task<List<Venue>> GetByOwnerPagedAsync(Guid ownerId, string? search, string? sortBy, string? sortDir, int skip, int take);
     Task<int> CountByOwnerAsync(Guid ownerId, string? search);
     Task<List<Guid>> GetVenueIdsByOwnerAsync(Guid ownerId);

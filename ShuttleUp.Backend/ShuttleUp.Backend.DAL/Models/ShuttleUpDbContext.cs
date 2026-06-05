@@ -67,7 +67,6 @@ public partial class ShuttleUpDbContext : DbContext
     public virtual DbSet<VenueCoupon> VenueCoupons { get; set; }
 
 
-    public virtual DbSet<VenueOpenHour> VenueOpenHours { get; set; }
 
     public virtual DbSet<CourtOpenHour> CourtOpenHours { get; set; }
 
@@ -1319,30 +1318,6 @@ public partial class ShuttleUpDbContext : DbContext
                 .HasForeignKey(d => d.VenueId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("venue_coupons_ibfk_1");
-        });
-
-        modelBuilder.Entity<VenueOpenHour>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PRIMARY");
-
-            entity.ToTable("venue_open_hours");
-
-            entity.HasIndex(e => e.VenueId, "venue_id");
-
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.CloseTime)
-                .HasColumnType("time")
-                .HasColumnName("close_time");
-            entity.Property(e => e.DayOfWeek).HasColumnName("day_of_week");
-            entity.Property(e => e.OpenTime)
-                .HasColumnType("time")
-                .HasColumnName("open_time");
-            entity.Property(e => e.VenueId).HasColumnName("venue_id");
-
-            entity.HasOne(d => d.Venue).WithMany(p => p.VenueOpenHours)
-                .HasForeignKey(d => d.VenueId)
-                .OnDelete(DeleteBehavior.Cascade)
-                .HasConstraintName("venue_open_hours_ibfk_1");
         });
 
         modelBuilder.Entity<VenueReview>(entity =>

@@ -100,14 +100,14 @@ public partial class BookingRepository
         foreach (var item in normalizedItems)
         {
             if (!configuredCourtIds.Contains(item.CourtId))
-                continue;
+                return "COURT_CLOSED_DAY";
 
             var dayOfWeek = (int)item.Start.DayOfWeek;
             var record = allOpenHours.FirstOrDefault(o =>
                 o.CourtId == item.CourtId && o.DayOfWeek == dayOfWeek);
 
             if (record == null)
-                continue;
+                return "COURT_CLOSED_DAY";
 
             if (!record.OpenTime.HasValue || !record.CloseTime.HasValue)
                 return "COURT_CLOSED_DAY";

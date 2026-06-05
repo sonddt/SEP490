@@ -26,16 +26,8 @@ public class VenueRepository : Repository<Venue>, IVenueRepository
     public async Task<Venue?> GetByIdAndOwnerWithDetailsAsync(Guid id, Guid ownerId)
         => await _dbSet.AsNoTracking()
             .Include(v => v.Files)
-            .Include(v => v.VenueOpenHours)
             .FirstOrDefaultAsync(v => v.Id == id && v.OwnerUserId == ownerId);
 
-    public async Task ReplaceVenueOpenHoursAsync(Guid venueId, List<VenueOpenHour> newHours)
-    {
-        var old = _context.VenueOpenHours.Where(oh => oh.VenueId == venueId);
-        _context.VenueOpenHours.RemoveRange(old);
-        if (newHours.Count > 0) _context.VenueOpenHours.AddRange(newHours);
-        await _context.SaveChangesAsync();
-    }
 
     public async Task<List<Venue>> GetByOwnerPagedAsync(Guid ownerId, string? search, string? sortBy, string? sortDir, int skip, int take)
     {
@@ -111,7 +103,6 @@ public class VenueRepository : Repository<Venue>, IVenueRepository
             .Include(v => v.OwnerUser).ThenInclude(u => u!.AvatarFile)
             .Include(v => v.Courts).ThenInclude(c => c.CourtPrices)
             .Include(v => v.VenueReviews)
-            .Include(v => v.VenueOpenHours)
             .FirstOrDefaultAsync(v => v.Id == id && v.IsActive == true, ct);
     }
 

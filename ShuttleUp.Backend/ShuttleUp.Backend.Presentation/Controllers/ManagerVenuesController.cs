@@ -90,8 +90,6 @@ public class ManagerVenuesController : ControllerBase
             SlotDuration = request.SlotDuration == 30 || request.SlotDuration == 120 ? request.SlotDuration : 60
         };
         await _venueService.CreateAsync(venue);
-        if (request.OpenHours is { Count: > 0 })
-            await _venueService.ReplaceVenueOpenHoursAsync(venue.Id, request.OpenHours);
         return CreatedAtAction(nameof(GetManagedVenues), new { id = venue.Id }, new { venue.Id, venue.Name, venue.Address, venue.ContactName, venue.ContactPhone, venue.IsActive, venue.CreatedAt });
     }
 

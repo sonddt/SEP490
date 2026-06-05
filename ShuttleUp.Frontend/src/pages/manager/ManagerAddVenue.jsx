@@ -159,14 +159,6 @@ export default function ManagerAddVenue() {
     slotDuration: 60,
   });
 
-  const DAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
-  const DAY_MAP = [1, 2, 3, 4, 5, 6, 0];
-  const TIME_SLOTS = [];
-  for (let h = 5; h <= 23; h++) {
-    TIME_SLOTS.push(`${String(h).padStart(2, '0')}:00`);
-    TIME_SLOTS.push(`${String(h).padStart(2, '0')}:30`);
-  }
-  const [dayHours, setDayHours] = useState(DAYS.map(() => ({ open: '06:00', close: '22:00', enabled: true })));
 
   const [thumbnailFiles, setThumbnailFiles] = useState([]);
   const [thumbnailPreview, setThumbnailPreview] = useState(null);
@@ -210,7 +202,7 @@ export default function ManagerAddVenue() {
   };
 
   const setField = (key, val) => setForm((p) => ({ ...p, [key]: val }));
-  const toggleDay = (i, key, val) => setDayHours((p) => p.map((d, idx) => idx === i ? { ...d, [key]: val } : d));
+
 
   const showPolicyToast = useCallback((msg, type = 'success') => setPolicyToast({ msg, type }), []);
   const getPolicyFieldError = useCallback((name) => policyFieldErrors[name] || '', [policyFieldErrors]);
@@ -322,7 +314,7 @@ export default function ManagerAddVenue() {
         }));
         setExistingThumbnail(res?.thumbnailUrl || res?.ThumbnailUrl || null);
         setExistingGallery(res?.imageUrls || res?.ImageUrls || []);
-        setDayHours(mapOpenHoursToDayHours(res?.openHours || res?.OpenHours || []));
+
         addressParsedRef.current = false;
         if (divisionTree && address) {
           const parsed = parseVenueAddress(divisionTree, address);
@@ -341,7 +333,7 @@ export default function ManagerAddVenue() {
     };
     fetchVenue();
     return () => { mounted = false; };
-  }, [venueId, divisionTree, mapOpenHoursToDayHours]);
+  }, [venueId, divisionTree]);
 
   const handleMapPick = useCallback((pos) => {
     setForm((p) => ({
@@ -424,12 +416,7 @@ export default function ManagerAddVenue() {
     setPolicyField('venueRules', DEFAULT_RULES_TEMPLATE);
   }, [policyForm.venueRules, setPolicyField]);
 
-  const buildOpenHoursPayload = () => dayHours.map((d, i) => ({
-    dayOfWeek: DAY_MAP[i],
-    enabled: d.enabled,
-    openTime: d.enabled ? d.open : null,
-    closeTime: d.enabled ? d.close : null,
-  }));
+
 
   const persistCheckoutSettings = async (id) => {
     const policyErrors = validatePolicy();
@@ -502,7 +489,6 @@ export default function ManagerAddVenue() {
         rules: form.rules.filter(s => s.trim()),
         amenities: form.amenities,
         slotDuration: form.slotDuration ? Number(form.slotDuration) : 60,
-        openHours: buildOpenHoursPayload(),
       };
 
       let id = venueId;

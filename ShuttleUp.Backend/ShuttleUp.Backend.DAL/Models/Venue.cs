@@ -83,7 +83,6 @@ public partial class Venue
 
 
 
-    public virtual ICollection<VenueOpenHour> VenueOpenHours { get; set; } = new List<VenueOpenHour>();
 
     public virtual ICollection<VenueReview> VenueReviews { get; set; } = new List<VenueReview>();
 
