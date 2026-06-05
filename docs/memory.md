@@ -970,3 +970,19 @@ Gom backend về một nhánh `ShuttleUp.Backend/` với 3 project con:
    - Bổ sung `RefundedAmount`, `PaidAmount`, `PenaltyAmount` vào DTO `ManagerBookingListItemDto`.
    - `ManagerBookingService` và `AdminService` batch fetch dữ liệu từ `RefundRequests` cho các đơn ở trạng thái hoàn tiền.
    - `BookingDetailModal` tự động hiển thị chi tiết số tiền gốc, tiền hoàn trả và phí phạt cho cả Admin và Manager.
+
+---
+
+## 5 tháng 6, 2026 — Đồng bộ UI trạng thái thanh toán & hoàn tiền
+
+1. **Khắc phục bất đồng bộ `paymentStatus`:**
+   - **Vấn đề**: Backend API trả về `paymentStatus` là trạng thái kỹ thuật của bản ghi payment gốc (`PAID/REFUNDED`), dẫn đến việc giao diện hiển thị "Đã thanh toán" cho các đơn bị hủy/đang chờ hoàn tiền, gây bối rối cho Manager và Admin.
+   - **Giải pháp**: Xóa hoàn toàn dòng "Trạng thái TT" (paymentStatus) dư thừa khỏi các popup xem chi tiết (`ManagerEarnings`, `BookingDetailModal` dùng chung cho Admin/Manager Bookings). 
+   - Thay vào đó, tập trung sử dụng badge "Trạng thái đơn" (từ `booking.status`) hiển thị ở cột phải (Đã hoàn tiền, Đã TT (Chờ hoàn), Đã thanh toán...) để làm nguồn thông tin (Source of Truth) duy nhất.
+2. **Cải tiến UI trang Quản lý Hoàn tiền (`/manager/refunds`)**:
+   - Thêm dòng "Hình thức" (Chuyển khoản / Thanh toán VNPay) vào phần "Thanh toán" trong popup chi tiết, lấy dữ liệu từ `paymentMethod` do backend trả về.
+   - Xóa bỏ chữ "(CK)" bị thừa ở dòng "Đã thu (CK)" vì đã hiển thị rõ hình thức ngay bên dưới.
+   - Áp dụng các màu sắc chuẩn SaaS, gỡ bỏ class Bootstrap `.badge` mặc định mờ nhạt, thay bằng hệ thống màu solid nổi bật cho các badge: Chờ hoàn tiền (Sky blue), Đã hoàn (Emerald Green), Chờ đối soát...
+3. **Cải tiến UI Xem Ảnh (Lightbox)**:
+   - Thay thế các đoạn mã render ảnh gốc rườm rà trong `ManagerEarnings` bằng component `ImageLightboxSection`. 
+   - Đồng bộ hiệu ứng xem ảnh full-screen bằng React Portal khi người dùng nhấn "Phóng to" vào "Ảnh chứng từ nộp" hoặc "Bill CK hoàn tiền", chặn z-index đè lên thanh Sidebar.

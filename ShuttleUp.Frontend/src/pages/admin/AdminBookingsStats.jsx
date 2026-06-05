@@ -263,9 +263,17 @@ export default function AdminBookingsStats() {
                       </td>
                       <td>
                         <div style={{ fontSize: 13, color: '#097E52', fontWeight: 600 }}>{b.amount.toLocaleString('vi-VN')} ₫</div>
-                        <div style={{ fontSize: 11, color: b.paymentStatus === 'PAID' ? '#097E52' : '#94a3b8' }}>
-                          {b.paymentStatus === 'PAID' ? 'Đã thanh toán' : 'Chưa thanh toán'}
-                        </div>
+                        {(() => {
+                          const getPaymentStatusText = () => {
+                            if (b.status === 'REFUNDED') return { text: 'Đã hoàn tiền', color: '#0ea5e9' };
+                            if (b.status === 'PENDING_REFUND') return { text: 'Đã TT (Chờ hoàn)', color: '#d97706' };
+                            if (b.paymentStatus === 'PAID' || b.status === 'CONFIRMED' || b.status === 'COMPLETED' || b.status === 'UPCOMING') return { text: 'Đã thanh toán', color: '#097E52' };
+                            if (b.paymentStatus === 'FAILED') return { text: 'Thất bại', color: '#ef4444' };
+                            return { text: 'Chưa thanh toán', color: '#94a3b8' };
+                          };
+                          const pSt = getPaymentStatusText();
+                          return <div style={{ fontSize: 11, color: pSt.color }}>{pSt.text}</div>;
+                        })()}
                       </td>
                       <td>
                         <span 

@@ -380,18 +380,29 @@ export default function ManagerRefunds() {
                   {/* Financial Info */}
                   <div className="bk-detail-section mt-3">
                     <h6 className="bk-detail-section-title">
-                      <i className="feather-dollar-sign me-1" style={{ color: '#10b981' }} />Thanh toán & Hoàn tiền
+                      <i className="feather-dollar-sign me-1" style={{ color: '#10b981' }} />Thanh toán
                     </h6>
-                    <InfoRow label="Tổng đơn" value={<strong style={{ fontSize: '16px' }}>{Number(detail.finalAmount || 0).toLocaleString('vi-VN')} ₫</strong>} />
-                    <InfoRow label="Đã thu (CK)" value={<strong style={{ fontSize: '16px' }}>{detail.paidAmount != null ? `${Number(detail.paidAmount).toLocaleString('vi-VN')} ₫` : '—'}</strong>} />
-                    {detail.paidAmount != null && detail.requestedAmount != null && detail.paidAmount > detail.requestedAmount && (
-                      <InfoRow label={detail.refundStatus === 'COMPLETED' ? "Nhận lại từ chính sách" : "Phí hủy / Khấu trừ"} value={<strong style={{ color: '#ef4444', fontSize: '16px' }}>{detail.refundStatus === 'COMPLETED' ? '' : '-'}{(detail.paidAmount - detail.requestedAmount).toLocaleString('vi-VN')} ₫</strong>} />
+                    <div className="bk-detail-row">
+                      <span className="bk-detail-label">Tổng đơn</span>
+                      <span className="bk-detail-value">
+                        <strong style={{ color: '#097E52', fontSize: '18px' }}>{Number(detail.finalAmount || 0).toLocaleString('vi-VN')} ₫</strong>
+                      </span>
+                    </div>
+                    <div className="bk-detail-row">
+                      <span className="bk-detail-label">Đã thu</span>
+                      <span className="bk-detail-value">
+                        <strong style={{ fontSize: '16px' }}>{detail.paidAmount != null ? `${Number(detail.paidAmount).toLocaleString('vi-VN')} ₫` : '—'}</strong>
+                      </span>
+                    </div>
+                    {detail.paymentMethod && (
+                      <div className="bk-detail-row">
+                        <span className="bk-detail-label">Hình thức</span>
+                        <span className="bk-detail-value">
+                          <i className={detail.paymentMethod === 'VNPAY' ? 'feather-credit-card' : 'feather-briefcase'} style={{ fontSize: 12, marginRight: 4, color: '#64748b' }} />
+                          {detail.paymentMethod === 'VNPAY' ? 'Thanh toán VNPay' : detail.paymentMethod === 'BANK_TRANSFER' ? 'Chuyển khoản' : detail.paymentMethod}
+                        </span>
+                      </div>
                     )}
-                    <InfoRow label={detail.refundStatus === 'COMPLETED' ? "Đã hoàn cho khách" : (detail.refundStatus === 'REJECTED' ? "Không hoàn tiền" : "Cần hoàn tiền")} value={
-                      <strong style={{ color: detail.refundStatus === 'REJECTED' ? '#64748b' : '#097E52', fontSize: '18px' }}>
-                        {detail.refundStatus === 'REJECTED' ? '0' : Number(detail.requestedAmount || 0).toLocaleString('vi-VN')} ₫
-                      </strong>
-                    } />
                   </div>
 
                   {/* Payment proof image */}
@@ -412,6 +423,27 @@ export default function ManagerRefunds() {
                       </p>
                     </div>
                   )}
+
+                  {(detail.refundBankName || detail.refundAccountNumber) && (
+                    <div className="bk-detail-section mt-3" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 14px' }}>
+                      <h6 className="bk-detail-section-title" style={{ color: '#166534' }}>
+                        <i className="feather-credit-card me-1" />Thông tin nhận hoàn
+                      </h6>
+                      <p className="mb-0 small" style={{ color: '#166534' }}>
+                        NH: <strong>{detail.refundBankName || '—'}</strong><br/>
+                        STK: <strong>{detail.refundAccountNumber || '—'}</strong><br/>
+                        Chủ TK: <strong>{detail.refundAccountHolder || '—'}</strong>
+                      </p>
+                    </div>
+                  )}
+
+                  {/* QR Image */}
+                  <ImageLightboxSection
+                    title="Ảnh mã QR nhận hoàn tiền"
+                    src={detail.refundQrImageUrl}
+                    alt="Refund QR"
+                    borderStyle="2px solid #10b981"
+                  />
                 </div>
 
                 {/* Right: Booking Details & Actions */}
@@ -451,32 +483,52 @@ export default function ManagerRefunds() {
                     <h6 className="bk-detail-section-title">
                       <i className="feather-info me-1" style={{ color: '#3b82f6' }} />Thông tin bổ sung
                     </h6>
-                    <InfoRow
-                      label="Trạng thái"
-                      value={badge(detail.refundStatus)}
-                    />
-                    <InfoRow label="Ngày yêu cầu" value={detail.requestedAt ? new Date(detail.requestedAt).toLocaleString('vi-VN') : '—'} />
+                    <div className="bk-detail-row">
+                      <span className="bk-detail-label">Trạng thái</span>
+                      <span className="bk-detail-value">{badge(detail.refundStatus)}</span>
+                    </div>
+                    <div className="bk-detail-row">
+                      <span className="bk-detail-label">Ngày yêu cầu</span>
+                      <span className="bk-detail-value">{detail.requestedAt ? new Date(detail.requestedAt).toLocaleString('vi-VN') : '—'}</span>
+                    </div>
                   </div>
 
-                  {(detail.refundBankName || detail.refundAccountNumber) && (
-                    <div className="bk-detail-section mt-3" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 14px' }}>
-                      <h6 className="bk-detail-section-title" style={{ color: '#166534' }}>
-                        <i className="feather-credit-card me-1" />Thông tin nhận hoàn
-                      </h6>
-                      <p className="mb-0 small" style={{ color: '#166534' }}>
-                        NH: <strong>{detail.refundBankName || '—'}</strong><br/>
-                        STK: <strong>{detail.refundAccountNumber || '—'}</strong><br/>
-                        Chủ TK: <strong>{detail.refundAccountHolder || '—'}</strong>
-                      </p>
+                  {/* Refund Info Colored Block */}
+                  <div className="bk-detail-section mb-3" style={{ background: detail.refundStatus === 'COMPLETED' ? '#f0f9ff' : (detail.refundStatus === 'REJECTED' ? '#fef2f2' : '#fffbeb'), border: `1px solid ${detail.refundStatus === 'COMPLETED' ? '#bae6fd' : (detail.refundStatus === 'REJECTED' ? '#fca5a5' : '#fcd34d')}`, borderRadius: 10, padding: '14px 16px' }}>
+                    <h6 className="bk-detail-section-title" style={{ color: detail.refundStatus === 'COMPLETED' ? '#0284c7' : (detail.refundStatus === 'REJECTED' ? '#ef4444' : '#d97706') }}>
+                      <i className={`feather-${detail.refundStatus === 'COMPLETED' ? 'check-circle' : (detail.refundStatus === 'REJECTED' ? 'x-circle' : 'clock')} me-1`} />
+                      {detail.refundStatus === 'COMPLETED' ? 'Thông tin hoàn tiền' : (detail.refundStatus === 'REJECTED' ? 'Đã từ chối hoàn' : 'Đang chờ hoàn tiền')}
+                    </h6>
+                    <div className="bk-detail-row">
+                      <span className="bk-detail-label">Khách đã thanh toán</span>
+                      <span className="bk-detail-value" style={{ fontWeight: 700 }}>{Number(detail.paidAmount || 0).toLocaleString('vi-VN')} ₫</span>
                     </div>
-                  )}
+                    <div className="bk-detail-row">
+                      <span className="bk-detail-label">{detail.refundStatus === 'REJECTED' ? 'Không hoàn tiền' : 'Cần hoàn lại cho khách'}</span>
+                      <span className="bk-detail-value" style={{ fontWeight: 700, color: detail.refundStatus === 'REJECTED' ? '#94a3b8' : '#ef4444' }}>
+                        {detail.refundStatus === 'REJECTED' ? '0 ₫' : `– ${Number(detail.requestedAmount || 0).toLocaleString('vi-VN')} ₫`}
+                      </span>
+                    </div>
+                    {detail.paidAmount != null && detail.requestedAmount != null && detail.paidAmount > detail.requestedAmount && detail.refundStatus !== 'REJECTED' && (
+                      <>
+                        <div style={{ height: 1, background: '#e2e8f0', margin: '8px 0' }} />
+                        <div className="bk-detail-row">
+                          <span className="bk-detail-label" style={{ fontWeight: 700, color: '#0f172a' }}>Bạn giữ lại (phí phạt)</span>
+                          <span className="bk-detail-value" style={{ fontWeight: 800, color: '#097E52', fontSize: 15 }}>
+                            {(detail.paidAmount - detail.requestedAmount).toLocaleString('vi-VN')} ₫
+                          </span>
+                        </div>
+                        <div style={{ marginTop: 8, fontSize: 11, color: '#94a3b8', fontStyle: 'italic' }}>
+                          * Áp dụng theo chính sách hoàn tiền đã được cấu hình cho sân.
+                        </div>
+                      </>
+                    )}
+                  </div>
 
-                  {/* QR Image */}
                   <ImageLightboxSection
-                    title="Ảnh mã QR nhận hoàn tiền"
-                    src={detail.refundQrImageUrl}
-                    alt="Refund QR"
-                    borderStyle="2px solid #10b981"
+                    title="Bill CK hoàn tiền (của bạn)"
+                    src={detail.managerEvidenceUrl}
+                    alt="Evidence"
                   />
 
                   {detail.rejectionReason && (
@@ -489,12 +541,6 @@ export default function ManagerRefunds() {
                       </p>
                     </div>
                   )}
-
-                  <ImageLightboxSection
-                    title="Bill CK hoàn tiền (của bạn)"
-                    src={detail.managerEvidenceUrl}
-                    alt="Evidence"
-                  />
 
                   {/* ── Reconciliation ──────────────────────────────────────── */}
                   {detail.refundStatus === 'PENDING_RECONCILIATION' && (

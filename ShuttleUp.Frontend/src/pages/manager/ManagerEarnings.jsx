@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import * as XLSX from 'xlsx';
 import axiosClient from '../../api/axiosClient';
 import { notifyError, notifyInfo } from '../../hooks/useNotification';
@@ -63,6 +64,41 @@ function Pagination({ page, totalPages, onChange }) {
         style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px', border: '1.5px solid #e2e8f0', borderRadius: 8, background: '#fff', fontSize: 13, fontWeight: 600, color: page >= totalPages ? '#cbd5e1' : '#334155', cursor: page >= totalPages ? 'default' : 'pointer', transition: 'all .15s' }}>
         Sau <i className="feather-chevron-right" style={{ fontSize: 15 }} />
       </button>
+    </div>
+  );
+}
+
+/* ── Image Lightbox Component ───────────────────────────────────────────── */
+function ImageLightboxSection({ title, icon, src, alt, borderStyle }) {
+  const [showFull, setShowFull] = useState(false);
+  if (!src) return null;
+
+  return (
+    <div className="bk-detail-section mt-3">
+      <h6 className="bk-detail-section-title">
+        {icon && <i className={`${icon} me-1`} />}
+        {title}
+      </h6>
+      <div
+        style={{ position: 'relative', cursor: 'pointer', borderRadius: 8, overflow: 'hidden', border: borderStyle || '1px solid #e2e8f0', background: '#f8fafc' }}
+        onClick={() => setShowFull(true)}
+      >
+        <img src={src} alt={alt} style={{ width: '100%', maxHeight: 200, objectFit: 'contain', display: 'block' }} onError={(e) => { e.target.parentElement.style.display = 'none'; }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(transparent 50%, rgba(0,0,0,.4))', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: 10 }}>
+          <span style={{ color: '#fff', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <i className="feather-maximize-2" style={{ fontSize: 14 }} /> Nhấn để phóng to
+          </span>
+        </div>
+      </div>
+      {showFull && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,.7)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={() => setShowFull(false)}>
+          <img src={src} alt={alt} style={{ maxWidth: '90vw', maxHeight: '85vh', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,.4)', objectFit: 'contain', background: '#fff' }} onClick={(e) => e.stopPropagation()} />
+          <button type="button" onClick={() => setShowFull(false)} style={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,.9)', border: 'none', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <i className="feather-x" />
+          </button>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
@@ -418,8 +454,8 @@ export default function ManagerEarnings() {
           const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
           return `${days[d.getDay()]}, ${d.toLocaleDateString('vi-VN')}`;
         };
-        return (
-          <div className="bk-modal-overlay" onClick={() => setDetailModal(null)}>
+        return createPortal(
+          <div className="bk-modal-overlay" onClick={() => setDetailModal(null)} style={{ zIndex: 1100 }}>
             <div className="bk-modal bk-modal--lg" style={{ maxWidth: 850, width: '95%' }} onClick={e => e.stopPropagation()}>
 
               {/* Header */}
@@ -482,35 +518,31 @@ export default function ManagerEarnings() {
                         <span className="bk-detail-value">
                           <span>
                             <i className={tx.paymentMethod === 'VNPAY' ? 'feather-credit-card' : 'feather-briefcase'} style={{ fontSize: '12px', marginRight: '4px', color: '#64748b' }} />
-                            {tx.paymentMethod === 'VNPAY' ? 'Thanh toán VNPay' : tx.paymentMethod === 'BANK' ? 'Chuyển khoản' : tx.paymentMethod || '—'}
+                            {tx.paymentMethod === 'VNPAY' ? 'Thanh toán VNPay' : tx.paymentMethod === 'BANK_TRANSFER' ? 'Chuyển khoản' : tx.paymentMethod || '—'}
                           </span>
-                        </span>
-                      </div>
-                      <div className="bk-detail-row">
-                        <span className="bk-detail-label">Trạng thái TT</span>
-                        <span className="bk-detail-value">
-                          <strong style={{ color: tx.paymentStatus === 'PAID' ? '#097E52' : tx.paymentStatus === 'REFUNDED' ? '#f59e0b' : '#94a3b8' }}>
-                            {tx.paymentStatus === 'PAID' ? 'Đã thanh toán' : tx.paymentStatus === 'REFUNDED' ? 'Đã hoàn tiền' : tx.paymentStatus === 'FAILED' ? 'Thất bại' : 'Chưa thanh toán'}
-                          </strong>
                         </span>
                       </div>
                     </div>
 
                     {/* Payment Proof */}
-                    <div className="bk-detail-section mt-3">
-                      <h6 className="bk-detail-section-title">
-                        <i className="feather-image me-1" />Ảnh minh chứng chuyển khoản
-                      </h6>
-                      {!tx.paymentProofImg || !/^https?:\/\//i.test(tx.paymentProofImg.trim()) ? (
+                    {!tx.paymentProofImg || !/^https?:\/\//i.test(tx.paymentProofImg.trim()) ? (
+                      <div className="bk-detail-section mt-3">
+                        <h6 className="bk-detail-section-title">
+                          <i className="feather-image me-1" />Ảnh minh chứng chuyển khoản
+                        </h6>
                         <p className="mb-0 text-muted small" style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
                           Môi trường dev — chưa có ảnh minh chứng thật (cần cấu hình Cloudinary trên server).
                         </p>
-                      ) : (
-                        <div style={{ position: 'relative', cursor: 'pointer', borderRadius: 10, overflow: 'hidden', border: '2px solid #d1fae5', background: '#f0fdf4' }}>
-                          <img src={tx.paymentProofImg} alt="Minh chứng" style={{ width: '100%', maxHeight: 200, objectFit: 'contain', display: 'block' }} onError={e => { e.target.src = '/assets/img/booking/booking-01.jpg'; }} />
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <ImageLightboxSection
+                        title="Ảnh minh chứng chuyển khoản"
+                        icon="feather-image"
+                        src={tx.paymentProofImg}
+                        alt="Minh chứng"
+                        borderStyle="2px solid #d1fae5"
+                      />
+                    )}
                   </div>
 
                   {/* Right: Schedule + Status + Refund Info */}
@@ -559,7 +591,7 @@ export default function ManagerEarnings() {
                       <div className="bk-detail-row">
                         <span className="bk-detail-label">Trạng thái</span>
                         <span className="bk-detail-value">
-                          <span className={`badge ${st.badge}`} style={{ fontSize: 12 }}>
+                          <span className="badge" style={{ fontSize: 12, background: st.color, color: '#fff' }}>
                             <i className={st.icon} /> {st.label}
                           </span>
                         </span>
@@ -600,6 +632,16 @@ export default function ManagerEarnings() {
                       </div>
                     )}
 
+                    {/* Manager Refund Evidence */}
+                    {tx.managerEvidenceUrl && (
+                      <ImageLightboxSection
+                        title="Bill CK hoàn tiền (của bạn)"
+                        icon="feather-image"
+                        src={tx.managerEvidenceUrl}
+                        alt="Bill hoàn tiền"
+                      />
+                    )}
+
                     {/* Guest note */}
                     {tx.note && (
                       <div className="bk-detail-section">
@@ -620,7 +662,8 @@ export default function ManagerEarnings() {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         );
       })()}
     </>

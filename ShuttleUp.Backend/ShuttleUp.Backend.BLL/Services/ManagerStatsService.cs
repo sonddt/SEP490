@@ -133,6 +133,7 @@ public class ManagerStatsService : IManagerStatsService
                 paidAmount = refund?.PaidAmount ?? 0m,
                 penaltyAmount = refund != null ? (refund.PaidAmount ?? 0m) - (refund.RequestedAmount ?? 0m) : 0m,
                 refundStatus = refund?.Status,
+                managerEvidenceUrl = refund?.ManagerEvidenceFile?.FileUrl,
                 items = (b.BookingItems ?? (ICollection<DAL.Models.BookingItem>)new List<DAL.Models.BookingItem>()).Select(bi => new { 
                     courtName = bi.Court?.Name ?? "Sân", 
                     price = bi.FinalPrice ?? 0,

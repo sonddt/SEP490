@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams, Link } from 'react-router-dom';
 import { BOOKING_STATUSES } from '../../constants/bookingStatuses';
 import { PAYMENT_METHODS } from '../../constants/paymentMethods';
@@ -164,13 +165,14 @@ function ProofThumb({ img }) {
       <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setShow(true)} style={{ padding: '4px 8px', fontSize: 12 }}>
         <i className="feather-image" /> Ảnh CK
       </button>
-      {show && (
+      {show && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, cursor: 'pointer' }} onClick={() => setShow(false)}>
           <img src={img} alt="Minh chứng" style={{ maxWidth: '90vw', maxHeight: '85vh', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,.4)', objectFit: 'contain', background: '#fff' }} onClick={e => e.stopPropagation()} />
           <button type="button" onClick={() => setShow(false)} style={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,.9)', border: 'none', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <i className="feather-x" />
           </button>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

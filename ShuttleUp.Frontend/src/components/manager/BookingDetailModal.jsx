@@ -120,17 +120,14 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
   const st = BOOKING_STATUSES[booking.status] || BOOKING_STATUSES.PENDING;
   const pm = PAYMENT_METHODS[booking.paymentMethod] || PAYMENT_METHODS.NONE;
 
-  const paymentStatusLabel = booking.paymentStatus === 'PAID'
-    ? 'Đã thanh toán'
-    : booking.paymentStatus === 'REFUNDED'
-      ? 'Đã hoàn tiền'
-      : 'Chưa thanh toán';
-
-  const paymentStatusColor = booking.paymentStatus === 'PAID'
-    ? '#097E52'
-    : booking.paymentStatus === 'REFUNDED'
-      ? '#f59e0b'
-      : '#94a3b8';
+  const getPaymentStatusInfo = () => {
+    if (booking.status === 'REFUNDED') return { label: 'Đã hoàn tiền', color: '#0ea5e9' };
+    if (booking.status === 'PENDING_REFUND' || booking.status === 'PENDING_RECONCILIATION') return { label: 'Đã TT (Chờ hoàn)', color: '#d97706' };
+    if (booking.paymentStatus === 'PAID' || booking.status === 'CONFIRMED' || booking.status === 'COMPLETED' || booking.status === 'UPCOMING') return { label: 'Đã thanh toán', color: '#097E52' };
+    if (booking.paymentStatus === 'FAILED') return { label: 'Thất bại', color: '#ef4444' };
+    return { label: 'Chưa thanh toán', color: '#94a3b8' };
+  };
+  const paymentStatusInfo = getPaymentStatusInfo();
 
   return createPortal(
     <div className="bk-modal-overlay" onClick={onClose} style={{ zIndex: 1050 }}>
@@ -206,9 +203,7 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
                     {pm.label}
                   </span>
                 } />
-                <InfoRow label="Trạng thái TT" value={
-                  <strong style={{ color: paymentStatusColor }}>{paymentStatusLabel}</strong>
-                } />
+
               </div>
 
               {/* Payment proof image */}
