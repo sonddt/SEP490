@@ -643,6 +643,7 @@ public class MatchingService : IMatchingService
             PlayEndTime = p.PlayEndTime?.ToString("HH:mm"),
             VenueName = p.Venue?.Name,
             VenueAddress = p.Venue?.Address,
+            VenueImageUrl = p.Venue?.Files?.Where(f => f.FileName != null && f.FileName.Contains("mac_dinh")).Select(f => f.FileUrl).FirstOrDefault() ?? p.Venue?.Files?.OrderByDescending(f => f.CreatedAt).Select(f => f.FileUrl).FirstOrDefault(),
             CourtName = p.CourtName,
             PricePerSlot = expenseSharing == "negotiable" ? null : (expenseSharing == "host_pays" ? 0 : p.PricePerSlot),
             OriginalPricePerSlot = originalPricePerSlot,

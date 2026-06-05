@@ -13,7 +13,7 @@ function sameUserId(a, b) {
   return String(a).toLowerCase() === String(b).toLowerCase();
 }
 
-const defaultImg = '/assets/img/venues/venues-01.jpg';
+
 
 const expenseLabels = {
   host_pays: 'Bao sân',
@@ -88,6 +88,7 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
 
  
 
+  const defaultImg = post?.venueImageUrl || '/assets/img/venues/venues-01.jpg';
   const totalSlots = (post.requiredPlayers || 0) + 1; // +1 host
   const filled = post.membersCount || 0;
   const slotsLeft = Math.max(totalSlots - filled, 0);
@@ -157,7 +158,7 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
           {/* Image Side */}
           <div className="matching-list-card-img" style={{ width: '280px', position: 'relative', flexShrink: 0 }}>
             <Link to={user ? `/matching/${post.id}` : '/login'} state={user ? undefined : { from: `/matching/${post.id}` }} style={{ display: 'block', height: '100%' }}>
-              <img src={defaultImg} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={post.title} />
+              <img src={defaultImg} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s ease' }} alt={post.title} onError={(e) => { e.target.onerror = null; e.target.src = '/assets/img/venues/venues-01.jpg'; }} />
             </Link>
             <div style={{ position: 'absolute', top: '12px', left: '12px', display: 'flex', gap: '8px', zIndex: 1 }}>
               {post.skillLevel && (
@@ -295,7 +296,7 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
         {/* ── Image + Badges ── */}
         <div className="matching-card-img" style={{ position: 'relative', height: '180px' }}>
           <Link to={user ? `/matching/${post.id}` : '/login'} state={user ? undefined : { from: `/matching/${post.id}` }} style={{ display: 'block', height: '100%' }}>
-            <img src={defaultImg} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={post.title} />
+            <img src={defaultImg} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s ease' }} alt={post.title} onError={(e) => { e.target.onerror = null; e.target.src = '/assets/img/venues/venues-01.jpg'; }} />
           </Link>
           <div style={{ position: 'absolute', top: '12px', left: '12px', display: 'flex', gap: '8px', zIndex: 1 }}>
             {post.skillLevel && (

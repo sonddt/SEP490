@@ -18,6 +18,7 @@ public class MatchingPostCardDto
     public string? PlayEndTime { get; set; }
     public string? VenueName { get; set; }
     public string? VenueAddress { get; set; }
+    public string? VenueImageUrl { get; set; }
     public string? CourtName { get; set; }
     public decimal? PricePerSlot { get; set; }
     /// <summary>Chi phí / người trước giảm giá đơn (khi chia đều).</summary>

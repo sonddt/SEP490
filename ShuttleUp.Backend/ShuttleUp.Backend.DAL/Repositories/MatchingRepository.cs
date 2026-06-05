@@ -60,8 +60,12 @@ public class MatchingRepository : Repository<MatchingPost>, IMatchingRepository
     {
         return sort switch
         {
-            "price_asc" => query.OrderBy(p => p.PricePerSlot),
-            "price_desc" => query.OrderByDescending(p => p.PricePerSlot),
+            "price_asc" => query.OrderBy(p => p.PricePerSlot.HasValue 
+                ? p.PricePerSlot.Value * ((p.RequiredPlayers ?? 0) + 1)
+                : p.MatchingPostItems.Sum(i => i.BookingItem != null && i.BookingItem.FinalPrice.HasValue ? i.BookingItem.FinalPrice.Value : 0m)),
+            "price_desc" => query.OrderByDescending(p => p.PricePerSlot.HasValue 
+                ? p.PricePerSlot.Value * ((p.RequiredPlayers ?? 0) + 1)
+                : p.MatchingPostItems.Sum(i => i.BookingItem != null && i.BookingItem.FinalPrice.HasValue ? i.BookingItem.FinalPrice.Value : 0m)),
             "soonest" => query.OrderBy(p => p.PlayDate).ThenBy(p => p.PlayStartTime),
             "oldest" => query.OrderBy(p => p.CreatedAt),
             _ => query.OrderByDescending(p => p.CreatedAt)
@@ -87,7 +91,7 @@ public class MatchingRepository : Repository<MatchingPost>, IMatchingRepository
         {
             return await query
                 .Include(p => p.CreatorUser).ThenInclude(u => u!.AvatarFile)
-                .Include(p => p.Venue)
+                .Include(p => p.Venue).ThenInclude(v => v!.Files)
                 .Include(p => p.MatchingMembers)
                 .Include(p => p.MatchingJoinRequests)
                 .Include(p => p.MatchingPostItems).ThenInclude(i => i.BookingItem)
@@ -96,7 +100,7 @@ public class MatchingRepository : Repository<MatchingPost>, IMatchingRepository
 
         var all = await query
             .Include(p => p.CreatorUser).ThenInclude(u => u!.AvatarFile)
-            .Include(p => p.Venue)
+            .Include(p => p.Venue).ThenInclude(v => v!.Files)
             .Include(p => p.MatchingMembers)
             .Include(p => p.MatchingJoinRequests)
             .Include(p => p.MatchingPostItems).ThenInclude(i => i.BookingItem)
@@ -123,7 +127,7 @@ public class MatchingRepository : Repository<MatchingPost>, IMatchingRepository
         }
 
         var all = await query
-            .Include(p => p.Venue)
+            .Include(p => p.Venue).ThenInclude(v => v!.Files)
             .Include(p => p.CreatorUser)
             .ToListAsync();
         return ApplyInMemoryFilters(all, province, search).Count();
@@ -133,7 +137,7 @@ public class MatchingRepository : Repository<MatchingPost>, IMatchingRepository
     {
         return await _dbSet.AsNoTracking()
             .Include(x => x.CreatorUser).ThenInclude(u => u!.AvatarFile)
-            .Include(x => x.Venue)
+            .Include(x => x.Venue).ThenInclude(v => v!.Files)
             .Include(x => x.MatchingMembers).ThenInclude(m => m.User).ThenInclude(u => u!.AvatarFile)
             .Include(x => x.MatchingJoinRequests) // We might filter PENDING in service if needed, or include all
                 .ThenInclude(r => r.User).ThenInclude(u => u!.AvatarFile)
@@ -153,9 +157,10 @@ public class MatchingRepository : Repository<MatchingPost>, IMatchingRepository
     {
         return await _dbSet.AsNoTracking()
             .Include(p => p.CreatorUser).ThenInclude(u => u!.AvatarFile)
-            .Include(p => p.Venue)
+            .Include(p => p.Venue).ThenInclude(v => v!.Files)
             .Include(p => p.MatchingMembers)
             .Include(p => p.MatchingJoinRequests)
+            .Include(p => p.MatchingPostItems).ThenInclude(i => i.BookingItem)
             .Where(p => p.CreatorUserId == userId)
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
@@ -165,9 +170,10 @@ public class MatchingRepository : Repository<MatchingPost>, IMatchingRepository
     {
         return await _dbSet.AsNoTracking()
             .Include(p => p.CreatorUser).ThenInclude(u => u!.AvatarFile)
-            .Include(p => p.Venue)
+            .Include(p => p.Venue).ThenInclude(v => v!.Files)
             .Include(p => p.MatchingMembers)
             .Include(p => p.MatchingJoinRequests)
+            .Include(p => p.MatchingPostItems).ThenInclude(i => i.BookingItem)
             .Where(p => p.CreatorUserId != userId && p.MatchingMembers.Any(m => m.UserId == userId))
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();

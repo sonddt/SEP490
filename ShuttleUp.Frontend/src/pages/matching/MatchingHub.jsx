@@ -13,6 +13,8 @@ const sortOptions = [
   { value: 'newest', label: 'Mới nhất' },
   { value: 'oldest', label: 'Cũ nhất' },
   { value: 'soonest', label: 'Sắp diễn ra' },
+  { value: 'price_desc', label: 'Giá cao nhất' },
+  { value: 'price_asc', label: 'Giá thấp nhất' },
 ];
 
 function clientSortCompare(a, b, sort) {
@@ -28,6 +30,10 @@ function clientSortCompare(a, b, sort) {
     case 'oldest': {
       return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     }
+    case 'price_asc':
+      return (a.totalCourtPrice ?? 0) - (b.totalCourtPrice ?? 0);
+    case 'price_desc':
+      return (b.totalCourtPrice ?? 0) - (a.totalCourtPrice ?? 0);
     case 'newest':
     default:
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -316,7 +322,7 @@ export default function MatchingHub() {
                   </div>
                   
                   <div className="col-lg-4 mt-4 mt-lg-0">
-                     <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-end', alignItems: 'flex-end', height: '100%' }}>
+                     <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-end', alignItems: 'flex-start' }}>
                          {/* View Mode Toggle */}
                          <div>
                             <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block', textAlign: 'right' }}>Hiển thị</label>
