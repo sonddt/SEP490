@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { BOOKING_STATUSES, PAYMENT_METHODS } from '../../data/bookingsMock';
+import { BOOKING_STATUSES } from '../../constants/bookingStatuses';
+import { PAYMENT_METHODS } from '../../constants/paymentMethods';
 import { getManagerBookings, patchManagerBookingStatus } from '../../api/managerBookingsApi';
 import BookingDetailModal from '../../components/manager/BookingDetailModal';
 import RejectModal from '../../components/manager/RejectModal';

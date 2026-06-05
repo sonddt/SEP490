@@ -20,7 +20,7 @@ import {
   mapCheckoutToForm,
   REFUND_OPTIONS,
   Toast,
-} from './managerCheckoutSettingsShared';
+} from '../../components/manager/CheckoutSettingsShared';
 
 const MapPicker = lazy(() => import('../../components/common/MapPicker'));
 

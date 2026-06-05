@@ -116,7 +116,7 @@ export default function MyProfile() {
             <div className="w-28 h-28 rounded-[28px] shadow-[0_8px_24px_rgba(16,185,129,0.2)] bg-white overflow-hidden p-1">
               <img
                 className="w-full h-full object-cover rounded-[24px]"
-                src={u?.avatarUrl || '/assets/assets/img/profiles/avatar-01.jpg'}
+                src={u?.avatarUrl || '/assets/img/profiles/avatar-01.jpg'}
                 alt={u?.fullName}
               />
             </div>

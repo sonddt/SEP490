@@ -412,7 +412,7 @@ export default function UserProfileEdit() {
                     onClick={() => fileInputRef.current?.click()}
                   ></div>
                 <img
-                  src={avatarPreview || form.avatarUrl || '/assets/assets/img/profiles/avatar-01.jpg'}
+                  src={avatarPreview || form.avatarUrl || '/assets/img/profiles/avatar-01.jpg'}
                   alt="Avatar Preview"
                   className="rounded-full object-cover border-8 border-slate-50 shadow-sm relative z-10 cursor-pointer flex-shrink-0"
                   style={{ width: '160px', height: '160px', minWidth: '160px', objectFit: 'cover' }}

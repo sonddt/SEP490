@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { BOOKING_STATUSES, PAYMENT_METHODS } from '../../data/bookingsMock';
+import { BOOKING_STATUSES } from '../../constants/bookingStatuses';
+import { PAYMENT_METHODS } from '../../constants/paymentMethods';
 import LongTermScheduleDisplay from '../common/LongTermScheduleDisplay';
 
 function InfoRow({ label, value, valueClass = '' }) {

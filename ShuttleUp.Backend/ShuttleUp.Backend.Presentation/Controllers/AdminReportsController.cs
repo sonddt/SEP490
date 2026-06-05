@@ -3,7 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ShuttleUp.Backend.Constants;
-using ShuttleUp.Backend.Helpers;
+using ShuttleUp.BLL.Helpers;
 using ShuttleUp.BLL.Interfaces;
 
 namespace ShuttleUp.Backend.Controllers;

@@ -17,7 +17,7 @@ export default function PageLoader() {
     <div id="global-loader">
       <div className="loader-img">
         <img
-          src="/assets/assets/img/loader.png"
+          src="/assets/img/loader.png"
           className="img-fluid"
           alt="Loading..."
         />

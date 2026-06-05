@@ -36,4 +36,19 @@ public static class TimeZoneHelper
     /// </summary>
     public static bool IsSlotInPast(DateTime slotEndVnLocal)
         => slotEndVnLocal <= NowVn();
+
+    /// <summary>Format deadline UTC sang chuỗi hiển thị giờ Việt Nam.</summary>
+    public static string FormatDeadlineVn(DateTime utcDeadline)
+    {
+        try
+        {
+            var local = ToVn(utcDeadline);
+            return local.ToString("dd/MM/yyyy HH:mm", System.Globalization.CultureInfo.GetCultureInfo("vi-VN"))
+                   + " (giờ Việt Nam)";
+        }
+        catch
+        {
+            return utcDeadline.ToString("dd/MM/yyyy HH:mm", System.Globalization.CultureInfo.InvariantCulture) + " UTC";
+        }
+    }
 }

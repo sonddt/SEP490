@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { normalizeSearchText } from '../../utils/searchNormalize';
-import { POPULAR_BANK_BINS } from '../../pages/manager/managerCheckoutSettingsShared';
+import { POPULAR_BANK_BINS } from '../manager/CheckoutSettingsShared';
 
 const BANK_SEARCH_ALIASES = {
   TPBANK: ['tp bank', 'tien phong bank', 'tiên phong bank', 'ngan hang tien phong', 'ngân hàng tiên phong'],

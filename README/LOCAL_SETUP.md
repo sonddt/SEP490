@@ -10,7 +10,7 @@ Sau khi clone repo, bạn cần chạy được backend và frontend trên máy 
 
 ## Bước 1: Database
 
-Chạy script Database.txt trong MySQL (theo quy ước team, thường chạy cả file nếu muốn DB mẫu sạch).
+Chạy script `Database/Database.txt` trong MySQL (theo quy ước team, thường chạy cả file nếu muốn DB mẫu sạch).
 
 Mở ShuttleUp.Backend/ShuttleUp.Backend.Presentation/appsettings.json và sửa ConnectionStrings DefaultConnection cho đúng server, user, mật khẩu và tên database trên máy bạn.
 

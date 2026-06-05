@@ -70,7 +70,7 @@ Dữ liệu quan hệ được chuẩn hóa và lưu trữ tệp tin trên nền
 | **Database** | **MySQL 8.0** | Lưu trữ người dùng, sân, đặt chỗ, giao dịch |
 | **ORM** | Entity Framework Core | Mapping dữ liệu (Snake Case naming convention) |
 | **Image Hosting** | Cloudinary | Lưu trữ ảnh Sân (Venue), Profile, Minh chứng CK |
-| **Schema Source** | `Database.txt` | Single Source of Truth cho cấu trúc CSDL |
+| **Schema Source** | `Database/Database.txt` | Single Source of Truth cho cấu trúc CSDL + seed mẫu |
 
 ### 2.4 Bảo Mật & Xác Thực
 

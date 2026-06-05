@@ -11,7 +11,7 @@ import {
   useDebounce,
   ConfirmModal,
   Toast,
-} from './managerCheckoutSettingsShared';
+} from '../../components/manager/CheckoutSettingsShared';
 import { normalizeSearchText } from '../../utils/searchNormalize';
 
 import { BankPicker } from '../../components/common/BankPicker';

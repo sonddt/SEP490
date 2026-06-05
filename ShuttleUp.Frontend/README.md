@@ -1,6 +1,6 @@
 # ShuttleUp (frontend)
 
-Hướng dẫn chạy cả project (database, backend, Cloudinary, biến môi trường): đọc file README.md và README/LOCAL_SETUP.md ở thư mục gốc repo (cùng cấp với thư mục ShuttleUp.Frontend).
+Hướng dẫn chạy cả project (database, backend, Cloudinary, biến môi trường): đọc [README/LOCAL_SETUP.md](../README/LOCAL_SETUP.md) ở thư mục gốc repo (cùng cấp với thư mục ShuttleUp.Frontend).
 
 ---
 

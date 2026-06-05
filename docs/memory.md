@@ -6,7 +6,7 @@ Tài liệu ghi lại các mốc làm việc theo thời gian. Đọc từ trên
 
 ## Nguyên tắc cố định (áp dụng xuyên suốt)
 
-- Database: chỉ `Database.txt` — không thêm file `.sql` rời trong repo; sửa schema + dữ liệu mẫu trong file đó, chạy full script khi cần DB sạch (xem `.cursor/rules/project-context.mdc`).
+- Database: chỉ `Database/Database.txt` — không thêm file `.sql` rời trong repo; sửa schema + dữ liệu mẫu trong file đó, chạy full script khi cần DB sạch (xem `.cursor/rules/project-context.mdc`).
 - Giọng điệu giao diện: vui vẻ, cởi mở. Tránh nhãn kiểu “Lỗi” cứng nhắc; ưu tiên thông điệp thân thiện (“Oops…”, “Tuyệt vời…”).
 - Validation: không dùng alert toàn trang hay alert trình duyệt; hiển thị gần ô nhập. Ưu tiên số thay chữ (“3 file” thay vì “ba file”) khi phù hợp.
 - Sân (Venue): luồng Draft → Active; không publish nếu thiếu sân hoặc cấu hình giá. `VenueService` đã phản ánh rule này.
@@ -943,3 +943,14 @@ Gom backend về một nhánh `ShuttleUp.Backend/` với 3 project con:
 - `ShuttleUp.Backend.DAL` (trước: `ShuttleUp.DAL`)
 
 `ShuttleUp.Frontend` giữ nguyên ở root. Cập nhật `ShuttleUp.sln`, `*.csproj`, `README/LOCAL_SETUP.md`, docs kiến trúc/sơ đồ, `.gitignore`. Namespace C# không đổi (`ShuttleUp.BLL`, `ShuttleUp.DAL`, `ShuttleUp.Backend`). `dotnet build ShuttleUp.sln` OK.
+
+---
+
+## 5 tháng 6, 2026 — Dọn cấu trúc repo (phase 2)
+
+1. **Root**: xóa `tinh_thanh.txt`, `package-lock.json` (orphan).
+2. **Frontend static**: xóa `public/assets/assets/`, `public/assets/plugins/plugins/`; khôi phục `img/profiles/`, `loader.png` vào `public/assets/img/`; sửa path JSX `/assets/assets/` → `/assets/`.
+3. **Database SSOT**: xóa bản `Database.txt` cũ (seed nhẹ); `Database_realistic.txt` → đổi tên thành `Database/Database.txt` (schema + seed chuẩn). Cập nhật `project-context.mdc`, `LOCAL_SETUP.md`, `TECH_STACK.md`.
+4. **Backend dedup**: xóa `Presentation/Configurations/CloudinarySettings.cs` (trùng BLL); gộp `FormatDeadlineVn` vào `BLL/Helpers/TimeZoneHelper`, xóa `Presentation/Helpers/TimeZoneHelper.cs`.
+5. **Frontend cleanup**: tách `BOOKING_STATUSES` / `PAYMENT_METHODS` → `src/constants/`; xóa `bookingsMock.js`, `venuesMock.js`, `bkToast.js`; chuyển `ReportHistoryModal` → `components/admin/`, `CheckoutSettingsShared` → `components/manager/`.
+6. **Docs**: `architecture.md` React 19 + Router 7; `ShuttleUp.Frontend/README.md` link `README/LOCAL_SETUP.md`.

@@ -29,11 +29,11 @@ ShuttleUp.Backend/
 > Namespace C# trong code vẫn giữ `ShuttleUp.DAL`, `ShuttleUp.BLL`, `ShuttleUp.Backend` — chỉ tên project/thư mục được chuẩn hóa.
 
 ## 4. Cấu trúc thiết kế (Frontend)
-- **React 18 + Vite:** Công nghệ lõi.
+- **React 19 + Vite 7:** Công nghệ lõi.
 - **State Management:** Context API (AuthContext) + Local State.
 - **Styling:** Bootstrap 5, FontAwesome, Feather Icons, Custom CSS (SaaS UI template).
 - **API Interceptor:** Axios client tích hợp xử lý renew/refresh token.
-- **Routing:** React Router v6.
+- **Routing:** React Router v7.
 
 ## 5. Dịch vụ bên thứ ba (3rd Party Services)
 - **Cơ sở dữ liệu:** MySQL Database.

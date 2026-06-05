@@ -10,7 +10,7 @@
 --
 -- Cách chạy:
 --   • MySQL Workbench: kết nối server → mở file này → Ctrl+A → Execute toàn bộ.
---   • CLI: mysql -u ... -p < Database.txt   (hoặc: SOURCE đường_dẫn/Database.txt)
+--   • CLI: mysql -u ... -p < Database/Database.txt   (hoặc: SOURCE đường_dẫn/Database/Database.txt)
 --
 -- Lưu ý:
 --   • Script có DROP TABLE + CREATE + INSERT mẫu → phù hợp reset môi trường dev / DB mới.

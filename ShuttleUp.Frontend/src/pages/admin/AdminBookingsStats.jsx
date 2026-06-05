@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import axiosClient from '../../api/axiosClient';
 import ShuttleDateField from '../../components/ui/ShuttleDateField';
-import { BOOKING_STATUSES } from '../../data/bookingsMock';
+import { BOOKING_STATUSES } from '../../constants/bookingStatuses';
 import { mapManagerBookingFromApi } from '../manager/ManagerBookings';
 import BookingDetailModal from '../../components/manager/BookingDetailModal';
 

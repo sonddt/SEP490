@@ -4,7 +4,7 @@ import { getMyBookings, cancelBooking, getCancelPreview, updateRefundBankInfo, r
 import ReportModal from '../../components/common/ReportModal';
 import LongTermScheduleDisplay from '../../components/common/LongTermScheduleDisplay';
 import { BankPicker } from '../../components/common/BankPicker';
-import { fetchVietqrBanks } from '../manager/managerCheckoutSettingsShared';
+import { fetchVietqrBanks } from '../../components/manager/CheckoutSettingsShared';
 
 function pad2(n) {
   return String(n).padStart(2, '0');

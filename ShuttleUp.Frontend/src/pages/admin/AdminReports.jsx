@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
 import { notifyError, notifySuccess } from '../../hooks/useNotification';
-import ReportHistoryModal from './ReportHistoryModal';
+import ReportHistoryModal from '../../components/admin/ReportHistoryModal';
 
 const TYPE_OPTIONS = [
   { value: 'ALL', label: 'Tất cả loại' },

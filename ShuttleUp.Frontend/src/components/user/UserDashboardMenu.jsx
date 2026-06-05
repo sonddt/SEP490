@@ -27,11 +27,11 @@ export default function UserDashboardMenu() {
         <div className="user-sidebar-avatar rounded-full border-[2px] border-white shadow-sm bg-white mx-auto overflow-hidden relative group">
           <div className="absolute inset-0 bg-emerald-500/10 rounded-full scale-110 blur-sm opacity-0 group-hover:opacity-100 transition-opacity"></div>
           <img
-            src={user?.avatarUrl || '/assets/assets/img/profiles/avatar-01.jpg'}
+            src={user?.avatarUrl || '/assets/img/profiles/avatar-01.jpg'}
             alt={user?.fullName || 'User'}
             className="w-full h-full object-cover relative z-10"
             onError={(e) => {
-              e.target.src = '/assets/assets/img/profiles/avatar-01.jpg';
+              e.target.src = '/assets/img/profiles/avatar-01.jpg';
             }}
           />
         </div>
