@@ -39,11 +39,12 @@ public class MatchingController : ControllerBase
         [FromQuery] DateOnly? playDate,
         [FromQuery] string? sort,
         [FromQuery] string? q,
+        [FromQuery] string? status,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 12)
     {
         Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var me);
-        var result = await _matchingService.GetOpenPostsAsync(skillLevel, province, playDate, sort, q, page, pageSize, me, HttpContext.RequestAborted);
+        var result = await _matchingService.GetOpenPostsAsync(skillLevel, province, playDate, sort, q, status, page, pageSize, me, HttpContext.RequestAborted);
         return Ok(result);
     }
 

@@ -11,6 +11,7 @@ import { parseBookingSlotDate, buildScheduleSummary } from '../../utils/matching
 import { normalizeSearchText } from '../../utils/searchNormalize';
 import DiscountPriceDisplay from '../../components/matching/DiscountPriceDisplay';
 import { getSkillLabel } from '../../constants/skillLevels';
+import { formatTimeAgo } from '../../utils/timeAgo';
 
 import { notifyError, notifySuccess } from '../../hooks/useNotification';
 
@@ -364,6 +365,8 @@ export default function MatchingPostDetail() {
                     {post.host?.skillLevel && (
                       <span style={{ fontSize: '12px', fontWeight: '700', color: '#475569', backgroundColor: '#f1f5f9', padding: '6px 12px', borderRadius: '8px' }}>{getSkillLabel(post.host.skillLevel) || post.host.skillLevel}</span>
                     )}
+                    <span style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: '#cbd5e1' }}></span>
+                    <span style={{ fontSize: '12px', fontWeight: '700', color: '#0ea5e9', backgroundColor: '#e0f2fe', padding: '4px 10px', borderRadius: '8px' }}><i className="feather-clock me-1"></i> Đăng {formatTimeAgo(post.createdAt)}</span>
                   </div>
                 </div>
              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -473,7 +476,9 @@ export default function MatchingPostDetail() {
                                 <span>{formatPrice(post.pricePerSlot)}</span>
                               )}
                             </div>
-                            <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}><i className="feather-pie-chart me-1"></i> {expenseLabels[post.expenseSharing] || post.expenseSharing}</div>
+                            {post.expenseSharing !== 'negotiable' && (
+                              <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}><i className="feather-pie-chart me-1"></i> {expenseLabels[post.expenseSharing] || post.expenseSharing}</div>
+                            )}
                         </div>
                     </div>
                 </div>

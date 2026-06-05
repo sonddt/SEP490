@@ -6,6 +6,7 @@ import { buildScheduleSummary } from '../../utils/matchingScheduleSummary';
 import { useAuth } from '../../context/AuthContext';
 import { notifySuccess, notifyError } from '../../hooks/useNotification';
 import { getSkillLabel } from '../../constants/skillLevels';
+import { formatTimeAgo } from '../../utils/timeAgo';
 
 function sameUserId(a, b) {
   if (a == null || b == null) return false;
@@ -193,9 +194,9 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
               </div>
             )}
             <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '16px 12px 12px', background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)', zIndex: 1 }}>
-              <span style={{ color: '#fff', fontWeight: '700', fontSize: '15px' }}>{formatPrice(post.pricePerSlot)}<span style={{ fontSize: '12px', opacity: 0.8 }}>/slot</span></span>
-              {post.originalPricePerSlot != null && post.pricePerSlot != null && post.originalPricePerSlot > post.pricePerSlot && (
-                <span style={{ color: '#fca5a5', textDecoration: 'line-through', fontSize: '12px', marginLeft: '6px', fontWeight: '600' }}>{formatPrice(post.originalPricePerSlot)}</span>
+              <span style={{ color: '#fff', fontWeight: '700', fontSize: '15px' }}>{formatPrice(post.totalCourtPrice)}<span style={{ fontSize: '12px', opacity: 0.8 }}>/sân</span></span>
+              {post.originalTotalCourtPrice != null && post.totalCourtPrice != null && post.originalTotalCourtPrice > post.totalCourtPrice + 1 && (
+                <span style={{ color: '#fca5a5', textDecoration: 'line-through', fontSize: '12px', marginLeft: '6px', fontWeight: '600' }}>{formatPrice(post.originalTotalCourtPrice)}</span>
               )}
             </div>
           </div>
@@ -203,12 +204,15 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
           {/* Content Side */}
           <div className="matching-list-card-body" style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             <div style={{ marginBottom: '16px' }}>
-              <h4 style={{ fontSize: '20px', fontWeight: '700', color: '#1e293b', marginBottom: '8px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                <Link to={user ? `/matching/${post.id}` : '/login'} state={user ? undefined : { from: `/matching/${post.id}` }} style={{ color: 'inherit', textDecoration: 'none' }}>{post.title}</Link>
-              </h4>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <h4 style={{ fontSize: '20px', fontWeight: '700', color: '#1e293b', wordBreak: 'break-word', overflowWrap: 'anywhere', margin: 0, paddingRight: '12px' }}>
+                  <Link to={user ? `/matching/${post.id}` : '/login'} state={user ? undefined : { from: `/matching/${post.id}` }} style={{ color: 'inherit', textDecoration: 'none' }}>{post.title}</Link>
+                </h4>
+                <span style={{ fontSize: '11px', color: '#0ea5e9', backgroundColor: '#e0f2fe', padding: '4px 8px', borderRadius: '8px', fontWeight: '700', whiteSpace: 'nowrap' }}>{formatTimeAgo(post.createdAt)}</span>
+              </div>
               <div style={{ display: 'flex', gap: '16px', color: '#64748b', fontSize: '14px', fontWeight: '600', flexWrap: 'wrap' }}>
                 <span><i className="feather-map-pin me-1" style={{ color: '#097E52' }}></i> {post.venueName}{post.courtName ? ` — ${post.courtName}` : ''}</span>
-                {post.expenseSharing && (
+                {post.expenseSharing && post.expenseSharing !== 'negotiable' && (
                   <span><i className="feather-pie-chart me-1" style={{ color: '#097E52' }}></i> {expenseLabels[post.expenseSharing] || post.expenseSharing}</span>
                 )}
                 {post.playPurpose && (
@@ -328,25 +332,28 @@ export default function MatchingPostCard({ post, viewMode = 'grid', onJoined }) 
             </div>
           )}
           <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '16px 12px 12px', background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)', zIndex: 1 }}>
-              <span style={{ color: '#fff', fontWeight: '800', fontSize: '16px' }}>{formatPrice(post.pricePerSlot)}<span style={{ fontSize: '12px', opacity: 0.8 }}>/slot</span></span>
-              {post.originalPricePerSlot != null && post.pricePerSlot != null && post.originalPricePerSlot > post.pricePerSlot && (
-                <span style={{ color: '#fca5a5', textDecoration: 'line-through', fontSize: '12px', marginLeft: '6px', fontWeight: '600' }}>{formatPrice(post.originalPricePerSlot)}</span>
+              <span style={{ color: '#fff', fontWeight: '800', fontSize: '16px' }}>{formatPrice(post.totalCourtPrice)}<span style={{ fontSize: '12px', opacity: 0.8 }}>/sân</span></span>
+              {post.originalTotalCourtPrice != null && post.totalCourtPrice != null && post.originalTotalCourtPrice > post.totalCourtPrice + 1 && (
+                <span style={{ color: '#fca5a5', textDecoration: 'line-through', fontSize: '12px', marginLeft: '6px', fontWeight: '600' }}>{formatPrice(post.originalTotalCourtPrice)}</span>
               )}
           </div>
         </div>
 
         {/* ── Content ── */}
         <div className="matching-card-body" style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <h4 style={{ fontSize: '18px', fontWeight: '800', color: '#1e293b', marginBottom: '12px', lineHeight: '1.4', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-            <Link to={user ? `/matching/${post.id}` : '/login'} state={user ? undefined : { from: `/matching/${post.id}` }} style={{ color: 'inherit', textDecoration: 'none' }}>{post.title}</Link>
-          </h4>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+            <h4 style={{ fontSize: '18px', fontWeight: '800', color: '#1e293b', lineHeight: '1.4', wordBreak: 'break-word', overflowWrap: 'anywhere', margin: 0, paddingRight: '8px' }}>
+              <Link to={user ? `/matching/${post.id}` : '/login'} state={user ? undefined : { from: `/matching/${post.id}` }} style={{ color: 'inherit', textDecoration: 'none' }}>{post.title}</Link>
+            </h4>
+            <span style={{ fontSize: '11px', color: '#0ea5e9', backgroundColor: '#e0f2fe', padding: '4px 8px', borderRadius: '8px', fontWeight: '700', whiteSpace: 'nowrap' }}>{formatTimeAgo(post.createdAt)}</span>
+          </div>
           
           <div style={{ fontSize: '13px', fontWeight: '600', color: '#64748b', marginBottom: '6px' }}>
             <i className="feather-map-pin me-2" style={{ color: '#097E52' }}></i>
             {post.venueName}{post.courtName ? ` — ${post.courtName}` : ''}
           </div>
           
-          {post.expenseSharing && (
+          {post.expenseSharing && post.expenseSharing !== 'negotiable' && (
             <div style={{ fontSize: '13px', fontWeight: '600', color: '#64748b', marginBottom: '8px' }}>
               <i className="feather-pie-chart me-2" style={{ color: '#097E52' }}></i>
               {expenseLabels[post.expenseSharing] || post.expenseSharing}

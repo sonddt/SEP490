@@ -22,6 +22,8 @@ public class MatchingPostCardDto
     public decimal? PricePerSlot { get; set; }
     /// <summary>Chi phí / người trước giảm giá đơn (khi chia đều).</summary>
     public decimal? OriginalPricePerSlot { get; set; }
+    public decimal? TotalCourtPrice { get; set; }
+    public decimal? OriginalTotalCourtPrice { get; set; }
     public bool HasDiscount { get; set; }
     public int? RequiredPlayers { get; set; }
     public string? SkillLevel { get; set; }

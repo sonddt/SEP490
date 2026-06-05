@@ -36,13 +36,13 @@ public class MatchingService : IMatchingService
 
     public async Task<MatchingPagedResultDto<MatchingPostCardDto>> GetOpenPostsAsync(
         string? skillLevel, string? province, DateOnly? playDate, 
-        string? sort, string? q, int page, int pageSize, Guid? currentUserId,
+        string? sort, string? q, string? status, int page, int pageSize, Guid? currentUserId,
         CancellationToken ct = default)
     {
         await _activity.ApplyExpiredOpenAndFullToInactiveAsync(ct);
 
-        var total = await _matchingRepo.CountPostsAsync(skillLevel, province, playDate, q);
-        var items = await _matchingRepo.GetPostsPagedAsync(skillLevel, province, playDate, sort, q, (page - 1) * pageSize, pageSize);
+        var total = await _matchingRepo.CountPostsAsync(skillLevel, province, playDate, q, status);
+        var items = await _matchingRepo.GetPostsPagedAsync(skillLevel, province, playDate, sort, q, status, (page - 1) * pageSize, pageSize);
 
         return new MatchingPagedResultDto<MatchingPostCardDto>
         {
@@ -89,9 +89,34 @@ public class MatchingService : IMatchingService
 
         var actualItemsTotal = p.MatchingPostItems.Sum(i =>
             actualMap.GetValueOrDefault(i.BookingItemId, i.BookingItem?.FinalPrice ?? 0m));
-        var originalItemsTotal = p.MatchingPostItems.Sum(i => i.BookingItem?.FinalPrice ?? 0m);
         var headCount = Math.Max((p.RequiredPlayers ?? 0) + 1, 1);
-        var expenseSharing = p.ExpenseSharing == "female_free" ? "negotiable" : p.ExpenseSharing;
+        var dbActualTotal = p.PricePerSlot.HasValue ? p.PricePerSlot.Value * headCount : (decimal?)null;
+        var originalItemsTotal = p.MatchingPostItems.Sum(i => i.BookingItem?.FinalPrice ?? 0m);
+
+        var bookingItems = p.MatchingPostItems.Select(i =>
+        {
+            var original = i.BookingItem?.FinalPrice ?? 0m;
+            var actual = actualMap.GetValueOrDefault(i.BookingItemId, original);
+            if (dbActualTotal.HasValue && Math.Abs(dbActualTotal.Value - actualItemsTotal) > 0.1m)
+            {
+                var ratio = originalItemsTotal > 0 ? dbActualTotal.Value / originalItemsTotal : 1m;
+                actual = Math.Round(original * ratio, 0);
+            }
+            return new MatchingBookingItemDto
+            {
+                BookingItemId = i.BookingItemId,
+                CourtName = i.BookingItem?.Court?.Name,
+                StartTime = i.BookingItem?.StartTime,
+                EndTime = i.BookingItem?.EndTime,
+                Price = actual,
+                OriginalPrice = original
+            };
+        }).ToList();
+
+        actualItemsTotal = bookingItems.Sum(x => x.Price ?? 0m);
+
+        var expenseSharing = (p.ExpenseSharing == "female_free" || p.ExpenseSharing == "split_equal" || p.ExpenseSharing == "per_person") 
+            ? "negotiable" : p.ExpenseSharing;
         decimal? originalPricePerSlot = expenseSharing switch
         {
             "host_pays" => 0,
@@ -109,9 +134,11 @@ public class MatchingService : IMatchingService
             VenueName = p.Venue?.Name,
             VenueAddress = p.Venue?.Address,
             CourtName = p.CourtName,
-            PricePerSlot = p.PricePerSlot,
+            PricePerSlot = expenseSharing == "negotiable" ? null : (expenseSharing == "host_pays" ? 0 : p.PricePerSlot),
             OriginalPricePerSlot = originalPricePerSlot,
-            HasDiscount = originalItemsTotal > actualItemsTotal + 0.01m,
+            TotalCourtPrice = dbActualTotal ?? actualItemsTotal,
+            OriginalTotalCourtPrice = originalItemsTotal,
+            HasDiscount = originalItemsTotal > (dbActualTotal ?? actualItemsTotal) + 0.01m,
             RequiredPlayers = p.RequiredPlayers,
             SkillLevel = p.SkillLevel,
             GenderPref = p.GenderPref,
@@ -144,19 +171,7 @@ public class MatchingService : IMatchingService
                 Gender = m.User?.Gender,
                 JoinedAt = m.JoinedAt
             }),
-            BookingItems = p.MatchingPostItems.Select(i =>
-            {
-                var original = i.BookingItem?.FinalPrice ?? 0m;
-                return new MatchingBookingItemDto
-                {
-                    BookingItemId = i.BookingItemId,
-                    CourtName = i.BookingItem?.Court?.Name,
-                    StartTime = i.BookingItem?.StartTime,
-                    EndTime = i.BookingItem?.EndTime,
-                    Price = actualMap.GetValueOrDefault(i.BookingItemId, original),
-                    OriginalPrice = original
-                };
-            }),
+            BookingItems = bookingItems,
             PendingRequests = isHost ? p.MatchingJoinRequests.Where(r => r.Status == "PENDING").Select(r => new MatchingJoinRequestDto
             {
                 Id = r.Id,
@@ -608,7 +623,10 @@ public class MatchingService : IMatchingService
         // Calculate original price for strikethrough display
         var totalOriginal = p.MatchingPostItems.Sum(i => i.BookingItem?.FinalPrice ?? 0m);
         var headCount = Math.Max(totalSlots, 1);
-        var expenseSharing = p.ExpenseSharing == "female_free" ? "negotiable" : p.ExpenseSharing;
+        var dbActualTotal = p.PricePerSlot.HasValue ? p.PricePerSlot.Value * headCount : (decimal?)null;
+
+        var expenseSharing = (p.ExpenseSharing == "female_free" || p.ExpenseSharing == "split_equal" || p.ExpenseSharing == "per_person") 
+            ? "negotiable" : p.ExpenseSharing;
         decimal? originalPricePerSlot = expenseSharing switch
         {
             "host_pays" => 0,
@@ -626,8 +644,10 @@ public class MatchingService : IMatchingService
             VenueName = p.Venue?.Name,
             VenueAddress = p.Venue?.Address,
             CourtName = p.CourtName,
-            PricePerSlot = p.PricePerSlot,
+            PricePerSlot = expenseSharing == "negotiable" ? null : (expenseSharing == "host_pays" ? 0 : p.PricePerSlot),
             OriginalPricePerSlot = originalPricePerSlot,
+            TotalCourtPrice = dbActualTotal ?? totalOriginal,
+            OriginalTotalCourtPrice = totalOriginal,
             RequiredPlayers = p.RequiredPlayers,
             SkillLevel = p.SkillLevel,
             GenderPref = p.GenderPref,

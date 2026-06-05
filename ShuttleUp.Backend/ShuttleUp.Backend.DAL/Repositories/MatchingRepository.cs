@@ -68,11 +68,13 @@ public class MatchingRepository : Repository<MatchingPost>, IMatchingRepository
         };
     }
 
-    public async Task<IEnumerable<MatchingPost>> GetPostsPagedAsync(string? skillLevel, string? province, DateOnly? playDate, string? sort, string? search, int skip, int take)
+    public async Task<IEnumerable<MatchingPost>> GetPostsPagedAsync(string? skillLevel, string? province, DateOnly? playDate, string? sort, string? search, string? status, int skip, int take)
     {
         var localTime = DateTime.Now;
         IQueryable<MatchingPost> query = _dbSet.AsNoTracking();
         query = BuildOpenPostsQuery(query, localTime);
+        if (status == "OPEN") query = query.Where(p => p.Status == "OPEN");
+        if (status == "FULL") query = query.Where(p => p.Status == "FULL");
         query = ApplySkillFilter(query, skillLevel);
 
         if (playDate.HasValue)
@@ -102,11 +104,13 @@ public class MatchingRepository : Repository<MatchingPost>, IMatchingRepository
         return ApplyInMemoryFilters(all, province, search).Skip(skip).Take(take).ToList();
     }
 
-    public async Task<int> CountPostsAsync(string? skillLevel, string? province, DateOnly? playDate, string? search)
+    public async Task<int> CountPostsAsync(string? skillLevel, string? province, DateOnly? playDate, string? search, string? status)
     {
         var localTime = DateTime.Now;
         IQueryable<MatchingPost> query = _dbSet.AsNoTracking();
         query = BuildOpenPostsQuery(query, localTime);
+        if (status == "OPEN") query = query.Where(p => p.Status == "OPEN");
+        if (status == "FULL") query = query.Where(p => p.Status == "FULL");
         query = ApplySkillFilter(query, skillLevel);
 
         if (playDate.HasValue)

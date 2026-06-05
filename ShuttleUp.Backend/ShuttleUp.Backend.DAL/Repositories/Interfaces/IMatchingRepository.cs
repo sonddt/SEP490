@@ -4,8 +4,8 @@ namespace ShuttleUp.DAL.Repositories.Interfaces;
 
 public interface IMatchingRepository : IRepository<MatchingPost>
 {
-    Task<IEnumerable<MatchingPost>> GetPostsPagedAsync(string? skillLevel, string? province, DateOnly? playDate, string? sort, string? search, int skip, int take);
-    Task<int> CountPostsAsync(string? skillLevel, string? province, DateOnly? playDate, string? search);
+    Task<IEnumerable<MatchingPost>> GetPostsPagedAsync(string? skillLevel, string? province, DateOnly? playDate, string? sort, string? search, string? status, int skip, int take);
+    Task<int> CountPostsAsync(string? skillLevel, string? province, DateOnly? playDate, string? search, string? status);
     Task<MatchingPost?> GetPostDetailAsync(Guid postId);
     Task<MatchingPost?> GetPostForUpdateAsync(Guid postId);
     Task<IEnumerable<MatchingPost>> GetMyPostsWithIncludesAsync(Guid userId);

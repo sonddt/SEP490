@@ -6,7 +6,7 @@ public interface IMatchingService
 {
     Task<MatchingPagedResultDto<MatchingPostCardDto>> GetOpenPostsAsync(
         string? skillLevel, string? province, DateOnly? playDate, 
-        string? sort, string? q, int page, int pageSize, Guid? currentUserId,
+        string? sort, string? q, string? status, int page, int pageSize, Guid? currentUserId,
         CancellationToken ct = default);
 
     Task<IEnumerable<MatchingPostCardDto>> GetMyPostsAsync(Guid userId, CancellationToken ct = default);

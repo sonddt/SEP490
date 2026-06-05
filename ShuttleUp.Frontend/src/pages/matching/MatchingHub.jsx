@@ -35,8 +35,11 @@ function clientSortCompare(a, b, sort) {
 }
 
 /** Lọc theo chuỗi: tiêu đề, tên sân, địa chỉ sân, tên chủ bài — dùng cho tab Của tôi / Đã tham gia. */
-function applyClientListFilterSort(items, search, sort) {
+function applyClientListFilterSort(items, search, sort, status) {
   let list = Array.isArray(items) ? [...items] : [];
+  if (status) {
+    list = list.filter((p) => p.status === status);
+  }
   const nq = normalizeSearchText(search);
   if (nq) {
     list = list.filter((p) => {
@@ -64,7 +67,7 @@ export default function MatchingHub() {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState({ skillLevel: '', playDate: '', province: '', sort: 'newest' });
+  const [filters, setFilters] = useState({ skillLevel: '', playDate: '', province: '', sort: 'newest', status: '' });
   const [searchText, setSearchText] = useState('');
   const [isMatchingActive, setIsMatchingActive] = useState(false);
   const profileSynced = useRef(false);
@@ -97,6 +100,7 @@ export default function MatchingHub() {
       if (filters.playDate) params.playDate = filters.playDate;
       if (filters.province) params.province = filters.province;
       if (filters.sort) params.sort = filters.sort;
+      if (filters.status) params.status = filters.status;
       const q = searchText.trim();
       if (q) params.q = q;
 
@@ -111,13 +115,13 @@ export default function MatchingHub() {
   }, [page, filters, searchText]);
 
   const filteredMyPosts = useMemo(
-    () => applyClientListFilterSort(myPosts, searchText, filters.sort),
-    [myPosts, searchText, filters.sort]
+    () => applyClientListFilterSort(myPosts, searchText, filters.sort, filters.status),
+    [myPosts, searchText, filters.sort, filters.status]
   );
 
   const filteredJoinedPosts = useMemo(
-    () => applyClientListFilterSort(joinedPosts, searchText, filters.sort),
-    [joinedPosts, searchText, filters.sort]
+    () => applyClientListFilterSort(joinedPosts, searchText, filters.sort, filters.status),
+    [joinedPosts, searchText, filters.sort, filters.status]
   );
 
   const loadMyPosts = useCallback(async () => {
@@ -332,6 +336,16 @@ export default function MatchingHub() {
                             </div>
                          </div>
                          
+                         {/* Status Filter */}
+                         <div style={{ minWidth: '160px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block' }}>Trạng thái</label>
+                            <select className="form-select" style={{ height: '48px', borderRadius: '12px', border: 'none', backgroundColor: '#f1f5f9', fontWeight: '700', color: '#1e293b' }} value={filters.status || ''} onChange={(e) => handleFilterChange('status', e.target.value)}>
+                              <option value="">Tất cả</option>
+                              <option value="OPEN">Còn thiếu người</option>
+                              <option value="FULL">Đã đủ người</option>
+                            </select>
+                         </div>
+                         
                          {/* Sort Options */}
                          <div style={{ minWidth: '160px' }}>
                             <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block' }}>Sắp xếp</label>
@@ -350,7 +364,7 @@ export default function MatchingHub() {
           {(tab === 'my' || tab === 'joined') && (
             <div style={{ backgroundColor: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', padding: '24px', marginBottom: '32px' }}>
               <div className="row align-items-end g-3">
-                <div className="col-12 col-lg-5">
+                <div className="col-12 col-lg-4">
                   <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block' }}>
                     <i className="feather-search me-1"></i> Tìm kiếm (theo từng ký tự)
                   </label>
@@ -364,7 +378,15 @@ export default function MatchingHub() {
                     autoComplete="off"
                   />
                 </div>
-                <div className="col-6 col-md-4 col-lg-3">
+                <div className="col-6 col-md-4 col-lg-2">
+                  <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block' }}>Trạng thái</label>
+                  <select className="form-select" style={{ height: '48px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '700', color: '#1e293b' }} value={filters.status || ''} onChange={(e) => handleFilterChange('status', e.target.value)}>
+                    <option value="">Tất cả</option>
+                    <option value="OPEN">Còn thiếu người</option>
+                    <option value="FULL">Đã đủ người</option>
+                  </select>
+                </div>
+                <div className="col-6 col-md-4 col-lg-2">
                   <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block' }}>Sắp xếp</label>
                   <select className="form-select" style={{ height: '48px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: '700', color: '#1e293b' }} value={filters.sort || 'newest'} onChange={(e) => handleFilterChange('sort', e.target.value)}>
                     {sortOptions.map((o) => (
