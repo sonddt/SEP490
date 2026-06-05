@@ -183,12 +183,21 @@ public class AdminService : IAdminService
 
         var vnTz = TimeZoneHelper.GetVietnamTz();
         var bookings = await _bookingRepo.GetAllPagedAsync(status, sinceUtc, untilUtc, search, bookingType, (page - 1) * pageSize, pageSize);
+
+        var refundStatuses = new[] { "REFUNDED", "PENDING_REFUND", "PENDING_RECONCILIATION" };
+        var refundBookingIds = bookings.Where(b => refundStatuses.Contains(b.Status)).Select(b => b.Id).ToList();
+        var refundMap = refundBookingIds.Any()
+            ? await _refundRepo.GetLatestByBookingIdsAsync(refundBookingIds)
+            : new Dictionary<Guid, DAL.Models.RefundRequest>();
+
         var pagedItems = bookings.Select(b =>
         {
             var bookingCode = "SU" + b.Id.ToString("N")[^6..].ToUpperInvariant();
             var payment = b.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
             var paymentStatus = payment?.Status?.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase) == true ? "PAID" : "UNPAID";
             var refundReq = b.RefundRequests.OrderByDescending(r => r.RequestedAt).FirstOrDefault();
+
+            refundMap.TryGetValue(b.Id, out var refund);
 
             return new ManagerBookingListItemDto
             {
@@ -214,6 +223,9 @@ public class AdminService : IAdminService
                 RefundAmount = refundReq?.RequestedAmount,
                 PaidAmount = refundReq?.PaidAmount ?? payment?.Amount,
                 CreatedAt = b.CreatedAt,
+                RefundedAmount = refund?.RequestedAmount ?? 0m,
+                PaidAmount = refund?.PaidAmount ?? 0m,
+                PenaltyAmount = refund != null ? (refund.PaidAmount ?? 0m) - (refund.RequestedAmount ?? 0m) : 0m,
                 Items = b.BookingItems.OrderBy(bi => bi.StartTime).Select(bi =>
                 {
                     var court = bi.Court;

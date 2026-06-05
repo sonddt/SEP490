@@ -109,6 +109,9 @@ export function mapManagerBookingFromApi(b) {
     rawCreatedAt: created,
     rawDate: start,
     items: b.items || [],
+    refundedAmount: b.refundedAmount || 0,
+    paidAmount: b.paidAmount || 0,
+    penaltyAmount: b.penaltyAmount || 0,
   };
 }
 
@@ -432,8 +435,6 @@ export default function ManagerBookings() {
             <select className="form-select" style={{ width: 190 }} value={sortBy} onChange={e => setSortBy(e.target.value)}>
               <option value="created_desc">Giờ đặt mới nhất</option>
               <option value="created_asc">Giờ đặt cũ nhất</option>
-              <option value="play_asc">Giờ chơi gần nhất</option>
-              <option value="play_desc">Giờ chơi xa nhất</option>
               <option value="amount_high">Tiền cao → thấp</option>
               <option value="amount_low">Tiền thấp → cao</option>
             </select>

@@ -108,9 +108,12 @@ export default function ManagerEarnings() {
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => { setPage(1); }, [statusFilter, venueFilter, search, startDate, endDate]);
 
-  const ALLOWED_STATUSES = new Set(['CONFIRMED', 'COMPLETED', 'REFUNDED', 'CANCELLED']);
   const filteredItems = useMemo(() => {
-    return (data?.items || []).filter(tx => ALLOWED_STATUSES.has(tx.status));
+    return (data?.items || []).filter(tx => {
+      if (tx.status === 'CONFIRMED' || tx.status === 'COMPLETED') return true;
+      if (tx.status === 'REFUNDED' && (tx.penaltyAmount || 0) > 0) return true;
+      return false;
+    });
   }, [data?.items]);
 
   const totalPages = data?.totalPages ?? 1;

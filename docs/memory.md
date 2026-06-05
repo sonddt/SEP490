@@ -954,3 +954,19 @@ Gom backend về một nhánh `ShuttleUp.Backend/` với 3 project con:
 4. **Backend dedup**: xóa `Presentation/Configurations/CloudinarySettings.cs` (trùng BLL); gộp `FormatDeadlineVn` vào `BLL/Helpers/TimeZoneHelper`, xóa `Presentation/Helpers/TimeZoneHelper.cs`.
 5. **Frontend cleanup**: tách `BOOKING_STATUSES` / `PAYMENT_METHODS` → `src/constants/`; xóa `bookingsMock.js`, `venuesMock.js`, `bkToast.js`; chuyển `ReportHistoryModal` → `components/admin/`, `CheckoutSettingsShared` → `components/manager/`.
 6. **Docs**: `architecture.md` React 19 + Router 7; `ShuttleUp.Frontend/README.md` link `README/LOCAL_SETUP.md`.
+
+---
+
+## 5 tháng 6, 2026 — Refactor UI/UX Manager & Admin Dashboard
+
+1. **Manager**:
+   - `ManagerDashboard`: Gỡ bỏ 4 ô KPIs trên đầu trang giúp giao diện tập trung vào danh sách booking và thao tác nhanh.
+   - `ManagerEarnings`: Lọc bỏ đơn "Đã hủy", chỉ giữ lại `CONFIRMED`, `COMPLETED` và `REFUNDED` (có phạt tiền).
+   - `ManagerVenueList`: Gỡ bỏ thẻ "Đặt sân tháng này", chỉnh grid để mở rộng diện tích hiển thị.
+   - `ManagerBookings`: Xóa 2 lựa chọn sắp xếp "Giờ chơi gần/xa nhất".
+2. **Admin**:
+   - `AdminBookingsStats`: Xóa 3 thẻ KPI rườm rà (Đặt thành công, chờ xác nhận, đã hủy), chỉ giữ lại thẻ "Tổng đặt sân".
+3. **Chi tiết Thanh toán**:
+   - Bổ sung `RefundedAmount`, `PaidAmount`, `PenaltyAmount` vào DTO `ManagerBookingListItemDto`.
+   - `ManagerBookingService` và `AdminService` batch fetch dữ liệu từ `RefundRequests` cho các đơn ở trạng thái hoàn tiền.
+   - `BookingDetailModal` tự động hiển thị chi tiết số tiền gốc, tiền hoàn trả và phí phạt cho cả Admin và Manager.
