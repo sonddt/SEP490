@@ -106,14 +106,26 @@ public partial class BookingRepository
             var record = allOpenHours.FirstOrDefault(o =>
                 o.CourtId == item.CourtId && o.DayOfWeek == dayOfWeek);
 
-            if (record == null)
+            if (record == null || !record.OpenTime.HasValue || !record.CloseTime.HasValue)
                 return "COURT_CLOSED_DAY";
 
-            if (!record.OpenTime.HasValue || !record.CloseTime.HasValue)
-                return "COURT_CLOSED_DAY";
+            var startTs = item.Start.TimeOfDay;
+            var endTs = item.End.TimeOfDay;
+            // Handle midnight case (end time is exactly 00:00 of the next day)
+            if (endTs == TimeSpan.Zero && item.End > item.Start)
+            {
+                endTs = TimeSpan.FromHours(24);
+            }
 
-            var slotTime = TimeOnly.FromDateTime(item.Start);
-            if (slotTime < record.OpenTime.Value || slotTime > record.CloseTime.Value)
+            var openTs = record.OpenTime.Value.ToTimeSpan();
+            var closeTs = record.CloseTime.Value.ToTimeSpan();
+            // If close time is 23:59:00, we treat it as 24:00:00 to allow booking until midnight
+            if (closeTs == new TimeSpan(23, 59, 0) || closeTs == new TimeSpan(23, 59, 59))
+            {
+                closeTs = TimeSpan.FromHours(24);
+            }
+
+            if (startTs < openTs || endTs > closeTs)
                 return "OUTSIDE_OPEN_HOURS";
         }
 
@@ -185,8 +197,16 @@ public partial class BookingRepository
                 {
                     if (!record.OpenTime.HasValue || !record.CloseTime.HasValue)
                         return false;
-                    var slotTime = TimeOnly.FromDateTime(start);
-                    if (slotTime < record.OpenTime.Value || slotTime > record.CloseTime.Value)
+                    
+                    var startTs = start.TimeOfDay;
+                    var endTs = end.TimeOfDay;
+                    if (endTs == TimeSpan.Zero && end > start) endTs = TimeSpan.FromHours(24);
+
+                    var openTs = record.OpenTime.Value.ToTimeSpan();
+                    var closeTs = record.CloseTime.Value.ToTimeSpan();
+                    if (closeTs == new TimeSpan(23, 59, 0) || closeTs == new TimeSpan(23, 59, 59)) closeTs = TimeSpan.FromHours(24);
+
+                    if (startTs < openTs || endTs > closeTs)
                         return false;
                 }
             }
