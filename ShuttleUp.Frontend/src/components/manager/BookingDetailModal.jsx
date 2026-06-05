@@ -195,11 +195,18 @@ export default function BookingDetailModal({ booking, onClose, onAccept, onRejec
                 <h6 className="bk-detail-section-title">
                   <i className="feather-dollar-sign me-1" style={{ color: '#10b981' }} />Thanh toán
                 </h6>
-                <InfoRow label="Số tiền" value={
+                <InfoRow label="Tổng tiền" value={
                   <strong style={{ color: '#097E52', fontSize: '18px' }}>
                     {booking.amount.toLocaleString('vi-VN')} ₫
                   </strong>
                 } />
+                {['REFUNDED', 'PENDING_REFUND', 'PENDING_RECONCILIATION'].includes(booking.rawStatus) && (
+                  <>
+                    <InfoRow label="Tiền thanh toán" value={<strong style={{ color: '#334155' }}>{(booking.paidAmount ?? 0).toLocaleString('vi-VN')} ₫</strong>} />
+                    <InfoRow label="Hoàn cho khách" value={<strong style={{ color: '#0ea5e9' }}>{(booking.refundedAmount ?? 0).toLocaleString('vi-VN')} ₫</strong>} />
+                    <InfoRow label="Phí phạt (giữ lại)" value={<strong style={{ color: '#ef4444' }}>{(booking.penaltyAmount ?? 0).toLocaleString('vi-VN')} ₫</strong>} />
+                  </>
+                )}
                 <InfoRow label="Hình thức" value={
                   <span>
                     <i className={pm.icon} style={{ fontSize: '12px', marginRight: '4px', color: '#64748b' }} />

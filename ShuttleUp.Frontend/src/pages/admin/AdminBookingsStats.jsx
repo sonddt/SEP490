@@ -90,9 +90,6 @@ export default function AdminBookingsStats() {
 
   const STAT_CONFIG = [
     { key: 'total',     label: 'Tổng đặt sân',       icon: 'feather-calendar',     theme: 'indigo' },
-    { key: 'confirmed', label: 'Đặt thành công',      icon: 'feather-check-circle', theme: 'green'  },
-    { key: 'pending',   label: 'Đang chờ xác nhận',   icon: 'feather-clock',        theme: 'amber'  },
-    { key: 'cancelled', label: 'Đã huỷ',              icon: 'feather-x-circle',     theme: 'red'    },
   ];
 
   return (

@@ -280,9 +280,8 @@ export default function ManagerVenueList() {
         {[
           { label: 'Tổng cụm sân',       value: venues.length,                                icon: 'feather-map-pin',      variant: 'green' },
           { label: 'Tổng sân',            value: totalCourts,                                  icon: 'feather-grid',         variant: 'blue' },
-          { label: 'Đặt sân tháng này',   value: totalBookings,                                icon: 'feather-calendar',     variant: 'amber' },
         ].map((s) => (
-          <div key={s.label} className="col-xl-4 col-sm-6">
+          <div key={s.label} className="col-xl-6 col-sm-6">
             <div className={`mgr-stat-card mgr-stat-card--${s.variant}`}>
               <div className="mgr-stat-card__icon">
                 <i className={s.icon} />

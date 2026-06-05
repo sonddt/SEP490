@@ -32,11 +32,20 @@ public class ManagerBookingService : IManagerBookingService
     {
         var list = await _bookingRepository.GetManagerBookingsAsync(managerId, status, ct);
 
+        // Batch-fetch refund info cho các booking REFUNDED/PENDING_REFUND
+        var refundStatuses = new[] { "REFUNDED", "PENDING_REFUND", "PENDING_RECONCILIATION" };
+        var refundBookingIds = list.Where(b => refundStatuses.Contains(b.Status)).Select(b => b.Id).ToList();
+        var refundMap = refundBookingIds.Any()
+            ? await _refundRepository.GetLatestByBookingIdsAsync(refundBookingIds)
+            : new Dictionary<Guid, DAL.Models.RefundRequest>();
+
         return list.Select(b =>
         {
             var bookingCode = "SU" + b.Id.ToString("N")[^6..].ToUpperInvariant();
             var payment = b.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
             var paymentStatus = payment?.Status?.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase) == true ? "PAID" : "UNPAID";
+
+            refundMap.TryGetValue(b.Id, out var refund);
 
             return new ManagerBookingListItemDto
             {
@@ -60,6 +69,9 @@ public class ManagerBookingService : IManagerBookingService
                 PaymentMethod = payment?.Method,
                 ProofUrl = payment?.GatewayReference,
                 CreatedAt = b.CreatedAt,
+                RefundedAmount = refund?.RequestedAmount ?? 0m,
+                PaidAmount = refund?.PaidAmount ?? 0m,
+                PenaltyAmount = refund != null ? (refund.PaidAmount ?? 0m) - (refund.RequestedAmount ?? 0m) : 0m,
                 Items = b.BookingItems.OrderBy(bi => bi.StartTime).Select(bi =>
                 {
                     var court = bi.Court;
