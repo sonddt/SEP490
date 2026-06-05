@@ -323,25 +323,7 @@ export default function MatchingHub() {
                   
                   <div className="col-lg-4 mt-4 mt-lg-0">
                      <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-end', alignItems: 'flex-start' }}>
-                         {/* View Mode Toggle */}
-                         <div>
-                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block', textAlign: 'right' }}>Hiển thị</label>
-                            <div style={{ display: 'flex', backgroundColor: '#f1f5f9', borderRadius: '12px', padding: '4px' }}>
-                                <button
-                                    onClick={() => setViewMode('grid')}
-                                    style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px', border: 'none', backgroundColor: viewMode === 'grid' ? '#fff' : 'transparent', boxShadow: viewMode === 'grid' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none', color: viewMode === 'grid' ? '#097E52' : '#94a3b8', transition: 'all 0.2s' }}
-                                >
-                                    <i className="feather-grid" style={{ fontSize: '18px' }}></i>
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('list')}
-                                    style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px', border: 'none', backgroundColor: viewMode === 'list' ? '#fff' : 'transparent', boxShadow: viewMode === 'list' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none', color: viewMode === 'list' ? '#097E52' : '#94a3b8', transition: 'all 0.2s' }}
-                                >
-                                    <i className="feather-list" style={{ fontSize: '20px' }}></i>
-                                </button>
-                            </div>
-                         </div>
-                         
+
                          {/* Status Filter */}
                          <div style={{ minWidth: '160px' }}>
                             <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block' }}>Trạng thái</label>
@@ -400,25 +382,7 @@ export default function MatchingHub() {
                     ))}
                   </select>
                 </div>
-                <div className="col-12 col-md-4 col-lg-4 ms-lg-auto">
-                  <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', letterSpacing: '0.5px', display: 'block', textAlign: 'right' }}>Hiển thị</label>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', backgroundColor: '#f1f5f9', borderRadius: '12px', padding: '4px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode('grid')}
-                      style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px', border: 'none', backgroundColor: viewMode === 'grid' ? '#fff' : 'transparent', boxShadow: viewMode === 'grid' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none', color: viewMode === 'grid' ? '#097E52' : '#94a3b8', transition: 'all 0.2s' }}
-                    >
-                      <i className="feather-grid" style={{ fontSize: '18px' }}></i>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode('list')}
-                      style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px', border: 'none', backgroundColor: viewMode === 'list' ? '#fff' : 'transparent', boxShadow: viewMode === 'list' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none', color: viewMode === 'list' ? '#097E52' : '#94a3b8', transition: 'all 0.2s' }}
-                    >
-                      <i className="feather-list" style={{ fontSize: '20px' }}></i>
-                    </button>
-                  </div>
-                </div>
+
               </div>
             </div>
           )}
@@ -441,6 +405,23 @@ export default function MatchingHub() {
                       : '')
                 }
               </h5>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '700', color: '#64748b', display: 'none' }}>Hiển thị:</span>
+                  <div style={{ display: 'flex', backgroundColor: '#fff', borderRadius: '12px', padding: '4px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                      <button
+                          onClick={() => setViewMode('grid')}
+                          style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', border: 'none', backgroundColor: viewMode === 'grid' ? '#f1f5f9' : 'transparent', color: viewMode === 'grid' ? '#097E52' : '#94a3b8', transition: 'all 0.2s' }}
+                      >
+                          <i className="feather-grid" style={{ fontSize: '18px' }}></i>
+                      </button>
+                      <button
+                          onClick={() => setViewMode('list')}
+                          style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', border: 'none', backgroundColor: viewMode === 'list' ? '#f1f5f9' : 'transparent', color: viewMode === 'list' ? '#097E52' : '#94a3b8', transition: 'all 0.2s' }}
+                      >
+                          <i className="feather-list" style={{ fontSize: '20px' }}></i>
+                      </button>
+                  </div>
+              </div>
           </div>
 
           {!loading && (
