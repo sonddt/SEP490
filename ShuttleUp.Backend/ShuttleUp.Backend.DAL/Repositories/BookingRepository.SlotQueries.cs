@@ -100,6 +100,10 @@ public partial class BookingRepository
             .Distinct()
             .ToHashSet();
 
+        var venueIds = await _context.Courts.Where(c => courtIds.Contains(c.Id)).Select(c => c.VenueId).Distinct().ToListAsync(ct);
+        var venue = await _context.Venues.FirstOrDefaultAsync(v => venueIds.Contains(v.Id), ct);
+        var slotMins = venue?.SlotDuration > 0 ? venue.SlotDuration : 60;
+
         foreach (var item in normalizedItems)
         {
             if (!configuredCourtIds.Contains(item.CourtId))
@@ -122,8 +126,11 @@ public partial class BookingRepository
 
             var openTs = record.OpenTime.Value.ToTimeSpan();
             var closeTs = record.CloseTime.Value.ToTimeSpan();
+            
+            closeTs = closeTs.Add(TimeSpan.FromMinutes(slotMins));
+            
             // If close time is 23:59:00, we treat it as 24:00:00 to allow booking until midnight
-            if (closeTs == new TimeSpan(23, 59, 0) || closeTs == new TimeSpan(23, 59, 59))
+            if (closeTs >= new TimeSpan(23, 59, 0))
             {
                 closeTs = TimeSpan.FromHours(24);
             }
@@ -177,6 +184,10 @@ public partial class BookingRepository
             .AsNoTracking()
             .Where(o => o.CourtId != null && allCourtIds.Contains(o.CourtId.Value))
             .ToListAsync(ct);
+            
+        var venueId = allCourts.FirstOrDefault()?.VenueId;
+        var venue = venueId.HasValue ? await _context.Venues.FirstOrDefaultAsync(v => v.Id == venueId.Value, ct) : null;
+        var slotMins = venue?.SlotDuration > 0 ? venue.SlotDuration : 60;
 
         var configuredCourtIds = allOpenHours.Select(o => o.CourtId!.Value).Distinct().ToHashSet();
         var busyMap = new Dictionary<Guid, HashSet<(DateTime, DateTime)>>();
@@ -210,7 +221,10 @@ public partial class BookingRepository
 
                     var openTs = record.OpenTime.Value.ToTimeSpan();
                     var closeTs = record.CloseTime.Value.ToTimeSpan();
-                    if (closeTs == new TimeSpan(23, 59, 0) || closeTs == new TimeSpan(23, 59, 59)) closeTs = TimeSpan.FromHours(24);
+                    
+                    closeTs = closeTs.Add(TimeSpan.FromMinutes(slotMins));
+                    
+                    if (closeTs >= new TimeSpan(23, 59, 0)) closeTs = TimeSpan.FromHours(24);
 
                     if (startTs < openTs || endTs > closeTs)
                         return false;
