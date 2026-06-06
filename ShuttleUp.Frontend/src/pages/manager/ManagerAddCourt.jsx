@@ -54,7 +54,6 @@ export default function ManagerAddCourt() {
     TIME_SLOTS.push(`${String(h).padStart(2, '0')}:00`);
     TIME_SLOTS.push(`${String(h).padStart(2, '0')}:30`);
   }
-  TIME_SLOTS.push('23:59'); // Cho phép cấu hình giờ đóng cửa cuối ngày (24h00)
   const [dayHours, setDayHours] = useState(DAYS.map(() => ({ open: '06:00', close: '22:00', enabled: true })));
 
   const [isBulkCreate, setIsBulkCreate] = useState(false);
